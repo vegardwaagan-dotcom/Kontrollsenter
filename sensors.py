@@ -204,17 +204,82 @@ class NetReader:
         return max(rx, 0), max(tx, 0)
 
 
+class _Nvml:
+    """Direkte kall til NVIDIAs bibliotek (libnvidia-ml) – ingen nytt program hvert sekund."""
+
+    def __init__(self):
+        import ctypes
+        self.C = ctypes
+        self.lib = ctypes.CDLL("libnvidia-ml.so.1")
+        if self.lib.nvmlInit_v2() != 0:
+            raise OSError("nvmlInit feilet")
+        self.h = ctypes.c_void_p()
+        if self.lib.nvmlDeviceGetHandleByIndex_v2(0, ctypes.byref(self.h)) != 0:
+            raise OSError("fant ingen NVIDIA-GPU")
+
+    def _u(self, fn, *extra):
+        v = self.C.c_uint()
+        return v.value if getattr(self.lib, fn)(self.h, *extra, self.C.byref(v)) == 0 else None
+
+    def read(self):
+        C, lib, h = self.C, self.lib, self.h
+        name = C.create_string_buffer(96)
+        lib.nvmlDeviceGetName(h, name, 96)
+
+        class Util(C.Structure):
+            _fields_ = [("gpu", C.c_uint), ("memory", C.c_uint)]
+
+        class Mem(C.Structure):
+            _fields_ = [("total", C.c_ulonglong), ("free", C.c_ulonglong), ("used", C.c_ulonglong)]
+        class Mem2(C.Structure):                       # v2 regner ikke med reservert minne (som nvidia-smi)
+            _fields_ = [("version", C.c_uint), ("total", C.c_ulonglong), ("reserved", C.c_ulonglong),
+                        ("free", C.c_ulonglong), ("used", C.c_ulonglong)]
+        util, mem = Util(), Mem2()
+        mem.version = C.sizeof(Mem2) | (2 << 24)
+        ok_u = lib.nvmlDeviceGetUtilizationRates(h, C.byref(util)) == 0
+        ok_m = hasattr(lib, "nvmlDeviceGetMemoryInfo_v2") and lib.nvmlDeviceGetMemoryInfo_v2(h, C.byref(mem)) == 0
+        if not ok_m:
+            mem = Mem()
+            ok_m = lib.nvmlDeviceGetMemoryInfo(h, C.byref(mem)) == 0
+        lo, hi = C.c_uint(), C.c_uint()
+        ok_c = lib.nvmlDeviceGetPowerManagementLimitConstraints(h, C.byref(lo), C.byref(hi)) == 0
+        mw = lambda v: v / 1000 if v is not None else None          # noqa: E731
+        default = self._u("nvmlDeviceGetPowerManagementDefaultLimit")
+        return {
+            "name": name.value.decode(errors="replace"),
+            "util": util.gpu if ok_u else None,
+            "mem_used": mem.used / 1048576 if ok_m else None, "mem_total": mem.total / 1048576 if ok_m else None,
+            "temp": self._u("nvmlDeviceGetTemperature", 0),
+            "power": mw(self._u("nvmlDeviceGetPowerUsage")),
+            "fan": self._u("nvmlDeviceGetFanSpeed"),
+            "limit": mw(self._u("nvmlDeviceGetEnforcedPowerLimit")),
+            "clock": self._u("nvmlDeviceGetClockInfo", 0), "clock_max": self._u("nvmlDeviceGetMaxClockInfo", 0),
+            "limits": (lo.value / 1000, mw(default), hi.value / 1000) if ok_c and default else None,
+        }
+
+
 class NvidiaReader:
-    """Kjører nvidia-smi i en bakgrunnstråd så GUI-et aldri fryser."""
+    """NVIDIA-data: via NVML (raskt, ingen nye prosesser), ellers nvidia-smi i en bakgrunnstråd."""
 
     FIELDS = "name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,fan.speed,power.limit,clocks.gr,clocks.max.gr,power.min_limit,power.default_limit,power.max_limit"
 
     def __init__(self):
-        self.available = shutil.which("nvidia-smi") is not None
         self.data = None
         self._busy = False
+        try:
+            self.nvml = _Nvml()
+            self.available = True
+        except (OSError, AttributeError):
+            self.nvml = None
+            self.available = shutil.which("nvidia-smi") is not None
 
     def poll(self):
+        if self.nvml:
+            try:
+                self.data = self.nvml.read()
+                return
+            except Exception:  # noqa: BLE001 – faller tilbake til nvidia-smi
+                self.nvml = None
         if not self.available or self._busy:
             return
         self._busy = True

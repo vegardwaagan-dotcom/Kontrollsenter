@@ -18,8 +18,10 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 import i18n  # noqa: E402
+import applog  # noqa: E402
 
 i18n.install()          # oversetter teksten hvis engelsk er valgt (må skje før vinduer lages)
+applog.setup()          # feillogg i ~/.cache/systemmonitor/logg.txt
 
 from sensors import *  # noqa: E402,F401,F403
 from cards import *  # noqa: E402,F401,F403
