@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="30" y1="20" x2="225" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#11142d"/>
+      <stop offset="1" stop-color="#070912"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="56" y1="61" x2="203" y2="205" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#79f7ff"/>
+      <stop offset=".52" stop-color="#9b7bff"/>
+      <stop offset="1" stop-color="#ff4fd8"/>
+    </linearGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+  </defs>
+  <rect x="12" y="12" width="232" height="232" rx="58" fill="url(#bg)"/>
+  <rect x="13.5" y="13.5" width="229" height="229" rx="56.5" fill="none" stroke="#a8aaff" stroke-opacity=".28" stroke-width="3"/>
+  <path d="M128 42 199 83v90l-71 41-71-41V83z" fill="none" stroke="url(#glow)" stroke-width="8" stroke-linejoin="round" opacity=".34" filter="url(#blur)"/>
+  <path d="M128 42 199 83v90l-71 41-71-41V83z" fill="#11152b" stroke="url(#glow)" stroke-width="7" stroke-linejoin="round"/>
+  <path d="m92 96-27 32 27 32M164 96l27 32-27 32" fill="none" stroke="url(#glow)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m113 166 30-76" fill="none" stroke="#f5fbff" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="128" cy="42" r="5" fill="#e9ffff"/>
+  <circle cx="199" cy="83" r="5" fill="#d2aaff"/>
+  <circle cx="57" cy="83" r="5" fill="#87f7ff"/>
+  <circle cx="128" cy="214" r="5" fill="#ff8bea"/>
+</svg>

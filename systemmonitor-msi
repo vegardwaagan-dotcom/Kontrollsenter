@@ -1,0 +1,88 @@
+#!/usr/bin/python3 -I
+"""systemmonitor-msi – endrer MSI-laptopinnstillinger (msi-ec). Kjøres som root via sudo.
+
+Godtar KUN:
+  set <innstilling> <verdi>   shift_mode / fan_mode (fra available_*), cooler_boost / super_battery /
+                              webcam / webcam_block (on|off), fn_key / win_key (left|right)
+  charge <10-100>             ladegrense for batteriet (Battery Master)
+  gpu <integrated|hybrid|nvidia>   GPU-modus via envycontrol eller supergfxctl (krever omstart)
+"""
+import glob
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+EC = os.environ.get("SYSTEMMONITOR_MSI_ROOT") if os.geteuid() != 0 else None
+EC = EC or "/sys/devices/platform/msi-ec"
+BOOL = {"on", "off"}
+SIDE = {"left", "right"}
+
+
+def die(msg, code=2):
+    print(msg, file=sys.stderr)
+    sys.exit(code)
+
+
+def read(name):
+    try:
+        with open(os.path.join(EC, name)) as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def write(path, value):
+    with open(path, "w") as f:
+        f.write(value)
+
+
+def allowed(attr):
+    if attr in ("shift_mode", "fan_mode"):
+        return set(read(f"available_{attr}s").split()) if attr == "shift_mode" else set(read("available_fan_modes").split())
+    if attr in ("cooler_boost", "super_battery", "webcam", "webcam_block"):
+        return BOOL
+    if attr in ("fn_key", "win_key"):
+        return SIDE
+    return set()
+
+
+def main(a):
+    if len(a) == 3 and a[0] == "set":
+        attr, val = a[1], a[2]
+        ok = allowed(attr)
+        if not ok or val not in ok:
+            die(f"ugyldig: {attr}={val}")
+        p = os.path.join(EC, attr)
+        if not os.path.exists(p):
+            die(f"{attr} støttes ikke av denne maskinen", 1)
+        write(p, val)
+    elif len(a) == 2 and a[0] == "charge":
+        if not re.fullmatch(r"\d{2,3}", a[1]) or not 10 <= int(a[1]) <= 100:
+            die("ugyldig ladegrense")
+        done = False
+        for b in glob.glob("/sys/class/power_supply/BAT*/charge_control_end_threshold"):
+            write(b, a[1])
+            done = True
+        if not done:
+            die("batteriet støtter ikke ladegrense", 1)
+    elif len(a) == 2 and a[0] == "gpu":
+        mode = a[1]
+        if mode not in ("integrated", "hybrid", "nvidia"):
+            die("ugyldig GPU-modus")
+        envy = next((p for p in ("/usr/local/bin/envycontrol", "/usr/bin/envycontrol")
+                     if os.access(p, os.X_OK)), shutil.which("envycontrol"))
+        if envy:
+            subprocess.run([envy, "-s", mode], check=True)
+        elif shutil.which("supergfxctl"):
+            subprocess.run(["supergfxctl", "-m", {"integrated": "Integrated", "hybrid": "Hybrid",
+                                                 "nvidia": "AsusMuxDgpu"}[mode]], check=True)
+        else:
+            die("verken envycontrol eller supergfxctl er installert", 1)
+    else:
+        die(__doc__)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

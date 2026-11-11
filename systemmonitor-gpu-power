@@ -1,0 +1,25 @@
+#!/bin/bash
+# systemmonitor-gpu-power – setter strømgrensen på NVIDIA-skjermkort.
+# Kjøres som root (via sudo uten passord, satt opp av install-gpu-power.sh).
+# Godtar KUN tre faste moduser, aldri vilkårlige verdier:
+#   power-saver -> laveste tillatte grense
+#   balanced    -> fabrikkstandard
+#   performance -> høyeste tillatte grense
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+case "${1:-}" in
+    power-saver) field=power.min_limit ;;
+    balanced)    field=power.default_limit ;;
+    performance) field=power.max_limit ;;
+    *) echo "bruk: $0 power-saver|balanced|performance" >&2; exit 2 ;;
+esac
+
+command -v nvidia-smi >/dev/null || { echo "nvidia-smi finnes ikke" >&2; exit 1; }
+
+nvidia-smi --query-gpu=index,"$field" --format=csv,noheader,nounits |
+while IFS=', ' read -r idx watts; do
+    [[ "$idx" =~ ^[0-9]+$ && "$watts" =~ ^[0-9]+(\.[0-9]+)?$ ]] || continue
+    nvidia-smi -i "$idx" -pl "$watts" >/dev/null
+    echo "GPU $idx: strømgrense satt til $watts W"
+done
