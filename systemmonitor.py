@@ -112,6 +112,19 @@ def ensure_overlay_env():
     return True
 
 
+def install_app_icon():
+    """Legg programikonet i ikontemaet (~/.local/share/icons), så menyen, statusfeltet og varslene viser det."""
+    src = os.path.join(APP_DIR, "icons", APP_ICON + ".svg")
+    dst_dir = os.path.expanduser("~/.local/share/icons/hicolor/scalable/apps")
+    dst = os.path.join(dst_dir, APP_ICON + ".svg")
+    try:
+        if os.path.exists(src) and (not os.path.exists(dst) or os.path.getmtime(src) > os.path.getmtime(dst)):
+            os.makedirs(dst_dir, exist_ok=True)
+            shutil.copy2(src, dst)
+    except OSError:
+        pass
+
+
 def accent_rgb():
     """Systemets aksentfarge (KDE/GNOME), ellers blå."""
     try:
@@ -137,6 +150,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         theme.add_search_path(os.path.join(APP_DIR, "icons", "symbolic"))   # enhetlige ensfargede ikoner
         theme.add_search_path(os.path.join(APP_DIR, "icons"))               # programikonet
         Gtk.Window.set_default_icon_name(APP_ICON)
+        install_app_icon()
         self._font_css = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), self._font_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
@@ -618,12 +632,12 @@ class MonitorWindow(Adw.ApplicationWindow):
         import cards
         self.t_cpu.gauge.set_value(cpu_t)
         self.t_cpu.value.set_label(f"{cpu_t:.0f} °C" if cpu_t is not None else "–")
-        self.t_cpu.sub.set_label(f"{self._cpu_load:.0f} % last")
+        self.t_cpu.sub.set_label(i18n.tr(f"{self._cpu_load:.0f} % last"))
         if self.t_gpu:
             g_t = nv.get("temp") if nv else None
             self.t_gpu.gauge.set_value(g_t)
             self.t_gpu.value.set_label(f"{g_t:.0f} °C" if g_t is not None else "–")
-            self.t_gpu.sub.set_label(f"{(nv.get('util') or 0):.0f} % last" if nv else "")
+            self.t_gpu.sub.set_label(i18n.tr(f"{(nv.get('util') or 0):.0f} % last") if nv else "")
         pw = self.meter.read(nv.get("power") if nv else None)
         self._power = pw
         self.energy.add(pw["total"])

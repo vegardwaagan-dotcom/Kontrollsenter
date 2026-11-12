@@ -181,11 +181,13 @@ Comment[nb]=CPU, GPU, vifter, strømmodus, RGB, Logitech, spill og systemsjekk
 Comment[nn]=CPU, GPU, vifter, straummodus, RGB, Logitech, spel og systemsjekk
 Comment[no]=CPU, GPU, vifter, strømmodus, RGB, Logitech, spill og systemsjekk
 Exec=python3 $DEST/systemmonitor.py
-Icon=utilities-system-monitor
+Icon=no.waagan.Systemmonitor
 Terminal=false
 Categories=System;Monitor;
 StartupWMClass=$ID
 EOF
+mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
+cp "$DEST/icons/no.waagan.Systemmonitor.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/" 2>/dev/null || true
 update-desktop-database "$APPS" 2>/dev/null || true
 if [ -d "$DESKTOP_DIR" ]; then
     rm -f "$DESKTOP_DIR/Systemmonitor.desktop"          # gammelt navn

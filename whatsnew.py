@@ -13,6 +13,33 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.4", "Mer automatikk, mer oversikt", [
+        ("Spill", [
+            "Automatiske spillprofiler: strømmodus, vifter og RGB byttes når et Steam-spill starter – og tilbake "
+            "når det avsluttes. Egne innstillinger per spill",
+            "Rapport etter hver spilløkt: spilletid, snitt-FPS, «1 % low», høyeste temperaturer og strømkostnad",
+            "Sikkerhetskopi av lagrede spill til NAS-en – også spill som ikke ligger i Steam Cloud – og henting tilbake",
+        ]),
+        ("Vifter og strøm", [
+            "Viftekurver: dra punkter på en graf, så følger viftene temperaturen",
+            "Stille om natten: rolig PC i tidsrommet du velger, med stille vifter, Strømsparing og RGB av",
+            "Strømforbruk med pris: målt watt for CPU og skjermkort, kWh og kroner i dag, og anslag per måned",
+        ]),
+        ("Oversikt og system", [
+            "Historikk: temperaturer, last og strøm for siste time, døgn eller uke",
+            "Hva tar plass? De største mappene og spillene, med Åpne og Avinstaller",
+            "Nettverk: ping til ruter, NAS og spilltjenere, hastighetstest og programmer som bruker nettet",
+            "PC-er hjemme: se temperatur, strøm, spill og versjon på alle PC-ene på hjemmenettet",
+        ]),
+        ("Utseende", [
+            "Eget programikon",
+            "Nøkkeltall øverst i Oversikt med runde temperaturmål i grønt, gult og rødt",
+            "Grafer: velg 1 min, 10 min eller 1 time, og hold musa over for verdi og tidspunkt",
+            "Mini-vindu som ligger øverst med temperaturer og strøm (Meny → Mini-vindu)",
+            "Levende sidemeny: temperatur ved Oversikt, ▶ ved Spill når et spill kjører, antall Bluetooth-enheter",
+            "Velkomstveiviser første gang (og i Meny → Velkomstveiviser)",
+        ]),
+    ]),
     ("0.3.1", "Riktig versjon etter oppdatering", [
         ("Rettet", [
             "«Se etter oppdatering» sammenligner nå med versjonen som faktisk kjører – ikke bare filene på disken",

@@ -74,7 +74,7 @@ def apps():
     bnet = _battlenet_exec()
     me = f"python3 {os.path.join(os.path.dirname(os.path.abspath(__file__)), 'systemmonitor.py')} --hidden"
     return [
-        ("systemmonitor", "Kontrollsenter", "utilities-system-monitor", me,
+        ("systemmonitor", "Kontrollsenter", "no.waagan.Systemmonitor", me,
          "Starter skjult med ikon i systemstatusfeltet, så overlay, vifter og varsler virker fra start.",
          r"systemmonitor\.py", r"^Kontrollsenter$"),
         ("steam", "Steam", "steam", steam, "Starter i systemstatusfeltet (-silent).", r"steam", r"steam"),

@@ -248,7 +248,7 @@ def dialog(win):
         m = log.month_estimate_kwh()
         hrs = log.on_hours_per_day()
         labels["month"].set_label(
-            f"{m:.0f} kWh · {m * c['price']:.0f} kr" + (f"  ({hrs:.0f} t/døgn)" if hrs else "  (8 t/døgn)")
+            f"{m:.0f} kWh · {m * c['price']:.0f} kr  " + i18n.tr(f"({hrs or 8:.0f} t/døgn)")
             if m else "–")
         return True
     tick()

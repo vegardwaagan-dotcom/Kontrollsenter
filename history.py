@@ -258,7 +258,7 @@ class HistoryPage(Gtk.ScrolledWindow):
             if st[3]:
                 parts.append(f"snitt {st[3]:.0f} W · {kwh:.2f} kWh ≈ {kwh * power.load()['price']:.2f} kr")
             parts.append(f"PC-en var på {hours:.1f} t")
-            self.summary.set_label(" · ".join(parts))
+            self.summary.set_label(" · ".join(i18n.tr(p) for p in parts))
         else:
             self.summary.set_label(i18n.tr("Historikken fylles mens Kontrollsenter kjører (også i bakgrunnen)."))
         return True

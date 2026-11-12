@@ -170,7 +170,7 @@ def summary(s):
         parts.append(f"GPU maks {s['max_gpu']} °C")
     if s.get("watts"):
         parts.append(f"{s['watts']} W snitt ≈ {s['kr']:.2f} kr")
-    return " · ".join(parts)
+    return " · ".join(i18n.tr(p) for p in parts)
 
 
 # --------------------------------------------------------------------------

@@ -118,7 +118,7 @@ class Background:
             try:
                 import tray
                 import i18n
-                self.tray = tray.Tray("Kontrollsenter", "utilities-system-monitor", self.toggle,
+                self.tray = tray.Tray("Kontrollsenter", "no.waagan.Systemmonitor", self.toggle,
                                       self._menu(), tr=i18n.tr)
             except Exception:  # noqa: BLE001 – uten statusfelt virker resten som før
                 self.tray = None
@@ -172,6 +172,7 @@ class Background:
                   (4, "Overlay i spill", lambda: self.win.ov_button.set_active(not self.win.ov_button.get_active()),
                    self.win.ov_button.get_active(), "checkmark"),
                   (5, "Systemsjekk …", lambda: (self.show(), self.win._open_syscheck())),
+                  (8, "Mini-vindu", lambda: self.win._open_mini()),
                   (6, "-", None), (7, "Avslutt", self.quit)]
         return items
 
@@ -199,7 +200,7 @@ class Background:
         import i18n
         n = Gio.Notification.new(i18n.tr(title))
         n.set_body(i18n.tr(body))
-        n.set_icon(Gio.ThemedIcon.new("utilities-system-monitor"))
+        n.set_icon(Gio.ThemedIcon.new("no.waagan.Systemmonitor"))
         n.set_default_action(action or "app.show")
         self.app.send_notification(key, n)
 
@@ -251,6 +252,14 @@ class Background:
                         self.notify("disk" + d["dev"], "Disken er nesten full",
                                     f"{nice_mount(d['mnt'])} er {pct:.0f} % full. "
                                     "Verktøy → Rydd opp kan frigjøre plass.")
+                try:
+                    import bluetooth
+                    objs = bluetooth.objects()
+                    n = sum(1 for _p, ifs in objs.items()
+                            if ifs.get("org.bluez.Device1", {}).get("Connected"))
+                    self.win.set_badge("bluetooth", str(n) if n else "")
+                except Exception:  # noqa: BLE001
+                    pass
                 for path, name, pct in device_batteries():
                     if pct <= c["battery_limit"]:
                         self.notify("bat" + path, f"Lavt batteri: {name}", f"{pct:.0f} % igjen – lad snart.")
