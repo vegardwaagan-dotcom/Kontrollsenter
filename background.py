@@ -89,6 +89,10 @@ class Background:
         self.apply()
         import automation
         self.auto = automation.Automation(win, self.notify)
+        import history
+        self.history = history.Recorder()
+        import homepcs
+        self.sharer = homepcs.Sharer(win)
         win.ov_button.connect("toggled", lambda *_: self.refresh_menu())
         if win.power.proxy:
             win.power.proxy.connect("g-properties-changed", lambda *_: self.refresh_menu())
@@ -146,6 +150,10 @@ class Background:
         return False
 
     def quit(self):
+        try:
+            self.history.flush()
+        except Exception:  # noqa: BLE001
+            pass
         if self.held:
             self.app.release()
             self.held = False
@@ -197,6 +205,19 @@ class Background:
 
     def _tick(self):
         c = self.cfg
+        try:
+            w = self.win
+            nv = w.nvidia.data if w.nvidia.available else None
+            self.history.add(getattr(w, "_cpu_t", None), nv.get("temp") if nv else None,
+                             getattr(w, "_cpu_load", None), nv.get("util") if nv else None,
+                             (getattr(w, "_power", None) or {}).get("total"))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("historikk")
+        try:
+            self.sharer.tick()
+        except Exception:  # noqa: BLE001
+            pass
         try:
             self.auto.tick()
         except Exception:  # noqa: BLE001

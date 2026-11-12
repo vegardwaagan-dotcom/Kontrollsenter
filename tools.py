@@ -549,6 +549,12 @@ class ToolsPage(Gtk.ScrolledWindow):
         self.box = box
         self._info_card()
         self._cleanup_card()
+        try:
+            import diskusage
+            diskusage.build_card(self, card)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("hva tar plass")
         self._health_card()
         self._restore_card()
         self._backup_card()

@@ -379,9 +379,12 @@ class MonitorWindow(Adw.ApplicationWindow):
         # Faner som lastes først når de åpnes: navn -> (holder, modul, klasse)
         self._lazy = {}
         for name, title, icon, mod, cls in (
+                ("historikk", "Historikk", "ks-history-symbolic", "history", "HistoryPage"),
                 ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),
+                ("nettverk", "Nettverk", "ks-network-symbolic", "netpage", "NetworkPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
                 ("automatikk", "Automatikk", "ks-auto-symbolic", "automation", "AutomationPage"),
+                ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
                 ("verktoy", "Verktøy", "ks-tools-symbolic", "tools", "ToolsPage")):
             if name == "bluetooth" and not self.hw["bluetooth"]:
                 continue
@@ -406,8 +409,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.sidebar.add_css_class("navigation-sidebar")
         self._rows = {}
         pages = stack.get_pages()
-        for i in range(pages.get_n_items()):
-            pg = pages.get_item(i)
+        order = ["oversikt", "historikk", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "nettverk",
+                 "spill", "automatikk", "programmer", "hjemme", "verktoy", "msi"]
+        all_pages = [pages.get_item(i) for i in range(pages.get_n_items())]
+        all_pages.sort(key=lambda p: order.index(p.get_name()) if p.get_name() in order else 99)
+        for pg in all_pages:
             row = Gtk.ListBoxRow()
             box = Gtk.Box(spacing=12)
             for side in ("top", "bottom"):

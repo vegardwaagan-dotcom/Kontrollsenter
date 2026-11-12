@@ -69,7 +69,13 @@ def _libs():
                 libs.append(Path(v["path"]) / "steamapps")
     except Exception:  # noqa: BLE001
         pass
-    return libs
+    out, seen = [], set()
+    for lib in libs:                       # samme bibliotek kan stå to ganger (symlenke / libraryfolders)
+        key = os.path.realpath(lib)
+        if key not in seen:
+            seen.add(key)
+            out.append(lib)
+    return out
 
 
 def _user_dir(appid):
