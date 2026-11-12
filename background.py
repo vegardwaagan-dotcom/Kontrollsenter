@@ -89,6 +89,7 @@ class Background:
             win.power.proxy.connect("g-properties-changed", lambda *_: self.refresh_menu())
         GLib.timeout_add_seconds(5, self._tick)
         GLib.timeout_add_seconds(600, self._periodic_first)
+        GLib.timeout_add_seconds(90, lambda: self._lan_check() or False)       # rask sjekk etter oppstart
 
     # --- innstillinger -----------------------------------------------------
     def set(self, key, value):
@@ -228,6 +229,24 @@ class Background:
             applog.log.exception("bakgrunn")
         return True
 
+    def _lan_check(self):
+        """Ny versjon på hjemmenettet (NAS)? Bare når PC-en er på det lokale nettet."""
+        if not self.cfg["notify"]:
+            return
+
+        def work():
+            try:
+                import lanupdate
+                _txt, new = lanupdate.check()
+            except Exception:  # noqa: BLE001
+                new = None
+            if new:
+                GLib.idle_add(lambda: self.notify(
+                    "lanupdate", "Ny versjon av Kontrollsenter",
+                    f"Versjon {new} ligger på hjemmenettet. Verktøy → Se etter oppdatering → Oppdater nå.",
+                    action="app.show") and False)
+        threading.Thread(target=work, daemon=True).start()
+
     def _periodic_first(self):
         self._periodic()
         GLib.timeout_add_seconds(PERIODIC, self._periodic)
@@ -236,6 +255,7 @@ class Background:
     def _periodic(self):
         if not (self.cfg["periodic"] and self.cfg["notify"]):
             return True
+        self._lan_check()
 
         def work():
             found, upd = 0, 0

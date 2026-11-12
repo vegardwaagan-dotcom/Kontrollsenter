@@ -419,11 +419,33 @@ def update_source():
 
 def set_update_source(url):
     CFG.mkdir(parents=True, exist_ok=True)
-    UPDATE_CFG.write_text(json.dumps({"url": url}))
+    try:
+        cfg = json.loads(UPDATE_CFG.read_text())
+    except (OSError, ValueError):
+        cfg = {}
+    cfg["url"] = url
+    UPDATE_CFG.write_text(json.dumps(cfg))
+
+
+_SOURCE = ["git"]          # hvor siste «Se etter oppdatering» fant noe: «lan» eller «git»
 
 
 def check_update():
-    """Returnerer (status-tekst, kan_oppdatere)."""
+    """Returnerer (status-tekst, kan_oppdatere). Hjemmenettet (NAS) sjekkes først."""
+    import lanupdate
+    txt, new = lanupdate.check()
+    if new:
+        _SOURCE[0] = "lan"
+        return txt, True
+    _SOURCE[0] = "git"
+    lan_txt = txt if txt != "Ikke på hjemmenettet" else ""
+    res = _check_git()
+    if lan_txt and not res[1]:
+        return f"{lan_txt}\n{res[0]}" if not res[0].startswith("Du har nyeste") else lan_txt, False
+    return res
+
+
+def _check_git():
     url = update_source()
     is_git = os.path.isdir(os.path.join(APP_DIR, ".git")) or os.path.isfile(os.path.join(APP_DIR, ".git"))
     if is_git:
@@ -455,6 +477,9 @@ def check_update():
 
 
 def do_update():
+    if _SOURCE[0] == "lan":
+        import lanupdate
+        return lanupdate.apply_update(PACKAGE_FILES)
     url = update_source()
     if os.path.exists(os.path.join(APP_DIR, ".git")):
         code, out = run(["git", "-C", APP_DIR, "pull", "--ff-only", "--quiet"], 300)
@@ -847,6 +872,13 @@ class ToolsPage(Gtk.ScrolledWindow):
         self.pkg_status = dim("Lager mappen «Kontrollsenter» og «Kontrollsenter.tar.gz» med alt som trengs for å "
                               "installere på en annen PC – inkludert programlisten din.")
         i.append(self.pkg_status)
+        import lanupdate
+        pub = Gtk.Button(label="Legg denne versjonen på hjemmenettet (NAS)", halign=Gtk.Align.START)
+        pub.connect("clicked", self._publish)
+        i.append(pub)
+        self.pub_status = dim(f"Andre PC-er på hjemmenettet sjekker {lanupdate.location()} og får varsel om "
+                              "nyere versjon. Gjelder bare når PC-en er på det lokale nettet.")
+        i.append(self.pub_status)
         self.box.append(c)
 
     def _check_update(self, *_):
@@ -865,10 +897,21 @@ class ToolsPage(Gtk.ScrolledWindow):
 
         def done(res):
             ok, msg = res
-            self.upd_status.set_label("Oppdatert ✓ – start Kontrollsenter på nytt" if ok else f"Feil: {msg}")
+            self.upd_status.set_label((msg if msg.startswith("Oppdatert") else
+                                       "Oppdatert ✓ – start Kontrollsenter på nytt") if ok else f"Feil: {msg}")
             self.upd_btn.set_visible(not ok)
             return False
         self._bg(do_update, done)
+
+    def _publish(self, *_):
+        import lanupdate
+        self.pub_status.set_label("Legger på hjemmenettet …")
+
+        def done(res):
+            ok, msg = res
+            self.pub_status.set_label(msg if ok else f"Feil: {msg}")
+            return False
+        self._bg(lambda: lanupdate.publish(make_package), done)
 
     def _package(self, *_):
         desk = run(["xdg-user-dir", "DESKTOP"], 5)[1].strip() or str(HOME / "Desktop")

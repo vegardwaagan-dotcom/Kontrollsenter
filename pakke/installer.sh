@@ -41,11 +41,11 @@ else PM=ukjent; fi
 [ -n "${SM_TEST_PM:-}" ] && { PM=$SM_TEST_PM; OSTREE=0; }   # kun for testing
 
 case $PM in
-  pacman) P_GTK="python-gobject gtk4 libadwaita"; P_RATBAG=libratbag; P_PIPX=python-pipx; P_EXTRA="pacman-contrib" ;;
-  dnf|ostree) P_GTK="python3-gobject gtk4 libadwaita"; P_RATBAG=libratbag-ratbagd; P_PIPX=pipx; P_EXTRA="" ;;
-  apt)    P_GTK="python3-gi gir1.2-gtk-4.0 gir1.2-adw-1"; P_RATBAG=ratbagd; P_PIPX="pipx python3-venv"; P_EXTRA="" ;;
-  zypper) P_GTK="python3-gobject typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1"; P_RATBAG=libratbag-tools; P_PIPX=python3-pipx; P_EXTRA="" ;;
-  *)      P_GTK=""; P_RATBAG=""; P_PIPX=""; P_EXTRA="" ;;
+  pacman) P_GTK="python-gobject gtk4 libadwaita"; P_RATBAG=libratbag; P_PIPX=python-pipx; P_EXTRA="pacman-contrib"; P_SMB=smbclient ;;
+  dnf|ostree) P_GTK="python3-gobject gtk4 libadwaita"; P_RATBAG=libratbag-ratbagd; P_PIPX=pipx; P_EXTRA=""; P_SMB=samba-client ;;
+  apt)    P_GTK="python3-gi gir1.2-gtk-4.0 gir1.2-adw-1"; P_RATBAG=ratbagd; P_PIPX="pipx python3-venv"; P_EXTRA=""; P_SMB=smbclient ;;
+  zypper) P_GTK="python3-gobject typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1"; P_RATBAG=libratbag-tools; P_PIPX=python3-pipx; P_EXTRA=""; P_SMB=samba-client ;;
+  *)      P_GTK=""; P_RATBAG=""; P_PIPX=""; P_EXTRA=""; P_SMB="" ;;
 esac
 . /etc/os-release 2>/dev/null || true
 echo "Kontrollsenter – installasjon på ${PRETTY_NAME:-ukjent distro} (pakkehåndterer: $PM)"
@@ -70,6 +70,7 @@ gtk_ok || need+=($P_GTK)
 har flatpak || need+=(flatpak)
 ratbag_ok || need+=($P_RATBAG)
 har mangohud || need+=(mangohud)
+har smbclient || need+=($P_SMB)          # oppdatering fra hjemmenettet (NAS)
 trcc_ok || har pipx || need+=($P_PIPX)
 [ "$PM" = pacman ] && ! har checkupdates && need+=($P_EXTRA)
 

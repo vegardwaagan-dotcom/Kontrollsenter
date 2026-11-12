@@ -1177,5 +1177,21 @@
  "English": "English",
  "Nytt navn og språk": "New name and language",
  "Programmet heter nå Kontrollsenter (Control Center på engelsk)": "The program is now called Control Center (Kontrollsenter in Norwegian)",
- "Språket følger Linux automatisk (Auto) – du kan fortsatt velge NO eller EN selv": "The language follows Linux automatically (Auto) – you can still choose NO or EN yourself"
+ "Språket følger Linux automatisk (Auto) – du kan fortsatt velge NO eller EN selv": "The language follows Linux automatically (Auto) – you can still choose NO or EN yourself",
+ "Legg denne versjonen på hjemmenettet (NAS)": "Put this version on the home network (NAS)",
+ "Andre PC-er på hjemmenettet sjekker {} og får varsel om nyere versjon. Gjelder bare når PC-en er på det lokale nettet.": "Other PCs on the home network check {} and are notified about newer versions. Only applies when the PC is on the local network.",
+ "Legger på hjemmenettet …": "Uploading to the home network …",
+ "Versjon {} er lagt på hjemmenettet ✓ ({})": "Version {} is on the home network ✓ ({})",
+ "NAS-en svarer ikke – er du på hjemmenettet?": "The NAS is not responding – are you on the home network?",
+ "Ikke på hjemmenettet": "Not on the home network",
+ "Hjemmenettet: ingen versjon er lagt ut ennå": "Home network: no version has been published yet",
+ "Hjemmenettet: fant ingen oppdatering ({})": "Home network: no update found ({})",
+ "Versjon {} er tilgjengelig på hjemmenettet (du har {})": "Version {} is available on the home network (you have {})",
+ "Du har nyeste versjon (hjemmenettet har {})": "You have the latest version (the home network has {})",
+ "Oppdatert til {} ✓ – start Kontrollsenter på nytt": "Updated to {} ✓ – restart Control Center",
+ "sjekksummen stemmer ikke – oppdateringen ble ikke installert": "the checksum does not match – the update was not installed",
+ "pakken mangler programfilene": "the package is missing the program files",
+ "Ny versjon av Kontrollsenter": "New version of Control Center",
+ "Versjon {} ligger på hjemmenettet. Verktøy → Se etter oppdatering → Oppdater nå.": "Version {} is on the home network. Tools → Check for updates → Update now.",
+ "{}\n{}": "{}\n{}"
 }
