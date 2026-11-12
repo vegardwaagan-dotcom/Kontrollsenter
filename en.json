@@ -1193,5 +1193,7 @@
  "pakken mangler programfilene": "the package is missing the program files",
  "Ny versjon av Kontrollsenter": "New version of Control Center",
  "Versjon {} ligger på hjemmenettet. Verktøy → Se etter oppdatering → Oppdater nå.": "Version {} is on the home network. Tools → Check for updates → Update now.",
- "{}\n{}": "{}\n{}"
+ "{}\n{}": "{}\n{}",
+ "Ny versjon lagt på hjemmenettet": "New version published on the home network",
+ "Kontrollsenter {} ligger nå på NAS-en, og de andre PC-ene får varsel.": "Control Center {} is now on the NAS, and the other PCs will be notified."
 }

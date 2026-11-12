@@ -172,3 +172,25 @@ def publish(make_package):
         return False, str(e)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def is_source_pc():
+    """PC-en der programmet utvikles (Git-mappe) – den legger nye versjoner ut på NAS-en."""
+    return os.path.isdir(os.path.join(APP_DIR, ".git"))      # ikke Git-arbeidskopier (der er .git en fil)
+
+
+def auto_publish(make_package):
+    """På utviklings-PC-en: legg ut versjonen automatisk hvis den er nyere enn den på NAS-en.
+    Returnerer versjonen som ble lagt ut, eller None."""
+    if not is_source_pc() or not on_lan():
+        return None
+    try:
+        rv = remote_version()
+    except Exception as e:  # noqa: BLE001
+        if "NOT_FOUND" not in str(e):
+            return None
+        rv = "0"
+    if not newer(local_version(), rv):
+        return None
+    ok, _msg = publish(make_package)
+    return local_version() if ok else None

@@ -231,13 +231,19 @@ class Background:
 
     def _lan_check(self):
         """Ny versjon på hjemmenettet (NAS)? Bare når PC-en er på det lokale nettet."""
-        if not self.cfg["notify"]:
-            return
 
         def work():
+            new = None
             try:
                 import lanupdate
-                _txt, new = lanupdate.check()
+                import tools
+                pub = lanupdate.auto_publish(tools.make_package)      # bare på utviklings-PC-en
+                if pub:
+                    GLib.idle_add(lambda: self.notify(
+                        "lanpublish", "Ny versjon lagt på hjemmenettet",
+                        f"Kontrollsenter {pub} ligger nå på NAS-en, og de andre PC-ene får varsel.") and False)
+                else:
+                    _txt, new = lanupdate.check()
             except Exception:  # noqa: BLE001
                 new = None
             if new:
