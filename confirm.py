@@ -26,7 +26,7 @@ def reset_button(what, details, on_yes):
     """Knapp som åpner bekreftelsen. Plasser den der du vil i fanen."""
     b = Gtk.Button(child=Adw.ButtonContent(label="Tilbakestill", icon_name="edit-undo-symbolic"),
                    valign=Gtk.Align.CENTER)
-    b.add_css_class("destructive-action")
+    b.add_css_class("flat")                # diskret – sjelden brukt
     b.set_tooltip_text(f"Tilbakestill {what} til fabrikkstandard")
     b.connect("clicked", lambda btn: confirm_reset(btn, what, details, on_yes))
     return b

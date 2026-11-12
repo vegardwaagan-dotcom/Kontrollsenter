@@ -378,7 +378,9 @@ class GamesPage(Gtk.ScrolledWindow):
                                    "inn i Steam for deg – du slipper å huske kommandoene.")
         self.box.append(c)
         if not STEAM:
-            i.append(Gtk.Label(label="Fant ikke Steam.", xalign=0))
+            import ui
+            i.append(ui.empty("ks-games-symbolic", "Fant ikke Steam.",
+                              "Installer Steam, så dukker spillene dine opp her."))
             return
         bar = Gtk.Box(spacing=8)
         self.steam_status = Gtk.Label(xalign=0, hexpand=True, wrap=True)
@@ -524,7 +526,8 @@ class GamesPage(Gtk.ScrolledWindow):
                 self.games_list.remove(c)
             for g in installed_games():
                 self.games_list.append(self._game_row(g))
-            self.steam_status.set_label(f"Lagret for {n} spill ✓ (sikkerhetskopi tatt)")
+            import ui
+            ui.status(self.steam_status, f"Lagret for {n} spill ✓ (sikkerhetskopi tatt)")
         except Exception as e:  # noqa: BLE001
             self.steam_status.set_label(f"Kunne ikke lagre: {e}")
 
@@ -553,7 +556,8 @@ class GamesPage(Gtk.ScrolledWindow):
             self.ge_list.remove(c)
         inst = ge_installed()
         if not inst:
-            self.ge_list.append(Gtk.Label(label="Ingen GE-Proton installert.", xalign=0))
+            import ui
+            self.ge_list.append(ui.empty("ks-games-symbolic", "Ingen GE-Proton installert."))
         for n, d in enumerate(inst):
             row = Gtk.Box(spacing=8)
             row.append(Gtk.Label(label=d.name + ("  (nyeste)" if n == 0 else ""), xalign=0, hexpand=True))
@@ -613,9 +617,9 @@ class GamesPage(Gtk.ScrolledWindow):
             ch = nxt
         pads, bats = controllers()
         if not pads:
-            lab = Gtk.Label(label="Ingen kontroller tilkoblet. Koble til med USB eller via Bluetooth-fanen.", xalign=0)
-            lab.add_css_class("dim-label")
-            self.ctrl_box.append(lab)
+            import ui
+            self.ctrl_box.append(ui.empty("ks-games-symbolic", "Ingen kontroller tilkoblet",
+                                          "Koble til med USB eller via Bluetooth-fanen."))
         for p in pads:
             row = Gtk.Box(spacing=8)
             row.append(Gtk.Image.new_from_icon_name("input-gaming-symbolic"))

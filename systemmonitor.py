@@ -32,6 +32,7 @@ from cards import _monitor_geometry  # noqa: E402
 # --------------------------------------------------------------------------
 # Spill-overlay (MangoHud)
 # --------------------------------------------------------------------------
+MAX_WIDTH = 1280          # innholdet strekkes ikke bredere enn dette på store skjermer
 MANGOHUD_CONF = os.path.expanduser("~/.config/MangoHud/MangoHud.conf")
 MANGOHUD_ENV = os.path.expanduser("~/.config/environment.d/90-systemmonitor-mangohud.conf")
 
@@ -104,6 +105,15 @@ def ensure_overlay_env():
     return True
 
 
+def accent_rgb():
+    """Systemets aksentfarge (KDE/GNOME), ellers blå."""
+    try:
+        c = Adw.StyleManager.get_default().get_accent_color_rgba()
+        return (c.red, c.green, c.blue)
+    except (AttributeError, TypeError):
+        return BLUE
+
+
 class MonitorWindow(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="Kontrollsenter")
@@ -116,6 +126,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.set_default_size(1000, 760)
             self.maximize()
         self.add_css_class("sysmon")
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(
+            os.path.join(APP_DIR, "icons", "symbolic"))          # enhetlige ensfargede ikoner
         self._font_css = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), self._font_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
@@ -135,7 +147,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.amd = amd_gpus()
         self.nvidia.poll()
 
-        toolbar = Adw.ToolbarView()
+        toolbar = Adw.ToolbarView()             # innholdet (høyre side)
         header = Adw.HeaderBar()
         self.uptime_lbl = Gtk.Label()
         self.uptime_lbl.add_css_class("dim-label")
@@ -145,38 +157,29 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.bat_lbl.add_css_class("dim-label")
         self.bat_lbl.set_visible(bool(self.batteries))
         header.pack_start(self.bat_lbl)
-        chk = Gtk.Button(child=Adw.ButtonContent(label="Systemsjekk", icon_name="system-search-symbolic"))
-        chk.set_tooltip_text("Sjekk hele systemet for feil og rett dem automatisk")
-        chk.connect("clicked", self._open_syscheck)
-        header.pack_start(chk)
-        news = Gtk.Button(child=Adw.ButtonContent(label="Hva er nytt?", icon_name="starred-symbolic"))
-        news.set_tooltip_text("Se alt som er nytt i denne versjonen")
-        news.connect("clicked", self._open_whatsnew)
-        header.pack_start(news)
-
-        # Bryter for spill-overlay
-        self.ov_content = Adw.ButtonContent(icon_name="input-gaming-symbolic")
-        self.ov_button = Gtk.ToggleButton(child=self.ov_content, valign=Gtk.Align.CENTER)
-        self.ov_button.set_tooltip_text(
-            "Slår overlayet i spill av/på (FPS, CPU, GPU og temperaturer).\n"
-            "Høyre Shift + F12 slår det også av/på inne i spillet."
-        )
+        # Spill-overlay: lite ikon som lyser når det er på
+        self.ov_button = Gtk.ToggleButton(icon_name="ks-overlay-symbolic", valign=Gtk.Align.CENTER)
         self.ov_button.connect("toggled", self._on_overlay_toggled)
         header.pack_end(self.ov_button)
 
-        # Språkvalg NO | EN – programmet starter på nytt med det nye språket
-        lang_box = Gtk.Box(valign=Gtk.Align.CENTER)
-        lang_box.add_css_class("linked")
-        lang_box.set_tooltip_text("Språk / Language")
-        first = None
-        for code, short, full in i18n.LANGS:
-            b = Gtk.ToggleButton(label=short, active=(code == i18n.CHOICE), tooltip_text=full)
-            if first:
-                b.set_group(first)
-            first = first or b
-            b.connect("toggled", self._on_lang, code)
-            lang_box.append(b)
-        header.pack_end(lang_box)
+        # Meny: Systemsjekk, Hva er nytt?, Språk og Om
+        self._menu_actions()
+        menu = Gio.Menu()
+        sec = Gio.Menu()
+        sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
+        sec.append(i18n.tr("Hva er nytt?"), "win.whatsnew")
+        menu.append_section(None, sec)
+        lang = Gio.Menu()
+        for code, _short, full in i18n.LANGS:
+            item = Gio.MenuItem.new(i18n.tr("Automatisk (som Linux)" if code == "auto" else full), None)
+            item.set_action_and_target_value("win.lang", GLib.Variant("s", code))
+            lang.append_item(item)
+        menu.append_submenu(i18n.tr("Språk"), lang)
+        about = Gio.Menu()
+        about.append(i18n.tr("Om Kontrollsenter"), "win.about")
+        menu.append_section(None, about)
+        self.menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu, primary=True)
+        self.menu_btn.set_tooltip_text("Meny")
         self.ov_button.set_active(load_overlay_pref())
         self._on_overlay_toggled(self.ov_button)
         # Bakgrunnsmodus: lukking skjuler vinduet (må kobles til før de andre lukke-handlingene)
@@ -195,24 +198,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         atexit.register(_cleanup)
         signal.signal(signal.SIGTERM, lambda *_: (_cleanup(), os._exit(0)))
         toolbar.add_top_bar(header)
-
-        # Egen rad til fanene (fylles når fanene er laget) – alltid synlig
-        self.tab_row = Gtk.Box(halign=Gtk.Align.CENTER)
-        self.tab_row.set_margin_top(4)
-        self.tab_row.set_margin_bottom(2)
-        tab_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
-                                        vscrollbar_policy=Gtk.PolicyType.NEVER, propagate_natural_height=True)
-        tab_scroll.set_child(self.tab_row)          # mange faner: kan rulles sidelengs i smale vinduer
-        toolbar.add_top_bar(tab_scroll)
-
-        # Opphavsrett – vises øverst på alle faner
-        import whatsnew
-        copyright_lbl = Gtk.Label(label=f"Copyright © Vegard E. Wågan · Versjon {whatsnew.current_version()}")
-        copyright_lbl.add_css_class("caption")
-        copyright_lbl.add_css_class("dim-label")
-        copyright_lbl.set_margin_top(4)
-        copyright_lbl.set_margin_bottom(4)
-        toolbar.add_top_bar(copyright_lbl)
+        # (Copyright og versjon ligger nå i Meny → Om Kontrollsenter)
 
         if ensure_overlay_env() or not overlay_env_active():
             banner = Adw.Banner(
@@ -229,7 +215,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         flow.set_valign(Gtk.Align.START)
 
         self.c_bat = Card("Batteri", [GREEN]) if self.batteries else None
-        self.c_cpu = Card(cpu_model(), [BLUE])
+        self.c_cpu = Card(cpu_model(), [accent_rgb()])          # følger systemets aksentfarge
         self.c_mem = Card("Minne (RAM)", [GREEN])
         self.c_gpu = Card("GPU", [ORANGE]) if self.nvidia.available else None
         self.c_amd = [Card("AMD GPU", [RED]) for _ in self.amd]
@@ -275,6 +261,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.reset_lbl = Gtk.Label(xalign=1, hexpand=True)
         self.reset_lbl.add_css_class("dim-label")
         topbar.append(self.reset_lbl)
+        self.reset_row = topbar
         topbar.append(confirm.reset_button(
             "Oversikt",
             "• Strømmodus settes til Balansert (skjermkort 320 W)\n"
@@ -282,7 +269,6 @@ class MonitorWindow(Adw.ApplicationWindow):
             "• Spill-overlay slås på\n"
             "• Målt toppfart for strømmodusene nullstilles",
             self._reset_overview))
-        page.append(topbar)
         page.append(self.power)
         self.fans = FanCard(self.nvidia.available)
         page.append(self.fans)
@@ -291,6 +277,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.diskspace = DiskSpaceCard()
         page.append(self.diskspace)
         page.append(self.c_temp)
+        page.append(topbar)                   # Tilbakestill nederst – sjelden brukt
 
         css = Gtk.CssProvider()
         if hasattr(css, "load_from_string"):
@@ -301,40 +288,40 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.get_display(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
-        scroller.set_child(page)
+        scroller.set_child(Adw.Clamp(maximum_size=MAX_WIDTH, tightening_threshold=900, child=page))
 
         # Faner: Oversikt og RGB
         stack = Adw.ViewStack()
         import hardware
         self.hw = hardware.present()          # RGB, Logitech, CPU-skjerm, Wi-Fi og Bluetooth vises bare hvis de finnes
-        stack.add_titled_with_icon(scroller, "oversikt", "Oversikt", "utilities-system-monitor-symbolic")
+        stack.add_titled_with_icon(scroller, "oversikt", "Oversikt", "ks-overview-symbolic")
         self.rgb_holder = Gtk.Box()
         if self.hw["rgb"]:
-            stack.add_titled_with_icon(self.rgb_holder, "rgb", "RGB", "applications-graphics-symbolic")
+            stack.add_titled_with_icon(self.rgb_holder, "rgb", "RGB", "ks-rgb-symbolic")
         self.logi_holder = Gtk.Box()
         if self.hw["logitech"]:
-            stack.add_titled_with_icon(self.logi_holder, "logitech", "Logitech", "input-mouse-symbolic")
+            stack.add_titled_with_icon(self.logi_holder, "logitech", "Logitech", "ks-mouse-symbolic")
         self.logi_page = None
         self.lcd_holder = Gtk.Box()
         if self.hw["lcd"]:
-            stack.add_titled_with_icon(self.lcd_holder, "cpuskjerm", "CPU-skjerm", "video-display-symbolic")
+            stack.add_titled_with_icon(self.lcd_holder, "cpuskjerm", "CPU-skjerm", "ks-lcd-symbolic")
         self.lcd_page = None
         self.prog_holder = Gtk.Box()
-        stack.add_titled_with_icon(self.prog_holder, "programmer", "Programmer", "system-software-install-symbolic")
+        stack.add_titled_with_icon(self.prog_holder, "programmer", "Programmer", "ks-programs-symbolic")
         self.prog_page = None
         self.audio_holder = Gtk.Box()
-        stack.add_titled_with_icon(self.audio_holder, "lyd", "Lyd", "audio-speakers-symbolic")
+        stack.add_titled_with_icon(self.audio_holder, "lyd", "Lyd", "ks-sound-symbolic")
         self.audio_page = None
         self.wifi_holder = Gtk.Box()
         if self.hw["wifi"]:
-            stack.add_titled_with_icon(self.wifi_holder, "wifi", "Wi-Fi", "network-wireless-symbolic")
+            stack.add_titled_with_icon(self.wifi_holder, "wifi", "Wi-Fi", "ks-wifi-symbolic")
         self.wifi_page = None
         # Faner som lastes først når de åpnes: navn -> (holder, modul, klasse)
         self._lazy = {}
         for name, title, icon, mod, cls in (
-                ("bluetooth", "Bluetooth", "bluetooth-symbolic", "bluetooth", "BluetoothPage"),
-                ("spill", "Spill", "input-gaming-symbolic", "games", "GamesPage"),
-                ("verktoy", "Verktøy", "applications-utilities-symbolic", "tools", "ToolsPage")):
+                ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),
+                ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
+                ("verktoy", "Verktøy", "ks-tools-symbolic", "tools", "ToolsPage")):
             if name == "bluetooth" and not self.hw["bluetooth"]:
                 continue
             if os.path.exists(os.path.join(APP_DIR, mod + ".py")):
@@ -345,16 +332,51 @@ class MonitorWindow(Adw.ApplicationWindow):
         import msi
         if msi.is_msi():                      # MSI-fanen vises bare på MSI-maskiner
             self.msi_holder = Gtk.Box()
-            stack.add_titled_with_icon(self.msi_holder, "msi", "MSI", "computer-laptop-symbolic")
+            stack.add_titled_with_icon(self.msi_holder, "msi", "MSI", "ks-laptop-symbolic")
+        self.stack = stack
         stack.connect("notify::visible-child-name", self._on_tab)
-        header.set_title_widget(Adw.WindowTitle(title="Kontrollsenter"))
-        switcher = Adw.ViewSwitcher(stack=stack, policy=Adw.ViewSwitcherPolicy.WIDE)
-        self.tab_row.append(switcher)
-        toolbar.set_content(stack)
+        stack.connect("notify::visible-child-name", self._sync_sidebar)
+        self.toast_overlay = Adw.ToastOverlay(child=stack)
+        toolbar.set_content(self.toast_overlay)
+        self.content_page = Adw.NavigationPage(title=i18n.tr("Oversikt"), child=toolbar)
+
+        # Sidemenyen: én rad per fane, med ensfarget ikon
+        self.sidebar = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
+        self.sidebar.add_css_class("navigation-sidebar")
+        self._rows = {}
+        pages = stack.get_pages()
+        for i in range(pages.get_n_items()):
+            pg = pages.get_item(i)
+            row = Gtk.ListBoxRow()
+            box = Gtk.Box(spacing=12)
+            for side in ("top", "bottom"):
+                getattr(box, f"set_margin_{side}")(6)
+            box.set_margin_start(6)
+            box.append(Gtk.Image(icon_name=pg.get_icon_name()))
+            box.append(Gtk.Label(label=pg.get_title(), xalign=0))
+            row.set_child(box)
+            row.page_name = pg.get_name()
+            self.sidebar.append(row)
+            self._rows[pg.get_name()] = row
+        self.sidebar.connect("row-activated", self._on_sidebar)
+        side_tv = Adw.ToolbarView()
+        side_header = Adw.HeaderBar()
+        side_header.set_title_widget(Adw.WindowTitle(title="Kontrollsenter"))
+        side_header.pack_end(self.menu_btn)
+        side_tv.add_top_bar(side_header)
+        side_tv.set_content(Gtk.ScrolledWindow(child=self.sidebar, hscrollbar_policy=Gtk.PolicyType.NEVER))
+        side_page = Adw.NavigationPage(title=i18n.tr("Kontrollsenter"), child=side_tv)
+        self.split = Adw.NavigationSplitView(sidebar=side_page, content=self.content_page,
+                                             min_sidebar_width=210, max_sidebar_width=250)
+        # Smalt vindu: sidemenyen legger seg bort, og du går frem og tilbake mellom meny og side
+        bp = Adw.Breakpoint.new(Adw.BreakpointCondition.parse("max-width: 760sp"))
+        bp.add_setter(self.split, "collapsed", True)
+        self.add_breakpoint(bp)
+        self._sync_sidebar()
         if os.environ.get("SYSTEMMONITOR_START_TAB"):          # åpne en bestemt fane
             GLib.idle_add(lambda: (stack.set_visible_child_name(os.environ["SYSTEMMONITOR_START_TAB"]), False)[1])
         self.rgb_page = None
-        self.set_content(toolbar)
+        self.set_content(self.split)
 
         self.update()
         GLib.timeout_add(INTERVAL_MS, self.update)
@@ -374,7 +396,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         p._peaks_dirty = True
         p.flush_peaks()
         p.update_specs()
-        self.reset_lbl.set_label(f"Tilbakestilt til fabrikkstandard ✓ {time.strftime('%H:%M')}")
+        self.toast("Tilbakestilt til fabrikkstandard ✓")
 
     def _watch_size(self):
         w, h = self.get_width(), self.get_height()
@@ -393,14 +415,14 @@ class MonitorWindow(Adw.ApplicationWindow):
         for g in GRAPHS:
             g.set_content_height(round(80 * f))
 
-    def _on_lang(self, btn, code):
-        if not btn.get_active() or code == i18n.CHOICE:
+    def _set_lang(self, code):
+        if code == i18n.CHOICE:
             return
         i18n.set_lang(code)
         i18n.CHOICE = code
         if i18n.resolve(code) == i18n.LANG:       # samme språk som nå – bare lagre valget
             return
-        self.reset_lbl.set_label(i18n.tr("Programmet starter på nytt med nytt språk …"))
+        self.toast("Programmet starter på nytt med nytt språk …")
 
         def restart():
             import sys
@@ -468,16 +490,94 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.logi_page.set_hexpand(True)
             self.logi_page.set_vexpand(True)
             self.logi_holder.append(self.logi_page)
+        # Maks bredde også på fanene som nettopp ble laget
+        holder = stack.get_visible_child()
+        page = holder.get_first_child() if holder else None
+        if page is not None and not getattr(page, "_clamped", False):
+            page._clamped = True
+            try:
+                self._clamp(page)
+            except Exception:  # noqa: BLE001 – utseende, aldri viktig nok til å stoppe fanen
+                pass
 
     def _on_overlay_toggled(self, btn):
         on = btn.get_active()
         set_overlay(on)
         save_overlay_pref(on)
-        self.ov_content.set_label("Overlay i spill: PÅ" if on else "Overlay i spill: AV")
+        btn.set_tooltip_text(i18n.tr("Overlay i spill: PÅ" if on else "Overlay i spill: AV") + "\n" + i18n.tr(
+            "Slår overlayet i spill av/på (FPS, CPU, GPU og temperaturer).\n"
+            "Høyre Shift + F12 slår det også av/på inne i spillet."))
         if on:
             btn.add_css_class("suggested-action")
         else:
             btn.remove_css_class("suggested-action")
+
+    def _menu_actions(self):
+        for name, fn in (("syscheck", lambda *_: self._open_syscheck(None)),
+                         ("whatsnew", lambda *_: self._open_whatsnew()),
+                         ("about", lambda *_: self._open_about())):
+            act = Gio.SimpleAction.new(name, None)
+            act.connect("activate", fn)
+            self.add_action(act)
+        act = Gio.SimpleAction.new_stateful("lang", GLib.VariantType.new("s"), GLib.Variant("s", i18n.CHOICE))
+        act.connect("activate", lambda a, v: (a.set_state(v), self._set_lang(v.get_string())))
+        self.add_action(act)
+
+    def _open_about(self):
+        import whatsnew
+        ver = whatsnew.current_version()
+        notes = ""
+        for v, _title, sections in whatsnew.NEWS:
+            if v == ver:
+                for sec, items in sections:
+                    notes += f"<p>{i18n.tr(sec)}</p><ul>" + "".join(
+                        f"<li>{GLib.markup_escape_text(i18n.tr(it))}</li>" for it in items) + "</ul>"
+        d = Adw.AboutDialog(
+            application_name=i18n.tr("Kontrollsenter"), application_icon="utilities-system-monitor",
+            version=ver, developer_name="Vegard E. Wågan",
+            copyright="Copyright © Vegard E. Wågan",
+            comments=i18n.tr("Overvåk og styr PC-en din: ytelse, vifter, strømmodus, RGB, spill og mer."),
+            release_notes_version=ver, release_notes=notes)
+        d.present(self)
+
+    def _on_sidebar(self, _lb, row):
+        self.stack.set_visible_child_name(row.page_name)
+        self.split.set_show_content(True)
+
+    def _sync_sidebar(self, *_):
+        name = self.stack.get_visible_child_name()
+        row = self._rows.get(name) if hasattr(self, "_rows") else None
+        if row and self.sidebar.get_selected_row() is not row:
+            self.sidebar.select_row(row)
+        pg = self.stack.get_page(self.stack.get_visible_child())
+        if pg and hasattr(self, "content_page"):
+            self.content_page.set_title(pg.get_title())
+
+    def toast(self, text):
+        self.toast_overlay.add_toast(Adw.Toast(title=i18n.tr(text), timeout=3))
+
+    @staticmethod
+    def _clamp(page):
+        """Maks bredde på brede skjermer: innholdet sentreres i stedet for å strekkes."""
+        sc = page if isinstance(page, Gtk.ScrolledWindow) else None
+        if sc is None:
+            c = page.get_first_child()
+            while c is not None and not isinstance(c, Gtk.ScrolledWindow):
+                c = c.get_next_sibling()
+            sc = c
+        if sc is None:
+            return
+        child = sc.get_child()
+        if isinstance(child, Gtk.Viewport):
+            child = child.get_child()
+        if child is None or isinstance(child, Adw.Clamp) or isinstance(child.get_first_child(), Adw.Clamp):
+            return
+        holder = child.get_parent()
+        if isinstance(holder, Gtk.Viewport):
+            holder.set_child(None)
+        else:
+            sc.set_child(None)
+        sc.set_child(Adw.Clamp(maximum_size=MAX_WIDTH, tightening_threshold=900, child=child))
 
     def _open_whatsnew(self, *_):
         import whatsnew

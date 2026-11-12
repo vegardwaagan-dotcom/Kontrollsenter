@@ -161,9 +161,8 @@ class BluetoothPage(Gtk.ScrolledWindow):
 
     @staticmethod
     def _empty(text):
-        lab = Gtk.Label(label=text, margin_top=12, margin_bottom=12)
-        lab.add_css_class("dim-label")
-        return lab
+        import ui
+        return Gtk.ListBoxRow(child=ui.empty("ks-bluetooth-symbolic", text), activatable=False, selectable=False)
 
     def _row(self, d):
         row = Gtk.Box(spacing=12)

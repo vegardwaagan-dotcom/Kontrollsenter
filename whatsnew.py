@@ -13,6 +13,24 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.3", "Enkelt og elegant", [
+        ("Nytt utseende", [
+            "Sidemeny til venstre i stedet for fanerad – roligere, og plass til flere sider",
+            "Meny (☰) med Systemsjekk, Hva er nytt?, Språk og Om Kontrollsenter",
+            "Om-vindu med versjon, copyright og nyheter – copyright-linjen øverst er borte",
+            "Spill-overlay er et lite ikon øverst til høyre som lyser når det er på",
+            "Egne, enhetlige ikoner som passer i både lyst og mørkt tema",
+        ]),
+        ("Ryddigere", [
+            "Vifter som står stille (0 RPM) skjules – «Vis vifter som står stille» viser dem",
+            "Tilbakestill er flyttet nederst og gjort diskret",
+            "Korte meldinger («Lagret ✓», «Kopiert ✓») glir opp nederst og forsvinner av seg selv",
+            "Pene tomme sider når noe mangler, f.eks. ingen kontroller eller Bluetooth-enheter",
+            "CPU-grafen følger systemets aksentfarge",
+            "Innholdet strekkes ikke ut på brede skjermer, men holdes samlet i midten",
+            "Smalt vindu: sidemenyen legger seg bort, og du blar mellom meny og side",
+        ]),
+    ]),
     ("0.2", "Bare det du har", [
         ("Tilpasset maskinen din", [
             "RGB, Logitech, CPU-skjerm, Wi-Fi og Bluetooth vises bare når utstyret finnes i maskinen",

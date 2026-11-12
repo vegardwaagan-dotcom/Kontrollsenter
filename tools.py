@@ -584,7 +584,8 @@ class ToolsPage(Gtk.ScrolledWindow):
 
     def _copy_info(self, *_):
         Gdk.Display.get_default().get_clipboard().set(info_text(self.info_rows))
-        self.info_status.set_label("Kopiert ✓ – lim inn med Ctrl + V")
+        import ui
+        ui.status(self.info_status, "Kopiert ✓ – lim inn med Ctrl + V")
 
     # --- rydd opp -------------------------------------------------------------
     def _cleanup_card(self):
@@ -781,7 +782,8 @@ class ToolsPage(Gtk.ScrolledWindow):
                 return
             try:
                 export_settings(f.get_path())
-                self.backup_status.set_label(f"Lagret ✓ {f.get_path()}")
+                import ui
+                ui.status(self.backup_status, f"Lagret ✓ {f.get_path()}")
             except OSError as e:
                 self.backup_status.set_label(f"Feil: {e}")
         dlg.save(self.get_root(), None, done)
@@ -921,7 +923,8 @@ class ToolsPage(Gtk.ScrolledWindow):
             if isinstance(res, Exception):
                 self.pkg_status.set_label(f"Feil: {res}")
             else:
-                self.pkg_status.set_label(f"Ferdig ✓ {res[0]} og {res[1]}")
+                import ui
+                ui.status(self.pkg_status, f"Ferdig ✓ {res[0]} og {res[1]}")
             return False
 
         def work():
@@ -943,7 +946,7 @@ class ToolsPage(Gtk.ScrolledWindow):
         bb = Gtk.Box(spacing=6)
         cp = Gtk.Button(label="Kopier logg")
         cp.connect("clicked", lambda *_: (Gdk.Display.get_default().get_clipboard().set(applog.tail(300)),
-                                          self.log_status.set_label("Kopiert ✓")))
+                                          __import__("ui").status(self.log_status, "Kopiert ✓")))
         bb.append(cp)
         op = Gtk.Button(label="Åpne loggmappen")
         op.connect("clicked", lambda *_: Gio.AppInfo.launch_default_for_uri(

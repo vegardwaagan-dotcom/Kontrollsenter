@@ -476,12 +476,19 @@ class FanRow:
         self.pct = Gtk.Label(xalign=1, width_chars=5)
         self.pct.add_css_class("numeric")
         self.auto = Gtk.CheckButton(label="Auto")
-        for col, w in enumerate((name, self.rpm, self.scale, self.pct, self.auto)):
+        self.widgets = (name, self.rpm, self.scale, self.pct, self.auto)
+        self.stopped = False
+        for col, w in enumerate(self.widgets):
             grid.attach(w, col, row, 1, 1)
+
         self._quiet = False
         self._timer = 0
         self.scale.connect("value-changed", self._on_scale)
         self.auto.connect("toggled", self._on_auto)
+
+    def set_shown(self, on):
+        for w in self.widgets:
+            w.set_visible(on)
 
     def set_value(self, v, send=True):
         """v = 'auto' eller prosent. Sender maks én kommando."""
@@ -557,6 +564,12 @@ class FanCard(Gtk.Box):
 
         self.grid = Gtk.Grid(column_spacing=12, row_spacing=6)
         inner.append(self.grid)
+        # Vifter som står stille (0 RPM) skjules – de er som regel ikke koblet til
+        self.show_all = False
+        self.more_btn = Gtk.Button(halign=Gtk.Align.START, visible=False)
+        self.more_btn.add_css_class("flat")
+        self.more_btn.connect("clicked", self._toggle_all)
+        inner.append(self.more_btn)
 
         self.note = Gtk.Label(xalign=0, wrap=True)
         self.note.add_css_class("caption")
@@ -682,6 +695,22 @@ class FanCard(Gtk.Box):
             if err:
                 GLib.idle_add(self.status.set_label, f"Feil: {err}")
 
+    def _toggle_all(self, *_):
+        self.show_all = not self.show_all
+        self._update_hidden()
+
+    def _update_hidden(self):
+        n = 0
+        for row in self.rows.values():
+            hide = row.stopped and not self.show_all
+            n += row.stopped
+            if row.widgets[0].get_visible() == hide:
+                row.set_shown(not hide)
+        self.more_btn.set_visible(n > 0)
+        lbl = (f"Skjul {n} vifter som står stille" if self.show_all else f"Vis {n} vifter som står stille")
+        if self.more_btn.get_label() != lbl:
+            self.more_btn.set_label(lbl)
+
     # --- oppdatering hvert sekund ------------------------------------------
     def refresh(self, cpu_t, gpu_t, gpu_fan):
         for key, row in self.rows.items():
@@ -691,6 +720,8 @@ class FanCard(Gtk.Box):
                 ch = key.rsplit(":", 1)[1]
                 rpm = read(os.path.join(self.chip_path, f"fan{ch}_input"))
                 row.rpm.set_label(f"{rpm} RPM" if rpm is not None else "–")
+                row.stopped = str(rpm).strip() == "0"
+        self._update_hidden()
         manual = any(r.value() != "auto" for r in self.rows.values())
         hot = (cpu_t or 0) >= CPU_PANIC or (gpu_t or 0) >= GPU_PANIC
         if manual and hot and self.ready():
