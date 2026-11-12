@@ -10,9 +10,11 @@ Leses og skrives med smbclient som gjest (Public-delingen krever ikke passord).
 """
 import hashlib
 import json
+import re
 import os
 import shutil
 import socket
+import sys
 import subprocess
 import tarfile
 import tempfile
@@ -55,6 +57,8 @@ def on_lan(timeout=1.0):
     """True hvis NAS-en er på samme lokale nett (ikke via ruter/internett) og svarer på SMB."""
     host = _split()[0]
     try:
+        if sys.platform == "win32":
+            raise OSError("ingen «ip» på Windows")
         r = subprocess.run(["ip", "-4", "route", "get", host], capture_output=True, text=True, timeout=3)
         if r.returncode != 0 or " via " in r.stdout:
             return False
@@ -67,7 +71,78 @@ def on_lan(timeout=1.0):
         return False
 
 
+def _unc_root():
+    host, share, _folder = _split()
+    return "\\\\" + share.strip("/").replace("/", "\\")          # \\vert\deling
+
+
+def _smb_windows(cmds):
+    """Samme smbclient-kommandoer (cd, get, put, mget, rename, del, mkdir, lcd) – på Windows via nettverkssti."""
+    import ntpath
+    _host, _share, folder = _split()
+    cwd = ntpath.join(_unc_root(), *folder.split("/")) if folder else _unc_root()
+    lcd = None
+
+    def nf():
+        raise RuntimeError("NT_STATUS_OBJECT_NAME_NOT_FOUND")
+    for part in [p.strip() for p in re.split(r';(?=(?:[^"]*"[^"]*")*[^"]*$)', cmds) if p.strip()]:
+        args = re.findall(r'"([^"]*)"|(\S+)', part)
+        words = [a or b for a, b in args]
+        cmd, rest = words[0].lower(), words[1:]
+        if cmd == "cd":
+            cwd = ntpath.join(cwd, *re.split(r"[\\/]", rest[0]))
+            if not os.path.isdir(cwd):
+                nf()
+        elif cmd == "lcd":
+            lcd = rest[0]
+        elif cmd == "prompt":
+            continue
+        elif cmd == "get":
+            src = ntpath.join(cwd, rest[0])
+            if not os.path.exists(src):
+                nf()
+            shutil.copyfile(src, rest[1] if len(rest) > 1 else os.path.join(lcd or ".", rest[0]))
+        elif cmd == "mget":
+            import fnmatch
+            for name in os.listdir(cwd):
+                if fnmatch.fnmatch(name, rest[0]):
+                    shutil.copyfile(ntpath.join(cwd, name), os.path.join(lcd or ".", name))
+        elif cmd == "put":
+            shutil.copyfile(rest[0], ntpath.join(cwd, rest[1] if len(rest) > 1 else os.path.basename(rest[0])))
+        elif cmd == "rename":
+            if not os.path.exists(ntpath.join(cwd, rest[0])):
+                nf()
+            os.replace(ntpath.join(cwd, rest[0]), ntpath.join(cwd, rest[1]))
+        elif cmd == "del":
+            if not os.path.exists(ntpath.join(cwd, rest[0])):
+                nf()
+            os.remove(ntpath.join(cwd, rest[0]))
+        elif cmd == "mkdir":
+            os.makedirs(ntpath.join(cwd, *re.split(r"[\\/]", rest[0])), exist_ok=True)
+        elif cmd == "ls":
+            return "\n".join(os.listdir(cwd))
+    return ""
+
+
+def smb_mkdir(rel):
+    """Lag en mappe på NAS-en (relativt til delingen, f.eks. «Kontrollsenter/PC-er»). Stille hvis den finnes."""
+    _host, share, _folder = _split()
+    if sys.platform == "win32":
+        import ntpath
+        try:
+            os.makedirs(ntpath.join(_unc_root(), *rel.split("/")), exist_ok=True)
+        except OSError:
+            pass
+        return
+    subprocess.run(["smbclient", "-N", share, "-c", f'mkdir "{rel}"'], capture_output=True, timeout=30)
+
+
 def _smb(cmds, timeout=120):
+    if sys.platform == "win32":
+        try:
+            return _smb_windows(cmds)
+        except OSError as e:
+            raise RuntimeError(str(e)) from e
     if not shutil.which("smbclient"):
         raise RuntimeError("smbclient mangler – installer pakken samba-client (Fedora) / smbclient (Arch, Debian)")
     _host, share, folder = _split()
@@ -169,8 +244,15 @@ def publish(make_package):
         (tmp / "SHA256SUMS").write_text(f"{_sha256(archive)}  {PKG}\n")
         _host, share, folder = _split()
         # lag mappen hvis den mangler (feiler stille hvis den finnes)
-        subprocess.run(["smbclient", "-N", share, "-c", f'mkdir "{folder}"'], capture_output=True, timeout=30)
+        smb_mkdir(folder)
         _smb(f'put "{archive}" {PKG}; put "{tmp}/SHA256SUMS" SHA256SUMS; put "{tmp}/VERSION" VERSION', 300)
+        # Windows-installasjonen ved siden av: \\NAS\Public\Kontrollsenter\Windows\Installer Kontrollsenter.cmd
+        win = Path(APP_DIR) / "pakke-windows"
+        if win.is_dir():
+            smb_mkdir(f"{folder}/Windows")
+            for f in sorted(win.iterdir()):
+                if f.is_file():
+                    _smb(f'cd "Windows"; put "{f}" "{f.name}"', 120)
         return True, f"Versjon {local_version()} er lagt på hjemmenettet ✓ ({location()})"
     except Exception as e:  # noqa: BLE001
         return False, str(e)

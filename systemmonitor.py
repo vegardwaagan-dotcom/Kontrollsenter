@@ -193,12 +193,14 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.ov_button = Gtk.ToggleButton(icon_name="ks-overlay-symbolic", valign=Gtk.Align.CENTER)
         self.ov_button.connect("toggled", self._on_overlay_toggled)
         header.pack_end(self.ov_button)
+        self.ov_button.set_visible(not IS_WIN)          # MangoHud finnes ikke på Windows
 
         # Meny: Systemsjekk, Hva er nytt?, Språk og Om
         self._menu_actions()
         menu = Gio.Menu()
         sec = Gio.Menu()
-        sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
+        if not IS_WIN:
+            sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
         sec.append(i18n.tr("Mini-vindu"), "win.mini")
         menu.append_section(None, sec)
         sec = Gio.Menu()
@@ -244,7 +246,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         toolbar.add_top_bar(self.restart_banner)
         GLib.timeout_add_seconds(60, self.check_installed_version)
 
-        if ensure_overlay_env() or not overlay_env_active():
+        if not IS_WIN and (ensure_overlay_env() or not overlay_env_active()):
             banner = Adw.Banner(
                 title="Spill-overlay er satt opp. Logg ut og inn igjen én gang for at det skal virke i spill.",
                 revealed=True,
@@ -338,6 +340,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         page.append(self.power)
         self.fans = FanCard(self.nvidia.available)
         page.append(self.fans)
+        self.fans.set_visible(not IS_WIN)               # Windows: viftestyring kommer i neste runde
         self.connect("close-request", lambda *_: self.fans.all_auto_now() or False)
         # Tidsrom for grafene: 1 min, 10 min eller 1 time (hold musa over en graf for verdi og tid)
         rng = Gtk.Box(spacing=8)
@@ -432,6 +435,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.sidebar.add_css_class("navigation-sidebar")
         self._rows = {}
         pages = stack.get_pages()
+        if IS_WIN:                                     # runde 1 på Windows: disse kommer senere
+            for name in ("programmer", "lyd", "nettverk", "spill", "automatikk"):
+                child = stack.get_child_by_name(name)
+                if child is not None:
+                    stack.remove(child)
         order = ["oversikt", "historikk", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "nettverk",
                  "spill", "automatikk", "programmer", "hjemme", "verktoy", "msi"]
         all_pages = [pages.get_item(i) for i in range(pages.get_n_items())]
@@ -953,7 +961,7 @@ class MonitorWindow(Adw.ApplicationWindow):
             applog.log.exception("nøkkeltall")
 
         # Oppetid
-        up = float((read("/proc/uptime", "0") or "0").split()[0])
+        up = uptime_seconds()
         h, rem = divmod(int(up), 3600)
         self.uptime_lbl.set_label(f"Oppetid {h} t {rem // 60} min")
         return True
@@ -970,6 +978,9 @@ class MonitorApp(Adw.Application):
             win = self.win = MonitorWindow(self)
             import background
             win.bg = background.Background(self, win)
+            if IS_WIN:
+                import winsupport
+                winsupport.listen_for_show(win.bg.show)
             if "--hidden" in sys.argv and win.bg.cfg["background"]:
                 return                      # startet ved innlogging: bare ikon i statusfeltet
             win.present()
@@ -986,4 +997,8 @@ class MonitorApp(Adw.Application):
 
 
 if __name__ == "__main__":
+    if IS_WIN:
+        import winsupport
+        if winsupport.already_running():           # vis vinduet til den som kjører, og avslutt
+            sys.exit(0)
     MonitorApp().run(None)

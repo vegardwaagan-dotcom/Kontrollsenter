@@ -1460,5 +1460,15 @@
  "Ingen Logitech-enheter med innstillinger": "No Logitech devices with settings",
  "Mus og tastatur som er slått av eller i dvale vises ikke – beveg musa eller trykk en tast, og åpne fanen igjen. Hodesett styres ikke herfra.": "Mice and keyboards that are off or asleep don't show up – move the mouse or press a key, and open the tab again. Headsets are not controlled from here.",
  "{} Logitech-enhet funnet": "{} Logitech device found",
- "• Alle Logitech-enhetene som vises her, settes tilbake til fabrikkinnstillingene: profiler, DPI, rapporthyppighet og knappefunksjoner\nEndringene lagres i enhetenes minne.": "• All Logitech devices shown here are reset to factory settings: profiles, DPI, report rate and button functions\nThe changes are stored in the devices' memory."
+ "• Alle Logitech-enhetene som vises her, settes tilbake til fabrikkinnstillingene: profiler, DPI, rapporthyppighet og knappefunksjoner\nEndringene lagres i enhetenes minne.": "• All Logitech devices shown here are reset to factory settings: profiles, DPI, report rate and button functions\nThe changes are stored in the devices' memory.",
+ "Kontrollsenter for Windows 11": "Control Center for Windows 11",
+ "Windows 11 (første runde)": "Windows 11 (first round)",
+ "Installer fra NAS-en: åpne \\\\192.168.1.3\\Public\\Kontrollsenter\\Windows og dobbeltklikk «Installer Kontrollsenter»": "Install from the NAS: open \\\\192.168.1.3\\Public\\Kontrollsenter\\Windows and double-click “Installer Kontrollsenter”",
+ "Oversikt med temperaturer, last, strøm og grafer (via LibreHardwareMonitor), historikk og PC-er hjemme": "Overview with temperatures, load, power and graphs (via LibreHardwareMonitor), history and home PCs",
+ "Strømmodus bytter Windows-strømplan (Strømsparing, Balansert, Høy ytelse)": "Power mode switches the Windows power plan (Power saver, Balanced, High performance)",
+ "Ikon i systemstatusfeltet, Windows-varsler og oppstart ved innlogging": "Tray icon, Windows notifications and start at login",
+ "Oppdateringer fra NAS-en og feilsøkingsrapport – som på Linux": "Updates from the NAS and troubleshooting report – like on Linux",
+ "Vifter, RGB, spill, nettverk, lyd, Bluetooth, Wi-Fi og programmer kommer i de neste rundene": "Fans, RGB, games, network, sound, Bluetooth, Wi-Fi and programs come in the next rounds",
+ "Start Kontrollsenter ved innlogging": "Start Control Center at login",
+ "Starter skjult med ikon i systemstatusfeltet.": "Starts hidden with a tray icon."
 }

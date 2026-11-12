@@ -15,6 +15,9 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402,F401
 
 
+import sys
+
+IS_WIN = sys.platform == "win32"     # Windows-versjonen bruker sensors_win.py for maskinvaredata
 HISTORY = 60          # antall punkter i grafene (sekunder)
 INTERVAL_MS = 1000    # oppdateringsintervall
 
@@ -210,7 +213,7 @@ class _Nvml:
     def __init__(self):
         import ctypes
         self.C = ctypes
-        self.lib = ctypes.CDLL("libnvidia-ml.so.1")
+        self.lib = ctypes.CDLL("nvml.dll" if IS_WIN else "libnvidia-ml.so.1")
         if self.lib.nvmlInit_v2() != 0:
             raise OSError("nvmlInit feilet")
         self.h = ctypes.c_void_p()
@@ -399,3 +402,17 @@ def battery_info(paths):
 def fmt_duration(secs):
     h, m = divmod(int(secs) // 60, 60)
     return f"{h} t {m} min" if h else f"{m} min"
+
+
+def uptime_seconds():
+    try:
+        return float(read("/proc/uptime", "0").split()[0])
+    except (ValueError, IndexError):
+        return 0.0
+
+
+# Windows: bytt ut alt som leser /proc og /sys med psutil og LibreHardwareMonitor
+if IS_WIN:
+    from sensors_win import (CpuReader, DiskReader, NetReader, NICE_DEVICE, amd_gpus, battery_info,  # noqa: F811
+                             cpu_freqs_ghz, cpu_model, cpu_temp, hwmon_temps, laptop_batteries, meminfo,
+                             uptime_seconds)

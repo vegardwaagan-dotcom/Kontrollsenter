@@ -6,6 +6,7 @@ Hovedkort, RAM, disker og vifter kan ikke måles fra Linux – de legges til som
 import glob
 import json
 import os
+import sys
 import time
 
 CFG = os.path.expanduser("~/.config/systemmonitor/strom.json")
@@ -84,7 +85,11 @@ class PowerMeter:
     def read(self, nvidia_w=None):
         """Ordbok: cpu, gpu, measured, total (med tillegg). Verdier i watt (eller None)."""
         cfg = load()
-        cpu = self.cpu.watts() if self.cpu else None
+        if sys.platform == "win32":
+            from sensors_win import cpu_package_watts
+            cpu = cpu_package_watts()
+        else:
+            cpu = self.cpu.watts() if self.cpu else None
         gpu = nvidia_w or 0.0
         for p in self.igpu:
             v = _read_int(p)

@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import threading
 import time
 
@@ -118,10 +119,14 @@ class Background:
             self.held = False
         if self.cfg["tray"] and not self.tray:
             try:
-                import tray
                 import i18n
-                self.tray = tray.Tray("Kontrollsenter", "no.waagan.Systemmonitor-symbolic", self.toggle,
-                                      self._menu(), tr=i18n.tr)
+                if sys.platform == "win32":
+                    import winsupport
+                    self.tray = winsupport.WinTray("Kontrollsenter", None, self.toggle, self._menu(), tr=i18n.tr)
+                else:
+                    import tray
+                    self.tray = tray.Tray("Kontrollsenter", "no.waagan.Systemmonitor-symbolic", self.toggle,
+                                          self._menu(), tr=i18n.tr)
             except Exception:  # noqa: BLE001 – uten statusfelt virker resten som før
                 self.tray = None
         elif not self.cfg["tray"] and self.tray:
@@ -200,6 +205,10 @@ class Background:
             return
         self.sent[key] = now
         import i18n
+        if sys.platform == "win32":                     # Windows: varsel fra ikonet i statusfeltet
+            if self.tray and hasattr(self.tray, "notify"):
+                self.tray.notify(i18n.tr(title), i18n.tr(body))
+            return
         n = Gio.Notification.new(i18n.tr(title))
         n.set_body(i18n.tr(body))
         n.set_icon(Gio.ThemedIcon.new("no.waagan.Systemmonitor"))

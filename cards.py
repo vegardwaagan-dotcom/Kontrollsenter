@@ -392,11 +392,16 @@ class PowerCard(Gtk.Box):
         )
         self.setup_btn.connect("clicked", self._on_setup)
         gpu_row.append(self.setup_btn)
-        gpu_row.set_visible(has_nvidia)
+        gpu_row.set_visible(has_nvidia and not IS_WIN)      # Windows: strømgrensen styres av driveren
         inner.append(gpu_row)
 
         self._updating = False
         self._gpu_mode_applied = None
+        if IS_WIN:
+            self.proxy = None
+            self._sync()
+            GLib.timeout_add_seconds(10, lambda: (self._sync(), True)[1])   # fang opp bytte gjort i Windows
+            return
         try:
             self.proxy = Gio.DBusProxy.new_for_bus_sync(
                 Gio.BusType.SYSTEM, Gio.DBusProxyFlags.NONE, None, PP_BUS, PP_PATH, PP_BUS, None)
@@ -491,6 +496,12 @@ class PowerCard(Gtk.Box):
 
     # --- systemprofil -------------------------------------------------------
     def active_profile(self):
+        if IS_WIN:
+            import winsupport
+            now = time.monotonic()
+            if now - getattr(self, "_plan_t", 0) > 5:          # powercfg er tregt – spør høyst hvert 5. sek
+                self._plan_t, self._plan = now, winsupport.active_plan()
+            return self._plan
         if not self.proxy:
             return None
         v = self.proxy.get_cached_property("ActiveProfile")
@@ -513,6 +524,22 @@ class PowerCard(Gtk.Box):
         self._apply_gpu(mode)
 
     def _on_toggled(self, btn, key):
+        if IS_WIN and not self._updating and btn.get_active():
+            import winsupport
+            self.status.set_label("Bytter …")
+
+            def work():
+                ok, msg = winsupport.set_plan(key)
+                self._plan_t = 0
+
+                def done():
+                    self._sync()
+                    if not ok:
+                        self.desc.set_label(f"Feil: {msg or 'kunne ikke bytte strømplan'}")
+                    return False
+                GLib.idle_add(done)
+            threading.Thread(target=work, daemon=True).start()
+            return
         if self._updating or not btn.get_active() or not self.proxy:
             return
         self.status.set_label("Bytter …")
@@ -536,7 +563,7 @@ class PowerCard(Gtk.Box):
 
     # --- skjermkort ---------------------------------------------------------
     def _apply_gpu(self, mode):
-        if not self.has_nvidia:
+        if not self.has_nvidia or IS_WIN:
             return
         if not os.path.exists(GPU_HELPER):
             self.setup_btn.set_visible(True)
@@ -1024,6 +1051,19 @@ def disk_model(dev):
 
 def list_filesystems():
     """Én oppføring per ekte partisjon (btrfs-delvolumer slås sammen)."""
+    if IS_WIN:
+        import psutil
+        out = []
+        for p in psutil.disk_partitions(all=False):
+            if "cdrom" in p.opts or not p.fstype:
+                continue
+            try:
+                u = psutil.disk_usage(p.mountpoint)
+            except OSError:
+                continue
+            out.append({"dev": p.device, "mnt": p.mountpoint, "fs": p.fstype, "total": u.total, "free": u.free,
+                        "used": u.used})
+        return sorted(out, key=lambda d: (d["mnt"] != "C:\\", -d["total"]))
     best = {}
     try:
         with open("/proc/self/mounts") as f:

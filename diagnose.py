@@ -87,7 +87,72 @@ def openrgb_devices():
     return first + "OpenRGB er ikke installert."
 
 
+def windows_report():
+    import platform
+    import sys
+    import applog
+    parts = [f"Kontrollsenter {applog.RUNNING} (Windows) – feilsøkingsrapport {time.strftime('%Y-%m-%d %H:%M')}",
+             f"PC: {platform.node()}"]
+    bios = []
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\BIOS") as k:
+            for name in ("SystemManufacturer", "SystemProductName", "BaseBoardManufacturer", "BaseBoardProduct",
+                         "BIOSVersion", "BIOSReleaseDate"):
+                try:
+                    bios.append(f"{name}: {winreg.QueryValueEx(k, name)[0]}")
+                except OSError:
+                    pass
+    except OSError as e:
+        bios.append(str(e))
+    parts.append(_section("Maskin", "\n".join(bios)))
+    parts.append(_section("System", f"{platform.platform()}\nPython {sys.version.split()[0]} ({sys.executable})"))
+    try:
+        import gi
+        from gi.repository import Adw, Gtk
+        parts.append(_section("GTK", f"GTK {Gtk.get_major_version()}.{Gtk.get_minor_version()}.{Gtk.get_micro_version()}"
+                                     f" · libadwaita {Adw.get_major_version()}.{Adw.get_minor_version()}"
+                                     f" · PyGObject {gi.__version__}"))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("GTK", str(e)))
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        parts.append(_section("CPU og minne", f"{psutil.cpu_count()} tråder · {vm.total / 2**30:.1f} GB RAM · "
+                                              f"last {psutil.cpu_percent(0.5)} %"))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("CPU og minne", f"psutil mangler: {e}"))
+    try:
+        from sensors_win import Lhm
+        ss = Lhm.sensors()
+        parts.append(_section("LibreHardwareMonitor", ("svarer ✓" if Lhm.ok else "svarer IKKE på 127.0.0.1:8085") +
+                              "\n" + "\n".join(f"{x['type']:12} {x['id']:45} {x['name']}: {x['value']}"
+                                                for x in ss)[:20000]))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("LibreHardwareMonitor", str(e)))
+    try:
+        from sensors import NvidiaReader
+        n = NvidiaReader()
+        n.poll()
+        time.sleep(1.2)
+        n.poll()
+        parts.append(_section("NVIDIA", f"tilgjengelig: {n.available} · {json.dumps(n.data, default=str)[:600]}"))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("NVIDIA", str(e)))
+    try:
+        import winsupport
+        parts.append(_section("Strømplan og oppstart", f"aktiv: {winsupport.active_plan()}\n"
+                                                       f"autostart: {winsupport.autostart_get('Kontrollsenter')}"))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("Strømplan og oppstart", str(e)))
+    parts.append(_section("Kontrollsenter-logg (siste linjer)", applog.tail(150)))
+    return "\n".join(parts)
+
+
 def report():
+    import sys
+    if sys.platform == "win32":
+        return windows_report()
     import applog
     parts = [f"Kontrollsenter {applog.RUNNING} – feilsøkingsrapport {time.strftime('%Y-%m-%d %H:%M')}",
              f"PC: {os.uname().nodename}"]
@@ -148,7 +213,7 @@ def upload(text):
         f = tmp / f"{savegames.pc_name()}.txt"
         f.write_text(text)
         _host, share, folder = L._split()
-        subprocess.run(["smbclient", "-N", share, "-c", f'mkdir "{folder}/{REMOTE}"'], capture_output=True, timeout=30)
+        L.smb_mkdir(f"{folder}/{REMOTE}")
         L._smb(f'cd "{REMOTE}"; put "{f}" "{f.name}"', 60)
         return True
     except Exception:  # noqa: BLE001

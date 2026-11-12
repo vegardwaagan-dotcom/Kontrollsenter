@@ -8,6 +8,7 @@ import os
 import platform
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -42,6 +43,9 @@ def save_cfg(c):
 
 
 def _distro():
+    if sys.platform == "win32":
+        ver = platform.version().split(".")
+        return "Windows 11" if len(ver) > 2 and int(ver[2]) >= 22000 else f"Windows {platform.release()}"
     try:
         for line in open("/etc/os-release"):
             if line.startswith("PRETTY_NAME="):
@@ -52,6 +56,20 @@ def _distro():
 
 
 def _model():
+    if sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\BIOS") as k:
+                for name in ("BaseBoardProduct", "SystemProductName"):
+                    try:
+                        v = winreg.QueryValueEx(k, name)[0].strip()
+                        if v and "system product name" not in v.lower():
+                            return v
+                    except OSError:
+                        continue
+        except OSError:
+            pass
+        return ""
     for p in ("/sys/class/dmi/id/product_name", "/sys/class/dmi/id/board_name"):
         try:
             v = open(p).read().strip()
@@ -66,7 +84,8 @@ def status(win):
     import applog
     import savegames
     nv = win.nvidia.data if getattr(win, "nvidia", None) and win.nvidia.available else None
-    up = float(open("/proc/uptime").read().split()[0])
+    from sensors import uptime_seconds
+    up = uptime_seconds()
     bg = getattr(win, "bg", None)
     bats = []
     try:
@@ -97,7 +116,7 @@ def publish(win):
         f = tmp / f"{st['name']}.json"
         f.write_text(json.dumps(st))
         _host, share, folder = L._split()
-        subprocess.run(["smbclient", "-N", share, "-c", f'mkdir "{folder}/{REMOTE}"'], capture_output=True, timeout=30)
+        L.smb_mkdir(f"{folder}/{REMOTE}")
         L._smb(f'cd "{REMOTE}"; put "{f}" "{f.name}"', 60)
         return True
     except Exception:  # noqa: BLE001

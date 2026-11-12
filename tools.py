@@ -15,6 +15,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import threading
@@ -527,6 +528,11 @@ def make_package(dest_dir):
                 shutil.copytree(f, d)
             else:
                 shutil.copy2(f, d)
+    win_src = Path(APP_DIR) / "pakke-windows"         # installasjon for Windows 11
+    if win_src.is_dir():
+        wdst = dest / "Windows"
+        shutil.rmtree(wdst, ignore_errors=True)
+        shutil.copytree(win_src, wdst)
     lst = CFG / "programmer.json"
     if lst.exists():
         shutil.copy2(lst, dest / "programmer.json")
@@ -547,17 +553,18 @@ class ToolsPage(Gtk.ScrolledWindow):
             getattr(box, f"set_margin_{side}")(12)
         self.set_child(Adw.Clamp(maximum_size=1000, child=box))
         self.box = box
-        self._info_card()
-        self._cleanup_card()
-        try:
-            import diskusage
-            diskusage.build_card(self, card)
-        except Exception:  # noqa: BLE001
-            import applog
-            applog.log.exception("hva tar plass")
-        self._health_card()
-        self._restore_card()
-        self._backup_card()
+        if sys.platform != "win32":            # Linux-verktøy (Windows-utgaver kommer i en senere runde)
+            self._info_card()
+            self._cleanup_card()
+            try:
+                import diskusage
+                diskusage.build_card(self, card)
+            except Exception:  # noqa: BLE001
+                import applog
+                applog.log.exception("hva tar plass")
+            self._health_card()
+            self._restore_card()
+            self._backup_card()
         self._notify_card()
         self._app_card()
         self._diag_card()
@@ -891,7 +898,20 @@ class ToolsPage(Gtk.ScrolledWindow):
             lim.append(sp)
         i.append(Gtk.Label(label="Varsle ved:", xalign=0))
         i.append(lim)
-        i.append(dim("Start Kontrollsenter skjult ved innlogging: Programmer → Oppstart → Kontrollsenter."))
+        if sys.platform == "win32":
+            import winsupport
+            r = Gtk.Box(spacing=12)
+            tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            tb.append(Gtk.Label(label="Start Kontrollsenter ved innlogging", xalign=0))
+            tb.append(dim("Starter skjult med ikon i systemstatusfeltet."))
+            r.append(tb)
+            sw = Gtk.Switch(active=bool(winsupport.autostart_get("Kontrollsenter")), valign=Gtk.Align.CENTER)
+            sw.connect("notify::active", lambda w, _p: winsupport.autostart_set(
+                "Kontrollsenter", winsupport.self_command() if w.get_active() else None))
+            r.append(sw)
+            i.append(r)
+        else:
+            i.append(dim("Start Kontrollsenter skjult ved innlogging: Programmer → Oppstart → Kontrollsenter."))
         self.box.append(c)
 
     def _notify_set(self, sw, _p, key):

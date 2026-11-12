@@ -206,7 +206,7 @@ def backup(appids=None, progress=None):
     _host, share, folder = L._split()
     import subprocess
     for part in (folder, f"{folder}/{REMOTE_ROOT}", f"{folder}/{_remote_dir()}"):
-        subprocess.run(["smbclient", "-N", share, "-c", f'mkdir "{part}"'], capture_output=True, timeout=30)
+        L.smb_mkdir(part)
     tmp = Path(tempfile.mkdtemp())
     ok = 0
     try:

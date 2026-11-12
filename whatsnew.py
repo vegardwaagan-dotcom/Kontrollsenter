@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.5.0", "Kontrollsenter for Windows 11", [
+        ("Windows 11 (første runde)", [
+            "Installer fra NAS-en: åpne \\\\192.168.1.3\\Public\\Kontrollsenter\\Windows og dobbeltklikk "
+            "«Installer Kontrollsenter»",
+            "Oversikt med temperaturer, last, strøm og grafer (via LibreHardwareMonitor), historikk og PC-er hjemme",
+            "Strømmodus bytter Windows-strømplan (Strømsparing, Balansert, Høy ytelse)",
+            "Ikon i systemstatusfeltet, Windows-varsler og oppstart ved innlogging",
+            "Oppdateringer fra NAS-en og feilsøkingsrapport – som på Linux",
+            "Vifter, RGB, spill, nettverk, lyd, Bluetooth, Wi-Fi og programmer kommer i de neste rundene",
+        ]),
+    ]),
     ("0.4.2", "RGB og Logitech på flere PC-er", [
         ("Rettet", [
             "RGB virket ikke med OpenRGB 1.x: Effects-tillegget fikk tilkoblingen til å feile uten feilmelding",

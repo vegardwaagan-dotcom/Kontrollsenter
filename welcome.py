@@ -81,17 +81,24 @@ class WelcomeDialog(Adw.Dialog):
         self.car.append(_page("ks-network-symbolic", "Språk",
                               "Automatisk følger språket i Linux: norsk gir norsk, alt annet gir engelsk.", seg))
         # 3. Oppstart
-        import autostart
-        self.app_entry = next((a for a in autostart.apps() if a[0] == "systemmonitor"), None)
-        self.start_sw = Gtk.Switch(active=bool(self.app_entry and autostart.status(self.app_entry)["on"]))
+        import sys
+        self.win32 = sys.platform == "win32"
+        if self.win32:
+            import winsupport
+            self.app_entry = None
+            self.start_sw = Gtk.Switch(active=bool(winsupport.autostart_get("Kontrollsenter")))
+        else:
+            import autostart
+            self.app_entry = next((a for a in autostart.apps() if a[0] == "systemmonitor"), None)
+            self.start_sw = Gtk.Switch(active=bool(self.app_entry and autostart.status(self.app_entry)["on"]))
         row = Gtk.Box(spacing=12)
         row.append(Gtk.Label(label=i18n.tr("Start skjult ved innlogging")))
         row.append(self.start_sw)
         self.car.append(_page("ks-overview-symbolic", "Start ved innlogging",
                               "Kontrollsenter kan starte skjult med et ikon i systemstatusfeltet, så overlay, "
                               "vifter, spillprofiler og varsler virker med en gang.", row))
-        # 4. Viftestyring
-        fans = getattr(win, "fans", None)
+        # 4. Viftestyring (Linux – på Windows kommer den i neste runde)
+        fans = getattr(win, "fans", None) if not self.win32 else None
         if fans and fans.ready():
             extra = Gtk.Label(label="✓ " + i18n.tr("Viftestyring er slått på"))
             extra.add_css_class("success")
@@ -100,7 +107,8 @@ class WelcomeDialog(Adw.Dialog):
             extra.add_css_class("suggested-action")
             extra.add_css_class("pill")
             extra.connect("clicked", lambda b: (fans._on_setup(b) if fans else None, b.set_sensitive(False)))
-        self.car.append(_page("ks-overview-symbolic", "Viftestyring",
+        if not self.win32:
+            self.car.append(_page("ks-overview-symbolic", "Viftestyring",
                               "Lar Kontrollsenter styre viftene (stille, kraftig eller etter temperatur). "
                               "Du blir spurt om passordet ditt én gang.", extra))
         # 5. Spill-overlay
@@ -108,7 +116,8 @@ class WelcomeDialog(Adw.Dialog):
         row = Gtk.Box(spacing=12)
         row.append(Gtk.Label(label=i18n.tr("Overlay i spill")))
         row.append(self.ov_sw)
-        self.car.append(_page("ks-overlay-symbolic", "Spill-overlay",
+        if not self.win32:
+            self.car.append(_page("ks-overlay-symbolic", "Spill-overlay",
                               "Viser FPS, temperaturer og last oppe i hjørnet mens du spiller. Høyre Shift + F12 "
                               "slår det av og på inne i spillet.", row))
         # 6. Ferdig
@@ -152,13 +161,17 @@ class WelcomeDialog(Adw.Dialog):
         self.next.set_visible(i < self.car.get_n_pages() - 1)
 
     def _finish(self, *_):
+        if self.win32:
+            import winsupport
+            winsupport.autostart_set("Kontrollsenter", winsupport.self_command() if self.start_sw.get_active()
+                                     else None)
         import autostart
         if self.app_entry:
             try:
                 (autostart.enable if self.start_sw.get_active() else autostart.disable)(self.app_entry)
             except Exception:  # noqa: BLE001
                 pass
-        if self.ov_sw.get_active() != self.win.ov_button.get_active():
+        if not self.win32 and self.ov_sw.get_active() != self.win.ov_button.get_active():
             self.win.ov_button.set_active(self.ov_sw.get_active())
         mark_done()
         self.close()
