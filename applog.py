@@ -29,6 +29,15 @@ def version():
         return "?"
 
 
+RUNNING = version()          # versjonen som kjører nå – filene på disken kan være nyere etter en oppdatering
+
+
+def needs_restart():
+    """Ny versjon ligger på disken, men programmet som kjører er eldre (f.eks. i bakgrunnen siden i går)."""
+    disk = version()
+    return disk if disk not in ("?", RUNNING) else None
+
+
 def setup():
     if getattr(setup, "done", False):
         return

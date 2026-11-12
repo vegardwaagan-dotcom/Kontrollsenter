@@ -98,6 +98,10 @@ def local_version():
 
 def check():
     """(status-tekst, ny_versjon eller None). Kaster ikke feil – sier fra i teksten."""
+    import applog
+    if applog.needs_restart():
+        return (f"Versjon {local_version()} er installert, men programmet som kjører er {applog.RUNNING}. "
+                "Start Kontrollsenter på nytt for å ta den i bruk."), None
     if not on_lan():
         return "Ikke på hjemmenettet", None
     try:

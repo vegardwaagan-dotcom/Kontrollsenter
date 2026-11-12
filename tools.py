@@ -431,8 +431,12 @@ _SOURCE = ["git"]          # hvor siste «Se etter oppdatering» fant noe: «lan
 
 
 def check_update():
-    """Returnerer (status-tekst, kan_oppdatere). Hjemmenettet (NAS) sjekkes først."""
+    """Returnerer (status-tekst, kan_oppdatere). Hjemmenettet (NAS) sjekkes først.
+    kan_oppdatere = "restart" når en nyere versjon allerede er installert men ikke startet."""
+    import applog
     import lanupdate
+    if applog.needs_restart():
+        return lanupdate.check()[0], "restart"
     txt, new = lanupdate.check()
     if new:
         _SOURCE[0] = "lan"
@@ -866,6 +870,10 @@ class ToolsPage(Gtk.ScrolledWindow):
         self.upd_btn.add_css_class("suggested-action")
         self.upd_btn.connect("clicked", self._update)
         i.append(self.upd_btn)
+        self.restart_btn = Gtk.Button(label="Start på nytt", halign=Gtk.Align.START, visible=False)
+        self.restart_btn.add_css_class("suggested-action")
+        self.restart_btn.connect("clicked", self._restart)
+        i.append(self.restart_btn)
         self.upd_status = dim("")
         i.append(self.upd_status)
         pk = Gtk.Button(label="Lag installasjonspakke på skrivebordet", halign=Gtk.Align.START)
@@ -890,9 +898,15 @@ class ToolsPage(Gtk.ScrolledWindow):
         def done(res):
             txt, can = res
             self.upd_status.set_label(txt)
-            self.upd_btn.set_visible(can)
+            self.upd_btn.set_visible(can is True)
+            self.restart_btn.set_visible(can == "restart")
             return False
         self._bg(check_update, done)
+
+    def _restart(self, *_):
+        root = self.get_root()
+        if hasattr(root, "restart_app"):
+            root.restart_app()
 
     def _update(self, *_):
         self.upd_status.set_label("Oppdaterer …")
@@ -902,6 +916,7 @@ class ToolsPage(Gtk.ScrolledWindow):
             self.upd_status.set_label((msg if msg.startswith("Oppdatert") else
                                        "Oppdatert ✓ – start Kontrollsenter på nytt") if ok else f"Feil: {msg}")
             self.upd_btn.set_visible(not ok)
+            self.restart_btn.set_visible(ok)
             return False
         self._bg(do_update, done)
 

@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.3.1", "Riktig versjon etter oppdatering", [
+        ("Rettet", [
+            "«Se etter oppdatering» sammenligner nå med versjonen som faktisk kjører – ikke bare filene på disken",
+            "Kjører Kontrollsenter i bakgrunnen når en ny versjon installeres, kommer et varsel og et banner "
+            "med «Start på nytt»",
+            "«Start på nytt»-knapp i Verktøy etter oppdatering",
+        ]),
+    ]),
     ("0.3", "Enkelt og elegant", [
         ("Nytt utseende", [
             "Sidemeny til venstre i stedet for fanerad – roligere, og plass til flere sider",

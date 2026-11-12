@@ -200,6 +200,12 @@ class MonitorWindow(Adw.ApplicationWindow):
         toolbar.add_top_bar(header)
         # (Copyright og versjon ligger nå i Meny → Om Kontrollsenter)
 
+        # Ny versjon installert mens programmet kjørte (f.eks. i bakgrunnen) → tilby omstart
+        self.restart_banner = Adw.Banner(button_label=i18n.tr("Start på nytt"), revealed=False)
+        self.restart_banner.connect("button-clicked", self.restart_app)
+        toolbar.add_top_bar(self.restart_banner)
+        GLib.timeout_add_seconds(60, self.check_installed_version)
+
         if ensure_overlay_env() or not overlay_env_active():
             banner = Adw.Banner(
                 title="Spill-overlay er satt opp. Logg ut og inn igjen én gang for at det skal virke i spill.",
@@ -423,16 +429,33 @@ class MonitorWindow(Adw.ApplicationWindow):
         if i18n.resolve(code) == i18n.LANG:       # samme språk som nå – bare lagre valget
             return
         self.toast("Programmet starter på nytt med nytt språk …")
+        self.restart_app()
 
+    def restart_app(self, *_):
+        """Start programmet på nytt (ny versjon eller nytt språk). Vinduet kommer tilbake av seg selv."""
         def restart():
-            import sys
             try:
                 set_overlay(False)
                 self.fans.all_auto_now()
+                self.power.flush_peaks()
             except Exception:  # noqa: BLE001
                 pass
             os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
         GLib.timeout_add(400, restart)
+
+    def check_installed_version(self):
+        """Kalles hvert minutt: er en nyere versjon installert mens programmet har kjørt?"""
+        import applog
+        new = applog.needs_restart()
+        if new and not self.restart_banner.get_revealed():
+            self.restart_banner.set_title(i18n.tr("Versjon {} er installert – start på nytt for å ta den i bruk")
+                                          .replace("{}", new) if i18n.LANG != "no" else
+                                          f"Versjon {new} er installert – start på nytt for å ta den i bruk")
+            self.restart_banner.set_revealed(True)
+            if getattr(self, "bg", None):
+                self.bg.notify("restart", "Ny versjon av Kontrollsenter er installert",
+                               f"Versjon {new} er klar. Klikk for å starte på nytt.", action="app.restart")
+        return True
 
     def _open_syscheck(self, _btn):
         import syscheck

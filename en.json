@@ -1229,5 +1229,15 @@
  "Pene tomme sider når noe mangler, f.eks. ingen kontroller eller Bluetooth-enheter": "Clean empty pages when something is missing, e.g. no controllers or Bluetooth devices",
  "CPU-grafen følger systemets aksentfarge": "The CPU graph follows the system accent colour",
  "Innholdet strekkes ikke ut på brede skjermer, men holdes samlet i midten": "Content is no longer stretched on wide screens, but kept together in the middle",
- "Smalt vindu: sidemenyen legger seg bort, og du blar mellom meny og side": "Narrow window: the sidebar folds away and you move between menu and page"
+ "Smalt vindu: sidemenyen legger seg bort, og du blar mellom meny og side": "Narrow window: the sidebar folds away and you move between menu and page",
+ "Start på nytt": "Restart",
+ "Versjon {} er installert – start på nytt for å ta den i bruk": "Version {} is installed – restart to start using it",
+ "Ny versjon av Kontrollsenter er installert": "A new version of Control Center is installed",
+ "Versjon {} er klar. Klikk for å starte på nytt.": "Version {} is ready. Click to restart.",
+ "Versjon {} er installert, men programmet som kjører er {}. Start Kontrollsenter på nytt for å ta den i bruk.": "Version {} is installed, but the running program is {}. Restart Control Center to start using it.",
+ "Riktig versjon etter oppdatering": "Correct version after updating",
+ "Rettet": "Fixed",
+ "«Se etter oppdatering» sammenligner nå med versjonen som faktisk kjører – ikke bare filene på disken": "“Check for updates” now compares with the version that is actually running – not just the files on disk",
+ "Kjører Kontrollsenter i bakgrunnen når en ny versjon installeres, kommer et varsel og et banner med «Start på nytt»": "If Control Center is running in the background when a new version is installed, you get a notification and a banner with “Restart”",
+ "«Start på nytt»-knapp i Verktøy etter oppdatering": "“Restart” button in Tools after updating"
 }
