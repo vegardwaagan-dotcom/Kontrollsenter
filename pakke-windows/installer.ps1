@@ -15,16 +15,35 @@ function Green($t) { Write-Host "✓ $t" -ForegroundColor Green }
 function Warn($t)  { Write-Host "! $t" -ForegroundColor Yellow }
 
 # --- administratorrettigheter (trengs for LibreHardwareMonitor og planlagt oppgave) ---------------
-$admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
-         ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-if (-not $admin) {
+$NAS     = "\\192.168.1.3\Public\Kontrollsenter"
+$LOG     = Join-Path $env:TEMP "kontrollsenter-installasjon.txt"
+# Administratordelen kjører i en egen Windows-økt som IKKE ser NAS-delingen (påloggingen mot NAS-en gjelder bare
+# den vanlige økten). Derfor kopierer den vanlige delen alt som trengs til en lokal mappe først.
+if (-not $Elevated) {
+    $STAGE = Join-Path $env:TEMP "kontrollsenter-installer"
+    Remove-Item $STAGE -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Force -Path $STAGE | Out-Null
+    Write-Host "Henter Kontrollsenter fra NAS-en …"
+    try {
+        foreach ($f in @("Kontrollsenter.tar.gz", "SHA256SUMS", "VERSION")) { Copy-Item (Join-Path $NAS $f) $STAGE }
+        Copy-Item $PSCommandPath (Join-Path $STAGE "installer.ps1")
+    } catch {
+        Write-Host "✗ Fikk ikke hentet filene fra NAS-en ($NAS): $_" -ForegroundColor Red
+        Read-Host "Trykk Enter for å lukke" | Out-Null
+        exit 1
+    }
     Write-Host "Kontrollsenter trenger administratortilgang én gang (Windows spør nå)."
-    $argList = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Source `"$Source`" -Elevated"
+    $argList = "-NoProfile -ExecutionPolicy Bypass -File `"$STAGE\installer.ps1`" -Source `"$STAGE`" -Elevated"
     Start-Process powershell -Verb RunAs -ArgumentList $argList -Wait
+    # loggen legges på NAS-en herfra (den vanlige økten ser NAS-en)
+    try {
+        New-Item -ItemType Directory -Force -Path "$NAS\Diagnose" | Out-Null
+        Copy-Item $LOG "$NAS\Diagnose\$env:COMPUTERNAME-installasjon.txt" -Force
+        Write-Host "Installasjonsloggen er lagt på NAS-en (Kontrollsenter\Diagnose)." -ForegroundColor DarkGray
+    } catch { Write-Host "Kunne ikke legge loggen på NAS-en: $LOG" -ForegroundColor DarkGray }
     exit
 }
 
-$NAS     = "\\192.168.1.3\Public\Kontrollsenter"
 $MSYS    = "C:\msys64"
 $PY      = "$MSYS\ucrt64\bin\python.exe"
 $PYW     = "$MSYS\ucrt64\bin\pythonw.exe"
@@ -33,7 +52,6 @@ $PROG    = Join-Path $DEST "program"
 $LHMDIR  = Join-Path $env:ProgramFiles "LibreHardwareMonitor"
 $TMP     = Join-Path $env:TEMP ("kontrollsenter-" + [guid]::NewGuid().ToString("N").Substring(0, 8))
 New-Item -ItemType Directory -Force -Path $TMP, $DEST | Out-Null
-$LOG = Join-Path $env:TEMP "kontrollsenter-installasjon.txt"
 Start-Transcript -Path $LOG -Force | Out-Null
 Write-Host "Kontrollsenter – installasjon for Windows" -ForegroundColor White
 $ok = $false
@@ -105,9 +123,9 @@ Green "LibreHardwareMonitor starter ved innlogging (minimert, deler målinger lo
 
 # --- 3. Kontrollsenter fra NAS-en ------------------------------------------------------------------------
 Blue "3/5 Kontrollsenter"
-$pkg = Join-Path $TMP "Kontrollsenter.tar.gz"
-Copy-Item "$NAS\Kontrollsenter.tar.gz" $pkg
-$want = (Get-Content "$NAS\SHA256SUMS" | Select-Object -First 1).Split(" ")[0].Trim().ToLower()
+$pkg = Join-Path $Source "Kontrollsenter.tar.gz"          # lokal kopi hentet fra NAS-en
+if (-not (Test-Path $pkg)) { throw "Fant ikke $pkg – start «Installer Kontrollsenter» på nytt." }
+$want = (Get-Content (Join-Path $Source "SHA256SUMS") | Select-Object -First 1).Split(" ")[0].Trim().ToLower()
 $got  = (Get-FileHash $pkg -Algorithm SHA256).Hash.ToLower()
 if ($want -ne $got) { throw "Sjekksummen stemmer ikke – pakken på NAS-en er ødelagt." }
 tar -xzf $pkg -C $TMP
@@ -161,11 +179,5 @@ $ok = $true
     Write-Host $_.ScriptStackTrace -ForegroundColor DarkGray
 } finally {
     Stop-Transcript | Out-Null
-    # loggen legges på NAS-en, så feil kan finnes uten at du må kopiere noe
-    try {
-        New-Item -ItemType Directory -Force -Path "$NAS\Diagnose" | Out-Null
-        Copy-Item $LOG "$NAS\Diagnose\$env:COMPUTERNAME-installasjon.txt" -Force
-        Write-Host "Installasjonsloggen er lagt på NAS-en (Kontrollsenter\Diagnose)." -ForegroundColor DarkGray
-    } catch { Write-Host "Kunne ikke legge loggen på NAS-en: $LOG" -ForegroundColor DarkGray }
     if (-not $ok) { Read-Host "Trykk Enter for å lukke" | Out-Null }
 }
