@@ -87,6 +87,8 @@ class Background:
         act.connect("activate", lambda *_: (self.show(), win._open_syscheck()))
         app.add_action(act)
         self.apply()
+        import automation
+        self.auto = automation.Automation(win, self.notify)
         win.ov_button.connect("toggled", lambda *_: self.refresh_menu())
         if win.power.proxy:
             win.power.proxy.connect("g-properties-changed", lambda *_: self.refresh_menu())
@@ -195,6 +197,11 @@ class Background:
 
     def _tick(self):
         c = self.cfg
+        try:
+            self.auto.tick()
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("automatikk")
         try:
             t = self.win.cpu_temp_now()
             if t is not None and t >= c["cpu_limit"]:

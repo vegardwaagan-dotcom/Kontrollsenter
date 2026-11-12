@@ -711,7 +711,20 @@ class FanCard(Gtk.Box):
             b = Gtk.Button(label=label)
             b.connect("clicked", lambda _b, v=val: self.apply_all(v))
             presets.append(b)
+        # Viftekurve: farten følger temperaturen
+        self.curve_btn = Gtk.ToggleButton(label="Kurve", tooltip_text="Viftene følger temperaturen etter kurven din")
+        self.curve_btn.connect("toggled", lambda b: self.set_curve(b.get_active()) if not self._quiet_curve else None)
+        presets.append(self.curve_btn)
+        edit = Gtk.Button(icon_name="document-edit-symbolic", tooltip_text="Rediger viftekurvene")
+        edit.add_css_class("flat")
+        edit.connect("clicked", self._edit_curve)
+        presets.append(edit)
         self.presets = presets
+        self.curve_on = False
+        self._quiet_curve = False
+        self._curve_sending = False
+        self._curve_tick = 0
+        self.last_temps = (None, None)
         inner.append(presets)
 
         self.grid = Gtk.Grid(column_spacing=12, row_spacing=6)
@@ -786,6 +799,9 @@ class FanCard(Gtk.Box):
         prefs = self._load()
         for key, row in self.rows.items():
             row.set_value(prefs.get(key, "auto"), send=False)
+        import fancurve
+        if ok and fancurve.load().get("active"):
+            GLib.idle_add(lambda: self.set_curve(True) or False)
         if ok and any(v != "auto" for k, v in prefs.items() if k in self.rows):
             for key, row in self.rows.items():   # legg inn lagrede innstillinger igjen
                 self.send(key, row.value())
@@ -812,6 +828,8 @@ class FanCard(Gtk.Box):
     def send(self, key, val):
         if not self.ready():
             return
+        if self.curve_on and not self._curve_sending:      # du tok over manuelt → kurven slås av
+            self.set_curve(False, apply_auto=False)
         self.panic = False
         v = "auto" if val == "auto" else str(int(val))
         if key == "gpu":
@@ -819,11 +837,58 @@ class FanCard(Gtk.Box):
         else:
             _b, chip, ch = key.split(":")
             self.q.put(["pwm", chip, ch, v])
-        self._save()
+        if not self._curve_sending:
+            self._save()
 
     def apply_all(self, val):
+        if self.curve_on:
+            self.set_curve(False, apply_auto=False)
         for row in self.rows.values():
             row.set_value(val, send=True)
+
+    # --- viftekurve ------------------------------------------------------------
+    def set_curve(self, on, apply_auto=True):
+        import fancurve
+        cfg = fancurve.load()
+        cfg["active"] = bool(on)
+        fancurve.save(cfg)
+        self.curve_on = bool(on)
+        self._quiet_curve = True
+        self.curve_btn.set_active(self.curve_on)
+        self._quiet_curve = False
+        if on:
+            self._curve_tick = 0
+            self._apply_curve(*self.last_temps)
+        elif apply_auto:
+            for row in self.rows.values():
+                row.set_value("auto", send=True)
+
+    def _apply_curve(self, cpu_t, gpu_t):
+        import fancurve
+        cfg = fancurve.load()
+        self._curve_sending = True
+        try:
+            parts = []
+            for key, row in self.rows.items():
+                kind = "gpu" if key == "gpu" else "board"
+                temp = gpu_t if kind == "gpu" else cpu_t
+                pct = fancurve.interp(cfg[kind], temp, fancurve.MIN[kind])
+                if pct is None:
+                    continue
+                cur = row.value()
+                if cur == "auto" or abs(int(cur) - pct) >= 2:
+                    row.set_value(pct, send=True)
+                if kind == "board" and not parts:
+                    parts.append(f"CPU {cpu_t:.0f} °C → {pct} %")
+                if kind == "gpu":
+                    parts.append(f"GPU {gpu_t:.0f} °C → {pct} %")
+            self.status.set_label("Kurve: " + " · ".join(parts) if parts else "Kurve aktiv")
+        finally:
+            self._curve_sending = False
+
+    def _edit_curve(self, *_):
+        import fancurve
+        fancurve.CurveDialog(self, *self.last_temps).present(self.get_root())
 
     def all_auto_now(self, save=True):
         """Brukes ved lukking og ved overoppheting."""
@@ -874,9 +939,17 @@ class FanCard(Gtk.Box):
                 row.rpm.set_label(f"{rpm} RPM" if rpm is not None else "–")
                 row.stopped = str(rpm).strip() == "0"
         self._update_hidden()
+        self.last_temps = (cpu_t, gpu_t)
         manual = any(r.value() != "auto" for r in self.rows.values())
         hot = (cpu_t or 0) >= CPU_PANIC or (gpu_t or 0) >= GPU_PANIC
+        if self.curve_on and not hot and self.ready():
+            self._curve_tick += 1
+            if self._curve_tick % 3 == 1:                  # hvert 3. sekund
+                self._apply_curve(cpu_t, gpu_t)
+            return
         if manual and hot and self.ready():
+            if self.curve_on:
+                self.set_curve(False, apply_auto=False)
             self.panic = True
             for row in self.rows.values():
                 row.set_value("auto", send=False)

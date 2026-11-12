@@ -100,3 +100,158 @@ class PowerMeter:
 def cost(watts, hours, price=None):
     price = load()["price"] if price is None else price
     return watts / 1000 * hours * price
+
+
+# --------------------------------------------------------------------------
+# Forbruk per dag (Wh) – lagres for de siste 62 dagene
+# --------------------------------------------------------------------------
+DAYS = os.path.expanduser("~/.config/systemmonitor/strom-dager.json")
+
+
+class EnergyLog:
+    def __init__(self):
+        try:
+            with open(DAYS) as f:
+                self.days = json.load(f)
+        except (OSError, ValueError):
+            self.days = {}
+        self.last = None
+        self.saved = time.monotonic()
+
+    def add(self, watts):
+        """Legg til målt forbruk. Hver dag lagres som [Wh, sekunder målt]."""
+        now = time.monotonic()
+        if watts is not None and self.last is not None:
+            dt = min(now - self.last, 10)
+            day = time.strftime("%Y-%m-%d")
+            wh, secs = self._get(day)
+            self.days[day] = [wh + watts * dt / 3600, secs + dt]
+        self.last = now
+        if now - self.saved > 60:
+            self.save()
+
+    def _get(self, day):
+        v = self.days.get(day, [0.0, 0.0])
+        return (v, 0.0) if isinstance(v, (int, float)) else (v[0], v[1])
+
+    def save(self):
+        self.saved = time.monotonic()
+        keep = sorted(self.days)[-62:]
+        self.days = {k: self.days[k] for k in keep}
+        try:
+            os.makedirs(os.path.dirname(DAYS), exist_ok=True)
+            with open(DAYS, "w") as f:
+                json.dump({k: [round(self._get(k)[0], 1), round(self._get(k)[1])] for k in self.days}, f)
+        except OSError:
+            pass
+
+    def today_wh(self):
+        return self._get(time.strftime("%Y-%m-%d"))[0]
+
+    def avg_watts(self):
+        """Snittforbruk over alt som er målt (siste 62 dager), mens PC-en var på."""
+        wh = sum(self._get(k)[0] for k in self.days)
+        secs = sum(self._get(k)[1] for k in self.days)
+        return wh * 3600 / secs if secs > 60 else None
+
+    def on_hours_per_day(self):
+        """Hvor mange timer PC-en typisk er på per døgn (fra dagene som er logget, høyst 24)."""
+        today = time.strftime("%Y-%m-%d")
+        full = [self._get(k)[1] / 3600 for k in self.days if k != today]
+        return min(24.0, sum(full) / len(full)) if full else None
+
+    def month_estimate_kwh(self, hours_per_day=None):
+        w = self.avg_watts()
+        if w is None:
+            return None
+        h = hours_per_day or self.on_hours_per_day() or 8.0
+        return w * h * 30 / 1000
+
+
+# --------------------------------------------------------------------------
+# Vinduet «Strømforbruk» (klikk på strøm-flisen i Oversikt)
+# --------------------------------------------------------------------------
+def dialog(win):
+    import gi
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Adw, GLib, Gtk
+    import i18n
+
+    d = Adw.Dialog(title=i18n.tr("Strømforbruk"), content_width=520)
+    tv = Adw.ToolbarView()
+    tv.add_top_bar(Adw.HeaderBar())
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+    for side in ("top", "bottom", "start", "end"):
+        getattr(box, f"set_margin_{side}")(20)
+    big = Gtk.Label()
+    big.add_css_class("title-1")
+    big.add_css_class("numeric")
+    box.append(big)
+    grid = Gtk.Grid(column_spacing=24, row_spacing=6)
+    labels = {}
+    rows = [("cpu", "Prosessor (målt)"), ("gpu", "Skjermkort (målt)"), ("extra", "Resten av PC-en (anslått)"),
+            ("sep", ""), ("today", "I dag"), ("avg", "Snitt når PC-en er på"), ("month", "Anslag per måned")]
+    for r, (key, text) in enumerate(rows):
+        if key == "sep":
+            grid.attach(Gtk.Separator(), 0, r, 2, 1)
+            continue
+        a = Gtk.Label(label=i18n.tr(text), xalign=0, hexpand=True)
+        a.add_css_class("dim-label")
+        b = Gtk.Label(xalign=1)
+        b.add_css_class("numeric")
+        grid.attach(a, 0, r, 1, 1)
+        grid.attach(b, 1, r, 1, 1)
+        labels[key] = b
+    box.append(grid)
+
+    cfg = load()
+    sets = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    sets.set_margin_top(6)
+    for key, text, lo, hi, step, digits in (("price", "Strømpris (kr per kWh, med nettleie)", 0, 10, 0.05, 2),
+                                            ("extra_w", "Tillegg for resten av PC-en (W)", 0, 300, 5, 0)):
+        r = Gtk.Box(spacing=12)
+        r.append(Gtk.Label(label=i18n.tr(text), xalign=0, hexpand=True))
+        sp = Gtk.SpinButton.new_with_range(lo, hi, step)
+        sp.set_digits(digits)
+        sp.set_value(cfg[key])
+
+        def changed(w, k=key):
+            c = load()
+            c[k] = round(w.get_value(), 2)
+            save(c)
+        sp.connect("value-changed", changed)
+        r.append(sp)
+        sets.append(r)
+    note = Gtk.Label(label=i18n.tr("Prosessor og skjermkort måles direkte. Hovedkort, RAM, disker, vifter og "
+                                   "strømforsyningens tap kan ikke måles fra Linux, så de legges til som et fast "
+                                   "tillegg. Skjermen er ikke med."), wrap=True, xalign=0)
+    note.add_css_class("caption")
+    note.add_css_class("dim-label")
+    sets.append(note)
+    box.append(sets)
+    tv.set_content(box)
+    d.set_child(tv)
+
+    def tick():
+        pw = getattr(win, "_power", {}) or {}
+        c = load()
+        log = win.energy
+        big.set_label(f"{pw.get('total') or 0:.0f} W")
+        labels["cpu"].set_label(f"{pw.get('cpu') or 0:.0f} W")
+        labels["gpu"].set_label(f"{pw.get('gpu') or 0:.0f} W")
+        labels["extra"].set_label(f"{c['extra_w']:.0f} W")
+        wh = log.today_wh()
+        labels["today"].set_label(f"{wh / 1000:.2f} kWh · {wh / 1000 * c['price']:.2f} kr")
+        avg = log.avg_watts()
+        labels["avg"].set_label(f"{avg:.0f} W" if avg else "–")
+        m = log.month_estimate_kwh()
+        hrs = log.on_hours_per_day()
+        labels["month"].set_label(
+            f"{m:.0f} kWh · {m * c['price']:.0f} kr" + (f"  ({hrs:.0f} t/døgn)" if hrs else "  (8 t/døgn)")
+            if m else "–")
+        return True
+    tick()
+    tid = GLib.timeout_add(1000, tick)
+    d.connect("closed", lambda *_: GLib.source_remove(tid))
+    d.present(win)

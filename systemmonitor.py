@@ -202,6 +202,8 @@ class MonitorWindow(Adw.ApplicationWindow):
                 self.power.flush_peaks()
             if getattr(self, "fans", None):
                 self.fans.all_auto_now()
+            if getattr(self, "energy", None):
+                self.energy.save()
 
         atexit.register(_cleanup)
         signal.signal(signal.SIGTERM, lambda *_: (_cleanup(), os._exit(0)))
@@ -286,6 +288,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         # Nøkkeltall øverst: CPU, GPU, strøm og strømmodus
         import power as power_mod
         self.meter = power_mod.PowerMeter()
+        self.energy = power_mod.EnergyLog()
         self._power = {"cpu": None, "gpu": None, "measured": None, "total": None}
         self._cpu_load = 0.0
         tiles = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
@@ -293,6 +296,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.t_cpu = Tile("Prosessor", gauge=Gauge(100, 75, 88))
         self.t_gpu = Tile("Skjermkort", gauge=Gauge(100, 75, 85)) if self.nvidia.available or self.amd else None
         self.t_pow = Tile("Strømforbruk", icon="ks-power-symbolic")
+        self.t_pow.set_tooltip_text("Klikk for detaljer og strømpris")
+        click = Gtk.GestureClick()
+        click.connect("released", lambda *_: power_mod.dialog(self))
+        self.t_pow.add_controller(click)
+        self.t_pow.set_cursor_from_name("pointer")
         self.t_mode = Tile("Strømmodus", icon="ks-overview-symbolic")
         for t in (self.t_cpu, self.t_gpu, self.t_pow, self.t_mode):
             if t:
@@ -368,6 +376,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         for name, title, icon, mod, cls in (
                 ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
+                ("automatikk", "Automatikk", "ks-auto-symbolic", "automation", "AutomationPage"),
                 ("verktoy", "Verktøy", "ks-tools-symbolic", "tools", "ToolsPage")):
             if name == "bluetooth" and not self.hw["bluetooth"]:
                 continue
@@ -606,11 +615,12 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.t_gpu.sub.set_label(f"{(nv.get('util') or 0):.0f} % last" if nv else "")
         pw = self.meter.read(nv.get("power") if nv else None)
         self._power = pw
+        self.energy.add(pw["total"])
         if pw["total"] is not None:
             import power as power_mod
             self.t_pow.value.set_label(f"{pw['total']:.0f} W")
-            day = power_mod.cost(pw["total"], 24)
-            self.t_pow.sub.set_label(f"≈ {day:.2f} kr per døgn")
+            wh = self.energy.today_wh()
+            self.t_pow.sub.set_label(f"I dag {wh / 1000:.2f} kWh · {wh / 1000 * power_mod.load()['price']:.2f} kr")
             self.t_pow.set_tooltip_text(
                 f"CPU {pw['cpu'] or 0:.0f} W · skjermkort {pw['gpu'] or 0:.0f} W · "
                 f"resten av PC-en ca. {power_mod.load()['extra_w']} W (anslått)")
