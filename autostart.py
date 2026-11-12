@@ -72,7 +72,11 @@ def apps():
                "openrgb --startminimized --server --noautoconnect --profile Systemmonitor" if shutil.which("openrgb")
                else None)
     bnet = _battlenet_exec()
+    me = f"python3 {os.path.join(os.path.dirname(os.path.abspath(__file__)), 'systemmonitor.py')} --hidden"
     return [
+        ("systemmonitor", "Systemmonitor", "utilities-system-monitor", me,
+         "Starter skjult med ikon i systemstatusfeltet, så overlay, vifter og varsler virker fra start.",
+         r"systemmonitor\.py", r"^Systemmonitor$"),
         ("steam", "Steam", "steam", steam, "Starter i systemstatusfeltet (-silent).", r"steam", r"steam"),
         ("discord", "Discord", "com.discordapp.Discord", discord, "Starter minimert i systemstatusfeltet.",
          r"discord", r"discord"),
@@ -121,7 +125,7 @@ def status(app):
     ents = [e for e in _entries(exec_rx, name_rx)]
     active = [e for e in ents if not e["hidden"]]
     own = own_file(key)
-    minimized = all(e["file"] == own or re.search(r"-silent|--start-?minimized|--window=hide|daemon|--server",
+    minimized = all(e["file"] == own or re.search(r"-silent|--start-?minimized|--window=hide|daemon|--server|--hidden",
                                                   e["exec"]) for e in active)
     return {"on": bool(active), "count": len(active), "minimized": minimized, "others": [
         e for e in active if e["file"] != own]}

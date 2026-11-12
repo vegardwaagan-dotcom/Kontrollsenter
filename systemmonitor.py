@@ -7,6 +7,7 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from collections import deque
@@ -148,6 +149,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         chk.set_tooltip_text("Sjekk hele systemet for feil og rett dem automatisk")
         chk.connect("clicked", self._open_syscheck)
         header.pack_start(chk)
+        news = Gtk.Button(child=Adw.ButtonContent(label="Hva er nytt?", icon_name="starred-symbolic"))
+        news.set_tooltip_text("Se alt som er nytt i denne versjonen")
+        news.connect("clicked", self._open_whatsnew)
+        header.pack_start(news)
 
         # Bryter for spill-overlay
         self.ov_content = Adw.ButtonContent(icon_name="input-gaming-symbolic")
@@ -174,6 +179,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         header.pack_end(lang_box)
         self.ov_button.set_active(load_overlay_pref())
         self._on_overlay_toggled(self.ov_button)
+        # Bakgrunnsmodus: lukking skjuler vinduet (må kobles til før de andre lukke-handlingene)
+        self.connect("close-request", lambda *_: bool(getattr(self, "bg", None) and self.bg.on_close()))
         self.connect("close-request", lambda *_: set_overlay(False) or False)
         # Skjul overlayet også om programmet avsluttes på annen måte
         import atexit
@@ -199,7 +206,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         toolbar.add_top_bar(tab_scroll)
 
         # Opphavsrett – vises øverst på alle faner
-        copyright_lbl = Gtk.Label(label="Copyright © Vegard E. Wågan")
+        import whatsnew
+        copyright_lbl = Gtk.Label(label=f"Copyright © Vegard E. Wågan · Versjon {whatsnew.current_version()}")
         copyright_lbl.add_css_class("caption")
         copyright_lbl.add_css_class("dim-label")
         copyright_lbl.set_margin_top(4)
@@ -460,6 +468,17 @@ class MonitorWindow(Adw.ApplicationWindow):
         else:
             btn.remove_css_class("suggested-action")
 
+    def _open_whatsnew(self, *_):
+        import whatsnew
+        whatsnew.WhatsNewDialog().present(self)
+
+    def cpu_temp_now(self):
+        return getattr(self, "_cpu_t", None)
+
+    def gpu_temp_now(self):
+        d = self.nvidia.data if self.nvidia.available else None
+        return d.get("temp") if d else None
+
     def update(self):
         temps = hwmon_temps()
 
@@ -473,6 +492,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         if f:
             parts.append(f"maks {f:.2f} GHz")
         t = cpu_temp(temps)
+        self._cpu_t = t
         if t is not None:
             parts.append(f"{t:.0f} °C")
         try:
@@ -646,7 +666,19 @@ class MonitorApp(Adw.Application):
         super().__init__(application_id=app_id)
 
     def do_activate(self):
-        win = self.props.active_window or MonitorWindow(self)
+        win = getattr(self, "win", None)
+        if win is None:
+            win = self.win = MonitorWindow(self)
+            import background
+            win.bg = background.Background(self, win)
+            if "--hidden" in sys.argv and win.bg.cfg["background"]:
+                return                      # startet ved innlogging: bare ikon i statusfeltet
+            win.present()
+            import whatsnew
+            if whatsnew.should_show():
+                GLib.timeout_add(800, lambda: win._open_whatsnew() or False)
+            return
+        win.set_visible(True)
         win.present()
 
 

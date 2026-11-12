@@ -523,6 +523,7 @@ class ToolsPage(Gtk.ScrolledWindow):
         self._health_card()
         self._restore_card()
         self._backup_card()
+        self._notify_card()
         self._app_card()
         self._log_card()
 
@@ -776,6 +777,54 @@ class ToolsPage(Gtk.ScrolledWindow):
         dlg.open(self.get_root(), None, done)
 
     # --- Systemmonitor --------------------------------------------------------
+    # --- bakgrunn og varsler ------------------------------------------------------
+    def _notify_card(self):
+        import background
+        cfg = background.load()
+        c, i = card("Bakgrunn og varsler",
+                    "Systemmonitor kan fortsette i bakgrunnen når vinduet lukkes, og si fra når noe er galt.")
+        rows = [("background", "Kjør i bakgrunnen når vinduet lukkes",
+                 "Overlay, vifter og varsler fortsetter. Avslutt fra ikonet i statusfeltet."),
+                ("tray", "Ikon i systemstatusfeltet", "Viser temperaturer, strømmodus, overlay og Avslutt."),
+                ("notify", "Varsler", "Høy temperatur, nesten full disk og lavt batteri i trådløse enheter."),
+                ("periodic", "Sjekk systemet og oppdateringer hver 6. time",
+                 "Kjører Systemsjekk i bakgrunnen og sier fra om den finner noe.")]
+        for key, title, sub in rows:
+            r = Gtk.Box(spacing=12)
+            tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            tb.append(Gtk.Label(label=title, xalign=0))
+            tb.append(dim(sub))
+            r.append(tb)
+            sw = Gtk.Switch(active=cfg[key], valign=Gtk.Align.CENTER)
+            sw.connect("notify::active", self._notify_set, key)
+            r.append(sw)
+            i.append(r)
+        lim = Gtk.Box(spacing=8)
+        for key, title, lo, hi in (("cpu_limit", "CPU °C", 60, 100), ("gpu_limit", "GPU °C", 60, 95),
+                                   ("disk_limit", "Disk %", 70, 99), ("battery_limit", "Batteri %", 5, 50)):
+            lim.append(Gtk.Label(label=title))
+            sp = Gtk.SpinButton.new_with_range(lo, hi, 1)
+            sp.set_value(cfg[key])
+            sp.connect("value-changed", lambda w, k=key: self._notify_set_val(k, int(w.get_value())))
+            lim.append(sp)
+        i.append(Gtk.Label(label="Varsle ved:", xalign=0))
+        i.append(lim)
+        i.append(dim("Start Systemmonitor skjult ved innlogging: Programmer → Oppstart → Systemmonitor."))
+        self.box.append(c)
+
+    def _notify_set(self, sw, _p, key):
+        self._notify_set_val(key, sw.get_active())
+
+    def _notify_set_val(self, key, val):
+        import background
+        bg = getattr(self.get_root(), "bg", None)
+        if bg:
+            bg.set(key, val)
+        else:
+            cfg = background.load()
+            cfg[key] = val
+            background.save(cfg)
+
     def _app_card(self):
         c, i = card("Systemmonitor", f"Versjon {version()} · {APP_DIR}")
         row = Gtk.Box(spacing=6)
