@@ -1195,5 +1195,14 @@
  "Versjon {} ligger på hjemmenettet. Verktøy → Se etter oppdatering → Oppdater nå.": "Version {} is on the home network. Tools → Check for updates → Update now.",
  "{}\n{}": "{}\n{}",
  "Ny versjon lagt på hjemmenettet": "New version published on the home network",
- "Kontrollsenter {} ligger nå på NAS-en, og de andre PC-ene får varsel.": "Control Center {} is now on the NAS, and the other PCs will be notified."
+ "Kontrollsenter {} ligger nå på NAS-en, og de andre PC-ene får varsel.": "Control Center {} is now on the NAS, and the other PCs will be notified.",
+ "Bare det du har": "Only what you have",
+ "Tilpasset maskinen din": "Adapted to your machine",
+ "RGB, Logitech, CPU-skjerm, Wi-Fi og Bluetooth vises bare når utstyret finnes i maskinen": "RGB, Logitech, CPU screen, Wi-Fi and Bluetooth are only shown when the hardware is present",
+ "Installasjonen legger bare inn OpenRGB, Solaar, ratbagd, TRCC og tilhørende regler når utstyret finnes": "The installer only adds OpenRGB, Solaar, ratbagd, TRCC and related rules when the hardware is present",
+ "Systemsjekk, Programmer og Oppstart hopper over RGB-, Logitech- og CPU-skjerm-programmer du ikke trenger": "System check, Programs and Startup skip RGB, Logitech and CPU screen software you don't need",
+ "Oppdateringer på hjemmenettet": "Updates on the home network",
+ "Ser etter nye versjoner på NAS-en (\\\\192.168.1.3\\Public\\Kontrollsenter) når PC-en er på hjemmenettet": "Checks for new versions on the NAS (\\\\192.168.1.3\\Public\\Kontrollsenter) when the PC is on the home network",
+ "Varsler om ny versjon, og oppdaterer med ett klikk – pakken sjekksum-kontrolleres og forrige versjon tas vare på": "Notifies you about new versions and updates with one click – the package is checksum-verified and the previous version is kept",
+ "Nye versjoner legges ut på NAS-en automatisk": "New versions are published to the NAS automatically"
 }

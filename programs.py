@@ -413,7 +413,13 @@ class ProgramsPage(Gtk.Box):
             self.cat_box.append(h)
             lb = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
             lb.add_css_class("boxed-list")
+            import hardware
+            hw = hardware.present()
+            needs = {"org.openrgb.OpenRGB": "rgb", "io.github.pwr_solaar.solaar": "logitech",
+                     "org.freedesktop.Piper": "logitech"}      # vises bare når utstyret finnes
             for c in CATALOG:
+                if c[0] in needs and not hw[needs[c[0]]]:
+                    continue
                 if c[3] == cat:
                     lb.append(self._row(self.cat_box, c[0], c[1], c[2]))
             self.cat_box.append(lb)

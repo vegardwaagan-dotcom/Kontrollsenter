@@ -61,6 +61,11 @@ trcc_ok() {
 flatpak_har() { har flatpak && flatpak info "$1" >/dev/null 2>&1; }
 ratbag_ok() { [ -x /usr/bin/ratbagd ] || [ -x /usr/sbin/ratbagd ] || har ratbagd; }
 
+# Hvilke komponenter finnes? RGB, Logitech og CPU-skjerm installeres bare når de er der.
+HW=" $(python3 "$SRC/hardware.py" 2>/dev/null) "
+har_hw() { [[ "$HW" == *" $1 "* ]]; }
+echo "Fant: ${HW:-ingenting spesielt}"
+
 # --------------------------------------------------------------------------
 # 1. Systempakker + udev-regler + i2c (én sudo-økt)
 # --------------------------------------------------------------------------
@@ -68,10 +73,10 @@ blå "1/5 Systempakker, enhetstilgang (udev) og i2c"
 need=()
 gtk_ok || need+=($P_GTK)
 har flatpak || need+=(flatpak)
-ratbag_ok || need+=($P_RATBAG)
+har_hw logitech && ! ratbag_ok && need+=($P_RATBAG)
 har mangohud || need+=(mangohud)
 har smbclient || need+=($P_SMB)          # oppdatering fra hjemmenettet (NAS)
-trcc_ok || har pipx || need+=($P_PIPX)
+har_hw lcd && ! trcc_ok && ! har pipx && need+=($P_PIPX)
 [ "$PM" = pacman ] && ! har checkupdates && need+=($P_EXTRA)
 
 ROOT=$'set -e\n'
@@ -90,16 +95,19 @@ else
     grønn "✓ Alle systempakker finnes"
 fi
 # udev-regler (bare hvis distroen ikke allerede har dem)
-for r in 60-openrgb.rules 42-logitech-unify-permissions.rules; do
+rules=()
+har_hw rgb && rules+=(60-openrgb.rules)
+har_hw logitech && rules+=(42-logitech-unify-permissions.rules)
+for r in "${rules[@]}"; do
     if [ ! -e "/usr/lib/udev/rules.d/$r" ] && [ ! -e "/etc/udev/rules.d/$r" ] && [ -f "$UDEV/$r" ]; then
         ROOT+="install -m 644 '$UDEV/$r' /etc/udev/rules.d/$r"$'\n'; echo "Legger inn udev-regel: $r"
     fi
 done
-# i2c-tilgang (RAM- og skjermkort-RGB i OpenRGB)
-if [ ! -e /etc/modules-load.d/systemmonitor-i2c.conf ] && ! grep -rqs '^i2c[-_]dev' /etc/modules-load.d /usr/lib/modules-load.d; then
+# i2c-tilgang (RAM- og skjermkort-RGB i OpenRGB) – bare med RGB-utstyr
+if har_hw rgb && [ ! -e /etc/modules-load.d/systemmonitor-i2c.conf ] && ! grep -rqs '^i2c[-_]dev' /etc/modules-load.d /usr/lib/modules-load.d; then
     ROOT+="echo i2c-dev > /etc/modules-load.d/systemmonitor-i2c.conf"$'\n'; echo "Slår på i2c-dev ved oppstart"
 fi
-ROOT+="modprobe i2c-dev || true"$'\n'
+har_hw rgb && ROOT+="modprobe i2c-dev || true"$'\n'
 ROOT+="udevadm control --reload-rules && udevadm trigger || true"$'\n'
 
 if spør "Installere dette nå (krever sudo-passordet ditt)?"; then
@@ -115,10 +123,12 @@ blå "2/5 OpenRGB og Solaar"
 if har flatpak; then
     flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
     fp=()
-    flatpak_har org.openrgb.OpenRGB || fp+=(org.openrgb.OpenRGB)
-    flatpak_har io.github.pwr_solaar.solaar || fp+=(io.github.pwr_solaar.solaar)
-    if [ ${#fp[@]} -eq 0 ]; then
-        grønn "✓ OpenRGB og Solaar er installert"
+    har_hw rgb && ! flatpak_har org.openrgb.OpenRGB && fp+=(org.openrgb.OpenRGB)
+    har_hw logitech && ! flatpak_har io.github.pwr_solaar.solaar && fp+=(io.github.pwr_solaar.solaar)
+    if ! har_hw rgb && ! har_hw logitech; then
+        grønn "✓ Ingen RGB- eller Logitech-utstyr – OpenRGB og Solaar trengs ikke"
+    elif [ ${#fp[@]} -eq 0 ]; then
+        grønn "✓ Det som trengs er installert"
     elif spør "Installere ${fp[*]} fra Flathub?"; then
         flatpak install --user -y --noninteractive flathub "${fp[@]}" && grønn "✓ Installert: ${fp[*]}" || rød "✗ Flatpak-installasjonen feilet"
     fi
@@ -130,7 +140,9 @@ fi
 # 3. TRCC (trcc-linux) for CPU-skjermen
 # --------------------------------------------------------------------------
 blå "3/5 TRCC (Thermalright LCD-kjølere)"
-if trcc_ok; then
+if ! har_hw lcd; then
+    grønn "✓ Ingen Thermalright-skjerm – TRCC trengs ikke"
+elif trcc_ok; then
     grønn "✓ TRCC finnes ($TRCC_BIN)"
 elif spør "Installere trcc-linux?"; then
     if har pipx; then
@@ -140,7 +152,7 @@ elif spør "Installere trcc-linux?"; then
     fi
     trcc_ok && grønn "✓ TRCC installert ($TRCC_BIN)" || rød "✗ Klarte ikke å installere trcc-linux"
 fi
-if [ -n "$TRCC_BIN" ] && ! ls /etc/udev/rules.d/*trcc* /usr/lib/udev/rules.d/*trcc* >/dev/null 2>&1; then
+if har_hw lcd && [ -n "$TRCC_BIN" ] && ! ls /etc/udev/rules.d/*trcc* /usr/lib/udev/rules.d/*trcc* >/dev/null 2>&1; then
     if spør "Sette opp enhetstilgang for TRCC (sudo)?"; then
         sudo "$TRCC_BIN" system setup -y && grønn "✓ TRCC-oppsett ferdig" || rød "✗ TRCC-oppsett feilet"
     fi

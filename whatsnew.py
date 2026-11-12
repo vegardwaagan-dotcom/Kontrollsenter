@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.2", "Bare det du har", [
+        ("Tilpasset maskinen din", [
+            "RGB, Logitech, CPU-skjerm, Wi-Fi og Bluetooth vises bare når utstyret finnes i maskinen",
+            "Installasjonen legger bare inn OpenRGB, Solaar, ratbagd, TRCC og tilhørende regler når utstyret finnes",
+            "Systemsjekk, Programmer og Oppstart hopper over RGB-, Logitech- og CPU-skjerm-programmer du ikke trenger",
+        ]),
+        ("Oppdateringer på hjemmenettet", [
+            "Ser etter nye versjoner på NAS-en (\\\\192.168.1.3\\Public\\Kontrollsenter) når PC-en er på hjemmenettet",
+            "Varsler om ny versjon, og oppdaterer med ett klikk – pakken sjekksum-kontrolleres og forrige versjon tas vare på",
+            "Nye versjoner legges ut på NAS-en automatisk",
+        ]),
+    ]),
     ("0.1", "Første versjon", [
         ("Nytt navn og språk", [
             "Programmet heter nå Kontrollsenter (Control Center på engelsk)",

@@ -305,14 +305,19 @@ class MonitorWindow(Adw.ApplicationWindow):
 
         # Faner: Oversikt og RGB
         stack = Adw.ViewStack()
+        import hardware
+        self.hw = hardware.present()          # RGB, Logitech, CPU-skjerm, Wi-Fi og Bluetooth vises bare hvis de finnes
         stack.add_titled_with_icon(scroller, "oversikt", "Oversikt", "utilities-system-monitor-symbolic")
         self.rgb_holder = Gtk.Box()
-        stack.add_titled_with_icon(self.rgb_holder, "rgb", "RGB", "applications-graphics-symbolic")
+        if self.hw["rgb"]:
+            stack.add_titled_with_icon(self.rgb_holder, "rgb", "RGB", "applications-graphics-symbolic")
         self.logi_holder = Gtk.Box()
-        stack.add_titled_with_icon(self.logi_holder, "logitech", "Logitech", "input-mouse-symbolic")
+        if self.hw["logitech"]:
+            stack.add_titled_with_icon(self.logi_holder, "logitech", "Logitech", "input-mouse-symbolic")
         self.logi_page = None
         self.lcd_holder = Gtk.Box()
-        stack.add_titled_with_icon(self.lcd_holder, "cpuskjerm", "CPU-skjerm", "video-display-symbolic")
+        if self.hw["lcd"]:
+            stack.add_titled_with_icon(self.lcd_holder, "cpuskjerm", "CPU-skjerm", "video-display-symbolic")
         self.lcd_page = None
         self.prog_holder = Gtk.Box()
         stack.add_titled_with_icon(self.prog_holder, "programmer", "Programmer", "system-software-install-symbolic")
@@ -321,7 +326,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         stack.add_titled_with_icon(self.audio_holder, "lyd", "Lyd", "audio-speakers-symbolic")
         self.audio_page = None
         self.wifi_holder = Gtk.Box()
-        stack.add_titled_with_icon(self.wifi_holder, "wifi", "Wi-Fi", "network-wireless-symbolic")
+        if self.hw["wifi"]:
+            stack.add_titled_with_icon(self.wifi_holder, "wifi", "Wi-Fi", "network-wireless-symbolic")
         self.wifi_page = None
         # Faner som lastes først når de åpnes: navn -> (holder, modul, klasse)
         self._lazy = {}
@@ -329,6 +335,8 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("bluetooth", "Bluetooth", "bluetooth-symbolic", "bluetooth", "BluetoothPage"),
                 ("spill", "Spill", "input-gaming-symbolic", "games", "GamesPage"),
                 ("verktoy", "Verktøy", "applications-utilities-symbolic", "tools", "ToolsPage")):
+            if name == "bluetooth" and not self.hw["bluetooth"]:
+                continue
             if os.path.exists(os.path.join(APP_DIR, mod + ".py")):
                 holder = Gtk.Box()
                 stack.add_titled_with_icon(holder, name, title, icon)

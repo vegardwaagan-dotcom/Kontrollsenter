@@ -194,8 +194,13 @@ class AutostartPage(Gtk.ScrolledWindow):
         while (c := self.list.get_first_child()):
             self.list.remove(c)
         self._quiet = True
+        import hardware
+        hw = hardware.present()
+        needs = {"openrgb": "rgb", "solaar": "logitech", "trcc": "lcd"}   # bare når utstyret finnes
         for app in apps():
             key, name, icon, cmd, note, _e, _n = app
+            if key in needs and not hw[needs[key]]:
+                continue
             st = status(app)
             row = Gtk.Box(spacing=12)
             for side, v in (("top", 10), ("bottom", 10), ("start", 12), ("end", 12)):

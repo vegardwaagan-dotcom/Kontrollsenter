@@ -368,13 +368,20 @@ def _pkg():
 
 
 def run_all(progress=None):
-    pids = ratbag_pids()
+    import hardware
+    hw = hardware.present()
+    pids = ratbag_pids() if hw["logitech"] or hw["rgb"] else []
     checks = [("Tjenester", check_failed_units), ("Ressurser", check_resources),
-              ("Oppdateringer", check_ostree), ("Python-programmer", check_pipx),
-              ("CPU-skjerm", check_trcc), ("OpenRGB", lambda: check_openrgb(pids)),
-              ("Solaar", lambda: check_solaar(pids)), ("Vifter", check_fans),
-              ("Spill-overlay", check_overlay), ("Pakkebehandler og oppdateringer", _pkg),
-              ("Drivere og fastvare", _drivers)]
+              ("Oppdateringer", check_ostree), ("Python-programmer", check_pipx)]
+    # CPU-skjerm, RGB og Logitech sjekkes bare når utstyret finnes
+    if hw["lcd"]:
+        checks.append(("CPU-skjerm", check_trcc))
+    if hw["rgb"]:
+        checks.append(("OpenRGB", lambda: check_openrgb(pids)))
+    if hw["logitech"]:
+        checks.append(("Solaar", lambda: check_solaar(pids)))
+    checks += [("Vifter", check_fans), ("Spill-overlay", check_overlay),
+               ("Pakkebehandler og oppdateringer", _pkg), ("Drivere og fastvare", _drivers)]
     out = []
     for i, (name, fn) in enumerate(checks):
         if progress:
