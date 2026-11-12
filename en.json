@@ -1472,5 +1472,9 @@
  "Start Kontrollsenter ved innlogging": "Start Control Center at login",
  "Starter skjult med ikon i systemstatusfeltet.": "Starts hidden with a tray icon.",
  "Windows: NAS-adresse": "Windows: NAS address",
- "Windows når NAS-en med navnet (\\\\PERSONALCLOUD) når IP-adressen avvises med «Brukernavnet eller passordet er feil» – gjelder installasjon, oppdateringer, PC-er hjemme og feilsøkingsrapport": "Windows reaches the NAS by name (\\\\PERSONALCLOUD) when the IP address is rejected with “The user name or password is incorrect” – applies to installation, updates, home PCs and the troubleshooting report"
+ "Windows når NAS-en med navnet (\\\\PERSONALCLOUD) når IP-adressen avvises med «Brukernavnet eller passordet er feil» – gjelder installasjon, oppdateringer, PC-er hjemme og feilsøkingsrapport": "Windows reaches the NAS by name (\\\\PERSONALCLOUD) when the IP address is rejected with “The user name or password is incorrect” – applies to installation, updates, home PCs and the troubleshooting report",
+ "Windows starter": "Windows starts",
+ "Windows: programmet krasjet ved oppstart fordi Windows mangler lastsnitt (getloadavg) og statvfs": "Windows: the program crashed at startup because Windows lacks load average (getloadavg) and statvfs",
+ "Hvis noe likevel feiler ved oppstart, vises feilen i en melding og legges på NAS-en (Diagnose)": "If something still fails at startup, the error is shown in a message and put on the NAS (Diagnose)",
+ "Kontrollsenter kunne ikke starte": "Control Center could not start"
 }

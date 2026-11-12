@@ -95,3 +95,38 @@ def tail(lines=300):
             return "".join(f.readlines()[-lines:])
     except OSError:
         return ""
+
+
+def crash(title):
+    """Uventet feil under oppstart: skriv den til krasj.txt, legg den på NAS-en og vis en melding.
+    På Windows (uten konsoll) er dette den eneste måten å se hvorfor programmet ikke startet."""
+    import traceback
+    text = f"{title} – Kontrollsenter {RUNNING}\n\n" + traceback.format_exc()
+    log.error(text)
+    path = os.path.join(os.path.dirname(LOG_FILE), "krasj.txt")
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    except OSError:
+        pass
+    try:                                                   # på NAS-en, så feilen kan finnes herfra
+        import shutil
+        import socket
+        import tempfile
+        import lanupdate as L
+        if L.on_lan():
+            tmp = tempfile.mkdtemp()
+            p = os.path.join(tmp, f"{socket.gethostname()}-krasj.txt")
+            shutil.copyfile(path, p)
+            _h, _s, folder = L._split()
+            L.smb_mkdir(f"{folder}/Diagnose")
+            L._smb(f'cd "Diagnose"; put "{p}" "{os.path.basename(p)}"', 60)
+    except Exception:  # noqa: BLE001
+        pass
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(None, text[-1800:] + "\n\nFeilen er lagt på NAS-en (Kontrollsenter\\"
+                                             "Diagnose) og i " + path, title, 0x10)
+        except Exception:  # noqa: BLE001
+            pass

@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.5.2", "Windows starter", [
+        ("Rettet", [
+            "Windows: programmet krasjet ved oppstart fordi Windows mangler lastsnitt (getloadavg) og statvfs",
+            "Hvis noe likevel feiler ved oppstart, vises feilen i en melding og legges på NAS-en (Diagnose)",
+        ]),
+    ]),
     ("0.5.1", "Windows: NAS-adresse", [
         ("Rettet", [
             "Windows når NAS-en med navnet (\\\\PERSONALCLOUD) når IP-adressen avvises med «Brukernavnet eller "

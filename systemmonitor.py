@@ -791,9 +791,9 @@ class MonitorWindow(Adw.ApplicationWindow):
         if t is not None:
             parts.append(f"{t:.0f} °C")
         try:
-            la = os.getloadavg()
+            la = os.getloadavg()                       # finnes ikke på Windows
             parts.append(f"last {la[0]:.2f}")
-        except OSError:
+        except (OSError, AttributeError):
             pass
         self.c_cpu.subtitle.set_label(" · ".join(parts))
         for k, bar in self.core_bars:
@@ -864,9 +864,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.c_disk.graph.push(rr, wr)
         self.c_disk.value.set_label(fmt_rate(rr + wr))
         try:
-            sv = os.statvfs(os.path.expanduser("~"))
-            tot = sv.f_blocks * sv.f_frsize
-            free = sv.f_bavail * sv.f_frsize
+            du = shutil.disk_usage(os.path.expanduser("~"))     # virker på både Linux og Windows
+            tot, free = du.total, du.free
             self.c_disk.subtitle.set_label(
                 f"Hjemmemappe: {fmt_bytes(tot - free)} brukt, {fmt_bytes(free)} ledig av {fmt_bytes(tot)}"
             )
@@ -975,9 +974,14 @@ class MonitorApp(Adw.Application):
     def do_activate(self):
         win = getattr(self, "win", None)
         if win is None:
-            win = self.win = MonitorWindow(self)
-            import background
-            win.bg = background.Background(self, win)
+            try:
+                win = self.win = MonitorWindow(self)
+                import background
+                win.bg = background.Background(self, win)
+            except Exception:  # noqa: BLE001
+                applog.crash("Kontrollsenter kunne ikke starte")
+                self.quit()
+                return
             if IS_WIN:
                 import winsupport
                 winsupport.listen_for_show(win.bg.show)
@@ -998,6 +1002,12 @@ class MonitorApp(Adw.Application):
 
 if __name__ == "__main__":
     if IS_WIN:
+        import faulthandler
+        try:
+            _fh = open(os.path.join(os.path.dirname(applog.LOG_FILE), "krasj-lavniva.txt"), "w")
+            faulthandler.enable(_fh)
+        except OSError:
+            pass
         import winsupport
         if winsupport.already_running():           # vis vinduet til den som kjører, og avslutt
             sys.exit(0)
