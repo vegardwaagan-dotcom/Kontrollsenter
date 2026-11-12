@@ -86,7 +86,7 @@ def check_driver_updates():
             kr = " ".join(k for k in P.KEYRINGS if P._run(["pacman", "-Q", k], 10)[0] == 0) or "archlinux-keyring"
             res.append(_R(f"{len(drv)} driveroppdateringer tilgjengelig", "warn", ", ".join(drv),
                           fix_label="Oppdater drivere (hele systemet – Arch tillater ikke delvise oppdateringer)",
-                          root_cmds=[f"pacman -Sy --noconfirm --needed {kr}", "pacman -Su --noconfirm"]))
+                          root_cmds=P._snap([f"pacman -Sy --noconfirm --needed {kr}", "pacman -Su --noconfirm"])))
         elif names or shutil.which("checkupdates"):
             res.append(_R("Drivere (pacman)", "ok", "Kjerne, Mesa, NVIDIA, fastvare og mikrokode er nyeste"))
     elif shutil.which("dnf"):

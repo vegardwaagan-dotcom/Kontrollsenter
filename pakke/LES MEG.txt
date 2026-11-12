@@ -1,0 +1,53 @@
+SYSTEMMONITOR
+=============
+
+Et grafisk program for Linux (laget for Bazzite) med disse fanene:
+
+  Oversikt    CPU, RAM, GPU, disk, nettverk, temperaturer, strømmodus
+              (Strømsparing / Balansert / Max Ytelse), viftestyring og spill-overlay
+  RGB         Farger og effekter på RAM, skjermkort, hovedkort/vifter, mus og tastatur
+  Logitech    DPI, knapper, profiler m.m. for Logitech-mus og -tastatur (som G HUB)
+  CPU-skjerm  LCD-skjermen på Thermalright-kjølere (temaer, bilde, video, sensorer)
+
+
+INSTALLERE PÅ EN ANNEN PC
+-------------------------
+1. Kopier hele mappen «Systemmonitor» (eller filen Systemmonitor.tar.gz) til den andre PC-en.
+   Pakk ut tar.gz-filen ved å høyreklikke på den og velge «Pakk ut her».
+2. Åpne en terminal i mappen (høyreklikk i mappen → «Åpne terminal her») og skriv:
+
+       bash installer.sh            (spør før hvert steg – Enter = ja)
+       bash installer.sh --alle     (installerer alt uten å spørre)
+
+3. Logg ut og inn igjen (eller start PC-en på nytt), og start «Systemmonitor».
+
+Installasjonen setter opp ALT programmet trenger, med én sudo-passordforespørsel:
+  - OpenRGB og Solaar (fra Flathub)
+  - TRCC / trcc-linux for Thermalright LCD-kjølere (hvis systemet ikke har det)
+  - ratbagd (Logitech mus/tastatur), MangoHud (spill-overlay), Flatpak
+  - pacman-contrib på Arch/CachyOS (for oppdateringssjekk)
+  - udev-regler så programmene får tilgang til RGB-, Logitech- og LCD-enhetene
+    (filene ligger i mappen «udev», så det trengs ikke nett for dem)
+  - i2c-tilgang så OpenRGB når RAM- og skjermkort-RGB
+
+Støttede distroer: Arch / CachyOS / EndeavourOS / Manjaro, Fedora, Bazzite / Silverblue,
+Debian / Ubuntu / Mint og openSUSE. Python med GTK4 og libadwaita installeres også hvis det mangler.
+
+
+GODT Å VITE PÅ EN NY PC
+-----------------------
+  - Viftestyring og GPU-strømgrense slås på med knappene «Aktiver viftestyring» og
+    «Aktiver GPU-styring» inne i programmet (passord én gang).
+  - Spill-overlay krever at du logger ut og inn én gang etter første start.
+  - RGB på Logitech mus/tastatur: hvis Solaar også er installert, slå av lysstyringen
+    der, ellers tar Solaar over lysene:
+       flatpak run --command=solaar io.github.pwr_solaar.solaar config <mus> led_control false
+       flatpak run --command=solaar io.github.pwr_solaar.solaar config <tastatur> rgb_control false
+  - Hovedkortets viftestyring er laget for ASUS-hovedkort med nct67xx-brikke.
+    Andre hovedkort kan trenge en annen driver.
+  - Innstillinger (farger, viftekurver osv.) lagres per PC i ~/.config/systemmonitor.
+
+
+AVINSTALLERE
+------------
+       bash avinstaller.sh

@@ -53,6 +53,16 @@ def _last_lines(out, n=2):
     return "\n".join(lines[-n:])
 
 
+def _snap(cmds):
+    """Legg til et øyeblikksbilde (snapper/Timeshift) før en systemoppdatering, hvis det finnes."""
+    try:
+        import tools
+        c = tools.snapshot_cmd()
+    except Exception:  # noqa: BLE001
+        c = None
+    return ([c] if c else []) + cmds
+
+
 def _kernel_reboot():
     rel = os.uname().release
     if not OSTREE and os.path.isdir("/usr/lib/modules") and not os.path.isdir(f"/usr/lib/modules/{rel}"):
@@ -139,8 +149,8 @@ def check_pacman():
                           ", ".join(pkgs[:12]) + (" …" if len(pkgs) > 12 else "") +
                           ("\nNøkkelringen oppdateres først, så du slipper PGP-feil." if kr_upd else ""),
                           fix_label="Oppdater hele systemet (nøkkelring først, så pacman -Syu)",
-                          root_cmds=[f"pacman -Sy --noconfirm --needed {kr}",
-                                     "pacman -Su --noconfirm"]))
+                          root_cmds=_snap([f"pacman -Sy --noconfirm --needed {kr}",
+                                           "pacman -Su --noconfirm"])))
         elif code == 1:
             mirror_bad = True
             res.append(_R("pacman: kunne ikke hente oppdateringslister", "warn",
@@ -227,7 +237,7 @@ def check_dnf():
         n = len([ln for ln in out.splitlines() if re.match(r"^\S+\.\S+\s+\S+\s+\S+", ln)])
         res.append(_R(f"dnf: {n} oppdateringer tilgjengelig", "info", "",
                       fix_label="Oppdater hele systemet (dnf upgrade)",
-                      root_cmds=["dnf -y upgrade --refresh"]))
+                      root_cmds=_snap(["dnf -y upgrade --refresh"])))
     elif code == 1:
         res.append(_R("dnf: kunne ikke hente pakkelister", "warn", _last_lines(out),
                       fix_label="Tøm cache og hent metadata på nytt",

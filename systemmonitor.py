@@ -193,7 +193,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.tab_row = Gtk.Box(halign=Gtk.Align.CENTER)
         self.tab_row.set_margin_top(4)
         self.tab_row.set_margin_bottom(2)
-        toolbar.add_top_bar(self.tab_row)
+        tab_scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
+                                        vscrollbar_policy=Gtk.PolicyType.NEVER, propagate_natural_height=True)
+        tab_scroll.set_child(self.tab_row)          # mange faner: kan rulles sidelengs i smale vinduer
+        toolbar.add_top_bar(tab_scroll)
 
         # Opphavsrett – vises øverst på alle faner
         copyright_lbl = Gtk.Label(label="Copyright © Vegard E. Wågan")
@@ -312,6 +315,16 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.wifi_holder = Gtk.Box()
         stack.add_titled_with_icon(self.wifi_holder, "wifi", "Wi-Fi", "network-wireless-symbolic")
         self.wifi_page = None
+        # Faner som lastes først når de åpnes: navn -> (holder, modul, klasse)
+        self._lazy = {}
+        for name, title, icon, mod, cls in (
+                ("bluetooth", "Bluetooth", "bluetooth-symbolic", "bluetooth", "BluetoothPage"),
+                ("spill", "Spill", "input-gaming-symbolic", "games", "GamesPage"),
+                ("verktoy", "Verktøy", "applications-utilities-symbolic", "tools", "ToolsPage")):
+            if os.path.exists(os.path.join(APP_DIR, mod + ".py")):
+                holder = Gtk.Box()
+                stack.add_titled_with_icon(holder, name, title, icon)
+                self._lazy[name] = [holder, mod, cls, None]
         self.msi_page = None
         import msi
         if msi.is_msi():                      # MSI-fanen vises bare på MSI-maskiner
@@ -392,6 +405,14 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.rgb_page.set_hexpand(True)
             self.rgb_page.set_vexpand(True)
             self.rgb_holder.append(self.rgb_page)
+        lz = getattr(self, "_lazy", {}).get(stack.get_visible_child_name())
+        if lz and lz[3] is None:
+            import importlib
+            page = getattr(importlib.import_module(lz[1]), lz[2])()
+            page.set_hexpand(True)
+            page.set_vexpand(True)
+            lz[0].append(page)
+            lz[3] = page
         if stack.get_visible_child_name() == "msi" and self.msi_page is None:
             import msi
             self.msi_page = msi.MsiPage()
