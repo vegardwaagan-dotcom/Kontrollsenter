@@ -50,11 +50,11 @@ GROUPS = [
     # nøkkel, tittel, ikon, enhetstyper
     ("keyboard", "Tastatur", "input-keyboard-symbolic", ("KEYBOARD",)),
     ("mouse", "Mus", "input-mouse-symbolic", ("MOUSE", "MOUSEMAT")),
-    ("ram", "RAM", "media-flash-symbolic", ("DRAM",)),
-    ("gpu", "Skjermkort", "video-display-symbolic", ("GPU",)),
-    ("motherboard", "Hovedkort og vifter", "computer-symbolic", ("MOTHERBOARD",)),
-    ("cooling", "Kjøling og vifter", "weather-windy-symbolic", ("COOLER", "LEDSTRIP", "LIGHT")),
-    ("other", "Andre enheter", "applications-graphics-symbolic", None),
+    ("ram", "RAM", "ks-disk-symbolic", ("DRAM",)),
+    ("gpu", "Skjermkort", "ks-lcd-symbolic", ("GPU",)),
+    ("motherboard", "Hovedkort og vifter", "ks-programs-symbolic", ("MOTHERBOARD",)),
+    ("cooling", "Kjøling og vifter", "ks-overview-symbolic", ("COOLER", "LEDSTRIP", "LIGHT")),
+    ("other", "Andre enheter", "ks-rgb-symbolic", None),
 ]
 DEFAULT = {"effect": "static", "color": [0, 60, 255], "brightness": 100, "speed": 50}
 
@@ -139,7 +139,9 @@ class RgbBackend:
                 getattr(self, "_" + job[0])(*job[1:])
             except Exception as e:  # noqa: BLE001 – vis feilen, ikke krasj
                 if job[0] == "connect":
-                    self._status(f"Feil: {e}")
+                    import applog
+                    applog.log.exception("OpenRGB-tilkobling")
+                    self._status(f"Feil: {str(e) or type(e).__name__} – trykk «Bruk» for å prøve igjen")
                     continue
                 # Forbindelsen hikket: koble til på nytt og prøv én gang til
                 self._status("Mistet kontakt med OpenRGB – kobler til igjen …", True)
@@ -177,15 +179,19 @@ class RgbBackend:
         self._status("Kobler til OpenRGB …", True)
         try:
             self.client = OpenRGBClient("127.0.0.1", 6742, "Systemmonitor")
-        except OSError:
-            self._status("Starter OpenRGB i bakgrunnen … (kan ta 10–30 sek)", True)
-            try:
-                subprocess.Popen(OPENRGB_CMD + ["--server", "--noautoconnect"],
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 start_new_session=True)
-            except OSError as e:
-                self._status(f"Klarte ikke å starte OpenRGB: {e}")
-                return
+        except Exception as first:  # noqa: BLE001
+            self.client = None
+            if isinstance(first, ConnectionRefusedError):          # tjenesten kjører ikke: start den
+                self._status("Starter OpenRGB i bakgrunnen … (kan ta 10–30 sek)", True)
+                try:
+                    subprocess.Popen(OPENRGB_CMD + ["--server", "--noautoconnect"],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                     start_new_session=True)
+                except OSError as e:
+                    self._status(f"Klarte ikke å starte OpenRGB: {e}")
+                    return
+            else:                                                   # kjører, men leter fortsatt etter enheter
+                self._status("OpenRGB leter etter enheter … (kan ta litt tid)", True)
             for _ in range(90):
                 time.sleep(1)
                 try:
@@ -193,12 +199,25 @@ class RgbBackend:
                     time.sleep(2)            # la enhetsdeteksjonen bli ferdig
                     self.client.update()
                     break
-                except OSError:
+                except Exception:  # noqa: BLE001 – tjenesten starter fortsatt (kobler fra / svarer ikke ennå)
+                    self.client = None
                     continue
         if not self.client:
             self._status("Fikk ikke kontakt med OpenRGB.")
+            GLib.idle_add(self.on_ready, [])         # vis likevel Corsair-kort o.l.
             return
-        devices = list(self.client.devices)
+        for attempt in range(3):                       # enhetslista kan komme litt etter tilkoblingen
+            try:
+                devices = list(self.client.devices)
+                break
+            except Exception:  # noqa: BLE001
+                time.sleep(2)
+                try:
+                    self.client = OpenRGBClient("127.0.0.1", 6742, "Systemmonitor")
+                except Exception:  # noqa: BLE001
+                    pass
+        else:
+            devices = []
         GLib.idle_add(self.on_ready, devices)
 
     # --- bruk effekt --------------------------------------------------------
@@ -760,6 +779,14 @@ class RgbPage(Gtk.ScrolledWindow):
         while (c := self.content.get_first_child()):
             self.content.remove(c)
         self.cards = []
+        try:
+            import corsair
+            extra = corsair.unsupported_devices([d.name for d in devices])
+            if extra:
+                self.content.append(corsair.build_card(self, card_box, extra))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("corsair")
         if not devices:
             self._on_status("OpenRGB fant ingen RGB-enheter.", False)
             return False

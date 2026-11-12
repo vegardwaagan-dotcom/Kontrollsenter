@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.4.2", "RGB og Logitech på flere PC-er", [
+        ("Rettet", [
+            "RGB virket ikke med OpenRGB 1.x: Effects-tillegget fikk tilkoblingen til å feile uten feilmelding",
+            "Feilmeldinger i RGB-fanen sier nå hva som er galt i stedet for bare «Feil:»",
+            "Logitech-fanen tilpasser seg enhetene som finnes, og viser en tydelig side når ingen har innstillinger",
+        ]),
+        ("Nytt", [
+            "Corsair-hubber som OpenRGB ikke støtter (f.eks. iCUE COMMANDER DUO) – installer og åpne OpenLinkHub "
+            "rett fra RGB-fanen",
+            "Egne ikoner også i RGB-fanen",
+        ]),
+    ]),
     ("0.4.1", "Nytt ikon og feilsøking", [
         ("Nytt", [
             "Ny logo med lysende ring og pulslinje – på snarveien, i menyen og i Om-vinduet",

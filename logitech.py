@@ -783,10 +783,8 @@ class LogitechPage(Gtk.Box):
         import confirm
         self._reset_btn = confirm.reset_button(
             "Logitech-enhetene",
-            "• G502: alle profiler på, 1000 Hz, DPI 400/800/1600/2400/3200 (800 standard), "
-            "standard knappefunksjoner\n"
-            "• G815: alle profiler på, 1000 Hz, G1–G5 = F1–F5 / 1–5 / 6–0 i profil 1 / 2 / 3\n"
-            "• PRO X2: innebygd fabrikkprofil, analogknapper 10 / 3 / 5\n"
+            "• Alle Logitech-enhetene som vises her, settes tilbake til fabrikkinnstillingene: profiler, "
+            "DPI, rapporthyppighet og knappefunksjoner\n"
             "Endringene lagres i enhetenes minne.",
             self.factory_reset)
         self.status_lbl = Gtk.Label(xalign=1, hexpand=True, wrap=True)
@@ -810,17 +808,16 @@ class LogitechPage(Gtk.Box):
                 .replace(" RGB MECHANICAL GAMING KEYBOARD", "")
             self.stack.add_titled(pg.widget, pg.pid or short, short)
             self.pages.append(pg)
-        if not self.pages:
-            self.status("Fant ingen enheter via ratbagd.")
-
         # Solaar-enheter som ratbagd ikke dekker (tregt – i bakgrunnen)
-        self.status("Ser etter flere Logitech-enheter (trådløse) …")
+        self.status("Ser etter Logitech-enheter (trådløse kan ta noen sekunder) …")
+        self._reset_btn.set_sensitive(bool(self.pages))
 
         def scan():
             try:
                 devs = solaar("list")
             except Exception as e:  # noqa: BLE001
-                GLib.idle_add(self.status, f"Solaar: {e}")
+                GLib.idle_add(self.status, f"Solaar: {str(e) or type(e).__name__}")
+                GLib.idle_add(self._add_solaar, [])
                 return
             extra = [d for d in devs if d.get("pid") not in pids and d.get("online")]
             GLib.idle_add(self._add_solaar, extra)
@@ -832,7 +829,18 @@ class LogitechPage(Gtk.Box):
             short = d["name"].replace("Logitech ", "")
             self.stack.add_titled(pg.widget, "solaar-" + d["codename"], short)
             self.pages.append(pg)
-        self.status(f"{len(self.pages)} Logitech-enheter funnet")
+        self._reset_btn.set_sensitive(bool(self.pages))
+        if not self.pages:
+            import ui
+            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER, vexpand=True)
+            box.append(ui.empty("ks-mouse-symbolic", "Ingen Logitech-enheter med innstillinger",
+                                "Mus og tastatur som er slått av eller i dvale vises ikke – beveg musa eller trykk "
+                                "en tast, og åpne fanen igjen. Hodesett styres ikke herfra.", compact=False))
+            self.stack.add_named(box, "tom")
+            self.status("")
+        else:
+            n = len(self.pages)
+            self.status(f"{n} Logitech-enhet funnet" if n == 1 else f"{n} Logitech-enheter funnet")
         return False
 
     def status(self, text):

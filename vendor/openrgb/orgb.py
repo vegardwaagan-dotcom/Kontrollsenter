@@ -436,7 +436,11 @@ class OpenRGBClient(utils.RGBObject):
                     if new_plugin is not None:
                         self.plugins.append(new_plugin)
         elif type == utils.PacketType.PLUGIN_SPECIFIC:
-            next(plugin for plugin in self.plugins if plugin.id == device)._recv(data)
+            # Kontrollsenter: hopp over svar fra tillegg vi ikke kjenner (OpenRGB 1.x sitt Effects-tillegg
+            # ga ellers StopIteration og tilkoblingen feilet uten feilmelding)
+            plugin = next((p for p in self.plugins if p.id == device), None)
+            if plugin is not None:
+                plugin._recv(data)
 
     def set_color(self, color: utils.RGBColor, fast: bool = False):
         '''
@@ -616,7 +620,10 @@ class OpenRGBClient(utils.RGBObject):
         try:
             self.comms.requestPluginList()
             for plugin in self.plugins:
-                plugin.update()
+                try:
+                    plugin.update()
+                except Exception:  # noqa: BLE001 – Kontrollsenter: et tillegg som feiler skal ikke stoppe RGB
+                    pass
         except utils.OpenRGBDisconnected:
             self.plugin_list_unanswered = True
             self.connect()
