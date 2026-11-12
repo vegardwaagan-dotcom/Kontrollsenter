@@ -1,6 +1,6 @@
 #!/bin/bash
-# Engangsoppsett: lar Systemmonitor endre NVIDIA-strømgrensen uten passord.
-# Kjøres som root (Systemmonitor starter det via pkexec, som spør om passord).
+# Engangsoppsett: lar Kontrollsenter endre NVIDIA-strømgrensen uten passord.
+# Kjøres som root (Kontrollsenter starter det via pkexec, som spør om passord).
 #  - kopierer hjelpeskriptet til /usr/local/bin (eid av root, ikke skrivbart for andre)
 #  - gir brukeren lov til å kjøre NETTOPP det skriptet med sudo uten passord
 set -euo pipefail

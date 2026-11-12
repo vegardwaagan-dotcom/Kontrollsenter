@@ -1,4 +1,4 @@
-"""CPU-skjerm-fanen i Systemmonitor – styrer LCD-skjermen på Thermalright-kjølere
+"""CPU-skjerm-fanen i Kontrollsenter – styrer LCD-skjermen på Thermalright-kjølere
 (her GrandVision 360 AIO, 480×480) via trcc-linux som følger med Bazzite.
 
 * All styring går gjennom `trcc`-tjenesten (daemon), som eier USB-tilkoblingen og
@@ -552,7 +552,7 @@ class LcdPage(Gtk.Box):
         box.append(c)
 
         c2, i2 = card("Nattmodus (ekstra)", "Demper skjermen automatisk om natten. "
-                                            "Virker mens Systemmonitor er åpen.")
+                                            "Virker mens Kontrollsenter er åpen.")
         self.night_sw = Gtk.Switch(active=self.state.get("night", False))
         self.night_sw.connect("notify::active", lambda s, _p: self._save_extra())
         i2.append(row("Nattmodus på", self.night_sw))

@@ -1,6 +1,6 @@
 """Finner eksterne verktøy uansett hvordan de er installert (systempakke, pipx eller egen venv).
 
-Systemmonitor bruker TRCC (trcc-linux) for CPU-skjermen. På Bazzite følger den med i
+Kontrollsenter bruker TRCC (trcc-linux) for CPU-skjermen. På Bazzite følger den med i
 /usr/bin, på andre distroer installeres den med pipx av installer.sh.
 """
 import functools

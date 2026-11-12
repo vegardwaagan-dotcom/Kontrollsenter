@@ -14,6 +14,10 @@ SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
     ("0.1", "Første versjon", [
+        ("Nytt navn og språk", [
+            "Programmet heter nå Kontrollsenter (Control Center på engelsk)",
+            "Språket følger Linux automatisk (Auto) – du kan fortsatt velge NO eller EN selv",
+        ]),
         ("Nye faner", [
             "Bluetooth – søk, par og koble til hodetelefoner, kontrollere og høyttalere, og se batteriet deres",
             "Spill – startvalg per Steam-spill med avkrysning: MangoHud, GameMode, Wayland, DLSS, FSR, HDR og "
@@ -26,8 +30,8 @@ NEWS = [
             "Verktøy – diskhelse (SMART): slitasje, reservekapasitet, feil og temperatur – uten passord",
             "Verktøy – gjenoppretting: gå tilbake til forrige systemversjon (Bazzite) eller ta øyeblikksbilder "
             "(snapper/Timeshift)",
-            "Verktøy – sikkerhetskopi av alle Systemmonitor-innstillinger til én fil, og import på en ny PC",
-            "Verktøy – oppdater Systemmonitor fra Git, og lag installasjonspakke med ett klikk",
+            "Verktøy – sikkerhetskopi av alle Kontrollsenter-innstillinger til én fil, og import på en ny PC",
+            "Verktøy – oppdater Kontrollsenter fra Git, og lag installasjonspakke med ett klikk",
         ]),
         ("Bakgrunn og varsler", [
             "Ikon i systemstatusfeltet med temperaturer, strømmodus, overlay og avslutt",

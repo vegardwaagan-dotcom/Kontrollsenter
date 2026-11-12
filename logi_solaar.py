@@ -3,7 +3,7 @@
   python3 - get <enhetsnavn>                      -> JSON med innstillinger
   python3 - set <enhetsnavn> <innstilling> <verdi> -> skriver én innstilling
 
-Brukes av Systemmonitor for Logitech-enheter som ratbagd ikke støtter
+Brukes av Kontrollsenter for Logitech-enheter som ratbagd ikke støtter
 (f.eks. trådløse PRO X2 SUPERSTRIKE).
 """
 import json

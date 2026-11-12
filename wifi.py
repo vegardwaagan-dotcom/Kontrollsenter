@@ -1,4 +1,4 @@
-"""Wi-Fi-fanen i Systemmonitor – koble til trådløse nettverk (NetworkManager).
+"""Wi-Fi-fanen i Kontrollsenter – koble til trådløse nettverk (NetworkManager).
 
 Passord sendes rett til NetworkManager over D-Bus – aldri på kommandolinjen (som andre
 prosesser kan lese) eller i en fil. NetworkManager lagrer det i en fil som bare root kan lese.

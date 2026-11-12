@@ -108,7 +108,7 @@ class Background:
             try:
                 import tray
                 import i18n
-                self.tray = tray.Tray("Systemmonitor", "utilities-system-monitor", self.toggle,
+                self.tray = tray.Tray("Kontrollsenter", "utilities-system-monitor", self.toggle,
                                       self._menu(), tr=i18n.tr)
             except Exception:  # noqa: BLE001 – uten statusfelt virker resten som før
                 self.tray = None
@@ -133,7 +133,7 @@ class Background:
             self.win.set_visible(False)
             if not self.sent.get("_bg_info"):
                 self.sent["_bg_info"] = time.time()
-                self.notify("bg", "Systemmonitor kjører i bakgrunnen",
+                self.notify("bg", "Kontrollsenter kjører i bakgrunnen",
                             "Overlay, vifter og varsler fortsetter. Åpne igjen fra ikonet i statusfeltet, "
                             "eller velg Avslutt der.", force=True)
             return True
@@ -151,7 +151,7 @@ class Background:
         from cards import MODES
         cur = self.win.power.proxy.get_cached_property("ActiveProfile") if self.win.power.proxy else None
         cur = cur.unpack() if cur else None
-        items = [(1, "Vis / skjul Systemmonitor", self.toggle), (2, "-", None)]
+        items = [(1, "Vis / skjul Kontrollsenter", self.toggle), (2, "-", None)]
         for i, (key, name, _icon, _d) in enumerate(MODES):
             items.append((10 + i, name, lambda k=key: self._set_mode(k), key == cur))
         items += [(3, "-", None),

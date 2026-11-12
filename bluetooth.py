@@ -1,4 +1,4 @@
-"""Bluetooth-fanen i Systemmonitor – pare og koble til hodetelefoner, kontrollere, høyttalere m.m.
+"""Bluetooth-fanen i Kontrollsenter – pare og koble til hodetelefoner, kontrollere, høyttalere m.m.
 
 Bruker BlueZ direkte over D-Bus. Hvis en enhet krever PIN-kode, viser KDE/GNOME sin egen
 Bluetooth-agent spørsmålet (bluedevil / gnome-bluetooth).

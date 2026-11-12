@@ -1,4 +1,4 @@
-"""Programmer-fanen i Systemmonitor: installer faste programmer med ett klikk (Flatpak/Flathub).
+"""Programmer-fanen i Kontrollsenter: installer faste programmer med ett klikk (Flatpak/Flathub).
 
 * «Mine programmer»: din egen liste (fylles første gang med det som er installert nå).
   «Installer alle mine» setter opp en ny PC med alt du bruker.

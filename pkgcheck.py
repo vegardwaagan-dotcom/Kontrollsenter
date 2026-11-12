@@ -1,4 +1,4 @@
-"""Pakkehåndteringssjekk for Systemmonitor (brukes av syscheck.py).
+"""Pakkehåndteringssjekk for Kontrollsenter (brukes av syscheck.py).
 
 Finner og retter vanlige oppdaterings- og pakkefeil på:
   Arch / CachyOS / EndeavourOS / Manjaro (pacman), Fedora (dnf), Debian / Ubuntu / Mint (apt),

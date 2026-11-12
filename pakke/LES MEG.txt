@@ -1,5 +1,5 @@
-SYSTEMMONITOR
-=============
+KONTROLLSENTER  (Control Center på engelsk)
+==============================================
 
 Et grafisk program for Linux (laget for Bazzite) med disse fanene:
 
@@ -12,14 +12,14 @@ Et grafisk program for Linux (laget for Bazzite) med disse fanene:
 
 INSTALLERE PÅ EN ANNEN PC
 -------------------------
-1. Kopier hele mappen «Systemmonitor» (eller filen Systemmonitor.tar.gz) til den andre PC-en.
+1. Kopier hele mappen «Kontrollsenter» (eller filen Kontrollsenter.tar.gz) til den andre PC-en.
    Pakk ut tar.gz-filen ved å høyreklikke på den og velge «Pakk ut her».
 2. Åpne en terminal i mappen (høyreklikk i mappen → «Åpne terminal her») og skriv:
 
        bash installer.sh            (spør før hvert steg – Enter = ja)
        bash installer.sh --alle     (installerer alt uten å spørre)
 
-3. Logg ut og inn igjen (eller start PC-en på nytt), og start «Systemmonitor».
+3. Logg ut og inn igjen (eller start PC-en på nytt), og start «Kontrollsenter».
 
 Installasjonen setter opp ALT programmet trenger, med én sudo-passordforespørsel:
   - OpenRGB og Solaar (fra Flathub)

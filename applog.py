@@ -1,4 +1,4 @@
-"""Feillogg for Systemmonitor: ~/.cache/systemmonitor/logg.txt (roteres, maks ~2 MB totalt).
+"""Feillogg for Kontrollsenter: ~/.cache/systemmonitor/logg.txt (roteres, maks ~2 MB totalt).
 
 Logger
   * oppstart (versjon, distro, kjerne)
@@ -60,7 +60,7 @@ def setup():
                 distro = ln.split("=", 1)[1].strip().strip('"')
     except OSError:
         pass
-    log.info("Systemmonitor %s startet · %s · kjerne %s · Python %s", version(), distro,
+    log.info("Kontrollsenter %s startet · %s · kjerne %s · Python %s", version(), distro,
              platform.release(), platform.python_version())
 
     # Alle feilmeldinger som vises i grensesnittet havner også i loggen

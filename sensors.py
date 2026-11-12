@@ -1,4 +1,4 @@
-"""Systemmonitor – lesing av maskinvaredata (CPU, minne, disk, nett, GPU, temperatur, batteri)."""
+"""Kontrollsenter – lesing av maskinvaredata (CPU, minne, disk, nett, GPU, temperatur, batteri)."""
 import glob
 import json
 import os

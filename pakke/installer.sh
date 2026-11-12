@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installerer Systemmonitor OG alt den bruker:
+# Installerer Kontrollsenter OG alt den bruker:
 #   OpenRGB (RGB), Solaar (trådløse Logitech), TRCC / trcc-linux (CPU-skjerm),
 #   ratbagd (Logitech mus/tastatur), MangoHud (spill-overlay), udev-regler og i2c-tilgang.
 #
@@ -48,7 +48,7 @@ case $PM in
   *)      P_GTK=""; P_RATBAG=""; P_PIPX=""; P_EXTRA="" ;;
 esac
 . /etc/os-release 2>/dev/null || true
-echo "Systemmonitor – installasjon på ${PRETTY_NAME:-ukjent distro} (pakkehåndterer: $PM)"
+echo "Kontrollsenter – installasjon på ${PRETTY_NAME:-ukjent distro} (pakkehåndterer: $PM)"
 
 gtk_ok() { python3 -c "import gi; gi.require_version('Gtk','4.0'); gi.require_version('Adw','1'); from gi.repository import Gtk, Adw" 2>/dev/null; }
 TRCC_BIN=""
@@ -148,7 +148,7 @@ fi
 # --------------------------------------------------------------------------
 # 4. Selve programmet
 # --------------------------------------------------------------------------
-blå "4/5 Systemmonitor"
+blå "4/5 Kontrollsenter"
 if ! gtk_ok; then
     rød "✗ Python GTK4/libadwaita mangler fortsatt – programmet kan ikke starte. Pakker: $P_GTK"
     exit 1
@@ -159,8 +159,14 @@ chmod +x "$DEST/systemmonitor.py" "$DEST"/*.sh "$DEST/systemmonitor-fan" "$DEST/
 cat > "$APPS/$ID.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Systemmonitor
-Comment=CPU, GPU, vifter, strømmodus, RGB, Logitech og CPU-skjerm
+Name=Control Center
+Name[nb]=Kontrollsenter
+Name[nn]=Kontrollsenter
+Name[no]=Kontrollsenter
+Comment=CPU, GPU, fans, power mode, RGB, Logitech, games and system check
+Comment[nb]=CPU, GPU, vifter, strømmodus, RGB, Logitech, spill og systemsjekk
+Comment[nn]=CPU, GPU, vifter, straummodus, RGB, Logitech, spel og systemsjekk
+Comment[no]=CPU, GPU, vifter, strømmodus, RGB, Logitech, spill og systemsjekk
 Exec=python3 $DEST/systemmonitor.py
 Icon=utilities-system-monitor
 Terminal=false
@@ -169,11 +175,12 @@ StartupWMClass=$ID
 EOF
 update-desktop-database "$APPS" 2>/dev/null || true
 if [ -d "$DESKTOP_DIR" ]; then
-    cp "$APPS/$ID.desktop" "$DESKTOP_DIR/Systemmonitor.desktop"
-    chmod +x "$DESKTOP_DIR/Systemmonitor.desktop"
-    gio set "$DESKTOP_DIR/Systemmonitor.desktop" metadata::trusted true 2>/dev/null || true
+    rm -f "$DESKTOP_DIR/Systemmonitor.desktop"          # gammelt navn
+    cp "$APPS/$ID.desktop" "$DESKTOP_DIR/Kontrollsenter.desktop"
+    chmod +x "$DESKTOP_DIR/Kontrollsenter.desktop"
+    gio set "$DESKTOP_DIR/Kontrollsenter.desktop" metadata::trusted true 2>/dev/null || true
 fi
-grønn "✓ Systemmonitor er installert i $DEST, med snarvei i menyen og på skrivebordet"
+grønn "✓ Kontrollsenter er installert i $DEST, med snarvei i menyen og på skrivebordet"
 
 # --------------------------------------------------------------------------
 # 5. Dine faste programmer (programmer.json, laget i Programmer-fanen)

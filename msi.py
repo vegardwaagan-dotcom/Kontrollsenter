@@ -1,4 +1,4 @@
-"""MSI-fanen i Systemmonitor – innstillinger som i MSI Center, for MSI-laptoper
+"""MSI-fanen i Kontrollsenter – innstillinger som i MSI Center, for MSI-laptoper
 (laget for Vector GP68HX 13VH) via kjernedriveren msi-ec.
 
 Vises bare på MSI-maskiner. Endringer skrives av hjelpeprogrammet systemmonitor-msi
@@ -209,7 +209,7 @@ class MsiPage(Gtk.ScrolledWindow):
             return
         if not os.path.exists(HELPER):
             c, i = card("Aktiver MSI-styring",
-                        "Engangsoppsett: lar Systemmonitor endre MSI-innstillingene. Du blir spurt om passord én gang.")
+                        "Engangsoppsett: lar Kontrollsenter endre MSI-innstillingene. Du blir spurt om passord én gang.")
             b = Gtk.Button(label="Aktiver MSI-styring", halign=Gtk.Align.START)
             b.add_css_class("suggested-action")
             b.connect("clicked", lambda *_: self._setup(driver=False))

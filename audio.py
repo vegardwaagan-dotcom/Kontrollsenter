@@ -1,4 +1,4 @@
-"""Lyd-fanen i Systemmonitor – enkel styring av all lyd (PipeWire/PulseAudio via pactl).
+"""Lyd-fanen i Kontrollsenter – enkel styring av all lyd (PipeWire/PulseAudio via pactl).
 
 * Utgang: velg høyttaler/hodetelefon/HDMI, volum, demp, testlyd
 * Inngang: velg mikrofon, volum, demp
@@ -27,7 +27,7 @@ _CHILDREN = []
 
 
 def _die_with_parent():
-    """Barneprosessen (pactl subscribe) avsluttes når Systemmonitor avsluttes."""
+    """Barneprosessen (pactl subscribe) avsluttes når Kontrollsenter avsluttes."""
     try:
         import ctypes
         import signal

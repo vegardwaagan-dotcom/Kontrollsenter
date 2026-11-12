@@ -1,4 +1,4 @@
-"""Spill-fanen i Systemmonitor.
+"""Spill-fanen i Kontrollsenter.
 
 * Steam-spill: startvalg per spill med avkrysning (MangoHud, GameMode, Wayland, DLSS, FSR, HDR, logg),
   Proton-versjon og egne argumenter. Skriver localconfig.vdf / config.vdf (Steam må være lukket),
@@ -374,7 +374,7 @@ class GamesPage(Gtk.ScrolledWindow):
 
     # --- Steam-spill ----------------------------------------------------------
     def _steam_card(self):
-        c, i = card("Steam-spill", "Kryss av for det du vil bruke i hvert spill. Systemmonitor skriver startvalgene "
+        c, i = card("Steam-spill", "Kryss av for det du vil bruke i hvert spill. Kontrollsenter skriver startvalgene "
                                    "inn i Steam for deg – du slipper å huske kommandoene.")
         self.box.append(c)
         if not STEAM:

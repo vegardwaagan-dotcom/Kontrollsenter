@@ -1,4 +1,4 @@
-"""Språkstøtte for Systemmonitor (norsk / engelsk).
+"""Språkstøtte for Kontrollsenter (norsk / engelsk).
 
 Programmet er skrevet med norsk tekst. Når engelsk er valgt, oversettes teksten idet den
 settes på etiketter, knapper, dialoger, faner, menyer og verktøytips – uten at resten av
@@ -15,31 +15,52 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gtk  # noqa: E402
+from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CFG = os.path.expanduser("~/.config/systemmonitor/language.json")
-LANGS = [("no", "NO", "Norsk"), ("en", "EN", "English")]
+LANGS = [("no", "NO", "Norsk"), ("en", "EN", "English"), ("auto", "Auto", "Følger språket i Linux")]
 
 LANG = "no"
+CHOICE = "auto"         # «auto» = følg språket i Linux
 _EXACT = {}
 _PATTERNS = []          # (regex, mal)
 MISSING = set()         # for utvikling: tekster uten oversettelse
 COLLECT = False
 
 
-def get_lang():
+def os_lang():
+    """Språket i Linux: norsk (nb/nn/no) gir norsk, alle andre språk gir engelsk."""
+    for name in GLib.get_language_names():
+        code = name.split("_")[0].split(".")[0].split("@")[0].lower()
+        if code in ("c", "posix", ""):
+            continue
+        return "no" if code in ("nb", "nn", "no") else "en"
+    return "en"
+
+
+def get_choice():
+    """Brukerens valg: «auto», «no» eller «en». (Gamle filer med «lang» regnes som «auto».)"""
     try:
         with open(CFG) as f:
-            return json.load(f).get("lang", "no")
+            c = json.load(f).get("choice", "auto")
+            return c if c in ("auto", "no", "en") else "auto"
     except (OSError, ValueError):
-        return "no"
+        return "auto"
 
 
-def set_lang(lang):
+def resolve(choice):
+    return os_lang() if choice == "auto" else choice
+
+
+def get_lang():
+    return resolve(get_choice())
+
+
+def set_lang(choice):
     os.makedirs(os.path.dirname(CFG), exist_ok=True)
     with open(CFG, "w") as f:
-        json.dump({"lang": lang}, f)
+        json.dump({"choice": choice}, f)
 
 
 def _load(lang):
@@ -141,10 +162,11 @@ _INSTALLED = [False]
 
 
 def install():
-    global LANG
+    global LANG, CHOICE
     if _INSTALLED[0]:            # krokene skal bare legges på én gang
         return
     _INSTALLED[0] = True
+    CHOICE = get_choice()
     LANG = get_lang()
     _load(LANG)
     if LANG == "no":

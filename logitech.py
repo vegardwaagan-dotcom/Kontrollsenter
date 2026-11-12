@@ -1,4 +1,4 @@
-"""Logitech-fanen i Systemmonitor – innstillinger for Logitech-mus og -tastatur (som G HUB).
+"""Logitech-fanen i Kontrollsenter – innstillinger for Logitech-mus og -tastatur (som G HUB).
 
 * Enheter som libratbag støtter (G502, G815 …) styres via ratbagd på D-Bus.
   Endringer lagres i enhetens innebygde minne med «Lagre til …».

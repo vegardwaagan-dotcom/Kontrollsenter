@@ -1,4 +1,4 @@
-"""RGB-fanen i Systemmonitor – styrer all RGB via OpenRGB (SDK-server på localhost).
+"""RGB-fanen i Kontrollsenter – styrer all RGB via OpenRGB (SDK-server på localhost).
 
 All kommunikasjon med OpenRGB skjer i én bakgrunnstråd, så vinduet aldri fryser.
 """
@@ -716,7 +716,7 @@ class RgbPage(Gtk.ScrolledWindow):
         bar.append(self.status)
         auto_lbl = Gtk.Label(label="Bruk ved oppstart")
         auto_lbl.set_tooltip_text("Setter lysene dine automatisk når du logger inn, "
-                                  "også uten at Systemmonitor er åpen.")
+                                  "også uten at Kontrollsenter er åpen.")
         bar.append(auto_lbl)
         self.auto_sw = Gtk.Switch(valign=Gtk.Align.CENTER,
                                   active=self.state.get("autostart", True))

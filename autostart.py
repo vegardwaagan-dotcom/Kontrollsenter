@@ -1,6 +1,6 @@
 """Automatisk start ved innlogging – minimert – for faste programmer.
 
-Hvert program får én oppstartsfil laget av Systemmonitor. Andre oppstartsfiler for samme
+Hvert program får én oppstartsfil laget av Kontrollsenter. Andre oppstartsfiler for samme
 program (laget av programmet selv eller tidligere) skrus av med Hidden=true (en kopi tas
 vare på som .bak), slik at ingenting starter to ganger eller med vindu.
 """
@@ -74,9 +74,9 @@ def apps():
     bnet = _battlenet_exec()
     me = f"python3 {os.path.join(os.path.dirname(os.path.abspath(__file__)), 'systemmonitor.py')} --hidden"
     return [
-        ("systemmonitor", "Systemmonitor", "utilities-system-monitor", me,
+        ("systemmonitor", "Kontrollsenter", "utilities-system-monitor", me,
          "Starter skjult med ikon i systemstatusfeltet, så overlay, vifter og varsler virker fra start.",
-         r"systemmonitor\.py", r"^Systemmonitor$"),
+         r"systemmonitor\.py", r"^Kontrollsenter$"),
         ("steam", "Steam", "steam", steam, "Starter i systemstatusfeltet (-silent).", r"steam", r"steam"),
         ("discord", "Discord", "com.discordapp.Discord", discord, "Starter minimert i systemstatusfeltet.",
          r"discord", r"discord"),
@@ -156,7 +156,7 @@ def enable(app):
             _hide(e["file"])
     with open(own, "w") as f:
         f.write("[Desktop Entry]\nType=Application\n"
-                f"Name={name} (automatisk start fra Systemmonitor)\n"
+                f"Name={name} (automatisk start fra Kontrollsenter)\n"
                 f"Exec={cmd}\nIcon={icon}\nTerminal=false\nX-GNOME-Autostart-enabled=true\n"
                 "X-KDE-autostart-after=panel\n")
 

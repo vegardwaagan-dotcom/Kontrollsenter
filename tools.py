@@ -1,11 +1,11 @@
-"""Verktøy-fanen i Systemmonitor.
+"""Verktøy-fanen i Kontrollsenter.
 
 * Systeminfo – med «Kopier til forum» (perfekt når du ber om hjelp på Reddit/forum)
 * Rydd opp – papirkurv, Steam shader-cache, Proton-prefikser, Flatpak-rester, logger, pakkecache
 * Diskhelse – SMART via UDisks2 (uten root): slitasje, reservekapasitet, feil, temperatur
 * Gjenoppretting – rpm-ostree tilbakerulling eller snapper/Timeshift-øyeblikksbilder
-* Sikkerhetskopi av alle Systemmonitor-innstillinger (eksport/import)
-* Systemmonitor – versjon, oppdatering fra Git, lag installasjonspakke
+* Sikkerhetskopi av alle Kontrollsenter-innstillinger (eksport/import)
+* Kontrollsenter – versjon, oppdatering fra Git, lag installasjonspakke
 * Feillogg – vis, kopier, åpne mappe
 """
 import glob
@@ -164,7 +164,7 @@ def system_info():
 
 
 def info_text(rows):
-    return "**Systeminfo** (fra Systemmonitor)\n```\n" + "\n".join(f"{k:15} {v}" for k, v in rows) + "\n```"
+    return "**Systeminfo** (fra Kontrollsenter)\n```\n" + "\n".join(f"{k:15} {v}" for k, v in rows) + "\n```"
 
 
 # --------------------------------------------------------------------------
@@ -337,7 +337,7 @@ def disk_health():
 # --------------------------------------------------------------------------
 # 4. Gjenoppretting
 # --------------------------------------------------------------------------
-def snapshot_cmd(desc="Før oppdatering (Systemmonitor)"):
+def snapshot_cmd(desc="Før oppdatering (Kontrollsenter)"):
     """Kommando som tar et øyeblikksbilde før en oppdatering, eller None."""
     if OSTREE:
         return None
@@ -399,7 +399,7 @@ def import_settings(src):
 
 
 # --------------------------------------------------------------------------
-# 6. Systemmonitor: versjon, oppdatering, installasjonspakke
+# 6. Kontrollsenter: versjon, oppdatering, installasjonspakke
 # --------------------------------------------------------------------------
 UPDATE_CFG = CFG / "oppdatering.json"
 PACKAGE_FILES = ["*.py", "systemmonitor-fan", "systemmonitor-gpu-power", "systemmonitor-msi", "*.sh",
@@ -477,7 +477,7 @@ def do_update():
 
 def make_package(dest_dir):
     """Lag installasjonsmappe + .tar.gz (som den på skrivebordet)."""
-    dest = Path(dest_dir) / "Systemmonitor"
+    dest = Path(dest_dir) / "Kontrollsenter"
     prog = dest / "program"
     if prog.exists():
         shutil.rmtree(prog)
@@ -501,9 +501,9 @@ def make_package(dest_dir):
     lst = CFG / "programmer.json"
     if lst.exists():
         shutil.copy2(lst, dest / "programmer.json")
-    archive = Path(dest_dir) / "Systemmonitor.tar.gz"
+    archive = Path(dest_dir) / "Kontrollsenter.tar.gz"
     with tarfile.open(archive, "w:gz") as t:
-        t.add(dest, arcname="Systemmonitor")
+        t.add(dest, arcname="Kontrollsenter")
     return dest, archive
 
 
@@ -702,14 +702,14 @@ class ToolsPage(Gtk.ScrolledWindow):
                 i.append(dim(s))
             b = Gtk.Button(label="Ta øyeblikksbilde nå", halign=Gtk.Align.START)
             b.connect("clicked", lambda *_: self._root_action(
-                ["snapper -c root create -d 'Manuelt (Systemmonitor)' -c number"], "Øyeblikksbilde tatt ✓", i))
+                ["snapper -c root create -d 'Manuelt (Kontrollsenter)' -c number"], "Øyeblikksbilde tatt ✓", i))
             i.append(b)
             i.append(dim("Før hver systemoppdatering fra Systemsjekk tas det automatisk et øyeblikksbilde. For å gå "
                          "tilbake: velg øyeblikksbildet i oppstartsmenyen, eller bruk Btrfs Assistant."))
         elif info["kind"] == "timeshift":
             b = Gtk.Button(label="Ta øyeblikksbilde nå (Timeshift)", halign=Gtk.Align.START)
             b.connect("clicked", lambda *_: self._root_action(
-                ["timeshift --create --scripted --comments 'Manuelt (Systemmonitor)'"], "Øyeblikksbilde tatt ✓", i))
+                ["timeshift --create --scripted --comments 'Manuelt (Kontrollsenter)'"], "Øyeblikksbilde tatt ✓", i))
             i.append(b)
             i.append(dim("Før hver systemoppdatering fra Systemsjekk tas det automatisk et øyeblikksbilde. "
                          "Gjenopprett med Timeshift-programmet."))
@@ -771,18 +771,18 @@ class ToolsPage(Gtk.ScrolledWindow):
                 return
             try:
                 n = import_settings(f.get_path())
-                self.backup_status.set_label(f"Importerte {n} filer ✓ – start Systemmonitor på nytt")
+                self.backup_status.set_label(f"Importerte {n} filer ✓ – start Kontrollsenter på nytt")
             except (OSError, tarfile.TarError) as e:
                 self.backup_status.set_label(f"Feil: {e}")
         dlg.open(self.get_root(), None, done)
 
-    # --- Systemmonitor --------------------------------------------------------
+    # --- Kontrollsenter --------------------------------------------------------
     # --- bakgrunn og varsler ------------------------------------------------------
     def _notify_card(self):
         import background
         cfg = background.load()
         c, i = card("Bakgrunn og varsler",
-                    "Systemmonitor kan fortsette i bakgrunnen når vinduet lukkes, og si fra når noe er galt.")
+                    "Kontrollsenter kan fortsette i bakgrunnen når vinduet lukkes, og si fra når noe er galt.")
         rows = [("background", "Kjør i bakgrunnen når vinduet lukkes",
                  "Overlay, vifter og varsler fortsetter. Avslutt fra ikonet i statusfeltet."),
                 ("tray", "Ikon i systemstatusfeltet", "Viser temperaturer, strømmodus, overlay og Avslutt."),
@@ -809,7 +809,7 @@ class ToolsPage(Gtk.ScrolledWindow):
             lim.append(sp)
         i.append(Gtk.Label(label="Varsle ved:", xalign=0))
         i.append(lim)
-        i.append(dim("Start Systemmonitor skjult ved innlogging: Programmer → Oppstart → Systemmonitor."))
+        i.append(dim("Start Kontrollsenter skjult ved innlogging: Programmer → Oppstart → Kontrollsenter."))
         self.box.append(c)
 
     def _notify_set(self, sw, _p, key):
@@ -826,7 +826,7 @@ class ToolsPage(Gtk.ScrolledWindow):
             background.save(cfg)
 
     def _app_card(self):
-        c, i = card("Systemmonitor", f"Versjon {version()} · {APP_DIR}")
+        c, i = card("Kontrollsenter", f"Versjon {version()} · {APP_DIR}")
         row = Gtk.Box(spacing=6)
         self.url = Gtk.Entry(placeholder_text="Git-adresse for oppdateringer (f.eks. https://github.com/navn/systemmonitor)",
                              hexpand=True, text=update_source())
@@ -844,7 +844,7 @@ class ToolsPage(Gtk.ScrolledWindow):
         pk = Gtk.Button(label="Lag installasjonspakke på skrivebordet", halign=Gtk.Align.START)
         pk.connect("clicked", self._package)
         i.append(pk)
-        self.pkg_status = dim("Lager mappen «Systemmonitor» og «Systemmonitor.tar.gz» med alt som trengs for å "
+        self.pkg_status = dim("Lager mappen «Kontrollsenter» og «Kontrollsenter.tar.gz» med alt som trengs for å "
                               "installere på en annen PC – inkludert programlisten din.")
         i.append(self.pkg_status)
         self.box.append(c)
@@ -865,7 +865,7 @@ class ToolsPage(Gtk.ScrolledWindow):
 
         def done(res):
             ok, msg = res
-            self.upd_status.set_label("Oppdatert ✓ – start Systemmonitor på nytt" if ok else f"Feil: {msg}")
+            self.upd_status.set_label("Oppdatert ✓ – start Kontrollsenter på nytt" if ok else f"Feil: {msg}")
             self.upd_btn.set_visible(not ok)
             return False
         self._bg(do_update, done)

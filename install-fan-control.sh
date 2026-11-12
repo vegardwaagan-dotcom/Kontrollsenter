@@ -1,5 +1,5 @@
 #!/bin/bash
-# Engangsoppsett for viftestyring i Systemmonitor (kjøres som root via pkexec).
+# Engangsoppsett for viftestyring i Kontrollsenter (kjøres som root via pkexec).
 #  - laster nct6775-driveren (hovedkortvifter) nå og ved hver oppstart
 #  - installerer hjelpeskriptet /usr/local/bin/systemmonitor-fan (eid av root)
 #  - gir brukeren lov til å kjøre NETTOPP det skriptet med sudo uten passord

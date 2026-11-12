@@ -1,14 +1,14 @@
 #!/bin/bash
-# Fjerner Systemmonitor for denne brukeren.
+# Fjerner Kontrollsenter for denne brukeren.
 # Kjør:  bash avinstaller.sh
 set -uo pipefail
 ID="no.waagan.Systemmonitor"
 DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
 spør() { read -r -p "$1 [j/N] " s; [[ "$s" =~ ^[jJyY] ]]; }
 
-echo "=== Avinstaller Systemmonitor ==="
+echo "=== Avinstaller Kontrollsenter ==="
 rm -rf "$HOME/.local/share/systemmonitor"
-rm -f "$HOME/.local/share/applications/$ID.desktop" "$DESKTOP_DIR/Systemmonitor.desktop"
+rm -f "$HOME/.local/share/applications/$ID.desktop" "$DESKTOP_DIR/Systemmonitor.desktop" "$DESKTOP_DIR/Kontrollsenter.desktop"
 # oppstartsfiler programmet kan ha laget
 rm -f "$HOME/.config/autostart/systemmonitor-openrgb.desktop" \
       "$HOME/.config/autostart/systemmonitor-trcc.desktop" \

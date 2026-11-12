@@ -1,4 +1,4 @@
-"""Driver- og fastvaresjekk for Systemmonitor (brukes av syscheck.py).
+"""Driver- og fastvaresjekk for Kontrollsenter (brukes av syscheck.py).
 
 Sjekker og oppdaterer det som er «drivere» på Linux, på alle vanlige distroer:
   * kjerne, Mesa (AMD/Intel-grafikk), NVIDIA, linux-firmware og CPU-mikrokode via

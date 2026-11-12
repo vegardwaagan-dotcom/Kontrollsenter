@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Systemmonitor – et enkelt grafisk overvåkingsprogram for Linux (GTK4/libadwaita).
+"""Kontrollsenter – et enkelt grafisk overvåkingsprogram for Linux (GTK4/libadwaita).
 
 Hovedvinduet og fanene. Maskinvaredata ligger i sensors.py, kortene i Oversikt i cards.py.
 """
@@ -36,8 +36,8 @@ MANGOHUD_CONF = os.path.expanduser("~/.config/MangoHud/MangoHud.conf")
 MANGOHUD_ENV = os.path.expanduser("~/.config/environment.d/90-systemmonitor-mangohud.conf")
 
 OVERLAY_SETTINGS = """\
-# Denne filen styres av Systemmonitor (~/Programmer/systemmonitor).
-# Overlayet vises mens Systemmonitor kjører, og skjules når den lukkes.
+# Denne filen styres av Kontrollsenter (~/Programmer/systemmonitor).
+# Overlayet vises mens Kontrollsenter kjører, og skjules når den lukkes.
 # Høyre Shift + F12 slår overlayet av/på manuelt i spillet.
 toggle_hud=Shift_R+F12
 position=top-left
@@ -98,15 +98,15 @@ def ensure_overlay_env():
         return False
     os.makedirs(os.path.dirname(MANGOHUD_ENV), exist_ok=True)
     with open(MANGOHUD_ENV, "w") as f:
-        f.write("# Lagt til av Systemmonitor: laster MangoHud i Vulkan-spill.\n"
-                "# Overlayet er skjult unntatt når Systemmonitor kjører.\n"
+        f.write("# Lagt til av Kontrollsenter: laster MangoHud i Vulkan-spill.\n"
+                "# Overlayet er skjult unntatt når Kontrollsenter kjører.\n"
                 "MANGOHUD=1\n")
     return True
 
 
 class MonitorWindow(Adw.ApplicationWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="Systemmonitor")
+        super().__init__(application=app, title="Kontrollsenter")
         geo = _monitor_geometry()
         if geo and geo.height >= 900:
             h = int(geo.height * 0.88)
@@ -169,8 +169,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         lang_box.add_css_class("linked")
         lang_box.set_tooltip_text("Språk / Language")
         first = None
-        for code, short, _full in i18n.LANGS:
-            b = Gtk.ToggleButton(label=short, active=(code == i18n.LANG))
+        for code, short, full in i18n.LANGS:
+            b = Gtk.ToggleButton(label=short, active=(code == i18n.CHOICE), tooltip_text=full)
             if first:
                 b.set_group(first)
             first = first or b
@@ -339,7 +339,7 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.msi_holder = Gtk.Box()
             stack.add_titled_with_icon(self.msi_holder, "msi", "MSI", "computer-laptop-symbolic")
         stack.connect("notify::visible-child-name", self._on_tab)
-        header.set_title_widget(Adw.WindowTitle(title="Systemmonitor"))
+        header.set_title_widget(Adw.WindowTitle(title="Kontrollsenter"))
         switcher = Adw.ViewSwitcher(stack=stack, policy=Adw.ViewSwitcherPolicy.WIDE)
         self.tab_row.append(switcher)
         toolbar.set_content(stack)
@@ -386,9 +386,12 @@ class MonitorWindow(Adw.ApplicationWindow):
             g.set_content_height(round(80 * f))
 
     def _on_lang(self, btn, code):
-        if not btn.get_active() or code == i18n.LANG:
+        if not btn.get_active() or code == i18n.CHOICE:
             return
         i18n.set_lang(code)
+        i18n.CHOICE = code
+        if i18n.resolve(code) == i18n.LANG:       # samme språk som nå – bare lagre valget
+            return
         self.reset_lbl.set_label(i18n.tr("Programmet starter på nytt med nytt språk …"))
 
         def restart():

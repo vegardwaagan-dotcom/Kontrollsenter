@@ -1,4 +1,4 @@
-"""Systemsjekk for Systemmonitor: finner vanlige feil og retter dem automatisk.
+"""Systemsjekk for Kontrollsenter: finner vanlige feil og retter dem automatisk.
 
 Hver sjekk returnerer en liste med Result. En Result kan ha en fix() som retter
 feilen. Rettinger er alltid begrenset til kjente, trygge handlinger, og brukeren

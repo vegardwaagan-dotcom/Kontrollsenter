@@ -1,4 +1,4 @@
-"""Systemmonitor – kortene i Oversikt-fanen (grafer, strømmodus, vifter, diskplass)."""
+"""Kontrollsenter – kortene i Oversikt-fanen (grafer, strømmodus, vifter, diskplass)."""
 import glob
 import json
 import os
@@ -235,7 +235,7 @@ class PowerCard(Gtk.Box):
         gpu_row.append(self.gpu_lbl)
         self.setup_btn = Gtk.Button(label="Aktiver GPU-styring", valign=Gtk.Align.CENTER)
         self.setup_btn.set_tooltip_text(
-            "Engangsoppsett: lar Systemmonitor endre strømgrensen på skjermkortet.\n"
+            "Engangsoppsett: lar Kontrollsenter endre strømgrensen på skjermkortet.\n"
             "Du blir spurt om passordet ditt én gang."
         )
         self.setup_btn.connect("clicked", self._on_setup)
