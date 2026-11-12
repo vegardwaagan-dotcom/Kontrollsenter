@@ -18,6 +18,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
+import welcome  # noqa: E402,F401  – må sjekke «første gang» før noe lager konfig-mappen
 import i18n  # noqa: E402
 import applog  # noqa: E402
 
@@ -32,6 +33,7 @@ from cards import _monitor_geometry  # noqa: E402
 # --------------------------------------------------------------------------
 # Spill-overlay (MangoHud)
 # --------------------------------------------------------------------------
+APP_ICON = "no.waagan.Systemmonitor"
 MAX_WIDTH = 1280          # innholdet strekkes ikke bredere enn dette på store skjermer
 MANGOHUD_CONF = os.path.expanduser("~/.config/MangoHud/MangoHud.conf")
 MANGOHUD_ENV = os.path.expanduser("~/.config/environment.d/90-systemmonitor-mangohud.conf")
@@ -126,8 +128,10 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.set_default_size(1000, 760)
             self.maximize()
         self.add_css_class("sysmon")
-        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(
-            os.path.join(APP_DIR, "icons", "symbolic"))          # enhetlige ensfargede ikoner
+        theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+        theme.add_search_path(os.path.join(APP_DIR, "icons", "symbolic"))   # enhetlige ensfargede ikoner
+        theme.add_search_path(os.path.join(APP_DIR, "icons"))               # programikonet
+        Gtk.Window.set_default_icon_name(APP_ICON)
         self._font_css = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), self._font_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
@@ -167,7 +171,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         menu = Gio.Menu()
         sec = Gio.Menu()
         sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
+        sec.append(i18n.tr("Mini-vindu"), "win.mini")
+        menu.append_section(None, sec)
+        sec = Gio.Menu()
         sec.append(i18n.tr("Hva er nytt?"), "win.whatsnew")
+        sec.append(i18n.tr("Velkomstveiviser"), "win.welcome")
         menu.append_section(None, sec)
         lang = Gio.Menu()
         for code, _short, full in i18n.LANGS:
@@ -225,8 +233,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.c_mem = Card("Minne (RAM)", [GREEN])
         self.c_gpu = Card("GPU", [ORANGE]) if self.nvidia.available else None
         self.c_amd = [Card("AMD GPU", [RED]) for _ in self.amd]
-        self.c_disk = Card("Disk", [PURPLE, TEAL], fixed_max=None, legend=["Les", "Skriv"])
-        self.c_net = Card("Nettverk", [GREEN, BLUE], fixed_max=None, legend=["Ned", "Opp"])
+        self.c_disk = Card("Disk", [PURPLE, TEAL], fixed_max=None, legend=["Les", "Skriv"], fmt=fmt_rate)
+        self.c_net = Card("Nettverk", [GREEN, BLUE], fixed_max=None, legend=["Ned", "Opp"], fmt=fmt_rate)
         self.c_temp = Card("Temperaturer")
 
         # Per-kjerne-stolper i CPU-kortet
@@ -275,10 +283,43 @@ class MonitorWindow(Adw.ApplicationWindow):
             "• Spill-overlay slås på\n"
             "• Målt toppfart for strømmodusene nullstilles",
             self._reset_overview))
+        # Nøkkeltall øverst: CPU, GPU, strøm og strømmodus
+        import power as power_mod
+        self.meter = power_mod.PowerMeter()
+        self._power = {"cpu": None, "gpu": None, "measured": None, "total": None}
+        self._cpu_load = 0.0
+        tiles = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
+                            max_children_per_line=4, min_children_per_line=2, column_spacing=12, row_spacing=12)
+        self.t_cpu = Tile("Prosessor", gauge=Gauge(100, 75, 88))
+        self.t_gpu = Tile("Skjermkort", gauge=Gauge(100, 75, 85)) if self.nvidia.available or self.amd else None
+        self.t_pow = Tile("Strømforbruk", icon="ks-power-symbolic")
+        self.t_mode = Tile("Strømmodus", icon="ks-overview-symbolic")
+        for t in (self.t_cpu, self.t_gpu, self.t_pow, self.t_mode):
+            if t:
+                tiles.append(t)
+                t.get_parent().set_focusable(False)
+        page.append(tiles)
         page.append(self.power)
         self.fans = FanCard(self.nvidia.available)
         page.append(self.fans)
         self.connect("close-request", lambda *_: self.fans.all_auto_now() or False)
+        # Tidsrom for grafene: 1 min, 10 min eller 1 time (hold musa over en graf for verdi og tid)
+        rng = Gtk.Box(spacing=8)
+        lbl = Gtk.Label(label="Grafer", xalign=0, hexpand=True)
+        lbl.add_css_class("heading")
+        rng.append(lbl)
+        seg = Gtk.Box()
+        seg.add_css_class("linked")
+        first = None
+        for secs, text in ((60, "1 min"), (600, "10 min"), (3600, "1 time")):
+            b = Gtk.ToggleButton(label=text, active=(secs == GRAPH_WINDOW[0]))
+            if first:
+                b.set_group(first)
+            first = first or b
+            b.connect("toggled", self._on_range, secs)
+            seg.append(b)
+        rng.append(seg)
+        page.append(rng)
         page.append(flow)
         self.diskspace = DiskSpaceCard()
         page.append(self.diskspace)
@@ -359,7 +400,15 @@ class MonitorWindow(Adw.ApplicationWindow):
                 getattr(box, f"set_margin_{side}")(6)
             box.set_margin_start(6)
             box.append(Gtk.Image(icon_name=pg.get_icon_name()))
-            box.append(Gtk.Label(label=pg.get_title(), xalign=0))
+            box.append(Gtk.Label(label=pg.get_title(), xalign=0, hexpand=True))
+            badge = Gtk.Label(xalign=1)
+            badge.add_css_class("dim-label")
+            badge.add_css_class("numeric")
+            badge.add_css_class("sidebar-badge")
+            badge.set_margin_end(6)
+            box.append(badge)
+            self._badges = getattr(self, "_badges", {})
+            self._badges[pg.get_name()] = badge
             row.set_child(box)
             row.page_name = pg.get_name()
             self.sidebar.append(row)
@@ -419,7 +468,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         UI_SCALE[0] = f
         self._font_css.load_from_string(f"window.sysmon {{ font-size: {self._base_pt * f:.1f}pt; }}")
         for g in GRAPHS:
-            g.set_content_height(round(80 * f))
+            if isinstance(g, Gauge):
+                g.set_content_width(round(92 * f))
+                g.set_content_height(round(92 * f))
+            else:
+                g.set_content_height(round(80 * f))
 
     def _set_lang(self, code):
         if code == i18n.CHOICE:
@@ -535,8 +588,63 @@ class MonitorWindow(Adw.ApplicationWindow):
         else:
             btn.remove_css_class("suggested-action")
 
+    def _on_range(self, btn, secs):
+        if btn.get_active():
+            GRAPH_WINDOW[0] = secs
+            for g in GRAPHS:
+                g.queue_draw()
+
+    def _update_tiles(self, cpu_t, nv):
+        import cards
+        self.t_cpu.gauge.set_value(cpu_t)
+        self.t_cpu.value.set_label(f"{cpu_t:.0f} °C" if cpu_t is not None else "–")
+        self.t_cpu.sub.set_label(f"{self._cpu_load:.0f} % last")
+        if self.t_gpu:
+            g_t = nv.get("temp") if nv else None
+            self.t_gpu.gauge.set_value(g_t)
+            self.t_gpu.value.set_label(f"{g_t:.0f} °C" if g_t is not None else "–")
+            self.t_gpu.sub.set_label(f"{(nv.get('util') or 0):.0f} % last" if nv else "")
+        pw = self.meter.read(nv.get("power") if nv else None)
+        self._power = pw
+        if pw["total"] is not None:
+            import power as power_mod
+            self.t_pow.value.set_label(f"{pw['total']:.0f} W")
+            day = power_mod.cost(pw["total"], 24)
+            self.t_pow.sub.set_label(f"≈ {day:.2f} kr per døgn")
+            self.t_pow.set_tooltip_text(
+                f"CPU {pw['cpu'] or 0:.0f} W · skjermkort {pw['gpu'] or 0:.0f} W · "
+                f"resten av PC-en ca. {power_mod.load()['extra_w']} W (anslått)")
+        else:
+            self.t_pow.value.set_label("–")
+        mode = self.power.active_profile()
+        self.t_mode.value.set_label(i18n.tr(cards.MODE_NAMES.get(mode, "–")))
+        icons = {"power-saver": "ks-night-symbolic", "balanced": "ks-overview-symbolic",
+                 "performance": "ks-power-symbolic"}
+        img = self.t_mode.get_first_child().get_first_child()
+        if isinstance(img, Gtk.Image) and img.get_icon_name() != icons.get(mode, "ks-overview-symbolic"):
+            img.set_from_icon_name(icons.get(mode, "ks-overview-symbolic"))
+        game = getattr(getattr(self, "bg", None), "game_name", None)
+        self.t_mode.sub.set_label(i18n.tr("Spillprofil: ") + game if game else "")
+
+    def set_badge(self, name, text):
+        """Lite tall/merke til høyre i sidemenyen (f.eks. CPU-temperatur ved Oversikt)."""
+        lbl = getattr(self, "_badges", {}).get(name)
+        if lbl is not None and lbl.get_label() != (text or ""):
+            lbl.set_label(text or "")
+
+    def _open_mini(self, *_):
+        import miniwin
+        if getattr(self, "mini", None) is None or not self.mini.get_visible():
+            self.mini = miniwin.MiniWindow(self)
+        self.mini.present()
+
+    def _open_welcome(self, *_):
+        import welcome
+        welcome.WelcomeDialog(self).present(self)
+
     def _menu_actions(self):
         for name, fn in (("syscheck", lambda *_: self._open_syscheck(None)),
+                         ("mini", self._open_mini), ("welcome", self._open_welcome),
                          ("whatsnew", lambda *_: self._open_whatsnew()),
                          ("about", lambda *_: self._open_about())):
             act = Gio.SimpleAction.new(name, None)
@@ -556,7 +664,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                     notes += f"<p>{i18n.tr(sec)}</p><ul>" + "".join(
                         f"<li>{GLib.markup_escape_text(i18n.tr(it))}</li>" for it in items) + "</ul>"
         d = Adw.AboutDialog(
-            application_name=i18n.tr("Kontrollsenter"), application_icon="utilities-system-monitor",
+            application_name=i18n.tr("Kontrollsenter"), application_icon=APP_ICON,
             version=ver, developer_name="Vegard E. Wågan",
             copyright="Copyright © Vegard E. Wågan",
             comments=i18n.tr("Overvåk og styr PC-en din: ytelse, vifter, strømmodus, RGB, spill og mer."),
@@ -619,6 +727,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         # CPU
         u = self.cpu.usage()
         total = u.get("cpu", 0)
+        self._cpu_load = total
         self.c_cpu.value.set_label(f"{total:.0f} %")
         self.c_cpu.graph.push(total)
         parts = [f"{len(self.core_bars)} tråder"]
@@ -787,6 +896,18 @@ class MonitorWindow(Adw.ApplicationWindow):
             tid = f" · {fmt_duration(b['secs'])}" if b["secs"] and b["state"] == "Discharging" else ""
             self.bat_lbl.set_label(f"{icon} {b['pct']} %{tid}")
 
+        # Nøkkeltall og sidemeny
+        try:
+            nv = self.nvidia.data if self.nvidia.available else None
+            ct = self._cpu_t
+            self._update_tiles(ct, nv)
+            self.set_badge("oversikt", f"{ct:.0f}°" if ct is not None else "")
+            if getattr(self, "mini", None) is not None and self.mini.get_visible():
+                self.mini.refresh(ct, nv, self._power)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("nøkkeltall")
+
         # Oppetid
         up = float((read("/proc/uptime", "0") or "0").split()[0])
         h, rem = divmod(int(up), 3600)
@@ -808,8 +929,12 @@ class MonitorApp(Adw.Application):
             if "--hidden" in sys.argv and win.bg.cfg["background"]:
                 return                      # startet ved innlogging: bare ikon i statusfeltet
             win.present()
+            import welcome
             import whatsnew
-            if whatsnew.should_show():
+            if welcome.should_show():                     # første gang på denne PC-en: veiviser
+                whatsnew.mark_seen()
+                GLib.timeout_add(800, lambda: win._open_welcome() or False)
+            elif whatsnew.should_show():
                 GLib.timeout_add(800, lambda: win._open_whatsnew() or False)
             return
         win.set_visible(True)

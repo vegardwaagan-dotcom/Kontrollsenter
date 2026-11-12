@@ -32,31 +32,64 @@ def _monitor_geometry(widget=None):
     return mons.get_item(0).get_geometry()
 
 
-class Graph(Gtk.DrawingArea):
-    """Enkel linjegraf med én eller flere serier."""
+GRAPH_WINDOW = [60]     # sekunder som vises i grafene (1 min / 10 min / 1 t) – velges i Oversikt
+GRAPH_KEEP = 3600       # så mye historikk hver graf husker (1 time)
 
-    def __init__(self, colors, fixed_max=100.0):
+
+def fmt_pct(v):
+    return f"{v:.0f} %"
+
+
+class Graph(Gtk.DrawingArea):
+    """Linjegraf med én eller flere serier. Hold musa over for verdi og tidspunkt."""
+
+    def __init__(self, colors, fixed_max=100.0, fmt=fmt_pct, names=None):
         super().__init__()
         self.colors = colors
         self.fixed_max = fixed_max
-        self.series = [deque([0.0] * HISTORY, maxlen=HISTORY) for _ in colors]
-        self._first = True
+        self.fmt = fmt
+        self.names = names
+        self.series = [deque(maxlen=GRAPH_KEEP) for _ in colors]
+        self.times = deque(maxlen=GRAPH_KEEP)
+        self.hover = None
         self.set_content_height(round(80 * UI_SCALE[0]))
         GRAPHS.append(self)
         self.set_hexpand(True)
         self.set_draw_func(self._draw)
+        mc = Gtk.EventControllerMotion()
+        mc.connect("motion", lambda _c, x, _y: self._set_hover(x))
+        mc.connect("leave", lambda *_: self._set_hover(None))
+        self.add_controller(mc)
+
+    def _set_hover(self, x):
+        self.hover = x
+        self.queue_draw()
 
     def push(self, *values):
         for s, v in zip(self.series, values):
-            if self._first:
-                s.extend([float(v or 0)] * HISTORY)
             s.append(float(v or 0))
-        self._first = False
-        self.queue_draw()
+        self.times.append(time.time())
+        if self.get_mapped():
+            self.queue_draw()
+
+    def _visible(self, w):
+        """Siste GRAPH_WINDOW sekunder, slått sammen til høyst én verdi per piksel (maks i hver bit)."""
+        n = min(len(self.times), GRAPH_WINDOW[0])
+        if n == 0:
+            return [], []
+        start = len(self.times) - n
+        out = []
+        buckets = max(1, min(n, int(w)))
+        per = n / buckets
+        for s in self.series:
+            vals = list(s)[start:]
+            out.append([max(vals[int(i * per):max(int((i + 1) * per), int(i * per) + 1)]) for i in range(buckets)])
+        ts = list(self.times)[start:]
+        t_out = [ts[min(int((i + 1) * per) - 1, n - 1)] for i in range(buckets)]
+        return out, t_out
 
     def _draw(self, _area, cr, w, h):
-        top = self.fixed_max or max(1.0, *(max(s) for s in self.series)) * 1.15
-        # bakgrunn + rutenett
+        data, ts = self._visible(w)
         fg = self.get_color()
         cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.06)
         cr.rectangle(0, 0, w, h)
@@ -68,21 +101,140 @@ class Graph(Gtk.DrawingArea):
             cr.move_to(0, y)
             cr.line_to(w, y)
         cr.stroke()
-
-        step = w / (HISTORY - 1)
-        for s, (r, g, b) in zip(self.series, self.colors):
-            pts = [(i * step, h - min(v / top, 1.0) * (h - 2) - 1) for i, v in enumerate(s)]
-            cr.move_to(*pts[0])
-            for p in pts[1:]:
-                cr.line_to(*p)
+        if not data or not data[0]:
+            return
+        top = self.fixed_max or max(1.0, *(max(s) for s in data)) * 1.15
+        n = len(data[0])
+        # Grafen fylles fra høyre: før historikken er full, er venstre del tom
+        span = max(GRAPH_WINDOW[0], 2)
+        filled = min(len(self.times), GRAPH_WINDOW[0])
+        x0 = w * (1 - (filled - 1) / (span - 1)) if filled > 1 else w
+        step = (w - x0) / max(n - 1, 1)
+        ys = lambda v: h - min(v / top, 1.0) * (h - 2) - 1  # noqa: E731
+        for s, (r, g, b) in zip(data, self.colors):
+            cr.move_to(x0, ys(s[0]))
+            for i, v in enumerate(s[1:], 1):
+                cr.line_to(x0 + i * step, ys(v))
             cr.set_source_rgba(r, g, b, 1)
             cr.set_line_width(2)
             cr.stroke_preserve()
             cr.line_to(w, h)
-            cr.line_to(0, h)
+            cr.line_to(x0, h)
             cr.close_path()
             cr.set_source_rgba(r, g, b, 0.18)
             cr.fill()
+        # Hold musa over: loddrett strek + verdi og tid
+        if self.hover is not None and self.hover >= x0 - 1:
+            i = max(0, min(n - 1, round((self.hover - x0) / step))) if step else n - 1
+            x = x0 + i * step
+            cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.45)
+            cr.set_line_width(1)
+            cr.move_to(round(x) + 0.5, 0)
+            cr.line_to(round(x) + 0.5, h)
+            cr.stroke()
+            ago = int(time.time() - ts[i])
+            when = "nå" if ago < 2 else (f"{ago} s siden" if ago < 60 else f"{ago // 60} min siden")
+            parts = []
+            for k, s in enumerate(data):
+                nm = f"{self.names[k]} " if self.names and k < len(self.names) else ""
+                parts.append(nm + self.fmt(s[i]))
+            import i18n
+            text = " · ".join(parts) + "  –  " + i18n.tr(when)
+            layout = self.create_pango_layout(text)
+            tw, th = layout.get_pixel_size()
+            bx = min(max(x - tw / 2 - 6, 2), w - tw - 14)
+            cr.set_source_rgba(0, 0, 0, 0.72)
+            cr.rectangle(bx, 3, tw + 12, th + 6)
+            cr.fill()
+            cr.set_source_rgba(1, 1, 1, 1)
+            cr.move_to(bx + 6, 6)
+            from gi.repository import PangoCairo
+            PangoCairo.show_layout(cr, layout)
+
+
+class Gauge(Gtk.DrawingArea):
+    """Rundt mål (f.eks. temperatur) – grønn, gul eller rød etter verdien."""
+
+    def __init__(self, maximum=100.0, warn=70, crit=85, unit="°"):
+        super().__init__()
+        self.maximum, self.warn, self.crit, self.unit = maximum, warn, crit, unit
+        self.value = None
+        self.set_content_width(round(92 * UI_SCALE[0]))
+        self.set_content_height(round(92 * UI_SCALE[0]))
+        GRAPHS.append(self)            # skaleres sammen med grafene
+        self.set_draw_func(self._draw)
+
+    def set_value(self, v):
+        if v != self.value:
+            self.value = v
+            self.queue_draw()
+
+    def _draw(self, _a, cr, w, h):
+        import math
+        size = min(w, h)
+        cx, cy, r = w / 2, h / 2, size / 2 - 7
+        lw = max(6, size * 0.09)
+        a0, a1 = math.radians(135), math.radians(405)
+        fg = self.get_color()
+        cr.set_line_cap(1)     # rund
+        cr.set_line_width(lw)
+        cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.12)
+        cr.arc(cx, cy, r, a0, a1)
+        cr.stroke()
+        v = self.value
+        if v is not None:
+            frac = max(0.0, min(1.0, v / self.maximum))
+            col = (0.20, 0.72, 0.42) if v < self.warn else (0.96, 0.66, 0.15) if v < self.crit else (0.88, 0.27, 0.29)
+            cr.set_source_rgba(*col, 1)
+            if frac > 0.005:
+                cr.arc(cx, cy, r, a0, a0 + (a1 - a0) * frac)
+                cr.stroke()
+        layout = self.create_pango_layout(f"{v:.0f}{self.unit}" if v is not None else "–")
+        from gi.repository import Pango, PangoCairo
+        fd = Pango.FontDescription.from_string(f"Sans Bold {max(9, size * 0.2):.0f}px")
+        fd.set_absolute_size(max(11, size * 0.22) * Pango.SCALE)
+        fd.set_weight(Pango.Weight.BOLD)
+        layout.set_font_description(fd)
+        tw, th = layout.get_pixel_size()
+        cr.set_source_rgba(fg.red, fg.green, fg.blue, 1)
+        cr.move_to(cx - tw / 2, cy - th / 2)
+        PangoCairo.show_layout(cr, layout)
+
+
+class Tile(Gtk.Box):
+    """Nøkkeltall øverst i Oversikt: lite ikon/mål, stor verdi og en kort undertekst."""
+
+    def __init__(self, title, gauge=None, icon=None):
+        super().__init__(spacing=14)
+        self.add_css_class("card")
+        self.add_css_class("tile")
+        for side in ("top", "bottom"):
+            getattr(self, f"set_margin_{side}")(0)
+        inner = Gtk.Box(spacing=14)
+        for side, v in (("top", 12), ("bottom", 12), ("start", 14), ("end", 14)):
+            getattr(inner, f"set_margin_{side}")(v)
+        self.append(inner)
+        self.gauge = gauge
+        if gauge:
+            inner.append(gauge)
+        elif icon:
+            img = Gtk.Image(icon_name=icon, pixel_size=40)
+            img.add_css_class("tile-icon")
+            inner.append(img)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER, spacing=2, hexpand=True)
+        t = Gtk.Label(label=title, xalign=0)
+        t.add_css_class("caption-heading")
+        t.add_css_class("dim-label")
+        col.append(t)
+        self.value = Gtk.Label(xalign=0, ellipsize=3)
+        self.value.add_css_class("title-3")
+        self.value.add_css_class("numeric")
+        col.append(self.value)
+        self.sub = Gtk.Label(xalign=0, ellipsize=3)
+        self.sub.add_css_class("caption")
+        self.sub.add_css_class("dim-label")
+        col.append(self.sub)
+        inner.append(col)
 
 
 BLUE = (0.21, 0.52, 0.89)
@@ -94,7 +246,7 @@ TEAL = (0.13, 0.66, 0.70)
 
 
 class Card(Gtk.Box):
-    def __init__(self, title, colors=None, fixed_max=100.0, legend=None):
+    def __init__(self, title, colors=None, fixed_max=100.0, legend=None, fmt=fmt_pct):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add_css_class("card")
         for side in ("top", "bottom", "start", "end"):
@@ -123,7 +275,7 @@ class Card(Gtk.Box):
 
         self.graph = None
         if colors:
-            self.graph = Graph(colors, fixed_max)
+            self.graph = Graph(colors, fixed_max, fmt=fmt, names=legend)
             inner.append(self.graph)
         if legend:
             row = Gtk.Box(spacing=12)
@@ -767,6 +919,8 @@ class FanCard(Gtk.Box):
 # --------------------------------------------------------------------------
 DISK_FS = {"btrfs", "ext4", "ext3", "xfs", "vfat", "exfat", "ntfs", "ntfs3", "fuseblk", "f2fs"}
 CSS = b"""
+.tile-icon { color: @accent_color; }
+.sidebar-badge { font-size: 0.85em; }
 levelbar.disk-ok block.filled { background-color: @accent_bg_color; }
 levelbar.disk-warn block.filled { background-color: @warning_bg_color; }
 levelbar.disk-crit block.filled { background-color: @error_bg_color; }
