@@ -7,6 +7,8 @@
 """
 import json
 import re
+import subprocess
+import threading
 import time
 import urllib.request
 
@@ -19,23 +21,43 @@ LHM_URL = "http://127.0.0.1:8085/data.json"
 # LibreHardwareMonitor
 # --------------------------------------------------------------------------
 class Lhm:
-    """Leser LHM-treet og gjør det om til en flat liste med målinger (hurtigbuffer 1 sekund)."""
-    _cache, _t, ok = [], 0.0, False
+    """Leser LHM-treet i en bakgrunnstråd (hvert sekund) – vinduet venter aldri på LHM.
+    Svarer ikke LHM, spørres det hvert 5. sekund, og etter 20 sek prøves det å starte LHM-oppgaven."""
+    _cache, ok = [], False
+    _thread = None
+    _down_since = None
+    _tried_start = False
+    TASK = "Kontrollsenter - LibreHardwareMonitor"
 
     @classmethod
     def sensors(cls):
-        if time.monotonic() - cls._t < 0.9:
-            return cls._cache
-        cls._t = time.monotonic()
-        try:
-            with urllib.request.urlopen(LHM_URL, timeout=0.8) as r:
-                tree = json.load(r)
-            out = []
-            cls._walk(tree, [], out)
-            cls._cache, cls.ok = out, True
-        except (OSError, ValueError):
-            cls._cache, cls.ok = [], False
+        if cls._thread is None:
+            cls._thread = threading.Thread(target=cls._loop, daemon=True)
+            cls._thread.start()
         return cls._cache
+
+    @classmethod
+    def _loop(cls):
+        while True:
+            try:
+                with urllib.request.urlopen(LHM_URL, timeout=3) as r:
+                    tree = json.load(r)
+                out = []
+                cls._walk(tree, [], out)
+                cls._cache, cls.ok, cls._down_since = out, True, None
+                time.sleep(1)
+            except (OSError, ValueError):
+                cls._cache, cls.ok = [], False
+                now = time.monotonic()
+                cls._down_since = cls._down_since or now
+                if now - cls._down_since > 20 and not cls._tried_start:
+                    cls._tried_start = True
+                    try:                                   # oppgaven er laget av installasjonen
+                        subprocess.run(["schtasks", "/run", "/tn", cls.TASK], capture_output=True, timeout=15,
+                                       creationflags=0x08000000)
+                    except (OSError, subprocess.SubprocessError, ValueError):
+                        pass
+                time.sleep(5)
 
     @classmethod
     def _walk(cls, node, path, out):

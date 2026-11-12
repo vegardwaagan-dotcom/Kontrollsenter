@@ -499,8 +499,15 @@ class PowerCard(Gtk.Box):
         if IS_WIN:
             import winsupport
             now = time.monotonic()
-            if now - getattr(self, "_plan_t", 0) > 5:          # powercfg er tregt – spør høyst hvert 5. sek
+            if not hasattr(self, "_plan"):                     # første gang: les med en gang
                 self._plan_t, self._plan = now, winsupport.active_plan()
+            elif now - self._plan_t > 5 and not getattr(self, "_plan_busy", False):
+                self._plan_busy, self._plan_t = True, now      # powercfg er tregt – les i bakgrunnen
+
+                def work():
+                    self._plan = winsupport.active_plan()
+                    self._plan_busy = False
+                threading.Thread(target=work, daemon=True).start()
             return self._plan
         if not self.proxy:
             return None

@@ -3,7 +3,7 @@
 # To deler, fordi administratordelen kan kjøre som en annen Windows-konto enn deg (og ikke ser NAS-en):
 #   Vanlig del (deg):  henter Kontrollsenter fra NAS-en, installerer i din profil, snarveier, oppstart, logg
 #   Administratordel:  MSYS2 med GTK4/libadwaita/Python, LibreHardwareMonitor + PawnIO (felles for maskinen)
-param([switch]$Admin)
+param([switch]$Admin, [string]$ForUser = "")
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
@@ -86,12 +86,18 @@ if ($Admin) {
   </appSettings>
 </configuration>
 "@ | Set-Content -Encoding UTF8 "$LHMDIR\LibreHardwareMonitor.config"
-        # kjører som SYSTEM ved oppstart – virker for alle brukere, uten vindu
+        # starter ved innlogging for brukeren (med administratorrettigheter), med ikon i statusfeltet –
+        # da vises også eventuelle spørsmål fra LibreHardwareMonitor. Uten kjent bruker: SYSTEM ved oppstart.
         $task = "Kontrollsenter - LibreHardwareMonitor"
         $act  = New-ScheduledTaskAction -Execute "$LHMDIR\LibreHardwareMonitor.exe" -WorkingDirectory $LHMDIR
-        $trg  = New-ScheduledTaskTrigger -AtStartup
         $set  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0
-        $prn  = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+        if ($ForUser) {
+            $trg = New-ScheduledTaskTrigger -AtLogOn -User $ForUser
+            $prn = New-ScheduledTaskPrincipal -UserId $ForUser -LogonType Interactive -RunLevel Highest
+        } else {
+            $trg = New-ScheduledTaskTrigger -AtStartup
+            $prn = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+        }
         Register-ScheduledTask -TaskName $task -Action $act -Trigger $trg -Settings $set -Principal $prn -Force | Out-Null
         Get-Process LibreHardwareMonitor -ErrorAction SilentlyContinue | Stop-Process -Force
         Start-ScheduledTask -TaskName $task
@@ -136,7 +142,7 @@ try {
     Remove-Item (Join-Path $SHARED "installasjon-admin.status") -Force -ErrorAction SilentlyContinue
     Write-Host "Windows ber nå om administratortilgang (GTK4, Python og LibreHardwareMonitor) …"
     Start-Process powershell -Verb RunAs -Wait `
-        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ADMINPS`" -Admin"
+        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ADMINPS`" -Admin -ForUser `"$env:USERDOMAIN\$env:USERNAME`""
     $st = Get-Content (Join-Path $SHARED "installasjon-admin.status") -ErrorAction SilentlyContinue
     if ("$st".Trim() -ne "0") { throw "Administratordelen ble ikke fullført (se loggen over)." }
     Get-Content (Join-Path $SHARED "installasjon-admin.txt") -ErrorAction SilentlyContinue | Out-Host
@@ -167,7 +173,7 @@ try {
     $startmenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
     foreach ($dir in @([Environment]::GetFolderPath("Desktop"), $startmenu)) {
         $lnk = $sh.CreateShortcut((Join-Path $dir "Kontrollsenter.lnk"))
-        $lnk.TargetPath = $PYW; $lnk.Arguments = "`"$PROG\systemmonitor.py`""
+        $lnk.TargetPath = $PYW; $lnk.Arguments = "-X utf8 `"$PROG\systemmonitor.py`""
         $lnk.WorkingDirectory = $PROG; $lnk.IconLocation = $icon; $lnk.Description = "Kontrollsenter"
         $lnk.Save()
     }
@@ -176,7 +182,7 @@ try {
 @echo off
 chcp 65001 >nul
 echo Starter Kontrollsenter med feilsøking ... (lukk vinduet for å avslutte)
-"$PY" "$PROG\systemmonitor.py" > "%TEMP%\kontrollsenter-oppstart.txt" 2>&1
+"$PY" -X utf8 "$PROG\systemmonitor.py" > "%TEMP%\kontrollsenter-oppstart.txt" 2>&1
 type "%TEMP%\kontrollsenter-oppstart.txt"
 mkdir "$NAS\Diagnose" 2>nul
 copy /y "%TEMP%\kontrollsenter-oppstart.txt" "$NAS\Diagnose\%COMPUTERNAME%-oppstart.txt" >nul && echo Lagt på NAS-en.
@@ -191,12 +197,12 @@ pause
     $ans = Read-Host "Starte Kontrollsenter skjult ved innlogging? (J/n)"
     $run = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
     if ($ans -notmatch "^[nN]") {
-        Set-ItemProperty $run -Name "Kontrollsenter" -Value "`"$PYW`" `"$PROG\systemmonitor.py`" --hidden"
+        Set-ItemProperty $run -Name "Kontrollsenter" -Value "`"$PYW`" -X utf8 `"$PROG\systemmonitor.py`" --hidden"
         Green "Starter ved innlogging"
     } else {
         Remove-ItemProperty $run -Name "Kontrollsenter" -ErrorAction SilentlyContinue
     }
-    Start-Process $PYW -ArgumentList "`"$PROG\systemmonitor.py`"" -WorkingDirectory $PROG
+    Start-Process $PYW -ArgumentList "-X utf8 `"$PROG\systemmonitor.py`"" -WorkingDirectory $PROG
     Green "Ferdig! Kontrollsenter starter nå."
     $ok = $true
 } catch {

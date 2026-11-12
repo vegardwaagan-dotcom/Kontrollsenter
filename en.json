@@ -1476,5 +1476,9 @@
  "Windows starter": "Windows starts",
  "Windows: programmet krasjet ved oppstart fordi Windows mangler lastsnitt (getloadavg) og statvfs": "Windows: the program crashed at startup because Windows lacks load average (getloadavg) and statvfs",
  "Hvis noe likevel feiler ved oppstart, vises feilen i en melding og legges på NAS-en (Diagnose)": "If something still fails at startup, the error is shown in a message and put on the NAS (Diagnose)",
- "Kontrollsenter kunne ikke starte": "Control Center could not start"
+ "Kontrollsenter kunne ikke starte": "Control Center could not start",
+ "Windows: raskere og CPU-temperatur": "Windows: faster, and CPU temperature",
+ "Windows: vinduet hakket fordi det ventet på LibreHardwareMonitor og strømplanen hvert sekund – nå leses de i bakgrunnen": "Windows: the window stuttered because it waited for LibreHardwareMonitor and the power plan every second – they are now read in the background",
+ "LibreHardwareMonitor starter ved innlogging med ikon i statusfeltet, og Kontrollsenter starter den selv hvis den ikke svarer": "LibreHardwareMonitor starts at login with a tray icon, and Control Center starts it itself if it doesn't respond",
+ "æøå i filer og rapporter på Windows": "Norwegian characters in files and reports on Windows"
 }

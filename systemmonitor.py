@@ -544,7 +544,8 @@ class MonitorWindow(Adw.ApplicationWindow):
                 self.power.flush_peaks()
             except Exception:  # noqa: BLE001
                 pass
-            os.execv(sys.executable, [sys.executable, os.path.abspath(__file__)])
+            extra = ["-X", "utf8"] if IS_WIN else []
+            os.execv(sys.executable, [sys.executable, *extra, os.path.abspath(__file__)])
         GLib.timeout_add(400, restart)
 
     def check_installed_version(self):

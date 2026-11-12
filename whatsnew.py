@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.5.3", "Windows: raskere og CPU-temperatur", [
+        ("Rettet", [
+            "Windows: vinduet hakket fordi det ventet på LibreHardwareMonitor og strømplanen hvert sekund – "
+            "nå leses de i bakgrunnen",
+            "LibreHardwareMonitor starter ved innlogging med ikon i statusfeltet, og Kontrollsenter starter den selv "
+            "hvis den ikke svarer",
+            "æøå i filer og rapporter på Windows",
+        ]),
+    ]),
     ("0.5.2", "Windows starter", [
         ("Rettet", [
             "Windows: programmet krasjet ved oppstart fordi Windows mangler lastsnitt (getloadavg) og statvfs",

@@ -131,6 +131,25 @@ def windows_report():
     except Exception as e:  # noqa: BLE001
         parts.append(_section("LibreHardwareMonitor", str(e)))
     try:
+        import winsupport
+        lines = []
+        for title, cmd in (("Prosess", ["tasklist", "/fi", "imagename eq LibreHardwareMonitor.exe"]),
+                           ("Oppgave", ["schtasks", "/query", "/tn", "Kontrollsenter - LibreHardwareMonitor", "/v",
+                                        "/fo", "list"]),
+                           ("Port 8085", ["netstat", "-ano", "-p", "tcp"]),
+                           ("PawnIO", ["sc", "query", "PawnIO"])):
+            code, out = winsupport.run(cmd, 20)
+            if title == "Port 8085":
+                out = "\n".join(ln for ln in out.splitlines() if ":8085" in ln) or "ingen lytter på 8085"
+            lines.append(f"--- {title} ---\n{out.strip()[:2500]}")
+        import glob as _g
+        cfg = _g.glob(r"C:\Program Files\LibreHardwareMonitor\LibreHardwareMonitor.config")
+        lines.append("--- config ---\n" + (open(cfg[0], encoding="utf-8", errors="replace").read()[:1500]
+                                            if cfg else "mangler"))
+        parts.append(_section("LibreHardwareMonitor-status", "\n".join(lines)))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("LibreHardwareMonitor-status", str(e)))
+    try:
         from sensors import NvidiaReader
         n = NvidiaReader()
         n.poll()
@@ -211,7 +230,7 @@ def upload(text):
     tmp = Path(tempfile.mkdtemp())
     try:
         f = tmp / f"{savegames.pc_name()}.txt"
-        f.write_text(text)
+        f.write_text(text, encoding="utf-8")
         _host, share, folder = L._split()
         L.smb_mkdir(f"{folder}/{REMOTE}")
         L._smb(f'cd "{REMOTE}"; put "{f}" "{f.name}"', 60)

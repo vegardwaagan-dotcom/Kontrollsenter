@@ -59,7 +59,7 @@ VIAddVersionKey /LANG=1044 "ProductVersion" "${VERSION}"
 Var Shared
 
 Function StartKontrollsenter
-  Exec '"${PYW}" "$INSTDIR\systemmonitor.py"'
+  Exec '"${PYW}" -X utf8 "$INSTDIR\systemmonitor.py"'
 FunctionEnd
 
 ; ---------------------------------------------------------------------------------------------
@@ -75,7 +75,9 @@ Section "Kontrollsenter (påkrevd)" SecMain
   File "installer.ps1"
   Delete "$Shared\installasjon-admin.status"
   DetailPrint "Installerer GTK4, Python og LibreHardwareMonitor (administrator) – kan ta noen minutter første gang …"
-  ExecShellWait "runas" "powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$Shared\installer.ps1" -Admin' SW_SHOWNORMAL
+  ReadEnvStr $2 USERDOMAIN
+  ReadEnvStr $3 USERNAME
+  ExecShellWait "runas" "powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$Shared\installer.ps1" -Admin -ForUser "$2\$3"' SW_SHOWNORMAL
   ClearErrors
   FileOpen $0 "$Shared\installasjon-admin.status" r
   ${If} ${Errors}
@@ -99,10 +101,10 @@ Section "Kontrollsenter (påkrevd)" SecMain
   DetailPrint "Kontrollsenter ${VERSION} er installert i $INSTDIR"
 
   ; 3) Start-menyen og feilsøking
-  CreateShortCut "$SMPROGRAMS\Kontrollsenter.lnk" "${PYW}" '"$INSTDIR\systemmonitor.py"' "$INSTDIR\icons\kontrollsenter.ico" 0
+  CreateShortCut "$SMPROGRAMS\Kontrollsenter.lnk" "${PYW}" '-X utf8 "$INSTDIR\systemmonitor.py"' "$INSTDIR\icons\kontrollsenter.ico" 0
   FileOpen $0 "$LOCALAPPDATA\Kontrollsenter\Feilsøk Kontrollsenter.cmd" w
   FileWrite $0 "@echo off$\r$\nchcp 65001 >nul$\r$\necho Starter Kontrollsenter med feilsøking ... (lukk vinduet for å avslutte)$\r$\n"
-  FileWrite $0 '"${PY}" "$INSTDIR\systemmonitor.py" > "%LOCALAPPDATA%\Kontrollsenter\oppstart.txt" 2>&1$\r$\n'
+  FileWrite $0 '"${PY}" -X utf8 "$INSTDIR\systemmonitor.py" > "%LOCALAPPDATA%\Kontrollsenter\oppstart.txt" 2>&1$\r$\n'
   FileWrite $0 'type "%LOCALAPPDATA%\Kontrollsenter\oppstart.txt"$\r$\n'
   FileWrite $0 'for %%N in (PERSONALCLOUD 192.168.1.3) do (mkdir "\\%%N\Public\Kontrollsenter\Diagnose" 2>nul & copy /y "%LOCALAPPDATA%\Kontrollsenter\oppstart.txt" "\\%%N\Public\Kontrollsenter\Diagnose\%COMPUTERNAME%-oppstart.txt" >nul 2>&1 && (echo Lagt på NAS-en. & goto ferdig))$\r$\n'
   FileWrite $0 ":ferdig$\r$\npause$\r$\n"
@@ -122,11 +124,11 @@ Section "Kontrollsenter (påkrevd)" SecMain
 SectionEnd
 
 Section "Snarvei på skrivebordet" SecDesktop
-  CreateShortCut "$DESKTOP\Kontrollsenter.lnk" "${PYW}" '"$INSTDIR\systemmonitor.py"' "$INSTDIR\icons\kontrollsenter.ico" 0
+  CreateShortCut "$DESKTOP\Kontrollsenter.lnk" "${PYW}" '-X utf8 "$INSTDIR\systemmonitor.py"' "$INSTDIR\icons\kontrollsenter.ico" 0
 SectionEnd
 
 Section "Start Kontrollsenter ved innlogging (skjult i systemstatusfeltet)" SecAutostart
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Kontrollsenter" '"${PYW}" "$INSTDIR\systemmonitor.py" --hidden'
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Kontrollsenter" '"${PYW}" -X utf8 "$INSTDIR\systemmonitor.py" --hidden'
 SectionEnd
 
 ; ---------------------------------------------------------------------------------------------

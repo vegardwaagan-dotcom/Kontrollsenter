@@ -81,7 +81,7 @@ def autostart_set(name, command):
 def self_command(hidden=True):
     """Kommandoen som starter Kontrollsenter (uten konsollvindu)."""
     py = sys.executable.replace("python.exe", "pythonw.exe")
-    return f'"{py}" "{os.path.join(APP_DIR, "systemmonitor.py")}"' + (" --hidden" if hidden else "")
+    return f'"{py}" -X utf8 "{os.path.join(APP_DIR, "systemmonitor.py")}"' + (" --hidden" if hidden else "")
 
 
 # --------------------------------------------------------------------------
