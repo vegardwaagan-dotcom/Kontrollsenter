@@ -270,8 +270,12 @@ def publish(make_package):
         if win.is_dir():
             smb_mkdir(f"{folder}/Windows")
             for f in sorted(win.iterdir()):
-                if f.is_file():
+                if f.is_file() and f.suffix in (".cmd", ".ps1"):
                     _smb(f'cd "Windows"; put "{f}" "{f.name}"', 120)
+            # installasjonsfilen (bygges med bygg-windows-installer.sh) – alltid samme navn på NAS-en
+            setup = Path(APP_DIR) / "dist" / f"Kontrollsenter-Setup-{local_version()}.exe"
+            if setup.exists():
+                _smb(f'cd "Windows"; put "{setup}" "Kontrollsenter-Setup.exe"', 300)
         return True, f"Versjon {local_version()} er lagt på hjemmenettet ✓ ({location()})"
     except Exception as e:  # noqa: BLE001
         return False, str(e)
