@@ -27,11 +27,30 @@ PKG = "Kontrollsenter.tar.gz"
 BACKUP = Path.home() / ".cache/systemmonitor/forrige-versjon.tar.gz"
 
 
+# NAS-en kan nås både med IP og navn. Windows lagrer påloggingen per navn, så på Windows virker ofte bare
+# \\PERSONALCLOUD (IP-adressen gir «Brukernavnet eller passordet er feil»).
+ALTERNATIVES = ["//192.168.1.3/Public/Kontrollsenter", "//PERSONALCLOUD/Public/Kontrollsenter"]
+_WIN_PICK = []
+
+
 def location():
     try:
-        return json.loads(CFG.read_text()).get("lan", DEFAULT) or DEFAULT
+        configured = json.loads(CFG.read_text()).get("lan")
     except (OSError, ValueError):
-        return DEFAULT
+        configured = None
+    if sys.platform != "win32":
+        return configured or DEFAULT
+    if _WIN_PICK:
+        return _WIN_PICK[0]
+    for cand in ([configured] if configured else []) + [c for c in ALTERNATIVES if c != configured]:
+        unc = "\\\\" + cand.strip("/").replace("/", "\\")
+        try:
+            if os.path.isdir(unc):
+                _WIN_PICK.append(cand)
+                return cand
+        except OSError:
+            continue
+    return configured or ALTERNATIVES[-1]
 
 
 def _split(loc=None):

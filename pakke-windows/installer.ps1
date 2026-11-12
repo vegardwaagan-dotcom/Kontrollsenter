@@ -12,7 +12,13 @@ function Blue($t)  { Write-Host "`n== $t ==" -ForegroundColor Cyan }
 function Green($t) { Write-Host "✓ $t" -ForegroundColor Green }
 function Warn($t)  { Write-Host "! $t" -ForegroundColor Yellow }
 
-$NAS    = "\\192.168.1.3\Public\Kontrollsenter"
+# NAS-adressen: samme som skriptet ble startet fra (f.eks. \\PERSONALCLOUD\…). Windows lagrer påloggingen per
+# navn, så IP-adressen kan gi «Brukernavnet eller passordet er feil» selv om navnet virker.
+$cands = @()
+if ($PSScriptRoot -like "\\*") { $cands += (Split-Path $PSScriptRoot -Parent) }
+$cands += @("\\PERSONALCLOUD\Public\Kontrollsenter", "\\192.168.1.3\Public\Kontrollsenter")
+$NAS = $cands[0]
+foreach ($c in $cands) { if (Test-Path "$c\Kontrollsenter.tar.gz" -ErrorAction SilentlyContinue) { $NAS = $c; break } }
 $SHARED = Join-Path $env:ProgramData "Kontrollsenter"          # lesbar for alle kontoer
 $MSYS   = "C:\msys64"
 $PY     = "$MSYS\ucrt64\bin\python.exe"
@@ -143,6 +149,17 @@ try {
     if (Test-Path $PROG) { Remove-Item $PROG -Recurse -Force }
     Copy-Item "$TMP\Kontrollsenter\program" $PROG -Recurse
     Green "Kontrollsenter $(Get-Content "$PROG\VERSION") er installert i $PROG"
+
+    $cfgdir = Join-Path $env:USERPROFILE ".config\systemmonitor"
+    New-Item -ItemType Directory -Force -Path $cfgdir | Out-Null
+    $cfgfile = Join-Path $cfgdir "oppdatering.json"
+    $cfg = @{}
+    if (Test-Path $cfgfile) {
+        try { (Get-Content $cfgfile -Raw | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $cfg[$_.Name] = $_.Value } } catch {}
+    }
+    $cfg["lan"] = "//" + ($NAS -replace "\\", "/").TrimStart("/")      # \\PERSONALCLOUD\… -> //PERSONALCLOUD/…
+    [IO.File]::WriteAllText($cfgfile, ($cfg | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
+    Green "NAS-adresse for oppdateringer: $NAS"
 
     Blue "4/5 Snarveier"
     $sh = New-Object -ComObject WScript.Shell

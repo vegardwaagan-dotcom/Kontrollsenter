@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.5.1", "Windows: NAS-adresse", [
+        ("Rettet", [
+            "Windows når NAS-en med navnet (\\\\PERSONALCLOUD) når IP-adressen avvises med «Brukernavnet eller "
+            "passordet er feil» – gjelder installasjon, oppdateringer, PC-er hjemme og feilsøkingsrapport",
+        ]),
+    ]),
     ("0.5.0", "Kontrollsenter for Windows 11", [
         ("Windows 11 (første runde)", [
             "Installer fra NAS-en: åpne \\\\192.168.1.3\\Public\\Kontrollsenter\\Windows og dobbeltklikk "
