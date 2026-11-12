@@ -93,6 +93,8 @@ class Background:
         self.history = history.Recorder()
         import homepcs
         self.sharer = homepcs.Sharer(win)
+        # feilsøkingsrapport til NAS-en (én gang per versjon og døgn) – så feil på andre PC-er kan finnes
+        GLib.timeout_add_seconds(120, lambda: (__import__("diagnose").auto_upload(), False)[1])
         win.ov_button.connect("toggled", lambda *_: self.refresh_menu())
         if win.power.proxy:
             win.power.proxy.connect("g-properties-changed", lambda *_: self.refresh_menu())
@@ -118,7 +120,7 @@ class Background:
             try:
                 import tray
                 import i18n
-                self.tray = tray.Tray("Kontrollsenter", "no.waagan.Systemmonitor", self.toggle,
+                self.tray = tray.Tray("Kontrollsenter", "no.waagan.Systemmonitor-symbolic", self.toggle,
                                       self._menu(), tr=i18n.tr)
             except Exception:  # noqa: BLE001 – uten statusfelt virker resten som før
                 self.tray = None

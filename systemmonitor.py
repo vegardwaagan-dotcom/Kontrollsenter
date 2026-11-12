@@ -114,15 +114,24 @@ def ensure_overlay_env():
 
 def install_app_icon():
     """Legg programikonet i ikontemaet (~/.local/share/icons), så menyen, statusfeltet og varslene viser det."""
-    src = os.path.join(APP_DIR, "icons", APP_ICON + ".svg")
     dst_dir = os.path.expanduser("~/.local/share/icons/hicolor/scalable/apps")
-    dst = os.path.join(dst_dir, APP_ICON + ".svg")
-    try:
-        if os.path.exists(src) and (not os.path.exists(dst) or os.path.getmtime(src) > os.path.getmtime(dst)):
-            os.makedirs(dst_dir, exist_ok=True)
-            shutil.copy2(src, dst)
-    except OSError:
-        pass
+    changed = False
+    for name in (APP_ICON, APP_ICON + "-symbolic"):          # logo + ensfarget ikon til statusfeltet
+        src = os.path.join(APP_DIR, "icons", name + ".svg")
+        dst = os.path.join(dst_dir, name + ".svg")
+        try:
+            if os.path.exists(src) and (not os.path.exists(dst) or
+                                        open(src, "rb").read() != open(dst, "rb").read()):
+                os.makedirs(dst_dir, exist_ok=True)
+                shutil.copy2(src, dst)
+                changed = True
+        except OSError:
+            pass
+    if changed:                                              # så menyen og panelet ser det nye ikonet
+        for cmd in (["gtk-update-icon-cache", "-qtf", os.path.dirname(os.path.dirname(os.path.dirname(dst_dir)))],
+                    ["kbuildsycoca6", "--noincremental"]):
+            if shutil.which(cmd[0]):
+                subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def accent_rgb():

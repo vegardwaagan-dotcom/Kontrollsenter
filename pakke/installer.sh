@@ -187,7 +187,10 @@ Categories=System;Monitor;
 StartupWMClass=$ID
 EOF
 mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
-cp "$DEST/icons/no.waagan.Systemmonitor.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/" 2>/dev/null || true
+cp "$DEST/icons/no.waagan.Systemmonitor.svg" "$DEST/icons/no.waagan.Systemmonitor-symbolic.svg" \
+   "$HOME/.local/share/icons/hicolor/scalable/apps/" 2>/dev/null || true
+gtk-update-icon-cache -qtf "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+command -v kbuildsycoca6 >/dev/null && kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
 update-desktop-database "$APPS" 2>/dev/null || true
 if [ -d "$DESKTOP_DIR" ]; then
     rm -f "$DESKTOP_DIR/Systemmonitor.desktop"          # gammelt navn

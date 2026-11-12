@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.4.1", "Nytt ikon og feilsøking", [
+        ("Nytt", [
+            "Ny logo med lysende ring og pulslinje – på snarveien, i menyen og i Om-vinduet",
+            "Eget ensfarget ikon i systemstatusfeltet som følger fargen på panelet",
+            "Ikonene installeres automatisk",
+            "Feilsøkingsrapport (Verktøy): maskinvare, drivere, OpenRGB, ratbagd og Solaar – legges på NAS-en "
+            "så feil på andre PC-er kan finnes",
+        ]),
+        ("Rettet", [
+            "Viftestyring på ASUS-hovedkort med Intel (f.eks. PRIME Z270): viftebrikken er sperret av BIOS – "
+            "«Rett viftebrikken» legger inn oppstartsvalget som løser det",
+        ]),
+    ]),
     ("0.4", "Mer automatikk, mer oversikt", [
         ("Spill", [
             "Automatiske spillprofiler: strømmodus, vifter og RGB byttes når et Steam-spill starter – og tilbake "

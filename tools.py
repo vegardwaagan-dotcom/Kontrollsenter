@@ -560,7 +560,52 @@ class ToolsPage(Gtk.ScrolledWindow):
         self._backup_card()
         self._notify_card()
         self._app_card()
+        self._diag_card()
         self._log_card()
+
+    # --- feilsøkingsrapport ---------------------------------------------------------
+    def _diag_card(self):
+        c, i = card("Feilsøkingsrapport", "Samler maskinvare, drivere og hva OpenRGB, ratbagd og Solaar finner – "
+                                         "nyttig når RGB, vifter eller Logitech ikke virker. Sendes automatisk til "
+                                         "NAS-en én gang per dag på hjemmenettet. Ingen personlige filer.")
+        row = Gtk.Box(spacing=8)
+        send = Gtk.Button(label="Send til NAS-en nå")
+        send.add_css_class("suggested-action")
+        copy = Gtk.Button(label="Kopier rapporten")
+        row.append(send)
+        row.append(copy)
+        i.append(row)
+        st = dim("")
+        i.append(st)
+
+        def run(to_nas):
+            send.set_sensitive(False)
+            copy.set_sensitive(False)
+            st.set_label("Lager rapport … (ca. 20 sekunder)")
+
+            def work():
+                import diagnose
+                txt = diagnose.report()
+                ok = diagnose.upload(txt) if to_nas else None
+                GLib.idle_add(done, txt, to_nas, ok)
+            threading.Thread(target=work, daemon=True).start()
+
+        def done(txt, to_nas, ok):
+            import ui
+            send.set_sensitive(True)
+            copy.set_sensitive(True)
+            if to_nas:
+                if ok:
+                    ui.status(st, "Rapporten er lagt på NAS-en ✓ (Kontrollsenter\\Diagnose)")
+                else:
+                    st.set_label("Kunne ikke legge rapporten på NAS-en – er du på hjemmenettet? Bruk «Kopier».")
+            else:
+                Gdk.Display.get_default().get_clipboard().set(txt)
+                ui.status(st, "Kopiert ✓ – lim inn med Ctrl + V")
+            return False
+        send.connect("clicked", lambda *_: run(True))
+        copy.connect("clicked", lambda *_: run(False))
+        self.box.append(c)
 
     def _bg(self, fn, done):
         threading.Thread(target=lambda: GLib.idle_add(done, fn()), daemon=True).start()

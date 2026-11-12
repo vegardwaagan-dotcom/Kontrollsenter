@@ -791,8 +791,14 @@ class FanCard(Gtk.Box):
             self.setup_lbl.set_label(
                 "Viftestyring er ikke slått på ennå. Trykk knappen og skriv passordet ditt én gang.")
         elif missing_board:
-            self.setup_lbl.set_label(
-                "Fant ikke hovedkortets viftebrikke. Prøv knappen igjen, eller start PC-en på nytt.")
+            if "acpi_enforce_resources=lax" in read("/proc/cmdline", ""):
+                self.setup_lbl.set_label("Fant ikke hovedkortets viftebrikke. Hovedkortet kan ha en brikke Linux "
+                                         "ikke kan styre ennå – send feilsøkingsrapporten (Verktøy).")
+            else:
+                self.setup_lbl.set_label(
+                    "Hovedkortets viftebrikke er sperret av BIOS (vanlig på ASUS-kort med Intel, f.eks. Z270). "
+                    "Trykk «Rett viftebrikken» – det legger inn et oppstartsvalg, og PC-en må startes på nytt.")
+                self.setup_btn.set_label("Rett viftebrikken")
         for w in (self.grid, self.presets, self.note):
             w.set_sensitive(ok)
 
@@ -979,6 +985,11 @@ class FanCard(Gtk.Box):
 
     def _setup_done(self, ok, msg):
         self.setup_btn.set_sensitive(True)
+        if not ok and "OMSTART" in msg:
+            self.setup_btn.set_visible(False)
+            self.setup_lbl.set_label("✓ Oppstartsvalget er lagt inn. Start PC-en på nytt, så dukker "
+                                     "hovedkortviftene opp her.")
+            return False
         if ok:
             GLib.timeout_add(1500, lambda: self.build() or False)  # gi driveren tid
             self.setup_lbl.set_label("Ferdig! Leter etter vifter …")

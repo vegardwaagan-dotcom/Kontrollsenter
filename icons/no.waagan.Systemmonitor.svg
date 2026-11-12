@@ -1,41 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2b3a52"/>
-      <stop offset="1" stop-color="#151d2b"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#232a4d"/>
+      <stop offset="0.55" stop-color="#131733"/>
+      <stop offset="1" stop-color="#080a17"/>
     </linearGradient>
-    <linearGradient id="arc" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#33d17a"/>
-      <stop offset="0.5" stop-color="#3584e4"/>
-      <stop offset="1" stop-color="#c061cb"/>
+    <linearGradient id="ring" x1="0.1" y1="0.9" x2="0.9" y2="0.1">
+      <stop offset="0" stop-color="#00e0ff"/>
+      <stop offset="0.45" stop-color="#3d7bff"/>
+      <stop offset="0.8" stop-color="#9b4dff"/>
+      <stop offset="1" stop-color="#ff4fd8"/>
     </linearGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
+    <linearGradient id="pulse" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7ff3ff"/>
+      <stop offset="0.5" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f3c9ff"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
       <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
+    <radialGradient id="core" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3d7bff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#3d7bff" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <!-- flate -->
-  <rect x="8" y="10" width="112" height="110" rx="24" fill="#0d131d" opacity="0.35"/>
-  <rect x="8" y="6" width="112" height="110" rx="24" fill="url(#bg)"/>
-  <rect x="8" y="6" width="112" height="55" rx="24" fill="url(#shine)"/>
-  <!-- skala (svak bakgrunnsbue) -->
-  <path d="M30.4 89.6A38 38 0 1 1 97.6 89.6" fill="none" stroke="#ffffff" stroke-opacity="0.12"
-        stroke-width="11" stroke-linecap="round"/>
-  <!-- bue i farger -->
-  <path d="M30.4 89.6A38 38 0 1 1 97.6 89.6" fill="none" stroke="url(#arc)" stroke-width="11"
-        stroke-linecap="round" stroke-dasharray="150 400"/>
-  <!-- streker -->
-  <g stroke="#ffffff" stroke-opacity="0.55" stroke-width="3" stroke-linecap="round">
-    <path d="M64 32v6"/><path d="M38.5 42.5l4.2 4.2"/><path d="M89.5 42.5l-4.2 4.2"/>
+
+  <!-- skygge og flate -->
+  <rect x="9" y="12" width="110" height="110" rx="27" fill="#000000" opacity="0.30"/>
+  <rect x="9" y="8" width="110" height="110" rx="27" fill="url(#bg)"/>
+  <rect x="9.75" y="8.75" width="108.5" height="108.5" rx="26.25" fill="none" stroke="#ffffff" stroke-opacity="0.10"
+        stroke-width="1.5"/>
+  <path d="M36 8.75h56a26.25 26.25 0 0 1 26.25 26.25v14C96 58 32 58 9.75 49V35A26.25 26.25 0 0 1 36 8.75z"
+        fill="url(#sheen)"/>
+
+  <!-- glød i midten -->
+  <circle cx="64" cy="63" r="44" fill="url(#core)"/>
+
+  <!-- ring: glød (bred og svak) + selve ringen, med åpning nede til venstre -->
+  <g fill="none" stroke-linecap="round" transform="rotate(118 64 63)">
+    <circle cx="64" cy="63" r="35" stroke="url(#ring)" stroke-width="17" stroke-opacity="0.22"
+            stroke-dasharray="190 30"/>
+    <circle cx="64" cy="63" r="35" stroke="url(#ring)" stroke-width="8.5" stroke-dasharray="190 30"/>
   </g>
-  <!-- viser -->
-  <path d="M64 70 85 49" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
-  <circle cx="64" cy="70" r="9" fill="#ffffff"/>
-  <circle cx="64" cy="70" r="3.5" fill="#2b3a52"/>
-  <!-- tre små søyler (ytelse) -->
-  <g fill="#ffffff" fill-opacity="0.9">
-    <rect x="48" y="92" width="8" height="12" rx="2"/>
-    <rect x="60" y="86" width="8" height="18" rx="2"/>
-    <rect x="72" y="80" width="8" height="24" rx="2"/>
-  </g>
+  <!-- lysprikk i enden av ringen -->
+  <circle cx="47.6" cy="93.9" r="7" fill="#00e0ff" opacity="0.25"/>
+  <circle cx="47.6" cy="93.9" r="3.2" fill="#e8fdff"/>
+
+  <!-- pulslinje: glød + linje -->
+  <path d="M30 66H45l6.5-15 9 30 8-38 7 27 5-10H98" fill="none" stroke="#5fd8ff" stroke-opacity="0.28"
+        stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M30 66H45l6.5-15 9 30 8-38 7 27 5-10H98" fill="none" stroke="url(#pulse)" stroke-width="5"
+        stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
