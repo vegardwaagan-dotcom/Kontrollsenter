@@ -27,10 +27,20 @@ def status(label, text):
 
 
 def empty(icon, title, description="", compact=True):
-    """Tom side: stort grått ikon, én tittel og en kort forklaring."""
+    """Tom side: stort grått ikon, én tittel og en kort forklaring (passer også inne i kort og lister)."""
     import i18n
-    page = Adw.StatusPage(icon_name=icon, title=i18n.tr(title), description=i18n.tr(description))
-    if compact:
-        page.add_css_class("compact")
-    page.set_vexpand(False)
-    return page
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, halign=Gtk.Align.CENTER)
+    for side in ("top", "bottom"):
+        getattr(box, f"set_margin_{side}")(18 if compact else 36)
+    img = Gtk.Image(icon_name=icon, pixel_size=48 if compact else 72)
+    img.add_css_class("dim-label")
+    img.set_margin_bottom(6)
+    box.append(img)
+    t = Gtk.Label(label=i18n.tr(title), wrap=True, justify=Gtk.Justification.CENTER)
+    t.add_css_class("title-4")
+    box.append(t)
+    if description:
+        d = Gtk.Label(label=i18n.tr(description), wrap=True, justify=Gtk.Justification.CENTER, max_width_chars=60)
+        d.add_css_class("dim-label")
+        box.append(d)
+    return box

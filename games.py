@@ -368,9 +368,53 @@ class GamesPage(Gtk.ScrolledWindow):
         self.set_child(Adw.Clamp(maximum_size=1100, child=box))
         self.box = box
         self.changes = {}
+        self._sessions_card()
         self._steam_card()
         self._ge_card()
+        try:
+            import savegames
+            savegames.build_card(self, card)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("lagrede spill")
         self._ctrl_card()
+
+    # --- Siste spilløkter -------------------------------------------------------
+    def _sessions_card(self):
+        import games_auto
+        import time as _t
+        ss = list(reversed(games_auto.load_sessions()))[:8]
+        c, i = card("Siste spilløkter", "Rapport etter hver økt: spilletid, FPS («1 % low» = de tregeste "
+                                        "bildene), høyeste temperaturer og strømforbruk. Slås av og på under "
+                                        "Automatikk → Spillprofiler.")
+        if not ss:
+            import ui
+            i.append(ui.empty("ks-games-symbolic", "Ingen spilløkter ennå",
+                              "Start et Steam-spill, så kommer rapporten her når du avslutter."))
+        else:
+            grid = Gtk.Grid(column_spacing=18, row_spacing=6)
+            heads = ["Spill", "Når", "Tid", "FPS", "1 % low", "CPU maks", "GPU maks", "Strøm"]
+            for col, h in enumerate(heads):
+                lab = Gtk.Label(label=h, xalign=0 if col < 2 else 1)
+                lab.add_css_class("caption-heading")
+                lab.add_css_class("dim-label")
+                grid.attach(lab, col, 0, 1, 1)
+            for r, s_ in enumerate(ss, 1):
+                vals = [s_["name"], _t.strftime("%d.%m %H:%M", _t.localtime(s_["start"])), f"{s_['minutes']} min",
+                        str(s_.get("fps") or "–"), str(s_.get("low") or "–"),
+                        f"{s_['max_cpu']} °C" if s_.get("max_cpu") else "–",
+                        f"{s_['max_gpu']} °C" if s_.get("max_gpu") else "–",
+                        f"{s_['watts']} W · {s_['kr']:.2f} kr" if s_.get("watts") else "–"]
+                for col, v in enumerate(vals):
+                    lab = Gtk.Label(label=v, xalign=0 if col < 2 else 1, ellipsize=3 if col == 0 else 0)
+                    if col == 0:
+                        lab.set_hexpand(True)
+                        lab.set_max_width_chars(28)
+                    else:
+                        lab.add_css_class("numeric")
+                    grid.attach(lab, col, r, 1, 1)
+            i.append(grid)
+        self.box.append(c)
 
     # --- Steam-spill ----------------------------------------------------------
     def _steam_card(self):

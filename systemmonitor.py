@@ -66,7 +66,12 @@ ram
 def set_overlay(visible):
     """Skriv MangoHud-oppsettet. MangoHud leser filen på nytt automatisk."""
     os.makedirs(os.path.dirname(MANGOHUD_CONF), exist_ok=True)
-    text = OVERLAY_SETTINGS + ("" if visible else "no_display\n")
+    try:
+        import games_auto
+        log = games_auto.mangohud_log_lines()      # FPS-logg til øktrapporten
+    except Exception:  # noqa: BLE001
+        log = ""
+    text = OVERLAY_SETTINGS + log + ("" if visible else "no_display\n")
     tmp = MANGOHUD_CONF + ".tmp"
     with open(tmp, "w") as f:
         f.write(text)
