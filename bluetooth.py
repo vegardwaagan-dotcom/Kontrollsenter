@@ -218,7 +218,7 @@ class BluetoothPage(Gtk.ScrolledWindow):
             self.status.set_label(f"Feil: {e.message}")
         GLib.timeout_add(600, lambda: (self.refresh(), False)[1])
 
-    def _on_scan(self, btn, _p):
+    def _on_scan(self, btn, _p=None):
         if self._quiet or not self.adapter:
             return
         try:
