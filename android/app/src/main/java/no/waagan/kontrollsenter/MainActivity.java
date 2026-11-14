@@ -319,20 +319,29 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> web.loadUrl(START + "?hjem=1"));
         }
 
-        /** IPv4-adressen og nettmasken på Wi-Fi/Ethernet, f.eks. «192.168.1.23/24». */
+        /** IPv4-adressen og nettmasken på Wi-Fi/Ethernet, f.eks. «192.168.1.23/24». Hopper over VPN (f.eks.
+         *  Tailscale, 100.x) – ellers søker appen i feil nett når VPN-en er på. */
         @JavascriptInterface
         public String subnet() {
             try {
                 ConnectivityManager cm = getSystemService(ConnectivityManager.class);
-                Network n = cm.getActiveNetwork();
-                LinkProperties lp = n == null ? null : cm.getLinkProperties(n);
-                if (lp == null) return "";
-                for (LinkAddress la : lp.getLinkAddresses()) {
-                    InetAddress a = la.getAddress();
-                    if (a instanceof Inet4Address && !a.isLoopbackAddress()) {
-                        return a.getHostAddress() + "/" + la.getPrefixLength();
+                String fallback = "";
+                for (Network n : cm.getAllNetworks()) {
+                    android.net.NetworkCapabilities nc = cm.getNetworkCapabilities(n);
+                    LinkProperties lp = cm.getLinkProperties(n);
+                    if (nc == null || lp == null || nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) continue;
+                    boolean lan = nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+                            || nc.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET);
+                    for (LinkAddress la : lp.getLinkAddresses()) {
+                        InetAddress a = la.getAddress();
+                        if (a instanceof Inet4Address && !a.isLoopbackAddress() && a.isSiteLocalAddress()) {
+                            String v = a.getHostAddress() + "/" + la.getPrefixLength();
+                            if (lan) return v;
+                            if (fallback.isEmpty()) fallback = v;
+                        }
                     }
                 }
+                return fallback;
             } catch (Exception e) {
                 // ingen nettverkstilgang – siden lar deg skrive inn adressen selv
             }

@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.9.2", "Appen finner PC-ene også med VPN på", [
+        ("Rettet", [
+            "Android-appen fant ikke PC-ene når telefonen hadde VPN på (f.eks. Tailscale): den søkte i VPN-nettet. "
+            "Nå brukes alltid Wi-Fi-nettet, og de vanlige hjemmenettene (192.168.1.x og 192.168.0.x) søkes også",
+        ]),
+    ]),
     ("0.9.1", "Appen finner Windows-PC-er", [
         ("Rettet", [
             "Windows: Android-appen fant ikke PC-en når Windows-brannmuren blokkerte Kontrollsenter (f.eks. etter at "

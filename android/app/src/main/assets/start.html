@@ -208,22 +208,23 @@ $("#upd-check").onclick = async () => { $("#status").textContent = "Sjekker NAS-
 async function scan() {
   const sn = KS ? KS.subnet() : "";
   const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\/(\d+)$/.exec(sn);
-  if (!m) { $("#status").textContent = "Fant ikke nettverksadressen – er nettbrettet på Wi-Fi? Skriv inn adressen til PC-en."; return; }
-  const base = `${m[1]}.${m[2]}.${m[3]}.`;
-  $("#status").textContent = `Søker i ${base}0/24 …`; $("#scan-bar").hidden = false; $("#scan").disabled = true;
-  let done = 0; const seen = new Set(); const queue = Array.from({ length: 254 }, (_, i) => base + (i + 1));
+  // eget nett først, så de vanligste hjemmenettene (hvis telefonen f.eks. har VPN på eller ikke vet nettet)
+  const bases = [...new Set([m ? `${m[1]}.${m[2]}.${m[3]}.` : null, "192.168.1.", "192.168.0."].filter(Boolean))];
+  $("#status").textContent = `Søker i ${bases.map((b) => b + "x").join(" og ")} …`; $("#scan-bar").hidden = false; $("#scan").disabled = true;
+  let done = 0; const seen = new Set(); const queue = bases.flatMap((base) => Array.from({ length: 254 }, (_, i) => base + (i + 1)));
+  const total = queue.length;
   async function worker() {
     while (queue.length) {
       const h = queue.shift(); const j = await hello(h, 1200);
       if (j) { remember(h, j); seen.add(j.name || h); render(); }
-      done++; $("#scan-bar i").style.width = (done / 254) * 100 + "%";
+      done++; $("#scan-bar i").style.width = (done / total) * 100 + "%";
     }
   }
   await Promise.all(Array.from({ length: 48 }, worker));
   $("#scan").disabled = false; $("#scan-bar").hidden = true;
   const found = seen.size;
   $("#status").textContent = found ? `Fant ${found} PC${found > 1 ? "-er" : ""} med Kontrollsenter.` :
-    "Fant ingen. Sjekk at Kontrollsenter kjører og at «Tillat fjernstyring» er på.";
+    "Fant ingen. Sjekk at telefonen er på hjemme-Wi-Fi (ikke gjestenett/mobildata), at Kontrollsenter kjører og at «Tillat fjernstyring» er på – eller skriv inn adressen (f.eks. 192.168.1.22).";
   check();
 }
 $("#scan").onclick = scan;
