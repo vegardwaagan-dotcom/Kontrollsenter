@@ -265,7 +265,7 @@ CATALOG = [
     ("VideoLAN.VLC", "VLC", "Media"), ("OBSProject.OBSStudio", "OBS Studio", "Media"),
     ("GIMP.GIMP", "GIMP", "Media"), ("TheDocumentFoundation.LibreOffice", "LibreOffice", "Kontor"),
     ("Bitwarden.Bitwarden", "Bitwarden", "Kontor"), ("Microsoft.VisualStudioCode", "Visual Studio Code", "Kontor"),
-    ("7zip.7zip", "7-Zip", "Verktøy"), ("CalcProgrammer1.OpenRGB", "OpenRGB", "Verktøy"),
+    ("7zip.7zip", "7-Zip", "Verktøy"), ("OpenRGB.OpenRGB", "OpenRGB", "Verktøy"),
     ("LibreHardwareMonitor.LibreHardwareMonitor", "LibreHardwareMonitor", "Verktøy"),
     ("REALiX.HWiNFO", "HWiNFO", "Verktøy"), ("Logitech.GHUB", "Logitech G HUB", "Verktøy"),
     ("Microsoft.PowerToys", "PowerToys", "Verktøy"),

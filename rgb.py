@@ -34,8 +34,8 @@ def _openrgb_cmd():
     import shutil as _s
     cands = [_s.which("OpenRGB"), r"C:\Program Files\OpenRGB\OpenRGB.exe",
              os.path.expandvars(r"%LOCALAPPDATA%\Programs\OpenRGB\OpenRGB.exe")]
-    cands += _g.glob(os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\*OpenRGB*\**\OpenRGB.exe"),
-                     recursive=True)
+    for base in (r"%LOCALAPPDATA%\Microsoft\WinGet\Packages", r"%ProgramFiles%\WinGet\Packages"):
+        cands += _g.glob(os.path.expandvars(base + r"\*OpenRGB*\**\OpenRGB.exe"), recursive=True)
     return [next((c for c in cands if c and os.path.exists(c)), "OpenRGB.exe")]
 
 

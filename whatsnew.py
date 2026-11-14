@@ -13,6 +13,11 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.6.3", "OpenRGB på Windows", [
+        ("Rettet", [
+            "Installasjonsfilen fant ikke OpenRGB (pakken har fått nytt navn i winget) – nå installeres den",
+        ]),
+    ]),
     ("0.6.2", "Rolig installasjon på Windows", [
         ("Rettet", [
             "Installasjonsfilen viser ikke lenger et PowerShell-vindu – fremdriften vises i installasjonsvinduet",

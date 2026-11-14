@@ -1564,5 +1564,7 @@
  "Slå av kameraet helt (som Fn-tasten for kamera).": "Turn the camera off completely (like the Fn camera key).",
  "Rolig installasjon på Windows": "Quiet installation on Windows",
  "Installasjonsfilen viser ikke lenger et PowerShell-vindu – fremdriften vises i installasjonsvinduet": "The installer no longer shows a PowerShell window – progress is shown in the installer window",
- "MSI-styringen på Windows kjører helt uten vindu, også når den trenger administratorrett": "MSI control on Windows runs without any window, even when it needs administrator rights"
+ "MSI-styringen på Windows kjører helt uten vindu, også når den trenger administratorrett": "MSI control on Windows runs without any window, even when it needs administrator rights",
+ "OpenRGB på Windows": "OpenRGB on Windows",
+ "Installasjonsfilen fant ikke OpenRGB (pakken har fått nytt navn i winget) – nå installeres den": "The installer could not find OpenRGB (the package was renamed in winget) – it is now installed"
 }
