@@ -215,6 +215,88 @@ def games():
 
 
 # --------------------------------------------------------------------------
+# Oppdatering av Android-appen: NAS-en (Kontrollsenter/Android) er fasit, ellers APK-en PC-en har selv
+# --------------------------------------------------------------------------
+APK_CACHE = os.path.expanduser("~/.cache/systemmonitor/android/Kontrollsenter.apk")
+_APK = {"t": 0, "info": None}
+_APK_LOCK = threading.Lock()
+
+
+def version_code(v):
+    try:
+        p = (list(map(int, str(v).split("."))) + [0, 0])[:3]
+        return p[0] * 10000 + p[1] * 100 + p[2]
+    except ValueError:
+        return 0
+
+
+def _local_apk():
+    path = os.path.join(WEB, "kontrollsenter.apk")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(os.path.join(APP_DIR, "VERSION"), encoding="utf-8") as f:
+            ver = f.read().strip()
+    except OSError:
+        return None
+    return {"version": ver, "code": version_code(ver), "source": "pc", "path": path}
+
+
+def apk_info(force=False):
+    """Nyeste Android-app: {version, code, source: nas|pc} – eller None."""
+    with _APK_LOCK:
+        if not force and time.time() - _APK["t"] < 300 and _APK["t"]:
+            return _APK["info"]
+        nas = None
+        try:
+            import tempfile
+            import lanupdate
+            if lanupdate.on_lan():
+                tmp = tempfile.mkdtemp()
+                try:
+                    lanupdate._smb(f'cd "Android"; get versjon.json "{tmp}/v.json"', 30)
+                    with open(os.path.join(tmp, "v.json"), encoding="utf-8") as f:
+                        nas = json.load(f)
+                    nas = {"version": str(nas["version"]), "code": int(nas["code"]), "sha256": nas.get("sha256", ""),
+                           "source": "nas"}
+                finally:
+                    import shutil
+                    shutil.rmtree(tmp, ignore_errors=True)
+        except Exception:  # noqa: BLE001
+            nas = None
+        loc = _local_apk()
+        best = max((x for x in (nas, loc) if x), key=lambda x: (x["code"], x["source"] == "nas"), default=None)
+        _APK["t"], _APK["info"] = time.time(), best
+        return best
+
+
+def apk_path():
+    """Filen som skal sendes til telefonen (henter fra NAS-en ved behov, med sjekksum)."""
+    info = apk_info()
+    if not info:
+        return None
+    if info["source"] == "pc":
+        return info["path"]
+    want = info.get("sha256", "")
+
+    def ok(p):
+        if not os.path.isfile(p):
+            return False
+        with open(p, "rb") as f:
+            return not want or hashlib.sha256(f.read()).hexdigest() == want
+    with _APK_LOCK:
+        if not ok(APK_CACHE):
+            import lanupdate
+            os.makedirs(os.path.dirname(APK_CACHE), exist_ok=True)
+            part = APK_CACHE + ".part"
+            lanupdate._smb(f'cd "Android"; get Kontrollsenter.apk "{part}"', 120)
+            if not ok(part):
+                raise RuntimeError("APK-en på NAS-en har feil sjekksum")
+            os.replace(part, APK_CACHE)
+    return APK_CACHE
+
+
+# --------------------------------------------------------------------------
 # Kommandoer (fast liste)
 # --------------------------------------------------------------------------
 def _open(uri):
@@ -518,6 +600,18 @@ def _handler(remote):
                     if not os.path.isdir(WEB):
                         return self._missing_web()
                     return self._static(p[5:] or "index.html")
+                if p == "/api/appupdate":                 # åpen: bare versjonsnummeret til appen
+                    force = (parse_qs(u.query).get("force") or ["0"])[0] == "1"
+                    info = apk_info(force)
+                    return self._send(200, {k: v for k, v in (info or {}).items() if k in ("version", "code",
+                                                                                         "source")})
+                if p == "/api/apk":
+                    path = apk_path()
+                    if not path:
+                        return self._send(404, {"error": "fant ingen app"})
+                    with open(path, "rb") as f:
+                        return self._send(200, f.read(), "application/vnd.android.package-archive",
+                                          {"Content-Disposition": 'attachment; filename="Kontrollsenter.apk"'})
                 if p == "/api/hello":
                     import applog
                     import savegames

@@ -19,6 +19,8 @@
   <div id="conn" class="dot" title="Tilkobling"></div>
 </header>
 
+<div id="upd" class="upd" hidden><span id="upd-t"></span><button id="upd-go" class="primary">Oppdater</button></div>
+
 <nav class="tabs" id="tabs">
   <button data-tab="oversikt" class="on">Oversikt</button>
   <button data-tab="kontroll">Kontroll</button>
@@ -111,6 +113,11 @@
           <button data-sys="restart" class="warn" data-confirm="Starte PC-en på nytt nå?">Start på nytt</button>
           <button data-sys="shutdown" class="danger" data-confirm="Slå av PC-en nå?">Slå av</button>
         </div>
+      </div>
+      <div class="card"><h2>Appen</h2>
+        <p class="dim" id="app-ver">Versjon –</p>
+        <button id="upd-check">Se etter oppdatering</button>
+        <div id="upd-msg" class="dim small" style="margin-top:8px"></div>
       </div>
       <div class="card"><h2>Denne enheten</h2>
         <p class="dim">Paret med <b id="paired-pc"></b>. Tilgangen kan fjernes i Kontrollsenter på PC-en.</p>

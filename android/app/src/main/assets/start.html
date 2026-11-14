@@ -22,6 +22,8 @@ input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid
 .pc .x { background:transparent; color:var(--dim); padding:8px 10px; min-height:40px; }
 .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--dim); margin-right:6px; }
 .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
+.upd { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--acc); color:#fff; border-radius:16px; margin:14px 0; }
+.upd span { flex:1; } .upd button { background:#fff; color:var(--acc); }
 #scan-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; margin-top:8px; }
 #scan-bar i { display:block; height:100%; width:0; background:var(--acc); transition:width .2s; }
 </style>
@@ -31,8 +33,10 @@ input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid
   <h1>Kontrollsenter</h1>
   <div class="dim">Velg PC-en du vil styre. PC-en må ha Kontrollsenter med <b>Tillat fjernstyring</b> slått på
     (Hjemme → Mobil og nettbrett).</div>
+  <div id="upd" class="upd" hidden><span id="upd-t"></span><button id="upd-go">Oppdater nå</button></div>
   <div class="bar">
     <button id="scan" class="primary">Søk etter PC-er</button>
+    <button id="upd-check">Se etter oppdatering</button>
     <input id="manual" placeholder="Eller skriv adressen, f.eks. 192.168.1.20" inputmode="url">
     <button id="add">Legg til</button>
   </div>
@@ -86,8 +90,33 @@ async function check() {
   const online = {};
   await Promise.all(pcs.map(async (p) => { const j = await hello(p.host, 2000); online[p.host] = !!j; if (j) remember(p.host, j); }));
   render(online);
+  if (KS && KS.rememberHosts) KS.rememberHosts(JSON.stringify(pcs.map((p) => p.host)));
   return online;
 }
+
+// ---- oppdatering av appen: PC-ene leser NAS-en (Kontrollsenter/Android) ----
+window.ksUpdateStatus = (m) => { $("#upd").hidden = false; $("#upd-t").textContent = m; };
+async function checkUpdate(force, online) {
+  const have = KS && KS.versionCode ? Number(KS.versionCode()) : 0;
+  let best = null;
+  const hosts = pcs.map((p) => p.host).filter((h) => !online || online[h]);
+  await Promise.all(hosts.map(async (h) => {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), force ? 15000 : 4000);
+    try {
+      const r = await (await fetch(`http://${h}:${PORT}/api/appupdate${force ? "?force=1" : ""}`, { signal: ctl.signal, cache: "no-store" })).json();
+      if (r.code && (!best || r.code > best.code)) best = Object.assign(r, { host: h });
+    } catch (e) {} finally { clearTimeout(t); }
+  }));
+  if (best && best.code > have) {
+    $("#upd").hidden = false;
+    $("#upd-t").textContent = `Kontrollsenter ${best.version} er klar (du har ${KS && KS.version ? KS.version() : "eldre"})`;
+    $("#upd-go").onclick = () => KS && KS.update && KS.update(`http://${best.host}:${PORT}/api/apk`);
+    return best;
+  }
+  if (force) $("#status").textContent = best ? "Appen er oppdatert ✓" : "Fikk ikke svar fra noen PC – er Kontrollsenter i gang?";
+  return null;
+}
+$("#upd-check").onclick = async () => { $("#status").textContent = "Sjekker NAS-en via PC-ene …"; await checkUpdate(true); };
 async function scan() {
   const sn = KS ? KS.subnet() : "";
   const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\/(\d+)$/.exec(sn);
@@ -123,14 +152,20 @@ if (KS && KS.version) $("#ver").textContent = "App-versjon " + KS.version();
 
 (async () => {
   render();
-  const home = /[?&]hjem=1/.test(location.search);
+  const home = /[?&](hjem|oppdater)=1/.test(location.search);
   const last = localStorage.getItem("lastHost");
+  if (/[?&]oppdater=1/.test(location.search)) { await check(); await checkUpdate(true); return; }
   if (!home && last) {                          // åpne sist brukte PC direkte hvis den svarer
     $("#status").textContent = "Kobler til sist brukte PC …";
-    if (await hello(last, 1500)) { const p = pcs.find((x) => x.host === last); if (p) return open(p); }
+    if (await hello(last, 1500)) {
+      const p = pcs.find((x) => x.host === last);
+      if (KS && KS.rememberHosts) KS.rememberHosts(JSON.stringify(pcs.map((x) => x.host)));
+      if (p && !(await checkUpdate(false, { [last]: true }))) return open(p);   // vis banneret først hvis ny app
+    }
     $("#status").textContent = "";
   }
   const online = await check();
+  checkUpdate(false, online);
   if (!pcs.length) scan();
   else if (!Object.values(online).some(Boolean)) $("#status").textContent = "Ingen av PC-ene svarer akkurat nå. Prøv «Søk etter PC-er».";
 })();

@@ -1596,5 +1596,9 @@
  "«{}» er paret ✓": "“{}” is paired ✓",
  "Android-appen kobler til": "The Android app connects",
  "Appen viste «error: finnes ikke» når du trykket «Åpne»: oppdateringen fra en eldre versjon tok ikke med kontrollpanelet. Nå kopieres hele pakken ved oppdatering, og filer som mangler hentes fra NAS-en ved oppstart": "The app showed “error: not found” when you tapped “Open”: updating from an older version left out the control panel. Now the whole package is copied on update, and missing files are fetched from the NAS at startup",
- "Android-prosjektet kan åpnes og kjøres i Android Studio": "The Android project can be opened and run in Android Studio"
+ "Android-prosjektet kan åpnes og kjøres i Android Studio": "The Android project can be opened and run in Android Studio",
+ "Oppdateringer i Android-appen": "Updates in the Android app",
+ "Android-appen sier fra når en ny versjon ligger på NAS-en – banner i appen, og varsel på telefonen/nettbrettet også når appen er lukket": "The Android app tells you when a new version is on the NAS – a banner in the app, and a notification on your phone/tablet even when the app is closed",
+ "«Oppdater nå» laster ned og installerer den nye appen via PC-en (Android godtar bare en app med samme signatur)": "“Update now” downloads and installs the new app via the PC (Android only accepts an app with the same signature)",
+ "«Se etter oppdatering» på startsiden og i System-fanen": "“Check for update” on the start page and in the System tab"
 }

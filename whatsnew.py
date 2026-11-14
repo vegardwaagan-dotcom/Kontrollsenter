@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.7.2", "Oppdateringer i Android-appen", [
+        ("Nytt", [
+            "Android-appen sier fra når en ny versjon ligger på NAS-en – banner i appen, og varsel på telefonen/"
+            "nettbrettet også når appen er lukket",
+            "«Oppdater nå» laster ned og installerer den nye appen via PC-en (Android godtar bare en app med "
+            "samme signatur)",
+            "«Se etter oppdatering» på startsiden og i System-fanen",
+        ]),
+    ]),
     ("0.7.1", "Android-appen kobler til", [
         ("Rettet", [
             "Appen viste «error: finnes ikke» når du trykket «Åpne»: oppdateringen fra en eldre versjon tok ikke "

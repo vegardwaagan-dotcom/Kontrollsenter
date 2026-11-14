@@ -1,6 +1,11 @@
 package no.waagan.kontrollsenter;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Insets;
@@ -22,8 +27,16 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.URL;
 
 /**
  * Kontrollsenter for Android: startsiden (assets/start.html) finner PC-ene med Kontrollsenter på hjemmenettet,
@@ -32,6 +45,8 @@ import java.net.InetAddress;
  */
 public class MainActivity extends Activity {
     static final String START = "file:///android_asset/start.html";
+    static final String ACTION_UPDATE = "no.waagan.kontrollsenter.OPPDATER";     // fra varselet
+    static final String ACTION_INSTALL = "no.waagan.kontrollsenter.INSTALLER";   // svar fra PackageInstaller
     private WebView web;
     private FrameLayout root;
 
@@ -72,11 +87,101 @@ public class MainActivity extends Activity {
                 return !("file".equals(sc) || ("http".equals(sc) && isLocal(u.getHost())));
             }
         });
+        // en lenke til en .apk (f.eks. «Last ned appen») installeres som oppdatering i stedet for å vises
+        web.setDownloadListener((url, ua, cd, mime, len) -> {
+            Uri u = Uri.parse(url);
+            if ("http".equals(u.getScheme()) && isLocal(u.getHost())) installFrom(url);
+        });
         if (saved != null) {
             web.restoreState(saved);
         } else {
-            web.loadUrl(START);
+            web.loadUrl(ACTION_UPDATE.equals(getIntent().getAction()) ? START + "?oppdater=1" : START);
         }
+        // varsel om nye app-versjoner (Android 13+ spør om lov én gang)
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
+        UpdateJob.schedule(this);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (ACTION_INSTALL.equals(intent.getAction())) {
+            int st = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999);
+            if (st == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                @SuppressWarnings("deprecation")
+                Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+                if (confirm != null) startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                status("Bekreft oppdateringen …");
+            } else if (st == PackageInstaller.STATUS_SUCCESS) {
+                status("Oppdatert ✓");
+            } else {
+                String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+                status("Oppdateringen feilet: " + (msg != null ? msg : ("kode " + st)));
+            }
+        } else if (ACTION_UPDATE.equals(intent.getAction())) {
+            web.loadUrl(START + "?oppdater=1");
+        }
+    }
+
+    /** Melding til siden som vises (window.ksUpdateStatus) – f.eks. «Laster ned …». */
+    void status(String msg) {
+        String q = JSONObject.quote(msg);
+        runOnUiThread(() -> web.evaluateJavascript("window.ksUpdateStatus && window.ksUpdateStatus(" + q + ")",
+                null));
+    }
+
+    /** Last ned APK-en fra en PC på hjemmenettet og installer den med Android sitt eget installasjonsprogram.
+     *  Android godtar bare en oppdatering som er signert med samme nøkkel som appen. */
+    void installFrom(String url) {
+        Uri u = Uri.parse(url);
+        if (!"http".equals(u.getScheme()) || !isLocal(u.getHost())) {
+            status("Ugyldig adresse");
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            status("Gi Kontrollsenter lov til å installere oppdateringer, og trykk «Oppdater» igjen");
+            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName())));
+            return;
+        }
+        new Thread(() -> {
+            HttpURLConnection con = null;
+            try {
+                status("Laster ned oppdateringen …");
+                con = (HttpURLConnection) new URL(url).openConnection();
+                con.setConnectTimeout(5000);
+                con.setReadTimeout(60000);
+                if (con.getResponseCode() != 200) throw new IOException("PC-en svarte " + con.getResponseCode());
+                PackageInstaller pi = getPackageManager().getPackageInstaller();
+                PackageInstaller.SessionParams sp =
+                        new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                sp.setAppPackageName(getPackageName());
+                if (Build.VERSION.SDK_INT >= 31) {
+                    sp.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+                }
+                int id = pi.createSession(sp);
+                try (PackageInstaller.Session session = pi.openSession(id)) {
+                    try (InputStream in = con.getInputStream();
+                         OutputStream out = session.openWrite("Kontrollsenter.apk", 0, con.getContentLengthLong())) {
+                        byte[] buf = new byte[65536];
+                        int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                        session.fsync(out);
+                    }
+                    Intent i = new Intent(this, MainActivity.class).setAction(ACTION_INSTALL);
+                    int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+                    session.commit(PendingIntent.getActivity(this, 2, i, fl).getIntentSender());
+                }
+                status("Installerer …");
+            } catch (Exception e) {
+                status("Oppdateringen feilet: " + e.getMessage());
+            } finally {
+                if (con != null) con.disconnect();
+            }
+        }).start();
     }
 
     static boolean isLocal(String host) {
@@ -187,6 +292,36 @@ public class MainActivity extends Activity {
                 // bruk modellnavnet
             }
             return (n != null && !n.isEmpty()) ? n : (Build.MANUFACTURER + " " + Build.MODEL);
+        }
+
+        @JavascriptInterface
+        public long versionCode() {
+            return UpdateJob.installedCode(MainActivity.this);
+        }
+
+        /** Last ned og installer en ny app-versjon fra en PC (bare http://<hjemmenett>:27100/api/apk). */
+        @JavascriptInterface
+        public void update(String url) {
+            Uri u = Uri.parse(url);
+            if (u.getPort() == 27100 && "/api/apk".equals(u.getPath())) {
+                runOnUiThread(() -> installFrom(url));
+            }
+        }
+
+        /** PC-ene startsiden kjenner (JSON-liste med adresser) – brukes av bakgrunnssjekken. */
+        @JavascriptInterface
+        public void rememberHosts(String json) {
+            try {
+                JSONArray a = new JSONArray(json);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < a.length() && i < 20; i++) {
+                    String h = a.getString(i);
+                    if (isLocal(h)) sb.append(sb.length() > 0 ? "," : "").append(h);
+                }
+                getSharedPreferences("ks", 0).edit().putString("hosts", sb.toString()).apply();
+            } catch (Exception e) {
+                // ugyldig liste – behold den gamle
+            }
         }
 
         @JavascriptInterface

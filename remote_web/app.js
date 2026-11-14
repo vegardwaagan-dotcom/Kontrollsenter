@@ -258,6 +258,36 @@ async function pollExtra() {
   try { renderExtra(await api("/api/extra")); } catch (e) { /* vises ved neste forsøk */ }
 }
 if (KS) { $("#btn-pcs").hidden = false; $("#btn-pcs").onclick = () => KS.home(); }
+
+// ---------- oppdatering av Android-appen (NAS-en via PC-en) ----------
+const appCode = () => (KS && KS.versionCode ? Number(KS.versionCode()) : 0);
+window.ksUpdateStatus = (m) => { $("#upd-t").textContent = m; $("#upd-msg").textContent = m; toast(m); };
+async function checkAppUpdate(force) {
+  if (!KS) { $("#app-ver").textContent = "Åpnet i nettleser – appen finnes for Android"; return; }
+  $("#app-ver").textContent = "Versjon " + (KS.version ? KS.version() : "?");
+  try {
+    const r = await (await fetch("/api/appupdate" + (force ? "?force=1" : ""), { cache: "no-store" })).json();
+    const have = appCode();
+    if (r.code && (!KS.versionCode || r.code > have)) {
+      $("#upd").hidden = false;
+      if (KS.update) {
+        $("#upd-t").textContent = `Ny versjon av appen er klar: ${r.version}`;
+        $("#upd-go").hidden = false;
+        $("#upd-go").onclick = () => KS.update(location.origin + "/api/apk");
+      } else {           // eldre app uten oppdateringsfunksjon: installer den nye én gang manuelt
+        $("#upd-t").textContent = `Ny app ${r.version}: åpne ${location.origin}/api/apk i nettleseren og installer den (bare denne ene gangen)`;
+        $("#upd-go").hidden = true;
+      }
+      $("#upd-msg").textContent = `Versjon ${r.version} er tilgjengelig`;
+    } else {
+      $("#upd").hidden = true;
+      $("#upd-msg").textContent = force ? "Appen er oppdatert ✓" : "";
+    }
+  } catch (e) { if (force) $("#upd-msg").textContent = "Kunne ikke sjekke: " + e.message; }
+}
+$("#upd-check").onclick = () => { $("#upd-msg").textContent = "Sjekker NAS-en …"; checkAppUpdate(true); };
+setInterval(() => checkAppUpdate(false), 30 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAppUpdate(false); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { poll(); pollExtra(); } });
 window.addEventListener("resize", () => tab === "historikk" && loadHistory());
 setInterval(poll, 2000);
@@ -267,5 +297,5 @@ setInterval(() => tab === "kontroll" && pollExtra(), 8000);
   try { const h = await (await fetch("/api/hello")).json(); $("#pc-name").textContent = h.name; } catch (e) {}
   if (!token) return showPair();
   let t = "oversikt"; try { t = sessionStorage.getItem("ks_tab") || t; } catch (e) {}
-  setTab(t); poll(); pollExtra();
+  setTab(t); poll(); pollExtra(); checkAppUpdate(false);
 })();
