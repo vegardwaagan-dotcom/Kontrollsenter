@@ -132,7 +132,10 @@ def meminfo():
 def hwmon_temps():
     """(enhet, etikett, °C) – fra LibreHardwareMonitor."""
     out = []
+    from sensors import plausible
     for s in Lhm.find("Temperature"):
+        if not plausible(s["name"], s["value"]):          # RAM-grenser, «Distance to TjMax» o.l.
+            continue
         dev = s["id"].split("/")[1] if "/" in s["id"] else s["hw"]
         out.append((dev, s["name"], s["value"]))
     return out

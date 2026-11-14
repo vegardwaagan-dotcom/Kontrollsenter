@@ -1572,5 +1572,8 @@
  "Historikken mistet målinger («database is locked») når to Kontrollsenter-prosesser kjørte samtidig": "History lost samples (“database is locked”) when two Control Center processes ran at the same time",
  "Feilmeldinger uten tekst («Feil:») sier nå hva som skjedde": "Error messages without text (“Error:”) now say what happened",
  "Windows-installasjonen prøver OpenRGB på flere måter": "The Windows installer tries several ways to install OpenRGB",
- "Linux-installasjonen spør ikke om passord når ingenting mangler": "The Linux installer no longer asks for a password when nothing is missing"
+ "Linux-installasjonen spør ikke om passord når ingenting mangler": "The Linux installer no longer asks for a password when nothing is missing",
+ "Riktige temperaturer": "Correct temperatures",
+ "Grenseverdier ble vist som temperaturer – f.eks. RAM-ens «Critical High Limit» (85 °C) ga rødt varsel, og «Distance to TjMax» så ut som CPU-temperatur. Nå vises bare ekte målinger": "Limit values were shown as temperatures – e.g. the RAM's “Critical High Limit” (85 °C) gave a red warning, and “Distance to TjMax” looked like a CPU temperature. Only real readings are shown now",
+ "Frakoblede sensorer på hovedkortet (0 °C, −62 °C) skjules": "Disconnected motherboard sensors (0 °C, −62 °C) are hidden"
 }

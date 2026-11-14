@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.6.5", "Riktige temperaturer", [
+        ("Rettet", [
+            "Grenseverdier ble vist som temperaturer – f.eks. RAM-ens «Critical High Limit» (85 °C) ga rødt "
+            "varsel, og «Distance to TjMax» så ut som CPU-temperatur. Nå vises bare ekte målinger",
+            "Frakoblede sensorer på hovedkortet (0 °C, −62 °C) skjules",
+        ]),
+    ]),
     ("0.6.4", "Gjennomgang av Linux og Windows", [
         ("Rettet", [
             "Windows: utskrift fra Windows-verktøy (strømplan, Wi-Fi, ping, PowerShell) med æøå gikk tapt – "

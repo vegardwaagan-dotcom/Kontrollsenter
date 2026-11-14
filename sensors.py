@@ -2,6 +2,7 @@
 import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -119,8 +120,24 @@ def hwmon_temps():
             if not v or not v.lstrip("-").isdigit():
                 continue
             label = read(inp.replace("_input", "_label"), os.path.basename(inp).split("_")[0])
-            out.append((name, label, int(v) / 1000))
+            t = int(v) / 1000
+            if not plausible(label, t):
+                continue
+            out.append((name, label, t))
     return out
+
+
+# Navn på «temperaturer» som egentlig er grenseverdier/innstillinger (f.eks. RAM: «Thermal Sensor Critical High
+# Limit: 85») – de er ikke målinger og skal ikke vises eller gi rødt varsel. «Core Max» er en ekte måling.
+_NOT_TEMP = re.compile(r"limit|threshold|resolution|distance|tj\s*max|warning|critical|alarm|trip|hyst|"
+                       r"calibration|offset", re.I)
+
+
+def plausible(label, t):
+    """Ekte måling? Hopper over grenseverdier og frakoblede sensorer (0 °C, −62 °C, 127 °C o.l.)."""
+    if t is None or _NOT_TEMP.search(label or ""):
+        return False
+    return 0 < t < 125
 
 
 def cpu_temp(temps):
