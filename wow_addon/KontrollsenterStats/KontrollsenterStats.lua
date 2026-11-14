@@ -7,7 +7,6 @@ local f = CreateFrame("Frame")
 local C                      -- denne karakterens tabell
 local session                -- økten som pågår nå
 local playedBase, playedLevelBase, playedAt = nil, nil, nil   -- fra TIME_PLAYED_MSG
-local silentPlayed = false
 local lastAttacker
 local combatStart
 local MAXNAMES = 250
@@ -80,17 +79,25 @@ local function save()
   C.zone = GetRealZoneText and GetRealZoneText() or nil
 end
 
--- /played uten at det skrives i chatten
-local origDisplay = ChatFrame_DisplayTimePlayed
-if origDisplay then
-  ChatFrame_DisplayTimePlayed = function(...)
-    if silentPlayed then silentPlayed = false; return end
-    return origDisplay(...)
+-- /played uten at det skrives i chatten: chatvinduene slutter å lytte på svaret et øyeblikk.
+-- (Blizzards egne funksjoner byttes ALDRI ut – det ville «smitte» grensesnittet og gi «blocked from an action».)
+local muted = {}
+local function muteChat(on)
+  for i = 1, (NUM_CHAT_WINDOWS or 10) do
+    local cf = _G["ChatFrame" .. i]
+    if cf and cf.UnregisterEvent then
+      if on then
+        if cf:IsEventRegistered("TIME_PLAYED_MSG") then cf:UnregisterEvent("TIME_PLAYED_MSG"); muted[cf] = true end
+      elseif muted[cf] then
+        cf:RegisterEvent("TIME_PLAYED_MSG"); muted[cf] = nil
+      end
+    end
   end
 end
 local function requestPlayed()
-  silentPlayed = true
+  muteChat(true)
   RequestTimePlayed()
+  C_Timer.After(5, function() muteChat(false) end)       -- sikkerhetsnett hvis svaret aldri kommer
 end
 
 -- distanse: fart (yards/s) × tid, sortert etter hvordan du beveger deg
@@ -167,6 +174,7 @@ f:SetScript("OnEvent", function(_, event, ...)
     C_Timer.After(3, requestPlayed)
   elseif event == "TIME_PLAYED_MSG" then
     local total, level = ...
+    C_Timer.After(0, function() muteChat(false) end)     -- chatten lytter igjen (etter at svaret er levert)
     playedBase, playedLevelBase, playedAt = total, level, GetTime()
     C.played, C.played_level = total, level
   elseif event == "PLAYER_LEVEL_UP" then

@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.8.3", "WoW-addonen uten «blocked»-melding", [
+        ("Rettet", [
+            "WoW: «KontrollsenterStats has been blocked from an action only available to the Blizzard UI». Addonen "
+            "byttet ut en Blizzard-funksjon for å skjule /played i chatten – nå dempes chatten bare et øyeblikk "
+            "i stedet, og ingen Blizzard-funksjoner endres",
+        ]),
+    ]),
     ("0.8.2", "WoW-statistikk: hva mangler?", [
         ("Rettet", [
             "Spillstatistikk sier nå hvorfor WoW-tallene ikke vises ennå – f.eks. at WoW må startes helt på nytt "
