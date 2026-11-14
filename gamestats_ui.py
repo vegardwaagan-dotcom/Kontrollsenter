@@ -67,6 +67,8 @@ class StatsCard(Gtk.Box):
         items = []
         for c in d.get("wow", []):
             items.append((f"WoW · {c['title']}", ("wow", c)))
+        if d.get("wow_hints"):
+            items.append(("World of Warcraft – " + i18n.tr("venter på tall"), ("hint", d["wow_hints"])))
         multi = len(d.get("accounts", [])) > 1
         rank = lambda g: 0 if g["highlights"] else 1 if g["stats"] else 2   # noqa: E731 – mest statistikk først
         for acc in d.get("accounts", []):
@@ -113,6 +115,9 @@ class StatsCard(Gtk.Box):
                 exp = Gtk.Expander(label=i18n.tr("All statistikk fra spillet") + f" ({len(obj['stats'])})")
                 exp.set_child(_grid(obj["stats"][:300]))
                 self.body.append(exp)
+        elif kind == "hint":
+            for h in obj:
+                self.body.append(_lab("• " + h, wrap=True))
         else:
             self.body.append(_lab(i18n.tr("Spill litt, så dukker statistikken opp her. WoW: logg ut eller skriv "
                                           "/reload etter at addonen «Kontrollsenter Stats» er lastet."), "dim-label",

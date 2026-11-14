@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.8.2", "WoW-statistikk: hva mangler?", [
+        ("Rettet", [
+            "Spillstatistikk sier nå hvorfor WoW-tallene ikke vises ennå – f.eks. at WoW må startes helt på nytt "
+            "etter at addonen ble lagt inn, eller at tallene kommer etter utlogging eller /reload",
+        ]),
+    ]),
     ("0.8.1", "App-oppdatering på Samsung", [
         ("Rettet", [
             "«Oppdater» i Android-appen feilet med «self update is blocked by unknown source package» på nyere "

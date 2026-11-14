@@ -230,6 +230,7 @@ async function loadStats() {
     const multi = (d.accounts || []).length > 1;
     statItems = [];
     (d.wow || []).forEach((c) => statItems.push({ name: "WoW · " + c.title, kind: "wow", o: c }));
+    if ((d.wow_hints || []).length) statItems.push({ name: "World of Warcraft – venter på tall", kind: "hint", o: d.wow_hints });
     const rank = (g) => (g.highlights.length ? 0 : g.stats.length ? 1 : 2);   // mest statistikk først
     (d.accounts || []).forEach((a) => a.games.slice().sort((x, y) => rank(x) - rank(y)).forEach((g) => {
       if (g.stats.length || g.highlights.length || g.playtime_min) statItems.push({ name: g.name + (multi ? ` (${a.name})` : ""), kind: "steam", o: g });
@@ -245,6 +246,7 @@ function renderStats() {
   const it = statItems[+$("#stats-sel").value];
   if (!it) { $("#stats").innerHTML = '<p class="dim">Spill litt, så dukker statistikken opp her. WoW: logg ut eller skriv /reload.</p>'; return; }
   const o = it.o;
+  if (it.kind === "hint") { $("#stats").innerHTML = it.o.map((h) => `<p>• ${esc(h)}</p>`).join(""); return; }
   if (it.kind === "wow") {
     $("#stats").innerHTML = `<p class="dim">${esc(o.sub)}</p>${kv(o.rows)}`
       + (o.kills_by.length ? `<h3>Drept mest</h3>${kv(o.kills_by)}` : "")

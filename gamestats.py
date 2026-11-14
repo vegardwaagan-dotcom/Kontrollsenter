@@ -561,6 +561,46 @@ def wow_stats():
     return sorted(chars, key=lambda c: -(c.get("last_seen") or 0))
 
 
+def wow_status():
+    """Hvorfor det (ennå) ikke finnes WoW-tall: [{flavor, addon, data, needs_restart, running}] per utgave."""
+    procs = []
+    try:
+        import psutil
+        for p in psutil.process_iter(["name", "create_time", "cmdline"]):
+            n = (p.info.get("name") or "").lower()
+            cmd = " ".join(p.info.get("cmdline") or []).lower()
+            if n.startswith("wow") or "\\wow" in cmd or "wow.exe" in cmd or "wowclassic.exe" in cmd:
+                procs.append((cmd or n, p.info.get("create_time") or 0))
+    except Exception:  # noqa: BLE001
+        pass
+    out = []
+    for _root, d, name, _iface in wow_flavors():
+        lua = Path(d, "Interface", "AddOns", "KontrollsenterStats", "KontrollsenterStats.lua")
+        data = bool(glob.glob(os.path.join(d, "WTF", "Account", "*", "SavedVariables", "KontrollsenterStats.lua")))
+        fl = os.path.basename(d).lower()
+        running = [t for cmd, t in procs if fl in cmd or (fl == "_retail_" and "_retail_" in cmd)]
+        installed_at = lua.stat().st_mtime if lua.exists() else 0
+        out.append({"flavor": name, "addon": lua.exists(), "data": data, "running": bool(running),
+                    "played": bool(glob.glob(os.path.join(d, "WTF", "Account", "*", "*", "*"))),
+                    "needs_restart": bool(running) and lua.exists() and min(running) < installed_at})
+    return out
+
+
+def wow_hint(st):
+    """Kort forklaring til brukeren når en WoW-utgave ikke har tall ennå (eller None)."""
+    if st["data"]:
+        return None
+    if not st["addon"]:
+        return f"WoW {st['flavor']}: addonen er ikke lagt inn ennå"
+    if st["needs_restart"]:
+        return (f"WoW {st['flavor']} kjørte før addonen ble lagt inn – avslutt WoW helt og start det på nytt "
+                f"(/reload er ikke nok for en ny addon)")
+    if st["running"]:
+        return (f"WoW {st['flavor']}: tallene lagres når du logger ut eller skriver /reload. Sjekk at «Kontrollsenter "
+                f"Stats» er huket av under AddOns på karaktervalget")
+    return f"WoW {st['flavor']}: start spillet og logg inn – tallene vises etter utlogging eller /reload"
+
+
 def wow_summary(c):
     """Fine tall for visning: (overskrift, [(navn, verdi)], toppliste-tabeller)."""
     dist = c.get("dist") or {}
@@ -613,6 +653,9 @@ def snapshot():
     out = {"live": LIVE.state(), "wow": [], "steam": [], "accounts": []}
     try:
         out["wow"] = [wow_summary(c) for c in wow_stats()]
+        have = {c["sub"].split("WoW ")[-1] for c in out["wow"]}
+        out["wow_hints"] = [h for st in wow_status() if st["flavor"] not in have
+                            and (st["running"] or st["played"]) for h in [wow_hint(st)] if h]
     except Exception as e:  # noqa: BLE001
         out["wow_error"] = str(e)
     try:
