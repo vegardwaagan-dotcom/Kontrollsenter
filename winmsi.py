@@ -185,6 +185,10 @@ class MsiWinPage(Gtk.ScrolledWindow):
         self._bg(state, self._show)
 
     def _tick(self):
+        # via oppgaven (administrator) startes PowerShell hver gang – oppdater sjeldnere da
+        self._n = getattr(self, "_n", 0) + 1
+        if _mode["via"] == "oppgave" and self._n % 3:
+            return True
         if self.get_mapped() and not self._busy and self._built:
             self._load()
         return True

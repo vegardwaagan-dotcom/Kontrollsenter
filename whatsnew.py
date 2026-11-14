@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.6.2", "Rolig installasjon på Windows", [
+        ("Rettet", [
+            "Installasjonsfilen viser ikke lenger et PowerShell-vindu – fremdriften vises i installasjonsvinduet",
+            "MSI-styringen på Windows kjører helt uten vindu, også når den trenger administratorrett",
+        ]),
+    ]),
     ("0.6.1", "MSI-innstillinger på Windows", [
         ("Nytt", [
             "MSI på Windows: brukerscenario, Cooler Boost, viftemodus, Battery Master (ladegrense), Super Battery "

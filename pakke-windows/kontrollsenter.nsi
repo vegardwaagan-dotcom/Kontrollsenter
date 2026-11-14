@@ -78,7 +78,8 @@ Section "Kontrollsenter (påkrevd)" SecMain
   DetailPrint "Installerer GTK4, Python og LibreHardwareMonitor (administrator) – kan ta noen minutter første gang …"
   ReadEnvStr $2 USERDOMAIN
   ReadEnvStr $3 USERNAME
-  ExecShellWait "runas" "powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$Shared\installer.ps1" -Admin -ForUser "$2\$3"' SW_SHOWNORMAL
+  ; skjult PowerShell-vindu – fremdriften vises her, og loggen ligger i installasjon-admin.txt
+  ExecShellWait "runas" "powershell.exe" '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$Shared\installer.ps1" -Admin -Quiet -ForUser "$2\$3"' SW_HIDE
   ClearErrors
   FileOpen $0 "$Shared\installasjon-admin.status" r
   ${If} ${Errors}

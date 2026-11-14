@@ -3,7 +3,7 @@
 # To deler, fordi administratordelen kan kjøre som en annen Windows-konto enn deg (og ikke ser NAS-en):
 #   Vanlig del (deg):  henter Kontrollsenter fra NAS-en, installerer i din profil, snarveier, oppstart, logg
 #   Administratordel:  MSYS2 med GTK4/libadwaita/Python, LibreHardwareMonitor + PawnIO (felles for maskinen)
-param([switch]$Admin, [string]$ForUser = "")
+param([switch]$Admin, [string]$ForUser = "", [switch]$Quiet)   # -Quiet: skjult vindu (fra Setup.exe)
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
@@ -118,8 +118,9 @@ if ($Admin) {
             $PF = Join-Path $env:ProgramFiles "Kontrollsenter"
             New-Item -ItemType Directory -Force -Path $PF | Out-Null
             Copy-Item $msiSrc "$PF\msi_wmi.ps1" -Force
-            $mact = New-ScheduledTaskAction -Execute "powershell.exe" `
-                -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PF\msi_wmi.ps1`""
+            # conhost --headless: PowerShell uten noe vindu (ikke engang et blink)
+            $mact = New-ScheduledTaskAction -Execute "conhost.exe" `
+                -Argument "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PF\msi_wmi.ps1`""
             $mprn = New-ScheduledTaskPrincipal -UserId $ForUser -LogonType Interactive -RunLevel Highest
             $mset = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
                 -ExecutionTimeLimit (New-TimeSpan -Minutes 2) -MultipleInstances Queue
@@ -131,7 +132,7 @@ if ($Admin) {
     } catch {
         Write-Host "`n✗ Administratordelen stoppet: $_" -ForegroundColor Red
         Write-Host $_.ScriptStackTrace -ForegroundColor DarkGray
-        Read-Host "Trykk Enter for å lukke" | Out-Null
+        if (-not $Quiet) { Read-Host "Trykk Enter for å lukke" | Out-Null }
     } finally {
         Stop-Transcript | Out-Null
         Set-Content -Path (Join-Path $SHARED "installasjon-admin.status") -Value $code
