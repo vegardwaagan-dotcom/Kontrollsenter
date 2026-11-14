@@ -107,48 +107,19 @@ if hooksecurefunc and JumpOrAscendStart then
   end)
 end
 
-local function onCombatLog()
-  local _, sub, _, srcGUID, srcName, _, _, dstGUID, dstName = CombatLogGetCurrentEventInfo()
-  local me = UnitGUID("player")
-  if sub == "PARTY_KILL" and srcGUID == me then
-    C.kills = C.kills + 1
-    bump(C.kills_by, dstName)
-    if session then session.kills = session.kills + 1 end
-    return
-  end
-  if srcGUID == me or (UnitGUID("pet") and srcGUID == UnitGUID("pet")) then
-    local amount, crit
-    if sub == "SWING_DAMAGE" then
-      amount = select(12, CombatLogGetCurrentEventInfo())
-      crit = select(18, CombatLogGetCurrentEventInfo())
-    elseif sub == "SPELL_DAMAGE" or sub == "RANGE_DAMAGE" or sub == "SPELL_PERIODIC_DAMAGE" then
-      amount = select(15, CombatLogGetCurrentEventInfo())
-      crit = select(21, CombatLogGetCurrentEventInfo())
-    elseif sub == "SPELL_HEAL" or sub == "SPELL_PERIODIC_HEAL" then
-      local heal = select(15, CombatLogGetCurrentEventInfo()) or 0
-      local over = select(16, CombatLogGetCurrentEventInfo()) or 0
-      local eff = math.max(0, heal - over)
-      C.heal = C.heal + eff
-      if eff > C.max_heal then C.max_heal = eff; C.max_heal_spell = select(13, CombatLogGetCurrentEventInfo()) end
-      return
-    end
-    if type(amount) == "number" and amount > 0 then
-      C.dmg = C.dmg + amount
-      if crit then C.crits = C.crits + 1 end
-      if session then session.dmg = session.dmg + amount end
-      if amount > C.max_hit then
-        C.max_hit = amount
-        C.max_hit_spell = sub == "SWING_DAMAGE" and "Melee" or select(13, CombatLogGetCurrentEventInfo())
-        C.max_hit_target = dstName
-      end
-    end
-  elseif dstGUID == me and srcName and (sub:find("_DAMAGE") or sub == "SWING_MISSED") then
-    lastAttacker = srcName
-  end
+-- Kills: «X dies, you gain N experience» (kamploggen er låst for addons i nyere WoW, så den brukes ikke)
+local xpPattern
+do
+  local fmt = COMBATLOG_XPGAIN_FIRSTPERSON or "%s dies, you gain %d experience."
+  local prefix = fmt:match("^(.-)%%d") or fmt
+  prefix = prefix:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1"):gsub("%%s", "(.-)")
+  xpPattern = "^" .. prefix
 end
 
 f:SetScript("OnEvent", function(_, event, ...)
-  if not C and event ~= "PLAYER_LOGIN" then return end
+  if not C and event ~= "PLAYER_LOGIN" and event ~= "ADDON_ACTION_FORBIDDEN" and event ~= "ADDON_ACTION_BLOCKED" then
+    return
+  end
   if event == "PLAYER_LOGIN" then
     ensureChar()
     session = { start = now(), kills = 0, xp = 0, dist = 0, gold = 0, dmg = 0, deaths = 0, quests = 0,
@@ -171,9 +142,27 @@ f:SetScript("OnEvent", function(_, event, ...)
   elseif event == "PLAYER_DEAD" then
     C.deaths = C.deaths + 1
     if session then session.deaths = session.deaths + 1 end
-    bump(C.killers, lastAttacker or "Ukjent")
-  elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
-    onCombatLog()
+    local killer = (UnitExists and UnitExists("target") and UnitCanAttack and UnitCanAttack("player", "target"))
+      and UnitName("target") or lastAttacker
+    bump(C.killers, killer or "Ukjent")
+  elseif event == "PLAYER_TARGET_CHANGED" then
+    if UnitExists and UnitExists("target") and UnitCanAttack and UnitCanAttack("player", "target") then
+      lastAttacker = UnitName("target")
+    end
+  elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
+    local msg = ...
+    local victim = type(msg) == "string" and msg:match(xpPattern)
+    if victim and victim ~= "" then
+      C.kills = C.kills + 1
+      bump(C.kills_by, victim)
+      if session then session.kills = session.kills + 1 end
+    end
+  elseif event == "ADDON_ACTION_FORBIDDEN" or event == "ADDON_ACTION_BLOCKED" then
+    local who, fn = ...
+    if who == ADDON then
+      KontrollsenterStatsDB = KontrollsenterStatsDB or { version = 1, chars = {} }
+      KontrollsenterStatsDB.blocked = { event = event, func = tostring(fn), at = now() }
+    end
   elseif event == "PLAYER_MONEY" then
     local m = GetMoney()
     local d = m - (C.money or m)
@@ -201,10 +190,12 @@ f:SetScript("OnEvent", function(_, event, ...)
   end
 end)
 
-for _, e in ipairs({ "PLAYER_LOGIN", "TIME_PLAYED_MSG", "PLAYER_LEVEL_UP", "PLAYER_DEAD", "COMBAT_LOG_EVENT_UNFILTERED",
+-- bare vanlige hendelser – ingen kamplogg, ingen låste funksjoner
+for _, e in ipairs({ "ADDON_ACTION_FORBIDDEN", "ADDON_ACTION_BLOCKED", "PLAYER_LOGIN", "TIME_PLAYED_MSG",
+                     "PLAYER_LEVEL_UP", "PLAYER_DEAD", "PLAYER_TARGET_CHANGED", "CHAT_MSG_COMBAT_XP_GAIN",
                      "PLAYER_MONEY", "QUEST_TURNED_IN", "PLAYER_XP_UPDATE", "ZONE_CHANGED_NEW_AREA",
                      "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_LOGOUT" }) do
-  pcall(f.RegisterEvent, f, e)
+  f:RegisterEvent(e)
 end
 
 -- /ks – vis statistikken i chatten
@@ -217,6 +208,9 @@ end
 SLASH_KONTROLLSENTER1 = "/ks"
 SlashCmdList.KONTROLLSENTER = function()
   if not C then return end
+  if KontrollsenterStatsDB.blocked then
+    print("|cffff5555Kontrollsenter: WoW blokkerte " .. KontrollsenterStatsDB.blocked.func .. "|r")
+  end
   local total, lvl = playedNow()
   local km = 0
   for _, v in pairs(C.dist) do km = km + v end

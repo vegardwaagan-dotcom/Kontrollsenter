@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.8.5", "WoW-addonen bruker ikke kamploggen", [
+        ("Rettet", [
+            "WoW ba fortsatt om å slå av addonen: den lyttet på kamploggen, som er låst for addons i nyere WoW. "
+            "Kills telles nå fra «… dies, you gain … experience», og «drept av» er fienden du hadde valgt",
+            "Hvis WoW likevel blokkerer noe, lagrer addonen hva – og Spillstatistikk viser det",
+        ]),
+    ]),
     ("0.8.4", "WoW-addonen uten «disable/ignore»", [
         ("Rettet", [
             "WoW spurte om å slå av addonen etter /reload: den ba om /played, som er låst for addons i nyere "

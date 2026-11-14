@@ -543,6 +543,9 @@ def lua_parse(text):
     return out
 
 
+BLOCKED = {}          # utgave -> {"func", "event", "at"} hvis WoW blokkerte noe addonen gjorde
+
+
 def wow_stats():
     """[karakter-ordbok + flavor/account/file] fra alle WoW-utgaver og kontoer, sist spilt først."""
     chars = []
@@ -552,6 +555,8 @@ def wow_stats():
                 db = lua_parse(Path(f).read_text(encoding="utf-8", errors="replace")).get("KontrollsenterStatsDB") or {}
             except (OSError, ValueError, IndexError):
                 continue
+            if isinstance(db.get("blocked"), dict):
+                BLOCKED[name] = db["blocked"]
             for key, c in (db.get("chars") or {}).items():
                 if isinstance(c, dict):
                     c = dict(c)
@@ -630,6 +635,9 @@ def wow_summary(c):
             ("Tid i kamp", dur(c.get("combat_time"))), ("Hopp", c.get("jumps", 0)),
             ("Soner besøkt", len(c.get("zones") or {})), ("Innlogginger", c.get("sessions", 0)),
             ("Honorable kills", c.get("hk", 0))]
+    # skade/healing måles ikke der kamploggen er låst for addons – vis dem bare når det finnes tall
+    rows = [r for r in rows if not (r[0] in ("Skade totalt", "Healing totalt", "Kritiske treff") and not r[1])
+            and not (r[0] == "Største treff" and not c.get("max_hit"))]
     rows += [(f"Tid på level {lvl}", dur(t)) for lvl, t in lvl_rows]
     top = lambda t: sorted(((k, v) for k, v in (t or {}).items() if isinstance(v, (int, float))),  # noqa: E731
                            key=lambda x: -x[1])[:10]
@@ -654,7 +662,9 @@ def snapshot():
     try:
         out["wow"] = [wow_summary(c) for c in wow_stats()]
         have = {c["sub"].split("WoW ")[-1] for c in out["wow"]}
-        out["wow_hints"] = [h for st in wow_status() if st["flavor"] not in have
+        out["wow_hints"] = [f"WoW {fl}: WoW blokkerte {b.get('func')} i addonen – si fra, så rettes det"
+                            for fl, b in BLOCKED.items()]
+        out["wow_hints"] += [h for st in wow_status() if st["flavor"] not in have
                             and (st["running"] or st["played"]) for h in [wow_hint(st)] if h]
     except Exception as e:  # noqa: BLE001
         out["wow_error"] = str(e)
