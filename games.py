@@ -394,6 +394,12 @@ class GamesPage(Gtk.ScrolledWindow):
         self.set_child(Adw.Clamp(maximum_size=1100, child=box))
         self.box = box
         self.changes = {}
+        try:
+            import gamestats_ui
+            box.append(gamestats_ui.StatsCard(card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("spillstatistikk")
         self._sessions_card()
         self._steam_card()
         if not IS_WIN:                                  # Proton, lagrede spill i Proton-mappene og kontrollere (Linux)

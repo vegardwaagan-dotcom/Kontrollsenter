@@ -4,6 +4,9 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 const KS = window.KS || null;                 // Android-appen: KS.home() går tilbake til PC-listen
 let token = localStorage.getItem("ks_token") || "";
+let pcName = "";                               // nøkkelen lagres i appen per PC – virker hjemme og via Tailscale
+const saveToken = (t) => { token = t; try { localStorage.setItem("ks_token", t); } catch (e) {}
+  if (KS && KS.setToken && pcName) KS.setToken(pcName, t); };
 let tab = "oversikt", last = null, hold = {}, failures = 0, histRange = 3600, gamesCache = null;
 
 // ---------- hjelpere ----------
@@ -62,7 +65,7 @@ $$("#tabs button").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
 
 // ---------- paring ----------
 function showPair() {
-  token = ""; localStorage.removeItem("ks_token");
+  saveToken(""); localStorage.removeItem("ks_token");
   $$(".page").forEach((p) => (p.hidden = true)); $("#tabs").hidden = true; $("#pair").hidden = false;
   if (!$("#pair-name").value) $("#pair-name").value = (KS && KS.model && KS.model()) || (/Android/.test(navigator.userAgent) ? "Android-enhet" : "Nettleser");
   $("#pair-code").focus();
@@ -76,7 +79,7 @@ $("#pair-go").onclick = async () => {
       body: JSON.stringify({ code, device: $("#pair-name").value }) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || "feilet");
-    token = j.token; localStorage.setItem("ks_token", token);
+    pcName = j.name || pcName; saveToken(j.token);
     $("#pair").hidden = true; $("#tabs").hidden = false; setTab("oversikt"); poll();
     toast("Paret med " + j.name + " ✓");
   } catch (e) { $("#pair-msg").textContent = e.message; }
@@ -107,7 +110,8 @@ function renderOverview(s) {
   if (hot > 0) t.push(tile("Varmest", hot, Math.round(hot) + "°", "høyeste temperatur", colFor(hot)));
   if (s.watts) t.push(tile("Strøm", Math.min(100, s.watts / 6), s.watts + " W", "anslått forbruk", "var(--c3)"));
   if (s.home) { const p = (100 * s.home[0]) / s.home[1]; t.push(tile("Disk", p, Math.round(p) + " %", fmtB(s.home[1] - s.home[0]) + " ledig", colFor(p, 80, 90))); }
-  if (s.net) t.push(tile("Nett", Math.min(100, (s.net[0] / 12.5e6) * 100), fmtR(s.net[0]).replace("/s", ""), "↓ " + fmtR(s.net[0]) + " · ↑ " + fmtR(s.net[1]), "var(--c1)"));
+  if (s.net) { const short = fmtB(s.net[0]).replace(/(\d+)\.\d (MB|GB|KB)/, (m, a, u) => (+a >= 10 ? a : m.split(" ")[0]) + " " + u);
+    t.push(tile("Nett", Math.min(100, (s.net[0] / 12.5e6) * 100), short, "↓ " + fmtR(s.net[0]) + " · ↑ " + fmtR(s.net[1]), "var(--c1)")); }
   if (s.battery && s.battery.length) t.push(tile("Batteri", s.battery[0], Math.round(s.battery[0]) + " %", s.battery[1] || "", colFor(100 - s.battery[0], 70, 85)));
   $("#tiles").innerHTML = t.join("");
   const rows = (s.temps || []).slice();          // PC-en tar allerede med NVIDIA-temperaturen
@@ -216,8 +220,58 @@ async function loadHistory() {
   } catch (e) { toast("Historikk: " + e.message); }
 }
 
+// ---------- spillstatistikk ----------
+const nfmt = (v) => (typeof v === "number" ? v.toLocaleString("nb-NO") : esc(v));
+const kv = (rows) => `<div class="kvgrid">${rows.map(([k, v]) => `<div><b>${esc(k)}</b><span>${nfmt(v)}</span></div>`).join("")}</div>`;
+let statItems = [];
+async function loadStats() {
+  try {
+    const d = await api("/api/gamestats");
+    const multi = (d.accounts || []).length > 1;
+    statItems = [];
+    (d.wow || []).forEach((c) => statItems.push({ name: "WoW · " + c.title, kind: "wow", o: c }));
+    const rank = (g) => (g.highlights.length ? 0 : g.stats.length ? 1 : 2);   // mest statistikk først
+    (d.accounts || []).forEach((a) => a.games.slice().sort((x, y) => rank(x) - rank(y)).forEach((g) => {
+      if (g.stats.length || g.highlights.length || g.playtime_min) statItems.push({ name: g.name + (multi ? ` (${a.name})` : ""), kind: "steam", o: g });
+    }));
+    const keep = $("#stats-sel").value;
+    $("#stats-sel").innerHTML = statItems.map((it, i) => `<option value="${i}">${esc(it.name)}</option>`).join("") || "<option>Ingen statistikk ennå</option>";
+    const idx = statItems.findIndex((it, i) => String(i) === keep);
+    if (idx >= 0) $("#stats-sel").value = keep;
+    renderStats();
+  } catch (e) { $("#stats").innerHTML = `<p class="dim">${esc(e.message)}</p>`; }
+}
+function renderStats() {
+  const it = statItems[+$("#stats-sel").value];
+  if (!it) { $("#stats").innerHTML = '<p class="dim">Spill litt, så dukker statistikken opp her. WoW: logg ut eller skriv /reload.</p>'; return; }
+  const o = it.o;
+  if (it.kind === "wow") {
+    $("#stats").innerHTML = `<p class="dim">${esc(o.sub)}</p>${kv(o.rows)}`
+      + (o.kills_by.length ? `<h3>Drept mest</h3>${kv(o.kills_by)}` : "")
+      + (o.killers.length ? `<h3>Drept av</h3>${kv(o.killers)}` : "")
+      + (o.session ? `<h3>Siste økt</h3>${kv(o.session)}` : "");
+  } else {
+    const sub = [(o.playtime_min / 60).toFixed(1) + " timer spilt"];
+    if (o.achievements[1]) sub.push(`${o.achievements[0]} / ${o.achievements[1]} prestasjoner`);
+    if (o.last_played) sub.push("sist spilt " + new Date(o.last_played * 1000).toLocaleDateString("nb-NO"));
+    $("#stats").innerHTML = `<p class="dim">${esc(sub.join(" · "))}</p>` + (o.highlights.length ? kv(o.highlights) : "")
+      + (o.stats.length ? `<details><summary>All statistikk fra spillet (${o.stats.length})</summary>${kv(o.stats)}</details>` : "");
+  }
+}
+$("#stats-sel").onchange = renderStats;
+function renderLive(c) {
+  $("#live").hidden = !c;
+  if (!c) return;
+  const rows = c.mine ? [["Kills", c.kills], ["Dødsfall", c.deaths], ["Assists", c.assists], ["Headshots", `${c.hs} (${c.hs_pct || "–"})`],
+    ["Skade", c.dmg], ["ADR", c.adr], ["MVP", c.mvps], ["Liv / rustning", `${c.health} / ${c.armor}`], ["Penger", "$" + c.money],
+    ["Våpen", c.weapon ? `${c.weapon} ${c.ammo ?? ""}/${c.ammo_max ?? ""}` : "–"]] : [["Du ser på en annen spiller", ""]];
+  $("#live").innerHTML = `<h2>🔴 CS2 live · ${esc(c.map)} · ${esc(c.mode)} · runde ${c.round}</h2>
+    <div class="score">CT ${c.ct ?? 0} – ${c.t ?? 0} T</div>${kv(rows)}`;
+}
+
 // ---------- spill ----------
 async function loadGames() {
+  loadStats();
   if (!gamesCache) { try { gamesCache = (await api("/api/games")).games; } catch (e) { toast(e.message); return; } }
   renderGames();
 }
@@ -246,7 +300,7 @@ async function poll() {
     $("#pc-name").textContent = s.name || "PC";
     $("#paired-pc").textContent = s.name || "PC";
     $("#pc-sub").textContent = [s.model, s.game ? "🎮 " + s.game : null].filter(Boolean).join(" · ");
-    renderOverview(s); renderControls(s);
+    renderOverview(s); renderControls(s); renderLive(s.cs2);
   } catch (e) {
     failures++;
     $("#conn").className = "dot " + (failures > 2 ? "bad" : "");
@@ -294,7 +348,11 @@ setInterval(poll, 2000);
 setInterval(() => tab === "kontroll" && pollExtra(), 8000);
 
 (async function start() {
-  try { const h = await (await fetch("/api/hello")).json(); $("#pc-name").textContent = h.name; } catch (e) {}
+  try { const h = await (await fetch("/api/hello")).json(); $("#pc-name").textContent = h.name; pcName = h.name; } catch (e) {}
+  if (KS && KS.getToken && pcName) {
+    const t = KS.getToken(pcName);
+    if (t) token = t; else if (token) KS.setToken(pcName, token);   // flytt eldre nøkkel inn i appen
+  }
   if (!token) return showPair();
   let t = "oversikt"; try { t = sessionStorage.getItem("ks_tab") || t; } catch (e) {}
   setTab(t); poll(); pollExtra(); checkAppUpdate(false);

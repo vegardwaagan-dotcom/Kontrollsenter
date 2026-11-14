@@ -45,6 +45,7 @@
 
   <!-- Oversikt -->
   <section id="oversikt" class="page">
+    <div class="card live" id="live" hidden></div>
     <div class="tiles" id="tiles"></div>
     <div class="grid">
       <div class="card"><h2>Temperaturer</h2><div id="temps" class="temps"></div></div>
@@ -98,6 +99,11 @@
 
   <!-- Spill -->
   <section id="spill" class="page" hidden>
+    <div class="card" id="stats-card"><h2>Spillstatistikk</h2>
+      <select id="stats-sel" class="search"></select>
+      <div id="stats" class="statsbody"><p class="dim">Henter …</p></div>
+    </div>
+    <h2 style="margin:22px 4px 8px">Start et spill på PC-en</h2>
     <input id="game-q" class="search" placeholder="Søk i spillene …">
     <div id="games" class="list"></div>
   </section>

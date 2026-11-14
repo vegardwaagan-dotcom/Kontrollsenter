@@ -127,6 +127,10 @@ if ($Admin) {
             New-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring" -Direction Inbound -Action Allow `
                 -Protocol TCP -LocalPort 27100 -Profile Private | Out-Null
             Green "Brannmuren slipper inn mobil/nettbrett på hjemmenettet (port 27100, bare private nett)"
+            # utenfor hjemmenettet: bare fra Tailscale-adresser (dine egne enheter), uansett nettverksprofil
+            Remove-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring (Tailscale)" -ErrorAction SilentlyContinue
+            New-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring (Tailscale)" -Direction Inbound -Action Allow `
+                -Protocol TCP -LocalPort 27100 -RemoteAddress 100.64.0.0/10 -Profile Any | Out-Null
         } catch { Warn "Kunne ikke åpne brannmuren for fjernstyring: $_" }
 
         # MSI-innstillinger (brukerscenario, Cooler Boost, batterigrense …) via MSI sitt WMI-grensesnitt.

@@ -80,6 +80,47 @@ def local_ips():
     return sorted(set(out), key=lambda x: (not x.startswith("192.168."), x))
 
 
+# --------------------------------------------------------------------------
+# Tailscale – privat, kryptert nett mellom dine egne enheter (tilgang utenfor hjemmenettet)
+# --------------------------------------------------------------------------
+TS_NETS = [ipaddress.ip_network("100.64.0.0/10"), ipaddress.ip_network("fd7a:115c:a1e0::/48")]
+_TS = {"t": 0, "v": None}
+
+
+def tailscale_bin():
+    import shutil
+    if IS_WIN:
+        for p in (r"C:\Program Files\Tailscale\tailscale.exe", r"C:\Program Files (x86)\Tailscale\tailscale.exe"):
+            if os.path.exists(p):
+                return p
+        return shutil.which("tailscale")
+    return shutil.which("tailscale")
+
+
+def tailscale_info(force=False):
+    """{"installed", "running", "ip", "name", "state", "login"} (hurtigbuffer 30 s)."""
+    if not force and time.time() - _TS["t"] < 30 and _TS["v"] is not None:
+        return _TS["v"]
+    b = tailscale_bin()
+    info = {"installed": bool(b), "running": False, "ip": None, "name": None, "state": None}
+    if b:
+        import winsupport as WS
+        code, out = WS.run([b, "status", "--json"], 8)
+        try:
+            j = json.loads(out[out.find("{"):])
+            me = j.get("Self") or {}
+            info["state"] = j.get("BackendState")
+            info["running"] = j.get("BackendState") == "Running"
+            ips = [x for x in me.get("TailscaleIPs") or [] if ":" not in x]
+            info["ip"] = ips[0] if ips else None
+            info["name"] = (me.get("DNSName") or "").rstrip(".") or None
+            info["login"] = (j.get("User") or {}).get(str(me.get("UserID")), {}).get("LoginName")
+        except (ValueError, AttributeError):
+            pass
+    _TS["t"], _TS["v"] = time.time(), info
+    return info
+
+
 def _call_main(fn, timeout=4):
     """Kjør fn i GTK-tråden og vent på svaret (vinduet og kortene er ikke trådsikre)."""
     box, ev = {}, threading.Event()
@@ -138,8 +179,17 @@ def build_status(win):
         "gpu": gpu, "power": power, "fans": fans,
         "overlay": ov.get_active() if ov and ov.get_visible() else None,
         "msi": _is_msi(),
+        "cs2": _cs2_live(),
     })
     return st
+
+
+def _cs2_live():
+    try:
+        import gamestats
+        return gamestats.LIVE.state()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 _MSI = {}
@@ -545,7 +595,7 @@ def _handler(remote):
                 ip = ipaddress.ip_address(self.client_address[0])
                 if ip.version == 6 and ip.ipv4_mapped:
                     ip = ip.ipv4_mapped
-                return ip.is_private or ip.is_loopback
+                return ip.is_private or ip.is_loopback or any(ip in n for n in TS_NETS)
             except ValueError:
                 return False
 
@@ -615,8 +665,11 @@ def _handler(remote):
                 if p == "/api/hello":
                     import applog
                     import savegames
+                    ts = tailscale_info()
                     return self._send(200, {"app": "Kontrollsenter", "name": savegames.pc_name(),
-                                            "version": applog.RUNNING, "os": "windows" if IS_WIN else "linux"})
+                                            "version": applog.RUNNING, "os": "windows" if IS_WIN else "linux",
+                                            "lan": local_ips(),
+                                            "ts": {"ip": ts["ip"], "name": ts["name"]} if ts["running"] else None})
                 if not self._auth():
                     return
                 if p == "/api/status":
@@ -637,6 +690,9 @@ def _handler(remote):
                                             "rows": history.query(s, buckets=240)})
                 if p == "/api/games":
                     return self._send(200, {"games": games()})
+                if p == "/api/gamestats":
+                    import gamestats
+                    return self._send(200, gamestats.snapshot())
                 return self._send(404, {"error": "finnes ikke"})
             except Exception as e:  # noqa: BLE001
                 return self._send(500, {"error": str(e)})

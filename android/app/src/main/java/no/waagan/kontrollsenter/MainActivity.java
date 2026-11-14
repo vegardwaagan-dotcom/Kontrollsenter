@@ -186,8 +186,11 @@ public class MainActivity extends Activity {
 
     static boolean isLocal(String host) {
         if (host == null) return false;
-        if (host.endsWith(".local") || host.equals("localhost") || !host.contains(".")) return true;
-        return host.matches("^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|127\\.)[\\d.]+$");
+        if (host.endsWith(".local") || host.endsWith(".ts.net") || host.equals("localhost") || !host.contains(".")) {
+            return true;
+        }
+        // hjemmenett, eller Tailscale (100.64.0.0/10 – bare dine egne enheter)
+        return host.matches("^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|127\\.|100\\.(6[4-9]|[7-9]\\d|1[01]\\d|12[0-7])\\.)[\\d.]+$");
     }
 
     private boolean night() {
@@ -306,6 +309,18 @@ public class MainActivity extends Activity {
             if (u.getPort() == 27100 && "/api/apk".equals(u.getPath())) {
                 runOnUiThread(() -> installFrom(url));
             }
+        }
+
+        /** Nøkkelen fra paringen, lagret per PC (samme nøkkel hjemme og via Tailscale). */
+        @JavascriptInterface
+        public String getToken(String pc) {
+            return getSharedPreferences("ks_tokens", 0).getString(pc, "");
+        }
+
+        @JavascriptInterface
+        public void setToken(String pc, String token) {
+            if (pc == null || pc.isEmpty()) return;
+            getSharedPreferences("ks_tokens", 0).edit().putString(pc, token == null ? "" : token).apply();
         }
 
         /** PC-ene startsiden kjenner (JSON-liste med adresser) – brukes av bakgrunnssjekken. */

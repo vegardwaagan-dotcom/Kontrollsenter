@@ -94,6 +94,12 @@ class Background:
         self.history = history.Recorder()
         import homepcs
         self.sharer = homepcs.Sharer(win)
+        # spillstatistikk: CS2 live (lytter bare lokalt) og WoW-addonen
+        try:
+            import gamestats
+            gamestats.setup_background()
+        except Exception:  # noqa: BLE001
+            pass
         # filer som mangler etter oppdatering fra en eldre versjon (f.eks. remote_web) hentes fra NAS-en
         def _repair():
             try:

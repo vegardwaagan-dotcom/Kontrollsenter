@@ -13,6 +13,23 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.8.0", "Spillstatistikk og appen utenfor hjemmenettet", [
+        ("Spillstatistikk", [
+            "CS2 live mens du spiller: stilling, kills, dødsfall, assists, headshots (%), skade, ADR, MVP, liv, "
+            "penger og våpen – i Spill-fanen og øverst i appen",
+            "CS2 totalt: K/D, headshot-prosent, treffsikkerhet, seiersrate, MVP, favorittvåpen, siste kamp og "
+            "treff per våpen",
+            "World of Warcraft per karakter (addonen «Kontrollsenter Stats» legges inn automatisk): spilletid totalt "
+            "og per level, distanse (gått, ridd, svømt, flytaxi), kills og hva du dreper mest, dødsfall og hvem som "
+            "drepte deg, quests, XP, gull, skade, største treff, healing, hopp, soner og siste økt. /ks viser dem i spillet",
+            "Steam: spilletid, prestasjoner og all statistikk spillene lagrer – for hver Steam-konto på PC-en",
+        ]),
+        ("Android-appen", [
+            "Virker utenfor hjemmenettet med Tailscale (privat og kryptert) – slå det på i PC-er hjemme → Mobil og "
+            "nettbrett, og bruk samme konto i Tailscale-appen på mobilen/nettbrettet",
+            "Samme paring hjemme og ute – appen velger adressen som svarer",
+        ]),
+    ]),
     ("0.7.2", "Oppdateringer i Android-appen", [
         ("Nytt", [
             "Android-appen sier fra når en ny versjon ligger på NAS-en – banner i appen, og varsel på telefonen/"

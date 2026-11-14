@@ -62,22 +62,36 @@ async function hello(host, ms) {
     return j && j.app === "Kontrollsenter" ? j : null;
   } catch (e) { return null; } finally { clearTimeout(t); }
 }
+const isTs = (h) => /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(h) || /\.ts\.net$/.test(h);
 function remember(host, j) {
-  const p = pcs.find((x) => x.host === host || (j.name && x.name === j.name));
-  if (p) Object.assign(p, { host, name: j.name, os: j.os, version: j.version });
-  else pcs.push({ host, name: j.name, os: j.os, version: j.version });
+  const p = pcs.find((x) => (j.name && x.name === j.name) || x.host === host || x.ts === host);
+  const lan = isTs(host) ? (p && p.host) || (j.lan || [])[0] || host : host;
+  const info = { host: lan, name: j.name, os: j.os, version: j.version };
+  if (j.ts) { info.ts = j.ts.ip; info.tsname = j.ts.name; }
+  if (p) Object.assign(p, info); else pcs.push(info);
   save();
 }
-function open(p) {
-  p.last = Date.now(); save();
+// hjemme: hjemmeadressen; ute: Tailscale-adressen (eller -navnet)
+async function reach(p, ms) {
+  for (const h of [p.host, p.ts, p.tsname].filter(Boolean)) {
+    const j = await hello(h, isTs(h) ? Math.max(ms || 1500, 3000) : (ms || 1500));
+    if (j) return { h, j };
+  }
+  return null;
+}
+async function open(p) {
+  $("#status").textContent = "Kobler til " + (p.name || p.host) + " …";
+  const r = await reach(p);
+  if (!r) { $("#status").textContent = `${p.name || p.host} svarer ikke – hjemme eller via Tailscale.`; return; }
+  p.last = Date.now(); remember(r.h, r.j);
   localStorage.setItem("lastHost", p.host);
-  location.href = `http://${p.host}:${PORT}/app/`;
+  location.href = `http://${r.h}:${PORT}/app/`;
 }
 function render(online) {
   online = online || {};
   pcs.sort((a, b) => (b.last || 0) - (a.last || 0));
   $("#pcs").innerHTML = pcs.map((p, i) => `<div class="pc" data-i="${i}"><div class="ic">${p.os === "windows" ? "🪟" : "🐧"}</div>
-    <div class="t"><b>${esc(p.name || p.host)}</b><span class="dim small"><span class="dot ${online[p.host] === true ? "ok" : online[p.host] === false ? "bad" : ""}"></span>${esc(p.host)} · ${esc(p.version || "")}</span></div>
+    <div class="t"><b>${esc(p.name || p.host)}</b><span class="dim small"><span class="dot ${online[p.host] ? "ok" : online[p.host] === false ? "bad" : ""}"></span>${esc(online[p.host] === "ts" ? "via Tailscale" : p.host)} · ${esc(p.version || "")}${p.ts ? " · 🌐" : ""}</span></div>
     <button class="primary go">Åpne</button><button class="x" title="Fjern">✕</button></div>`).join("")
     || '<p class="dim">Ingen PC-er ennå – trykk «Søk etter PC-er».</p>';
   document.querySelectorAll(".pc").forEach((el) => {
@@ -88,9 +102,13 @@ function render(online) {
 }
 async function check() {
   const online = {};
-  await Promise.all(pcs.map(async (p) => { const j = await hello(p.host, 2000); online[p.host] = !!j; if (j) remember(p.host, j); }));
+  await Promise.all(pcs.map(async (p) => {
+    const r = await reach(p, 2000);
+    online[p.host] = r ? (r.h === p.host ? true : "ts") : false;
+    if (r) { remember(r.h, r.j); online[r.h] = online[p.host]; }
+  }));
   render(online);
-  if (KS && KS.rememberHosts) KS.rememberHosts(JSON.stringify(pcs.map((p) => p.host)));
+  if (KS && KS.rememberHosts) KS.rememberHosts(JSON.stringify(pcs.flatMap((p) => [p.host, p.ts].filter(Boolean))));
   return online;
 }
 
@@ -99,7 +117,7 @@ window.ksUpdateStatus = (m) => { $("#upd").hidden = false; $("#upd-t").textConte
 async function checkUpdate(force, online) {
   const have = KS && KS.versionCode ? Number(KS.versionCode()) : 0;
   let best = null;
-  const hosts = pcs.map((p) => p.host).filter((h) => !online || online[h]);
+  const hosts = pcs.map((p) => (online && online[p.host] === "ts" ? p.ts : p.host)).filter((h, i) => h && (!online || online[pcs[i].host]));
   await Promise.all(hosts.map(async (h) => {
     const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), force ? 15000 : 4000);
     try {
@@ -157,10 +175,11 @@ if (KS && KS.version) $("#ver").textContent = "App-versjon " + KS.version();
   if (/[?&]oppdater=1/.test(location.search)) { await check(); await checkUpdate(true); return; }
   if (!home && last) {                          // åpne sist brukte PC direkte hvis den svarer
     $("#status").textContent = "Kobler til sist brukte PC …";
-    if (await hello(last, 1500)) {
-      const p = pcs.find((x) => x.host === last);
-      if (KS && KS.rememberHosts) KS.rememberHosts(JSON.stringify(pcs.map((x) => x.host)));
-      if (p && !(await checkUpdate(false, { [last]: true }))) return open(p);   // vis banneret først hvis ny app
+    const p = pcs.find((x) => x.host === last);
+    const r = p && await reach(p, 1500);
+    if (r) {
+      if (KS && KS.rememberHosts) KS.rememberHosts(JSON.stringify(pcs.flatMap((x) => [x.host, x.ts].filter(Boolean))));
+      if (!(await checkUpdate(false, { [p.host]: r.h === p.host ? true : "ts" }))) return open(p);  // banner først ved ny app
     }
     $("#status").textContent = "";
   }

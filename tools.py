@@ -404,7 +404,7 @@ def import_settings(src):
 # --------------------------------------------------------------------------
 UPDATE_CFG = CFG / "oppdatering.json"
 PACKAGE_FILES = ["*.py", "systemmonitor-fan", "systemmonitor-gpu-power", "systemmonitor-msi", "*.sh",
-                 "en.json", "VERSION", "*.ps1", "vendor", "icons", "remote_web"]
+                 "en.json", "VERSION", "*.ps1", "vendor", "icons", "remote_web", "wow_addon"]
 
 
 def version():

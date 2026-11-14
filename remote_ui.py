@@ -61,6 +61,23 @@ class RemoteCard(Gtk.Box):
         self.lb = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         self.lb.add_css_class("boxed-list")
         inner.append(self.lb)
+        # utenfor hjemmenettet
+        sep = Gtk.Label(label=i18n.tr("Utenfor hjemmenettet (Tailscale)"), xalign=0)
+        sep.add_css_class("heading")
+        sep.set_margin_top(8)
+        inner.append(sep)
+        inner.append(_dim("Tailscale er et privat, kryptert nett mellom dine egne enheter – gratis for privat bruk. "
+                          "Slå det på her og installer Tailscale-appen på mobilen/nettbrettet med samme konto. "
+                          "Da virker Kontrollsenter-appen overalt, uten å åpne noe i ruteren."))
+        tsrow = Gtk.Box(spacing=8)
+        self.ts_lab = Gtk.Label(xalign=0, hexpand=True, wrap=True, selectable=True)
+        tsrow.append(self.ts_lab)
+        self.ts_btn = Gtk.Button(label=i18n.tr("Slå på Tailscale"), valign=Gtk.Align.CENTER)
+        self.ts_btn.connect("clicked", self._ts_on)
+        tsrow.append(self.ts_btn)
+        inner.append(tsrow)
+        self.ts_msg = _dim("")
+        inner.append(self.ts_msg)
         self._timer = 0
         r = remote.INSTANCE
         if r:
@@ -104,6 +121,96 @@ class RemoteCard(Gtk.Box):
             b.append(rm)
             self.lb.append(b)
         self.lb.set_visible(bool(devs))
+        self._ts_refresh()
+
+    # ---- Tailscale ----------------------------------------------------
+    def _ts_refresh(self):
+        import threading
+
+        def work():
+            info = remote.tailscale_info(force=True)
+            GLib.idle_add(self._ts_show, info)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _ts_show(self, info):
+        if info["running"]:
+            self.ts_lab.set_label("✅ " + i18n.tr("Tailscale er på") + f": {info['ip']}"
+                                  + (f" · {info['name']}" if info.get("name") else "")
+                                  + (f" · {info['login']}" if info.get("login") else ""))
+            self.ts_btn.set_visible(False)
+        elif info["installed"]:
+            self.ts_lab.set_label(i18n.tr("Tailscale er installert, men ikke på") +
+                                  (f" ({info['state']})" if info.get("state") else ""))
+            self.ts_btn.set_visible(True)
+        else:
+            self.ts_lab.set_label(i18n.tr("Tailscale er ikke installert"))
+            self.ts_btn.set_label(i18n.tr("Installer Tailscale"))
+            self.ts_btn.set_visible(True)
+        return False
+
+    def _ts_on(self, *_):
+        import os
+        import re
+        import subprocess
+        import sys
+        import threading
+        self.ts_btn.set_sensitive(False)
+        self.ts_msg.set_label(i18n.tr("Starter Tailscale … (innloggingssiden åpnes i nettleseren)"))
+
+        def say(t):
+            GLib.idle_add(lambda: (self.ts_msg.set_label(t), False)[1])
+
+        def open_url(u):
+            if sys.platform == "win32":
+                os.startfile(u)
+            else:
+                subprocess.Popen(["xdg-open", u], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        def work():
+            try:
+                if sys.platform == "win32":
+                    b = remote.tailscale_bin()
+                    if not b:
+                        import winsupport as WS
+                        say(i18n.tr("Installerer Tailscale (Windows spør om tilgang) …"))
+                        WS.run(["winget", "install", "-e", "--id", "Tailscale.Tailscale", "--silent",
+                                "--accept-package-agreements", "--accept-source-agreements"], 900)
+                        b = remote.tailscale_bin()
+                    if not b:
+                        say(i18n.tr("Tailscale ble ikke installert"))
+                        return
+                    gui = os.path.join(os.path.dirname(b), "tailscale-ipn.exe")
+                    if os.path.exists(gui):
+                        subprocess.Popen([gui])
+                    cmd = [b, "up"]
+                else:
+                    if not remote.tailscale_bin():
+                        say(i18n.tr("Tailscale mangler – installer pakken «tailscale» (Bazzite har den allerede)"))
+                        return
+                    user = os.environ.get("USER") or os.getlogin()
+                    if not re.fullmatch(r"[a-z_][a-z0-9_.-]*", user):
+                        say(i18n.tr("Ugyldig brukernavn"))
+                        return
+                    # én passordforespørsel: start tjenesten og la deg styre Tailscale uten root etterpå
+                    cmd = ["pkexec", "sh", "-c", "systemctl enable --now tailscaled && "
+                           f"exec tailscale up --operator={user} --timeout=600s"]
+                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                     errors="replace")
+                opened = False
+                for line in p.stdout:
+                    m = re.search(r"https://login\.tailscale\.com/\S+", line)
+                    if m and not opened:
+                        opened = True
+                        open_url(m.group(0))
+                        say(i18n.tr("Logg inn i nettleseren – samme konto som på mobilen/nettbrettet"))
+                code = p.wait()
+                say(i18n.tr("Tailscale er på ✓") if code == 0 else
+                    i18n.tr("Tailscale ble ikke startet (avbrutt eller feil)"))
+            except Exception as e:  # noqa: BLE001
+                say(str(e))
+            finally:
+                GLib.idle_add(lambda: (self.ts_btn.set_sensitive(True), self._ts_refresh(), False)[2])
+        threading.Thread(target=work, daemon=True).start()
 
     def _on_switch(self, sw, _p):
         c = remote.load_cfg()

@@ -1,0 +1,8 @@
+## Interface: @INTERFACE@
+## Title: Kontrollsenter Stats
+## Notes: Samler statistikk per karakter (spilletid, tid per level, distanse, kills, dødsfall, quests, gull …) som Kontrollsenter og Android-appen viser. /ks viser dem i spillet.
+## Author: Kontrollsenter
+## Version: @VERSION@
+## SavedVariables: KontrollsenterStatsDB
+
+KontrollsenterStats.lua
