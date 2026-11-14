@@ -288,6 +288,13 @@ class Cs2Live:
             m["hs"] = sum(x["hs"] for x in m["_r"].values())
             m["dmg"] = sum(x["dmg"] for x in m["_r"].values())
         m["round"] = rnd
+        if mp.get("phase") == "gameover" and not m.get("saved"):
+            m["saved"] = True
+            try:
+                import remote_extra
+                remote_extra.record_cs2_match(self.state())
+            except Exception:  # noqa: BLE001
+                pass
 
     def state(self):
         """Kampen som pågår (eller None hvis CS2 ikke har sendt noe på 30 s)."""
@@ -563,6 +570,11 @@ def wow_stats():
                     c["flavor"], c["account"] = name, Path(f).parents[1].name
                     c["saved"] = os.path.getmtime(f)
                     chars.append(c)
+    try:
+        import remote_extra
+        remote_extra.record_wow(chars)
+    except Exception:  # noqa: BLE001
+        pass
     return sorted(chars, key=lambda c: -(c.get("last_seen") or 0))
 
 

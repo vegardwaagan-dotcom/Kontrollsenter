@@ -47,6 +47,11 @@ class RemoteCard(Gtk.Box):
         self.pair_btn.add_css_class("suggested-action")
         self.pair_btn.connect("clicked", self._pair)
         row.append(self.pair_btn)
+        self.pair_lim = Gtk.Button(label=i18n.tr("Par begrenset enhet"),
+                                   tooltip_text=i18n.tr("Kan se alt, starte spill og styre lyd – men ikke slå av PC-en, "
+                                                        "endre vifter, strømmodus eller avslutte programmer"))
+        self.pair_lim.connect("clicked", lambda *_: self._pair(None, "begrenset"))
+        row.append(self.pair_lim)
         inner.append(row)
         self.code = Gtk.Label(xalign=0, selectable=True)
         self.code.add_css_class("title-1")
@@ -78,6 +83,17 @@ class RemoteCard(Gtk.Box):
         inner.append(tsrow)
         self.ts_msg = _dim("")
         inner.append(self.ts_msg)
+        wsep = Gtk.Label(label=i18n.tr("Slå på PC-en fra appen (Wake-on-LAN)"), xalign=0)
+        wsep.add_css_class("heading")
+        wsep.set_margin_top(8)
+        inner.append(wsep)
+        wrow = Gtk.Box(spacing=8)
+        self.wol_lab = Gtk.Label(xalign=0, hexpand=True, wrap=True)
+        wrow.append(self.wol_lab)
+        self.wol_btn = Gtk.Button(label=i18n.tr("Slå på Wake-on-LAN"), valign=Gtk.Align.CENTER)
+        self.wol_btn.connect("clicked", self._wol_on)
+        wrow.append(self.wol_btn)
+        inner.append(wrow)
         self._timer = 0
         r = remote.INSTANCE
         if r:
@@ -98,6 +114,7 @@ class RemoteCard(Gtk.Box):
             self.addr.set_label(i18n.tr("Av") if not on else i18n.tr("Fant ingen adresse på hjemmenettet"))
             self.apk.set_label("")
         self.pair_btn.set_sensitive(on)
+        self.pair_lim.set_sensitive(on)
         while (ch := self.lb.get_first_child()):
             self.lb.remove(ch)
         devs = remote.load_cfg()["devices"]
@@ -109,11 +126,18 @@ class RemoteCard(Gtk.Box):
             col.append(Gtk.Label(label="📱  " + d.get("name", "?"), xalign=0))
             last = d.get("last") or 0
             when = time.strftime("%d.%m %H:%M", time.localtime(last)) if last else i18n.tr("aldri")
-            s = Gtk.Label(label=i18n.tr("Sist brukt") + f": {when}", xalign=0)
+            role = d.get("role", "full")
+            s = Gtk.Label(label=i18n.tr("Sist brukt") + f": {when} · " +
+                          (i18n.tr("begrenset tilgang") if role == "begrenset" else i18n.tr("full tilgang")), xalign=0)
             s.add_css_class("caption")
             s.add_css_class("dim-label")
             col.append(s)
             b.append(col)
+            tg = Gtk.Button(label=i18n.tr("Gi full tilgang") if role == "begrenset" else i18n.tr("Begrens"),
+                            valign=Gtk.Align.CENTER)
+            tg.add_css_class("flat")
+            tg.connect("clicked", lambda _b, h=d.get("hash"), r=role: self._role(h, "full" if r == "begrenset" else "begrenset"))
+            b.append(tg)
             rm = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=i18n.tr("Fjern tilgangen"),
                             valign=Gtk.Align.CENTER)
             rm.add_css_class("flat")
@@ -122,6 +146,46 @@ class RemoteCard(Gtk.Box):
             self.lb.append(b)
         self.lb.set_visible(bool(devs))
         self._ts_refresh()
+        self._wol_refresh()
+
+    # ---- Wake-on-LAN --------------------------------------------------
+    def _wol_refresh(self):
+        import threading
+
+        def work():
+            import remote_extra
+            st = remote_extra.wol_status()
+            GLib.idle_add(self._wol_show, st)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _wol_show(self, st):
+        import sys
+        if sys.platform == "win32":
+            self.wol_lab.set_label(i18n.tr("Slå på «Wake on Magic Packet» i nettverkskortets innstillinger (Enhetsbehandling) "
+                                           "og Wake-on-LAN i BIOS. Appen sender signalet."))
+            self.wol_btn.set_visible(False)
+        elif st.get("enabled"):
+            self.wol_lab.set_label("✅ " + i18n.tr("På for") + f" {st.get('conn')} ({st.get('mac')}). " +
+                                   i18n.tr("Wake-on-LAN må også være på i BIOS."))
+            self.wol_btn.set_visible(False)
+        else:
+            self.wol_lab.set_label(i18n.tr("Av") + (f" ({st.get('conn')})" if st.get("conn") else "") + ". " +
+                                   i18n.tr("Slå det på her, og sjekk at Wake-on-LAN er på i BIOS."))
+            self.wol_btn.set_visible(bool(st.get("conn")))
+        return False
+
+    def _wol_on(self, *_):
+        import threading
+
+        def work():
+            import remote_extra
+            try:
+                remote_extra.enable_wol()
+                msg = i18n.tr("Wake-on-LAN er slått på ✓")
+            except Exception as e:  # noqa: BLE001
+                msg = str(e)
+            GLib.idle_add(lambda: (self.msg.set_label(msg), self._wol_refresh(), False)[2])
+        threading.Thread(target=work, daemon=True).start()
 
     # ---- Tailscale ----------------------------------------------------
     def _ts_refresh(self):
@@ -226,11 +290,11 @@ class RemoteCard(Gtk.Box):
                 self.msg.set_label("")
         self.refresh()
 
-    def _pair(self, *_):
+    def _pair(self, _btn=None, role="full"):
         r = remote.INSTANCE
         if not r:
             return
-        code = r.new_code()
+        code = r.new_code(role)
         self.code.set_label(f"{code[:3]} {code[3:]}")
         self.code.set_visible(True)
         self.code_info.set_visible(True)
@@ -255,6 +319,14 @@ class RemoteCard(Gtk.Box):
         self.code.set_visible(False)
         self.code_info.set_visible(False)
         self.msg.set_label(i18n.tr("«{}» er paret ✓").replace("{}", name))
+        self.refresh()
+
+    def _role(self, h, role):
+        c = remote.load_cfg()
+        for d in c["devices"]:
+            if d.get("hash") == h:
+                d["role"] = role
+        remote.save_cfg(c)
         self.refresh()
 
     def _remove(self, h):

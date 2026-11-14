@@ -103,7 +103,7 @@ def status(win):
             "time": time.time()}
 
 
-def publish(win):
+def publish(win, off=False):
     """Legg denne PC-ens status på NAS-en (kalles fra bakgrunnen hvert 5. minutt)."""
     import lanupdate as L
     if os.environ.get("SYSTEMMONITOR_APP_ID"):            # test- og demoutgaver deler ikke
@@ -113,6 +113,7 @@ def publish(win):
     tmp = Path(tempfile.mkdtemp())
     try:
         st = status(win)
+        st["off"] = off
         f = tmp / f"{st['name']}.json"
         f.write_text(json.dumps(st))
         _host, share, folder = L._split()

@@ -116,6 +116,8 @@ class Background:
         try:
             import remote
             remote.INSTANCE = remote.Remote(win)
+            import remote_extra
+            remote_extra.event("power", "Kontrollsenter startet", "", "info")
             if remote.load_cfg()["enabled"]:
                 ok, err = remote.INSTANCE.start()
                 if not ok:
@@ -191,6 +193,15 @@ class Background:
             self.history.flush()
         except Exception:  # noqa: BLE001
             pass
+        try:                                              # si fra at PC-en ble slått av med vilje (appen)
+            import homepcs
+            import remote_extra
+            remote_extra.event("power", "Kontrollsenter avsluttet", "", "info")
+            if hasattr(self, "play"):
+                self.play.save()
+            homepcs.publish(self.win, off=True)
+        except Exception:  # noqa: BLE001
+            pass
         if self.held:
             self.app.release()
             self.held = False
@@ -228,6 +239,14 @@ class Background:
 
     # --- varsler ---------------------------------------------------------------
     def notify(self, key, title, body, force=False, action=None):
+        try:                                              # alt som varsles havner også i tidslinjen (appen)
+            import remote_extra
+            if key not in ("bg",) and time.time() - self.sent.get("ev:" + key, 0) > REPEAT:
+                self.sent["ev:" + key] = time.time()
+                lvl = "game" if key == "session" else "info" if key in ("updates", "playlimit") else "warn"
+                remote_extra.event(key, title, body, lvl)
+        except Exception:  # noqa: BLE001
+            pass
         if not force and not self.cfg["notify"]:
             return
         now = time.time()
@@ -247,6 +266,16 @@ class Background:
 
     def _tick(self):
         c = self.cfg
+        try:                                              # spilletid per dag (grenser og oversikt)
+            now = time.monotonic()
+            dt = min(30.0, now - getattr(self, "_play_t", now))
+            self._play_t = now
+            if not hasattr(self, "play"):
+                import remote_extra
+                self.play = remote_extra.PlayTracker(self.notify)
+            self.play.tick(getattr(self, "game_name", None), dt)
+        except Exception:  # noqa: BLE001
+            pass
         try:
             w = self.win
             nv = w.nvidia.data if w.nvidia.available else None

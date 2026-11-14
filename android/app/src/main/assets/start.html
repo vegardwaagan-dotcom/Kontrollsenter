@@ -24,6 +24,12 @@ input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid
 .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
 .upd { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--acc); color:#fff; border-radius:16px; margin:14px 0; }
 .upd span { flex:1; } .upd button { background:#fff; color:var(--acc); }
+.pc { flex-wrap: wrap; } .pc .live { width: 100%; font-size: 14px; color: var(--dim); margin-top: 2px; }
+.pc .live b { color: var(--fg); font-weight: 600; }
+.gl { display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); margin-top:12px; }
+.gi { background:var(--card); border-radius:16px; padding:12px 14px; }
+.gi b { display:block; margin-bottom:8px; } .gi .btns { display:flex; gap:8px; flex-wrap:wrap; }
+.gi button { padding:8px 12px; min-height:40px; }
 #scan-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; margin-top:8px; }
 #scan-bar i { display:block; height:100%; width:0; background:var(--acc); transition:width .2s; }
 </style>
@@ -44,6 +50,8 @@ input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid
   <div id="scan-bar" hidden><i></i></div>
   <h2 class="dim small" style="text-transform:uppercase;letter-spacing:.5px;margin-top:24px">PC-er</h2>
   <div id="pcs" class="list"></div>
+  <div class="bar"><button id="all-games">Spill på alle PC-er</button></div>
+  <div id="games" class="gl"></div>
   <p class="dim small" id="ver"></p>
 </main>
 <script>
@@ -68,6 +76,7 @@ function remember(host, j) {
   const lan = isTs(host) ? (p && p.host) || (j.lan || [])[0] || host : host;
   const info = { host: lan, name: j.name, os: j.os, version: j.version };
   if (j.ts) { info.ts = j.ts.ip; info.tsname = j.ts.name; }
+  if (j.mac) info.mac = j.mac;
   if (p) Object.assign(p, info); else pcs.push(info);
   save();
 }
@@ -92,11 +101,14 @@ function render(online) {
   pcs.sort((a, b) => (b.last || 0) - (a.last || 0));
   $("#pcs").innerHTML = pcs.map((p, i) => `<div class="pc" data-i="${i}"><div class="ic">${p.os === "windows" ? "🪟" : "🐧"}</div>
     <div class="t"><b>${esc(p.name || p.host)}</b><span class="dim small"><span class="dot ${online[p.host] ? "ok" : online[p.host] === false ? "bad" : ""}"></span>${esc(online[p.host] === "ts" ? "via Tailscale" : p.host)} · ${esc(p.version || "")}${p.ts ? " · 🌐" : ""}</span></div>
-    <button class="primary go">Åpne</button><button class="x" title="Fjern">✕</button></div>`).join("")
+    ${online[p.host] === false && p.mac ? '<button class="wake">Slå på</button>' : ""}
+    <button class="primary go">Åpne</button><button class="x" title="Fjern">✕</button><div class="live" id="live-${i}"></div></div>`).join("")
     || '<p class="dim">Ingen PC-er ennå – trykk «Søk etter PC-er».</p>';
   document.querySelectorAll(".pc").forEach((el) => {
     const p = pcs[+el.dataset.i];
     el.querySelector(".go").onclick = () => open(p);
+    const w = el.querySelector(".wake");
+    if (w) w.onclick = () => wake(p);
     el.querySelector(".x").onclick = () => { pcs.splice(pcs.indexOf(p), 1); save(); render(online); };
   });
 }
@@ -109,8 +121,66 @@ async function check() {
   }));
   render(online);
   if (KS && KS.rememberHosts) KS.rememberHosts(JSON.stringify(pcs.flatMap((p) => [p.host, p.ts].filter(Boolean))));
+  if (KS && KS.rememberPcs) KS.rememberPcs(JSON.stringify(pcs));
+  liveAll(online);
   return online;
 }
+
+// ---- alle PC-ene på én skjerm: live-status med nøkkelen appen har for hver PC ----
+const tokenFor = (p) => (KS && KS.getToken ? KS.getToken(p.name) : "");
+const baseFor = (p, online) => `http://${online && online[p.host] === "ts" ? p.ts : p.host}:${PORT}`;
+async function authed(p, online, path, body) {
+  const t = tokenFor(p);
+  if (!t) throw new Error("ikke paret");
+  const opt = { headers: { Authorization: "Bearer " + t }, cache: "no-store" };
+  if (body) { opt.method = "POST"; opt.body = JSON.stringify(body); opt.headers["Content-Type"] = "application/json"; }
+  const r = await fetch(baseFor(p, online) + path, opt);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+let lastOnline = {};
+async function liveAll(online) {
+  lastOnline = online;
+  pcs.forEach(async (p, i) => {
+    const el = document.getElementById("live-" + i);
+    if (!el || !online[p.host]) return;
+    try {
+      const s = await authed(p, online, "/api/status");
+      const t = (v) => (v == null ? "–" : Math.round(v) + "°");
+      el.innerHTML = `CPU <b>${t(s.cpu && s.cpu.temp)}</b> · GPU <b>${t(s.gpu && s.gpu.temp)}</b> · <b>${s.watts || 0} W</b>`
+        + (s.game ? ` · 🎮 <b>${esc(s.game)}</b>` : "") + (s.gamemode ? " · spillmodus" : "");
+    } catch (e) { el.textContent = e.message === "ikke paret" ? "Åpne og par for å se status" : ""; }
+  });
+}
+// ---- Wake-on-LAN: fra telefonen (hjemme) og via en annen PC som er på (borte, via Tailscale) ----
+async function wake(p) {
+  if (KS && KS.wol) KS.wol(p.mac);
+  const other = pcs.find((x) => x !== p && lastOnline[x.host]);
+  if (other) { try { await authed(other, lastOnline, "/api/action", { a: "wol", mac: p.mac }); } catch (e) {} }
+  $("#status").textContent = `Sendte «slå på» til ${p.name}. Det tar gjerne 30–60 sekunder før den svarer.`;
+  setTimeout(check, 45000);
+}
+// ---- spill på alle PC-er: hvem har spillet, og hvem er ledig ----
+$("#all-games").onclick = async () => {
+  $("#games").innerHTML = '<p class="dim">Henter spill …</p>';
+  const map = {};
+  await Promise.all(pcs.filter((p) => lastOnline[p.host]).map(async (p) => {
+    try {
+      const [g, s] = await Promise.all([authed(p, lastOnline, "/api/games"), authed(p, lastOnline, "/api/status")]);
+      g.games.forEach((x) => { (map[x.name] = map[x.name] || []).push({ p, appid: x.appid, busy: s.game }); });
+    } catch (e) {}
+  }));
+  const names = Object.keys(map).sort((a, b) => a.localeCompare(b, "nb"));
+  $("#games").innerHTML = names.map((n, i) => `<div class="gi"><b>${esc(n)}</b><div class="btns">${map[n].map((x, k) =>
+    `<button class="${x.busy ? "" : "primary"}" data-g="${i}" data-k="${k}">${esc(x.p.name)}${x.busy ? " (spiller " + esc(x.busy) + ")" : ""}</button>`).join("")}</div></div>`).join("")
+    || '<p class="dim">Fant ingen spill (er PC-ene paret?).</p>';
+  document.querySelectorAll("[data-g]").forEach((b) => (b.onclick = async () => {
+    const x = map[names[+b.dataset.g]][+b.dataset.k];
+    try { await authed(x.p, lastOnline, "/api/action", { a: "game", appid: x.appid }); $("#status").textContent = `Starter ${names[+b.dataset.g]} på ${x.p.name} …`; }
+    catch (e) { $("#status").textContent = "Feil: " + e.message; }
+  }));
+};
 
 // ---- oppdatering av appen: PC-ene leser NAS-en (Kontrollsenter/Android) ----
 window.ksUpdateStatus = (m) => { $("#upd").hidden = false; $("#upd-t").textContent = m; };

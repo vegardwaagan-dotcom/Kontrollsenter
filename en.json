@@ -1647,5 +1647,21 @@
  "WoW spurte om å slå av addonen etter /reload: den ba om /played, som er låst for addons i nyere WoW. Nå lytter den bare på spilletiden WoW sender selv, og regner videre mellom svarene": "WoW asked to disable the addon after /reload: it requested /played, which is locked for addons in newer WoW. Now it only listens for the playtime WoW sends by itself, and counts on between the updates",
  "WoW-addonen bruker ikke kamploggen": "The WoW addon no longer uses the combat log",
  "WoW ba fortsatt om å slå av addonen: den lyttet på kamploggen, som er låst for addons i nyere WoW. Kills telles nå fra «… dies, you gain … experience», og «drept av» er fienden du hadde valgt": "WoW still asked to disable the addon: it listened to the combat log, which is locked for addons in newer WoW. Kills are now counted from “… dies, you gain … experience”, and “killed by” is the enemy you had targeted",
- "Hvis WoW likevel blokkerer noe, lagrer addonen hva – og Spillstatistikk viser det": "If WoW still blocks something, the addon records what – and Game statistics shows it"
+ "Hvis WoW likevel blokkerer noe, lagrer addonen hva – og Spillstatistikk viser det": "If WoW still blocks something, the addon records what – and Game statistics shows it",
+ "26 nye funksjoner i Android-appen": "26 new features in the Android app",
+ "Varsler og overvåking": "Notifications and monitoring",
+ "Fjernkontroll": "Remote control",
+ "Par begrenset enhet": "Pair limited device",
+ "Kan se alt, starte spill og styre lyd – men ikke slå av PC-en, endre vifter, strømmodus eller avslutte programmer": "Can see everything, start games and control sound – but not shut down the PC, change fans, power mode or end programs",
+ "begrenset tilgang": "limited access",
+ "full tilgang": "full access",
+ "Gi full tilgang": "Give full access",
+ "Begrens": "Limit",
+ "Slå på PC-en fra appen (Wake-on-LAN)": "Turn on the PC from the app (Wake-on-LAN)",
+ "Slå på Wake-on-LAN": "Turn on Wake-on-LAN",
+ "På for": "On for",
+ "Wake-on-LAN må også være på i BIOS.": "Wake-on-LAN must also be enabled in BIOS.",
+ "Slå det på her, og sjekk at Wake-on-LAN er på i BIOS.": "Turn it on here, and check that Wake-on-LAN is enabled in BIOS.",
+ "Wake-on-LAN er slått på ✓": "Wake-on-LAN is on ✓",
+ "Slå på «Wake on Magic Packet» i nettverkskortets innstillinger (Enhetsbehandling) og Wake-on-LAN i BIOS. Appen sender signalet.": "Turn on “Wake on Magic Packet” in the network adapter settings (Device Manager) and Wake-on-LAN in BIOS. The app sends the signal."
 }

@@ -15,36 +15,43 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.os.Build;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-
 /**
- * Sjekker i bakgrunnen (ca. hver 6. time, bare på Wi-Fi) om PC-ene har en nyere app fra NAS-en,
- * og gir et varsel. PC-ene appen kjenner, lagres av startsiden (KS.rememberHosts).
+ * Bakgrunnssjekk ca. hvert 15. minutt (også når appen er lukket):
+ *  - nye hendelser fra PC-ene (varm CPU, vifte stoppet, spilletid nådd, spilløkt ferdig …) → varsel
+ *  - en PC som svarte forrige gang, men ikke nå (og ikke ble slått av med vilje) → varsel
+ *  - ny app-versjon på NAS-en → varsel
+ *  - widgeten oppdateres
  */
 public class UpdateJob extends JobService {
     static final int JOB_ID = 1;
-    static final String CHANNEL = "oppdatering";
+    static final String CH_UPDATE = "oppdatering";
+    static final String CH_EVENTS = "hendelser";
 
     static void schedule(Context c) {
         JobScheduler js = c.getSystemService(JobScheduler.class);
-        if (js == null || js.getPendingJob(JOB_ID) != null) return;
-        JobInfo ji = new JobInfo.Builder(JOB_ID, new ComponentName(c, UpdateJob.class))
-                .setPeriodic(6 * 3600 * 1000L)
-                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+        if (js == null) return;
+        JobInfo old = js.getPendingJob(JOB_ID);
+        if (old != null && old.getIntervalMillis() <= 20 * 60 * 1000L) return;
+        js.schedule(new JobInfo.Builder(JOB_ID, new ComponentName(c, UpdateJob.class))
+                .setPeriodic(15 * 60 * 1000L)
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .setPersisted(true)
-                .build();
-        js.schedule(ji);
+                .build());
     }
 
     @Override
     public boolean onStartJob(JobParameters params) {
         new Thread(() -> {
-            check(this);
+            try {
+                checkPcs(this);
+                check(this);
+                StatusWidget.refresh(this);
+            } catch (Exception e) {
+                // prøv igjen neste gang
+            }
             jobFinished(params, false);
         }).start();
         return true;
@@ -64,67 +71,133 @@ public class UpdateJob extends JobService {
         }
     }
 
-    /** Spør PC-ene etter nyeste app; varsler én gang per ny versjon. */
-    static void check(Context c) {
-        SharedPreferences p = c.getSharedPreferences("ks", 0);
-        String hosts = p.getString("hosts", "");
-        long have = installedCode(c);
-        for (String host : hosts.split(",")) {
-            host = host.trim();
-            if (host.isEmpty() || !MainActivity.isLocal(host)) continue;
+    /** Hendelser og «PC svarer ikke». */
+    static void checkPcs(Context c) {
+        SharedPreferences p = Net.prefs(c);
+        JSONArray pcs = Net.pcs(c);
+        String anyBase = null, anyName = null;
+        java.util.List<JSONObject> down = new java.util.ArrayList<>();
+        for (int i = 0; i < pcs.length(); i++) {
+            JSONObject pc = pcs.optJSONObject(i);
+            if (pc == null) continue;
+            String name = pc.optString("name");
+            String base = Net.reach(pc);
+            String upKey = "up:" + name;
+            if (base == null) {
+                if (p.getBoolean(upKey, false)) down.add(pc);
+                p.edit().putBoolean(upKey, false).apply();
+                continue;
+            }
+            p.edit().putBoolean(upKey, true).apply();
+            anyBase = base;
+            anyName = name;
+            String tok = Net.token(c, name);
+            if (tok.isEmpty()) continue;
             try {
-                JSONObject j = new JSONObject(get("http://" + host + ":27100/api/appupdate"));
-                long code = j.optLong("code", 0);
-                if (code > have) {
-                    if (code > p.getLong("varslet", 0)) {
-                        notify(c, j.optString("version", ""));
-                        p.edit().putLong("varslet", code).apply();
+                double since = Double.longBitsToDouble(p.getLong("ev:" + name, Double.doubleToLongBits(0)));
+                if (since == 0) since = System.currentTimeMillis() / 1000.0;   // første gang: bare nye fra nå
+                JSONObject r = new JSONObject(Net.request(base + "/api/x/events?since=" + since, tok, null, 5000));
+                JSONArray evs = r.optJSONArray("events");
+                double last = since;
+                for (int k = 0; evs != null && k < evs.length(); k++) {
+                    JSONObject e = evs.getJSONObject(k);
+                    last = Math.max(last, e.optDouble("t", last));
+                    String lvl = e.optString("level");
+                    if (!"info".equals(lvl)) {
+                        notifyEvent(c, (int) (e.optDouble("t") % 100000), name + ": " + e.optString("title"),
+                                e.optString("body"));
                     }
-                    return;
                 }
-                return;                         // PC-en svarte og appen er oppdatert
+                p.edit().putLong("ev:" + name, Double.doubleToLongBits(last)).apply();
             } catch (Exception e) {
-                // prøv neste PC
+                // PC-en svarte ikke på hendelser – prøv igjen neste gang
+            }
+        }
+        // en PC som var på, svarer ikke lenger: ble den slått av med vilje? (statusen på NAS-en via en annen PC)
+        for (JSONObject pc : down) {
+            String name = pc.optString("name");
+            boolean intended = false;
+            if (anyBase != null) {
+                try {
+                    JSONObject r = new JSONObject(Net.request(anyBase + "/api/x/homepcs", Net.token(c, anyName), null, 8000));
+                    JSONArray all = r.optJSONArray("pcs");
+                    for (int k = 0; all != null && k < all.length(); k++) {
+                        JSONObject s = all.getJSONObject(k);
+                        if (name.equalsIgnoreCase(s.optString("name"))) intended = s.optBoolean("off", false);
+                    }
+                } catch (Exception e) {
+                    // vet ikke – varsle forsiktig
+                }
+            } else {
+                continue;   // ingen PC svarer (f.eks. borte uten Tailscale) – da vet vi ingenting
+            }
+            if (!intended) {
+                notifyEvent(c, name.hashCode(), name + " svarer ikke",
+                        "Den var på for litt siden, men ble ikke slått av fra Kontrollsenter. Strømbrudd eller krasj?");
             }
         }
     }
 
-    static String get(String url) throws Exception {
-        HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
-        con.setConnectTimeout(4000);
-        con.setReadTimeout(8000);
-        try (InputStream in = con.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            byte[] buf = new byte[4096];
-            int n;
-            while ((n = in.read(buf)) > 0 && out.size() < 65536) out.write(buf, 0, n);
-            return out.toString("UTF-8");
-        } finally {
-            con.disconnect();
+    /** Ny app-versjon. */
+    static void check(Context c) {
+        SharedPreferences p = Net.prefs(c);
+        long have = installedCode(c);
+        JSONArray pcs = Net.pcs(c);
+        for (int i = 0; i < pcs.length(); i++) {
+            JSONObject pc = pcs.optJSONObject(i);
+            String base = pc == null ? null : Net.reach(pc);
+            if (base == null) continue;
+            try {
+                JSONObject j = new JSONObject(Net.request(base + "/api/appupdate", null, null, 5000));
+                long code = j.optLong("code", 0);
+                if (code > have && code > p.getLong("varslet", 0)) {
+                    notifyUpdate(c, j.optString("version", ""));
+                    p.edit().putLong("varslet", code).apply();
+                }
+                return;
+            } catch (Exception e) {
+                // neste PC
+            }
         }
     }
 
-    static void notify(Context c, String version) {
+    static void channel(NotificationManager nm, String id, String name, int imp) {
+        if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(new NotificationChannel(id, name, imp));
+    }
+
+    static void notifyEvent(Context c, int id, String title, String body) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm == null) return;
-        if (Build.VERSION.SDK_INT >= 26) {
-            nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Oppdateringer",
-                    NotificationManager.IMPORTANCE_DEFAULT));
+        channel(nm, CH_EVENTS, "Hendelser fra PC-ene", NotificationManager.IMPORTANCE_DEFAULT);
+        Intent i = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CH_EVENTS) : new Notification.Builder(c);
+        b.setSmallIcon(android.R.drawable.stat_notify_error).setContentTitle(title).setContentText(body)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setContentIntent(PendingIntent.getActivity(c, 4, i, PendingIntent.FLAG_IMMUTABLE)).setAutoCancel(true);
+        try {
+            nm.notify(1000 + Math.abs(id % 50000), b.build());
+        } catch (SecurityException e) {
+            // varsler er slått av
         }
+    }
+
+    static void notifyUpdate(Context c, String version) {
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        channel(nm, CH_UPDATE, "Oppdateringer", NotificationManager.IMPORTANCE_DEFAULT);
         Intent i = new Intent(c, MainActivity.class).setAction(MainActivity.ACTION_UPDATE)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PendingIntent pi = PendingIntent.getActivity(c, 1, i,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL)
-                : new Notification.Builder(c);
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CH_UPDATE) : new Notification.Builder(c);
         b.setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setContentTitle("Kontrollsenter " + version + " er klar")
                 .setContentText("Trykk for å oppdatere appen")
-                .setContentIntent(pi)
+                .setContentIntent(PendingIntent.getActivity(c, 1, i,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                 .setAutoCancel(true);
         try {
             nm.notify(1, b.build());
         } catch (SecurityException e) {
-            // varsler er slått av – banneret i appen sier fra i stedet
+            // varsler er slått av
         }
     }
 }

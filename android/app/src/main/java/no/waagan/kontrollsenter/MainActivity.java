@@ -20,6 +20,9 @@ import android.provider.Settings;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.hardware.biometrics.BiometricPrompt;
+import android.os.CancellationSignal;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -34,6 +37,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.URL;
@@ -49,6 +54,7 @@ public class MainActivity extends Activity {
     static final String ACTION_INSTALL = "no.waagan.kontrollsenter.INSTALLER";   // svar fra PackageInstaller
     private WebView web;
     private FrameLayout root;
+    private String sharedText;                       // tekst/lenke delt fra en annen app («Del» → Kontrollsenter)
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -92,6 +98,7 @@ public class MainActivity extends Activity {
             Uri u = Uri.parse(url);
             if ("http".equals(u.getScheme()) && isLocal(u.getHost())) installFrom(url);
         });
+        takeShared(getIntent());
         if (saved != null) {
             web.restoreState(saved);
         } else {
@@ -105,9 +112,26 @@ public class MainActivity extends Activity {
         UpdateJob.schedule(this);
     }
 
+    /** «Del» fra en annen app: ta vare på teksten og vis den i «Send til PC-en». */
+    private boolean takeShared(Intent i) {
+        if (i != null && Intent.ACTION_SEND.equals(i.getAction())) {
+            String t = i.getStringExtra(Intent.EXTRA_TEXT);
+            if (t != null && !t.isEmpty()) {
+                sharedText = t.length() > 100000 ? t.substring(0, 100000) : t;
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (takeShared(intent)) {
+            String q = JSONObject.quote(sharedText);
+            web.evaluateJavascript("window.ksShared ? window.ksShared(" + q + ") : 0", null);
+            return;
+        }
         if (ACTION_INSTALL.equals(intent.getAction())) {
             int st = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999);
             if (st == PackageInstaller.STATUS_PENDING_USER_ACTION) {
@@ -134,6 +158,10 @@ public class MainActivity extends Activity {
         } else if (ACTION_UPDATE.equals(intent.getAction())) {
             web.loadUrl(START + "?oppdater=1");
         }
+    }
+
+    void bio(boolean ok) {
+        web.evaluateJavascript("window.ksBio && window.ksBio(" + ok + ")", null);
     }
 
     /** Melding til siden som vises (window.ksUpdateStatus) – f.eks. «Laster ned …». */
@@ -321,6 +349,128 @@ public class MainActivity extends Activity {
                 // bruk modellnavnet
             }
             return (n != null && !n.isEmpty()) ? n : (Build.MANUFACTURER + " " + Build.MODEL);
+        }
+
+        @JavascriptInterface
+        public void keepAwake(boolean on) {
+            runOnUiThread(() -> {
+                if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            });
+        }
+
+        /** Fingeravtrykk/ansikt (eller PIN) før farlige handlinger. Svar: window.ksBio(true|false). */
+        @JavascriptInterface
+        public void authenticate(String reason) {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT < 28) {
+                    bio(true);
+                    return;
+                }
+                BiometricPrompt.Builder b = new BiometricPrompt.Builder(MainActivity.this)
+                        .setTitle("Kontrollsenter").setSubtitle(reason == null ? "Bekreft" : reason);
+                if (Build.VERSION.SDK_INT >= 30) {
+                    b.setAllowedAuthenticators(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK
+                            | android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+                } else if (Build.VERSION.SDK_INT >= 29) {
+                    b.setDeviceCredentialAllowed(true);
+                } else {
+                    b.setNegativeButton("Avbryt", getMainExecutor(), (d, w) -> bio(false));
+                }
+                try {
+                    b.build().authenticate(new CancellationSignal(), getMainExecutor(),
+                            new BiometricPrompt.AuthenticationCallback() {
+                                @Override
+                                public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult r) {
+                                    bio(true);
+                                }
+
+                                @Override
+                                public void onAuthenticationError(int code, CharSequence msg) {
+                                    bio(false);
+                                }
+                            });
+                } catch (Exception e) {
+                    bio(true);                 // ingen skjermlås satt opp – ikke stopp brukeren
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String sharedText() {
+            String t = sharedText;
+            sharedText = null;
+            return t == null ? "" : t;
+        }
+
+        /** Wake-on-LAN fra telefonen (når den er på samme nett som PC-en). */
+        @JavascriptInterface
+        public void wol(String mac) {
+            new Thread(() -> {
+                try {
+                    String hex = mac.replaceAll("[^0-9A-Fa-f]", "");
+                    if (hex.length() != 12) return;
+                    byte[] m = new byte[6];
+                    for (int i = 0; i < 6; i++) m[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+                    byte[] pkt = new byte[102];
+                    for (int i = 0; i < 6; i++) pkt[i] = (byte) 0xff;
+                    for (int i = 6; i < 102; i++) pkt[i] = m[(i - 6) % 6];
+                    java.util.List<InetAddress> targets = new java.util.ArrayList<>();
+                    targets.add(InetAddress.getByName("255.255.255.255"));
+                    String sn = new Bridge().subnet();
+                    if (sn.contains("/")) {
+                        byte[] ip = InetAddress.getByName(sn.split("/")[0]).getAddress();
+                        int pre = Integer.parseInt(sn.split("/")[1]);
+                        int v = ((ip[0] & 255) << 24) | ((ip[1] & 255) << 16) | ((ip[2] & 255) << 8) | (ip[3] & 255);
+                        int bc = v | (pre >= 32 ? 0 : (int) ((1L << (32 - pre)) - 1));
+                        targets.add(InetAddress.getByAddress(new byte[]{(byte) (bc >>> 24), (byte) (bc >>> 16),
+                                (byte) (bc >>> 8), (byte) bc}));
+                    }
+                    try (DatagramSocket ds = new DatagramSocket()) {
+                        ds.setBroadcast(true);
+                        for (InetAddress t : targets) {
+                            for (int port : new int[]{9, 7}) ds.send(new DatagramPacket(pkt, pkt.length, t, port));
+                        }
+                    }
+                } catch (Exception e) {
+                    // ikke på hjemmenettet – startsiden ber en annen PC sende i stedet
+                }
+            }).start();
+        }
+
+        /** PC-en som er åpen nå – brukes av widgeten og hurtigflisene. */
+        @JavascriptInterface
+        public void setActive(String name, String base) {
+            try {
+                Uri u = Uri.parse(base);
+                if (!"http".equals(u.getScheme()) || !isLocal(u.getHost())) return;
+                Net.prefs(MainActivity.this).edit()
+                        .putString("active", new JSONObject().put("name", name).put("base", base).toString()).apply();
+            } catch (Exception e) {
+                // ugyldig – behold den gamle
+            }
+        }
+
+        /** Alle PC-ene appen kjenner ([{name, host, ts, tsname, mac}]) – for varsler, widget og fliser. */
+        @JavascriptInterface
+        public void rememberPcs(String json) {
+            try {
+                JSONArray in = new JSONArray(json);
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < in.length() && i < 20; i++) {
+                    JSONObject p = in.getJSONObject(i);
+                    JSONObject q = new JSONObject().put("name", p.optString("name"));
+                    for (String k : new String[]{"host", "ts", "tsname"}) {
+                        String h = p.optString(k, "");
+                        if (!h.isEmpty() && isLocal(h)) q.put(k, h);
+                    }
+                    q.put("mac", p.optString("mac", ""));
+                    out.put(q);
+                }
+                Net.prefs(MainActivity.this).edit().putString("pcs", out.toString()).apply();
+            } catch (Exception e) {
+                // ugyldig liste
+            }
         }
 
         @JavascriptInterface

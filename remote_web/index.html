@@ -16,6 +16,8 @@
     <h1 id="pc-name">Kontrollsenter</h1>
     <div id="pc-sub" class="sub">Kobler til …</div>
   </div>
+  <span id="role-badge" class="badge" hidden>Begrenset</span>
+  <button id="btn-second" class="icon" title="Andreskjerm (spill)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
   <div id="conn" class="dot" title="Tilkobling"></div>
 </header>
 
@@ -26,6 +28,7 @@
   <button data-tab="kontroll">Kontroll</button>
   <button data-tab="historikk">Historikk</button>
   <button data-tab="spill">Spill</button>
+  <button data-tab="mer">Mer</button>
   <button data-tab="system">System</button>
 </nav>
 
@@ -50,12 +53,19 @@
     <div class="grid">
       <div class="card"><h2>Temperaturer</h2><div id="temps" class="temps"></div></div>
       <div class="card"><h2>Maskin</h2><div id="info" class="kv"></div></div>
+      <div class="card" id="c-health"><h2>Helse</h2><div class="row"><div id="grade" class="grade">–</div>
+        <div id="health-sum" class="dim">Sjekker …</div></div><div id="health-items"></div>
+        <div class="row"><button id="health-refresh">Sjekk på nytt</button><button id="health-open">Åpne Systemsjekk på PC-en</button></div></div>
     </div>
   </section>
 
   <!-- Kontroll -->
   <section id="kontroll" class="page" hidden>
     <div class="grid">
+      <div class="card" id="c-gamemode"><h2>Spillmodus</h2>
+        <p class="dim small">Max ytelse, viftekurve, overlay på og varsler av – med én knapp. Av setter alt tilbake.</p>
+        <div class="row"><input type="color" id="gm-color" value="#e01b24"><span class="small dim">RGB-farge</span>
+          <label class="switch"><input type="checkbox" id="gm-on"><i></i></label></div></div>
       <div class="card" id="c-power"><h2>Strømmodus</h2><div class="seg" id="power"></div></div>
       <div class="card" id="c-msi" hidden><h2>MSI</h2>
         <div class="label">Brukerscenario</div><div class="seg wrap" id="msi-sc"></div>
@@ -103,9 +113,45 @@
       <select id="stats-sel" class="search"></select>
       <div id="stats" class="statsbody"><p class="dim">Henter …</p></div>
     </div>
+    <div class="grid">
+      <div class="card"><h2>Spilletid</h2><canvas id="pt-chart"></canvas><div id="pt-week" class="kvgrid"></div>
+        <div class="label">Grense per dag</div>
+        <div class="row"><span>Varsle ved grensen</span><label class="switch"><input type="checkbox" id="lim-on"><i></i></label></div>
+        <div class="row"><span>Hverdager (timer)</span><input type="number" id="lim-wd" min="0.5" max="24" step="0.5" class="num-in"></div>
+        <div class="row"><span>Helg (timer)</span><input type="number" id="lim-we" min="0.5" max="24" step="0.5" class="num-in"></div>
+        <button id="lim-save">Lagre grenser</button></div>
+      <div class="card"><h2>CS2 – kamp for kamp</h2><canvas id="cs-chart"></canvas>
+        <div class="legend"><i class="c1"></i>K/D <i class="c2"></i>Headshot %</div><div id="cs-maps"></div></div>
+      <div class="card"><h2>WoW-mål</h2><div id="wow-goals"></div>
+        <div class="label">Nytt mål</div>
+        <select id="goal-char" class="search"></select>
+        <div class="row"><span>Level</span><input type="number" id="goal-level" min="2" max="200" class="num-in">
+          <span>innen</span><input type="date" id="goal-by" class="num-in"></div>
+        <button id="goal-save">Lagre mål</button></div>
+    </div>
     <h2 style="margin:22px 4px 8px">Start et spill på PC-en</h2>
     <input id="game-q" class="search" placeholder="Søk i spillene …">
     <div id="games" class="list"></div>
+  </section>
+
+  <!-- Mer -->
+  <section id="mer" class="page" hidden>
+    <div class="grid">
+      <div class="card"><h2>Tidslinje</h2><div id="events" class="events"></div></div>
+      <div class="card"><h2>Strømkostnad</h2><div id="energy-sum" class="kvgrid"></div><canvas id="en-chart"></canvas></div>
+      <div class="card"><h2>Nettverk</h2><div id="net-ping" class="kvgrid"></div><div class="label">Programmer som bruker nettet</div>
+        <div id="net-progs" class="kvgrid"></div><button id="net-refresh">Mål på nytt</button></div>
+      <div class="card"><h2>Media</h2><div id="media-now" class="dim"></div>
+        <div class="row center"><button data-media="Previous">⏮</button><button data-media="PlayPause" class="primary">⏯</button><button data-media="Next">⏭</button></div>
+        <div class="label">Volum per program</div><div id="app-vols"></div></div>
+      <div class="card"><h2>Send til PC-en</h2>
+        <input id="send-text" placeholder="Lenke eller tekst …">
+        <div class="row"><button id="send-open" class="primary">Åpne lenke på PC-en</button><button id="send-clip">Kopier til PC-en</button></div>
+        <div class="row"><button id="get-clip">Hent PC-ens utklippstavle</button></div><div id="clip-out" class="dim small sel"></div></div>
+      <div class="card"><h2>Skjermbilde</h2><button id="shot-go">Ta skjermbilde av PC-en</button><img id="shot-img" alt="" hidden></div>
+      <div class="card"><h2>Programmer</h2><div id="procs"></div><button id="procs-refresh">Oppdater</button></div>
+      <div class="card"><h2>NAS og sikkerhetskopi</h2><div id="nas" class="kvgrid"></div><button id="backup-go">Ta sikkerhetskopi av lagrede spill nå</button></div>
+    </div>
   </section>
 
   <!-- System -->
@@ -120,6 +166,18 @@
           <button data-sys="shutdown" class="danger" data-confirm="Slå av PC-en nå?">Slå av</button>
         </div>
       </div>
+      <div class="card"><h2>Slå av senere</h2><div id="timer-state" class="dim">Ingen planlagt avslåing</div>
+        <div class="actions"><button data-timer="30">Om 30 min</button><button data-timer="60">Om 1 time</button>
+          <button data-timer="120">Om 2 timer</button><button data-timer="idle">Når nedlastingene er ferdige</button>
+          <button data-timer="off">Avbryt</button></div></div>
+      <div class="card"><h2>Utseende</h2>
+        <div class="label">Tema</div><div class="seg" id="theme"><button data-v="auto">Auto</button><button data-v="light">Lyst</button><button data-v="dark">Mørkt</button><button data-v="amoled">AMOLED</button></div>
+        <div class="row"><span>Enkel visning (store fliser, ingen kontroller)</span><label class="switch"><input type="checkbox" id="simple"><i></i></label></div>
+        <div class="row"><span>Andreskjerm automatisk når et spill starter</span><label class="switch"><input type="checkbox" id="auto-second"><i></i></label></div>
+        <div class="label">Språk</div><div class="seg" id="lang"><button data-v="nb">Norsk</button><button data-v="en">English</button></div></div>
+      <div class="card"><h2>Sikkerhet</h2>
+        <div class="row"><span>Fingeravtrykk før «Slå av», «Start på nytt», vifter og «Avslutt»</span><label class="switch"><input type="checkbox" id="bio"><i></i></label></div>
+        <p class="dim small" id="bio-note"></p></div>
       <div class="card"><h2>Appen</h2>
         <p class="dim" id="app-ver">Versjon –</p>
         <button id="upd-check">Se etter oppdatering</button>
@@ -136,6 +194,9 @@
 <div id="toast" class="toast" hidden></div>
 <div id="dlg" class="dlg" hidden><div class="card narrow"><p id="dlg-t"></p>
   <div class="row end"><button id="dlg-no">Avbryt</button><button id="dlg-yes" class="danger">OK</button></div></div></div>
+<div id="second" class="second" hidden><button id="second-close" class="icon"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div id="second-game" class="second-game"></div><div id="second-grid" class="second-grid"></div></div>
 <script src="app.js"></script>
+<script src="extra.js"></script>
 </body>
 </html>

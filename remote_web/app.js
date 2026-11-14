@@ -346,7 +346,7 @@ setInterval(() => checkAppUpdate(false), 30 * 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAppUpdate(false); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { poll(); pollExtra(); } });
 window.addEventListener("resize", () => tab === "historikk" && loadHistory());
-setInterval(poll, 2000);
+setInterval(() => poll(), 2000);
 setInterval(() => tab === "kontroll" && pollExtra(), 8000);
 
 (async function start() {

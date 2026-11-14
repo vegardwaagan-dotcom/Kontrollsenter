@@ -180,6 +180,8 @@ def build_status(win):
         "overlay": ov.get_active() if ov and ov.get_visible() else None,
         "msi": _is_msi(),
         "cs2": _cs2_live(),
+        "gamemode": bool(INSTANCE and INSTANCE.gamemode.on),
+        "timer": INSTANCE.timer.state() if INSTANCE else None,
     })
     return st
 
@@ -463,6 +465,62 @@ def do_action(win, a):
     if kind == "show":
         _call_main(lambda: win.get_application().activate())
         return True, "Vinduet vises"
+    import remote_extra as X
+    if kind == "gamemode":
+        col = a.get("color")
+        if col and not re.fullmatch(r"#?[0-9a-fA-F]{6}", str(col)):
+            raise ValueError("ugyldig farge")
+        _call_main(lambda: INSTANCE.gamemode.set(bool(a.get("on")), col and __import__("automation").hex_rgb(col)))
+        return True, "Spillmodus " + ("på" if a.get("on") else "av")
+    if kind == "timer":
+        mins = a.get("minutes")
+        if mins is not None and not (isinstance(mins, int) and 1 <= mins <= 24 * 60):
+            raise ValueError("ugyldig tid")
+        _call_main(lambda: INSTANCE.timer.set(mins, a.get("when_idle")))
+        return True, "Planlagt avslåing er satt" if mins or a.get("when_idle") else "Avbrutt"
+    if kind == "kill":
+        n = X.kill(str(a.get("name", "")))
+        return True, f"Avsluttet ({n})"
+    if kind == "media":
+        X.media_cmd(a.get("cmd"), a.get("player"))
+        return True, "OK"
+    if kind == "appvolume":
+        X.set_app_volume(a.get("id"), a.get("volume"), a.get("mute"))
+        return True, "OK"
+    if kind == "open_url":
+        X.open_url(a.get("url"))
+        return True, "Lenken er åpnet på PC-en"
+    if kind == "clipboard":
+        txt = str(a.get("text", ""))
+        _call_main(lambda: X.set_clipboard(txt))
+        return True, "Kopiert til PC-ens utklippstavle"
+    if kind == "backup":
+        X.backup_now()
+        return True, "Sikkerhetskopien er startet"
+    if kind == "syscheck":
+        _call_main(lambda: (win.get_application().activate(), win._open_syscheck(None)))
+        return True, "Systemsjekk er åpnet på PC-en"
+    if kind == "wol":
+        X.send_wol(a.get("mac"))
+        return True, "Wake-on-LAN er sendt"
+    if kind == "wowgoal":
+        lvl = a.get("level")
+        if lvl is not None and not (isinstance(lvl, int) and 1 <= lvl <= 200):
+            raise ValueError("ugyldig level")
+        X.set_wow_goal(str(a.get("key", ""))[:100], lvl, a.get("by"))
+        return True, "Målet er lagret"
+    if kind == "playlimits":
+        c = X.limit_cfg()
+        for k in ("weekday", "weekend"):
+            if k in a:
+                v = float(a[k])
+                if not 0 < v <= 24:
+                    raise ValueError("ugyldig grense")
+                c[k] = v
+        if "enabled" in a:
+            c["enabled"] = bool(a["enabled"])
+        X._jsave(X.LIMITS, c)
+        return True, "Grensene er lagret"
     raise ValueError("ukjent kommando")
 
 
@@ -509,9 +567,16 @@ def _msi_action(a):
 INSTANCE = None          # settes av bakgrunnsdelen (background.py)
 
 
+LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show"}   # «begrenset» tilgang
+
+
 class Remote:
     def __init__(self, win):
         self.win = win
+        self.pair_role = "full"
+        import remote_extra as X
+        self.timer = X.ShutdownTimer(win)
+        self.gamemode = X.GameMode(win)
         self.httpd = None
         self.code = None
         self.code_until = 0
@@ -540,7 +605,8 @@ class Remote:
             h, self.httpd = self.httpd, None
             threading.Thread(target=lambda: (h.shutdown(), h.server_close()), daemon=True).start()
 
-    def new_code(self):
+    def new_code(self, role="full"):
+        self.pair_role = role if role in ("full", "begrenset") else "full"
         with self.lock:
             self.code = f"{secrets.randbelow(1_000_000):06d}"
             self.code_until = time.time() + 300
@@ -561,7 +627,8 @@ class Remote:
             token = secrets.token_urlsafe(32)
             c = load_cfg()
             name = re.sub(r"[^\w .,'()-]", "", str(device or "Enhet"))[:40] or "Enhet"
-            c["devices"].append({"name": name, "hash": _hash(token), "added": int(time.time()), "last": 0})
+            c["devices"].append({"name": name, "hash": _hash(token), "added": int(time.time()), "last": 0,
+                                 "role": self.pair_role})
             save_cfg(c)
         if self.on_paired:
             GLib.idle_add(lambda: (self.on_paired(name), False)[1])
@@ -629,7 +696,9 @@ def _handler(remote):
         def _auth(self):
             h = self.headers.get("Authorization", "")
             tok = h[7:].strip() if h.startswith("Bearer ") else ""
-            if remote.check(tok):
+            d = remote.check(tok)
+            if d:
+                self.device = d
                 return True
             self._send(401, {"error": "ikke paret"})
             return False
@@ -669,6 +738,7 @@ def _handler(remote):
                     return self._send(200, {"app": "Kontrollsenter", "name": savegames.pc_name(),
                                             "version": applog.RUNNING, "os": "windows" if IS_WIN else "linux",
                                             "lan": local_ips(),
+                                            "mac": __import__("remote_extra").lan_mac()[0],
                                             "ts": {"ip": ts["ip"], "name": ts["name"]} if ts["running"] else None})
                 if not self._auth():
                     return
@@ -690,6 +760,8 @@ def _handler(remote):
                                             "rows": history.query(s, buckets=240)})
                 if p == "/api/games":
                     return self._send(200, {"games": games()})
+                if p.startswith("/api/x/"):
+                    return self._extra_get(p[7:], parse_qs(u.query))
                 if p == "/api/gamestats":
                     import gamestats
                     return self._send(200, gamestats.snapshot())
@@ -715,6 +787,9 @@ def _handler(remote):
                 if not self._auth():
                     return
                 if p == "/api/action":
+                    role = (getattr(self, "device", None) or {}).get("role", "full")
+                    if role == "begrenset" and body.get("a") not in LIMITED_OK:
+                        return self._send(403, {"ok": False, "error": "denne enheten har begrenset tilgang"})
                     ok, msg = do_action(remote.win, body)
                     return self._send(200, {"ok": bool(ok), "msg": str(msg)})
                 return self._send(404, {"error": "finnes ikke"})
@@ -731,6 +806,43 @@ def _handler(remote):
                     "på nytt på PC-en mens den er på hjemmenettet – da hentes den fra NAS-en automatisk – eller "
                     "oppdater Kontrollsenter i Verktøy.</p></body>")
             return self._send(503, html.encode(), "text/html; charset=utf-8")
+
+        def _extra_get(self, what, q):
+            import remote_extra as X
+            arg = lambda k, d=None: (q.get(k) or [d])[0]  # noqa: E731
+            if what == "me":
+                d = getattr(self, "device", {}) or {}
+                return self._send(200, {"name": d.get("name"), "role": d.get("role", "full")})
+            if what == "events":
+                return self._send(200, {"events": X.events(float(arg("since", 0) or 0)), "now": time.time()})
+            if what == "playtime":
+                return self._send(200, X.playtime_summary(int(arg("days", 14))))
+            if what == "cs2":
+                return self._send(200, X.cs2_history())
+            if what == "wowgoals":
+                import gamestats
+                return self._send(200, {"goals": [g for g in (X.wow_goal_progress(c) for c in gamestats.wow_stats())
+                                                  if g]})
+            if what == "energy":
+                return self._send(200, _call_main(lambda: X.energy(remote.win)))
+            if what == "network":
+                return self._send(200, X.network())
+            if what == "processes":
+                return self._send(200, {"processes": X.processes()})
+            if what == "media":
+                return self._send(200, {**X.media_state(), "apps": X.app_volumes()})
+            if what == "clipboard":
+                return self._send(200, {"text": X.get_clipboard(_call_main)})
+            if what == "screenshot":
+                return self._send(200, X.screenshot(), "image/jpeg")
+            if what == "nas":
+                return self._send(200, X.nas_state())
+            if what == "health":
+                return self._send(200, X.health(arg("force") == "1"))
+            if what == "homepcs":
+                import homepcs
+                return self._send(200, {"pcs": homepcs.fetch() or []})
+            return self._send(404, {"error": "finnes ikke"})
 
         def _static(self, rel):
             rel = os.path.normpath(rel).replace("\\", "/")

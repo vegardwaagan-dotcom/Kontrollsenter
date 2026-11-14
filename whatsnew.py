@@ -13,6 +13,40 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.9.0", "26 nye funksjoner i Android-appen", [
+        ("Varsler og overvåking", [
+            "Varsler på mobilen/nettbrettet fra PC-ene: varm CPU/GPU, vifte stoppet, full disk, spilletid nådd, "
+            "ferdig spilløkt – også når appen er lukket (sjekkes hvert 15. minutt)",
+            "Varsel hvis en PC slutter å svare uten å ha blitt slått av (strømbrudd eller krasj)",
+            "Tidslinje over alt som har skjedd, og helsekort (A–F) med «Åpne Systemsjekk på PC-en»",
+            "Widget på hjemmeskjermen og hurtigfliser for strømmodus og spillmodus",
+        ]),
+        ("Spill", [
+            "Spillmodus med én knapp: max ytelse, viftekurve, RGB-farge, overlay på og varsler av – og tilbake",
+            "Andreskjerm: store tall på nettbrettet mens du spiller (starter av seg selv, skjermen holdes våken)",
+            "Spilletid per dag og uke, med grense og varsel (f.eks. for William)",
+            "CS2 kamp for kamp: K/D og headshot over tid, og seier/K/D per kart",
+            "WoW-mål: «level 20 innen søndag» med anslått spilletid",
+            "Start spill på riktig PC: alle spillene fra alle PC-ene, med hvem som er ledig",
+        ]),
+        ("Fjernkontroll", [
+            "Slå på PC-en fra appen (Wake-on-LAN) – også borte via en annen PC",
+            "Alle PC-ene på én skjerm med temperatur, watt og spill",
+            "Media (spill/pause/neste) og volum per program",
+            "Send lenker og tekst til PC-en, også med «Del» fra andre apper, og hent PC-ens utklippstavle",
+            "Skjermbilde av PC-en, og avslutt programmer som har hengt seg",
+            "Slå av om 30 min / 1 t / 2 t eller når nedlastingene er ferdige",
+            "Ping til ruter, NAS, Steam og Battle.net, og hvilke programmer som bruker nettet",
+            "Strømkostnad i kroner per dag, uke og måned",
+            "NAS-plass og sikkerhetskopi av lagrede spill",
+        ]),
+        ("Appen", [
+            "Fingeravtrykk før «Slå av», «Start på nytt», vifter og «Avslutt»",
+            "Begrenset tilgang per enhet (se alt og start spill, men ikke slå av eller endre innstillinger)",
+            "Tema: auto, lyst, mørkt og AMOLED – og enkel visning med store fliser",
+            "Engelsk språk i appen",
+        ]),
+    ]),
     ("0.8.5", "WoW-addonen bruker ikke kamploggen", [
         ("Rettet", [
             "WoW ba fortsatt om å slå av addonen: den lyttet på kamploggen, som er låst for addons i nyere WoW. "

@@ -190,6 +190,11 @@ def tick(auto):
     if g and auto.game is None:                                    # spill startet
         auto.game = g
         auto.session = Session(*g)
+        try:
+            import remote_extra
+            remote_extra.event("session", f"Spiller {g[1]}", "", "game")
+        except Exception:  # noqa: BLE001
+            pass
         bg = getattr(win, "bg", None)
         if bg:
             bg.game_name = g[1]
