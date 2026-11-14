@@ -214,7 +214,7 @@ class BluetoothPage(Gtk.ScrolledWindow):
         try:
             set_prop(self.adapter, "org.bluez.Adapter1", "Powered", GLib.Variant("b", sw.get_active()))
         except GLib.Error as e:
-            self.status.set_label(f"Feil: {e.message}")
+            self.status.set_label(f"Feil: {e.message or 'ukjent feil fra BlueZ'}")
         GLib.timeout_add(600, lambda: (self.refresh(), False)[1])
 
     def _on_scan(self, btn, _p=None):
@@ -225,7 +225,7 @@ class BluetoothPage(Gtk.ScrolledWindow):
             if btn.get_active():             # stopp av seg selv etter 30 sek (sparer strøm)
                 GLib.timeout_add_seconds(30, lambda: (btn.get_active() and btn.set_active(False), False)[1])
         except GLib.Error as e:
-            self.status.set_label(f"Feil: {e.message}")
+            self.status.set_label(f"Feil: {e.message or 'ukjent feil fra BlueZ'}")
 
     def _act(self, d, method):
         self.busy.add(d["path"])
@@ -259,6 +259,6 @@ class BluetoothPage(Gtk.ScrolledWindow):
             call(self.adapter, "org.bluez.Adapter1", "RemoveDevice", GLib.Variant("(o)", (d["path"],)))
             self.status.set_label(f"{d['name']} er glemt")
         except GLib.Error as e:
-            self.status.set_label(f"Feil: {e.message}")
+            self.status.set_label(f"Feil: {e.message or 'ukjent feil fra BlueZ'}")
         self._sig = None
         self.refresh()

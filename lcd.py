@@ -598,7 +598,7 @@ class LcdPage(Gtk.Box):
             try:
                 getattr(self, "_job_" + job[0])(*job[1:], **kw)
             except Exception as e:  # noqa: BLE001
-                GLib.idle_add(self._set_status, f"Feil: {e}")
+                GLib.idle_add(self._set_status, f"Feil: {e or type(e).__name__}")
 
     def _job_init(self):
         GLib.idle_add(self._set_status, "Starter …")

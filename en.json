@@ -1566,5 +1566,11 @@
  "Installasjonsfilen viser ikke lenger et PowerShell-vindu – fremdriften vises i installasjonsvinduet": "The installer no longer shows a PowerShell window – progress is shown in the installer window",
  "MSI-styringen på Windows kjører helt uten vindu, også når den trenger administratorrett": "MSI control on Windows runs without any window, even when it needs administrator rights",
  "OpenRGB på Windows": "OpenRGB on Windows",
- "Installasjonsfilen fant ikke OpenRGB (pakken har fått nytt navn i winget) – nå installeres den": "The installer could not find OpenRGB (the package was renamed in winget) – it is now installed"
+ "Installasjonsfilen fant ikke OpenRGB (pakken har fått nytt navn i winget) – nå installeres den": "The installer could not find OpenRGB (the package was renamed in winget) – it is now installed",
+ "Gjennomgang av Linux og Windows": "Review of Linux and Windows",
+ "Windows: utskrift fra Windows-verktøy (strømplan, Wi-Fi, ping, PowerShell) med æøå gikk tapt – tegnkoden leses nå riktig": "Windows: output from Windows tools (power plan, Wi-Fi, ping, PowerShell) containing special characters was lost – the code page is now read correctly",
+ "Historikken mistet målinger («database is locked») når to Kontrollsenter-prosesser kjørte samtidig": "History lost samples (“database is locked”) when two Control Center processes ran at the same time",
+ "Feilmeldinger uten tekst («Feil:») sier nå hva som skjedde": "Error messages without text (“Error:”) now say what happened",
+ "Windows-installasjonen prøver OpenRGB på flere måter": "The Windows installer tries several ways to install OpenRGB",
+ "Linux-installasjonen spør ikke om passord når ingenting mangler": "The Linux installer no longer asks for a password when nothing is missing"
 }

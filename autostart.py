@@ -242,5 +242,5 @@ class AutostartPage(Gtk.ScrolledWindow):
             self.status.set_label(f"{app[1]}: " + ("starter automatisk (minimert) ✓" if sw.get_active()
                                                     else "starter ikke automatisk lenger ✓"))
         except Exception as e:  # noqa: BLE001
-            self.status.set_label(f"Feil: {e}")
+            self.status.set_label(f"Feil: {e or type(e).__name__}")
         self.build()

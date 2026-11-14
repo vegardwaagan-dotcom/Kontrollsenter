@@ -343,7 +343,7 @@ class RatbagPage:
             self._changed("Profil valgt")
             self._build_profile()
         except GLib.Error as e:
-            self.status(f"Feil: {e.message}")
+            self.status(f"Feil: {e.message or 'ukjent feil fra ratbagd'}")
 
     # --- DPI ----------------------------------------------------------------
     def _dpi_card(self, res):
@@ -468,7 +468,7 @@ class RatbagPage:
                 dl.set_label(describe((t, v)))
                 self._changed("Knapp endret")
             except GLib.Error as e:
-                self.status(f"Feil: {e.message}")
+                self.status(f"Feil: {e.message or 'ukjent feil fra ratbagd'}")
 
         if MACRO in types or KEY in types:
             item("⌨ Tastetrykk … (trykk tasten)", lambda: KeyCapture(
@@ -512,7 +512,7 @@ class RatbagPage:
             call(p, method)
             self._changed(msg)
         except GLib.Error as e:
-            self.status(f"Feil: {e.message}")
+            self.status(f"Feil: {e.message or 'ukjent feil fra ratbagd'}")
 
     def _changed(self, msg="Endret"):
         self.status(f"{msg} – husk «Lagre til {self.kind}»")
@@ -801,7 +801,7 @@ class LogitechPage(Gtk.Box):
             try:
                 pg = RatbagPage(dev, self.status)
             except GLib.Error as e:
-                self.status(f"Feil: {e.message}")
+                self.status(f"Feil: {e.message or 'ukjent feil fra ratbagd'}")
                 continue
             pids.add(pg.pid)
             short = pg.name.replace("Logitech ", "").replace("Gaming Mouse ", "") \

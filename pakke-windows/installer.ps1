@@ -77,10 +77,17 @@ if ($Admin) {
             if (-not (Get-Command OpenRGB.exe -ErrorAction SilentlyContinue) -and
                 -not (Test-Path "$env:ProgramFiles\OpenRGB\OpenRGB.exe")) {
                 # pakken heter OpenRGB.OpenRGB i dag (tidligere CalcProgrammer1.OpenRGB)
-                foreach ($id in "OpenRGB.OpenRGB", "CalcProgrammer1.OpenRGB") {
-                    winget install -e --id $id --scope machine --silent --accept-package-agreements --accept-source-agreements | Out-Host
-                    if ($LASTEXITCODE -eq 0) { Green "OpenRGB er installert"; break }
+                # «portable»-pakker kan avvise --scope machine – prøv da uten
+                $done = $false
+                foreach ($try in @(@("OpenRGB.OpenRGB", "--scope", "machine"), @("OpenRGB.OpenRGB"),
+                                   @("CalcProgrammer1.OpenRGB"))) {
+                    if ($done) { break }
+                    $wargs = @("install", "-e", "--id") + $try + @("--silent", "--accept-package-agreements",
+                                                                   "--accept-source-agreements")
+                    winget @wargs | Out-Host
+                    if ($LASTEXITCODE -eq 0) { Green "OpenRGB er installert"; $done = $true }
                 }
+                if (-not $done) { Warn "OpenRGB ble ikke installert – kan installeres i Programmer-fanen" }
             }
         } catch { Warn "OpenRGB kunne ikke installeres automatisk: $_" }
         # deler målingene bare lokalt på port 8085

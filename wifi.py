@@ -343,7 +343,7 @@ class WifiPage(Gtk.ScrolledWindow):
     def _forget(self, ssid):
         def work():
             code, out, err = nmcli("connection", "delete", "id", ssid)
-            GLib.idle_add(self._busy, False, f"«{ssid}» er glemt" if code == 0 else f"Feil: {err}")
+            GLib.idle_add(self._busy, False, f"«{ssid}» er glemt" if code == 0 else f"Feil: {err or 'nmcli svarte uten feilmelding'}")
             GLib.idle_add(self.refresh, False)
         threading.Thread(target=work, daemon=True).start()
 

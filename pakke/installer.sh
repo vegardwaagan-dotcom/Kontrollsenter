@@ -108,12 +108,15 @@ if har_hw rgb && [ ! -e /etc/modules-load.d/systemmonitor-i2c.conf ] && ! grep -
     ROOT+="echo i2c-dev > /etc/modules-load.d/systemmonitor-i2c.conf"$'\n'; echo "Slår på i2c-dev ved oppstart"
 fi
 har_hw rgb && ROOT+="modprobe i2c-dev || true"$'\n'
-ROOT+="udevadm control --reload-rules && udevadm trigger || true"$'\n'
-
-if spør "Installere dette nå (krever sudo-passordet ditt)?"; then
-    if sudo bash -c "$ROOT"; then grønn "✓ Systemdelen er ferdig"; else rød "✗ Noe i systemdelen feilet – se meldingene over"; fi
+if [ "$ROOT" = $'set -e\n' ] || [ "$ROOT" = $'set -e\nmodprobe i2c-dev || true\n' ]; then
+    grønn "✓ Ingenting å gjøre i systemdelen (trenger ikke passord)"
 else
-    gul "Hoppet over systemdelen"
+    ROOT+="udevadm control --reload-rules && udevadm trigger || true"$'\n'
+    if spør "Installere dette nå (krever sudo-passordet ditt)?"; then
+        if sudo bash -c "$ROOT"; then grønn "✓ Systemdelen er ferdig"; else rød "✗ Noe i systemdelen feilet – se meldingene over"; fi
+    else
+        gul "Hoppet over systemdelen"
+    fi
 fi
 
 # --------------------------------------------------------------------------

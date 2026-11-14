@@ -22,7 +22,12 @@ COLS = ("cpu_t", "gpu_t", "cpu_l", "gpu_l", "watts")
 class Recorder:
     def __init__(self, path=DB):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        self.db = sqlite3.connect(path, check_same_thread=False)
+        # timeout + WAL: flere Kontrollsenter-prosesser (vindu, bakgrunn, test) kan skrive uten «database is locked»
+        self.db = sqlite3.connect(path, check_same_thread=False, timeout=0.5)
+        try:
+            self.db.execute("PRAGMA journal_mode=WAL")
+        except sqlite3.Error:
+            pass
         self.db.execute("CREATE TABLE IF NOT EXISTS s (ts INTEGER PRIMARY KEY, cpu_t REAL, gpu_t REAL, "
                         "cpu_l REAL, gpu_l REAL, watts REAL)")
         self.db.commit()
@@ -35,12 +40,15 @@ class Recorder:
         if now - self.last < every:
             return
         self.last = now
-        self.db.execute("INSERT OR REPLACE INTO s VALUES (?,?,?,?,?,?)", (int(now), cpu_t, gpu_t, cpu_l, gpu_l, watts))
-        if now - self.last_commit > 60:
-            self.flush()
-        if now - self.last_prune > 3600:
-            self.last_prune = now
-            self.db.execute("DELETE FROM s WHERE ts < ?", (int(now - KEEP_DAYS * 86400),))
+        try:
+            self.db.execute("INSERT OR REPLACE INTO s VALUES (?,?,?,?,?,?)",
+                            (int(now), cpu_t, gpu_t, cpu_l, gpu_l, watts))
+            if now - self.last_prune > 3600:
+                self.last_prune = now
+                self.db.execute("DELETE FROM s WHERE ts < ?", (int(now - KEEP_DAYS * 86400),))
+        except sqlite3.OperationalError:          # låst av en annen prosess akkurat nå – hopp over én måling
+            pass
+        self.flush()                              # kort transaksjon: holder ikke låsen i et helt minutt
 
     def flush(self):
         self.last_commit = time.time()

@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.6.4", "Gjennomgang av Linux og Windows", [
+        ("Rettet", [
+            "Windows: utskrift fra Windows-verktøy (strømplan, Wi-Fi, ping, PowerShell) med æøå gikk tapt – "
+            "tegnkoden leses nå riktig",
+            "Historikken mistet målinger («database is locked») når to Kontrollsenter-prosesser kjørte samtidig",
+            "Feilmeldinger uten tekst («Feil:») sier nå hva som skjedde",
+            "Windows-installasjonen prøver OpenRGB på flere måter",
+            "Linux-installasjonen spør ikke om passord når ingenting mangler",
+        ]),
+    ]),
     ("0.6.3", "OpenRGB på Windows", [
         ("Rettet", [
             "Installasjonsfilen fant ikke OpenRGB (pakken har fått nytt navn i winget) – nå installeres den",

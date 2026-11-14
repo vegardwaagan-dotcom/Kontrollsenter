@@ -19,11 +19,27 @@ PLANS = {"power-saver": "a1841308-3541-4fab-bc81-f71556f20b4a",
          "performance": "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"}
 
 
+def decode(data):
+    """Tekst fra et Windows-verktøy. powercfg, netsh, ping og PowerShell skriver i konsollens tegnkode (OEM,
+    f.eks. cp850), ikke UTF-8 – med text=True krasjet lesetråden på æøå og utskriften ble borte."""
+    if not data:
+        return ""
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+    for enc in ("oem", "mbcs", "cp850"):
+        try:
+            return data.decode(enc)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return data.decode("utf-8", "replace")
+
+
 def run(cmd, timeout=20):
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
-                           creationflags=NO_WINDOW if IS_WIN else 0)
-        return r.returncode, (r.stdout or "") + (r.stderr or "")
+        r = subprocess.run(cmd, capture_output=True, timeout=timeout, creationflags=NO_WINDOW if IS_WIN else 0)
+        return r.returncode, decode(r.stdout) + decode(r.stderr)
     except (OSError, subprocess.SubprocessError) as e:
         return 1, str(e)
 

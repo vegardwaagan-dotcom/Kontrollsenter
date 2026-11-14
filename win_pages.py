@@ -169,7 +169,6 @@ class BluetoothWinPage(_Page):
     def refresh(self):
         def work():
             import winsupport
-            winsupport.PNP_CACHE_TTL = 0
             devs = winsupport._pnp_query()
             return [d for d in devs if d["cls"] == "Bluetooth" and d["name"] and
                     not re.search(r"enumerator|radio|adapter|transport|service|LE Generic|Microsoft",

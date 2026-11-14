@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -21,8 +22,11 @@ REMOTE = "Diagnose"
 
 def _run(cmd, timeout=20):
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        return (r.stdout + r.stderr).strip()
+        r = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        if sys.platform == "win32":                       # konsollens tegnkode, ikke UTF-8
+            import winsupport
+            return (winsupport.decode(r.stdout) + winsupport.decode(r.stderr)).strip()
+        return (r.stdout + r.stderr).decode("utf-8", "replace").strip()
     except (OSError, subprocess.SubprocessError) as e:
         return f"({e})"
 

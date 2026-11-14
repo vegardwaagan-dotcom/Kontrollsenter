@@ -402,7 +402,7 @@ class MsiPage(Gtk.ScrolledWindow):
     def _run(self, args, msg):
         def work():
             ok, err = helper(*args)
-            GLib.idle_add(self._status, f"{msg} ✓" if ok else f"Feil: {err}")
+            GLib.idle_add(self._status, f"{msg} ✓" if ok else f"Feil: {err or 'hjelpeprogrammet svarte uten feilmelding'}")
             GLib.idle_add(self.refresh)
         threading.Thread(target=work, daemon=True).start()
 
@@ -424,7 +424,7 @@ class MsiPage(Gtk.ScrolledWindow):
                     ok, err = helper(*args)
                     if not ok:
                         errs.append(err)
-            GLib.idle_add(self._status, f"Brukerscenario: {name} ✓" if not errs else f"Feil: {errs[0]}")
+            GLib.idle_add(self._status, f"Brukerscenario: {name} ✓" if not errs else f"Feil: {errs[0] or 'hjelpeprogrammet svarte uten feilmelding'}")
             GLib.idle_add(self.refresh)
         threading.Thread(target=work, daemon=True).start()
 
