@@ -231,37 +231,76 @@ def _sha256(path):
     return h.hexdigest()
 
 
+def _fetch_program(tmp):
+    """Hent pakken fra NAS-en, kontroller sjekksummen og pakk ut. Returnerer programmappen (eller kaster)."""
+    _smb(f'get {PKG} "{tmp}/{PKG}"; get SHA256SUMS "{tmp}/SHA256SUMS"', 300)
+    sums = dict(reversed(ln.split(None, 1)) for ln in (tmp / "SHA256SUMS").read_text().splitlines() if ln.strip())
+    want = sums.get(PKG, "").strip()
+    if not want or want != _sha256(tmp / PKG):
+        raise RuntimeError("sjekksummen stemmer ikke – oppdateringen ble ikke installert")
+    with tarfile.open(tmp / PKG) as t:
+        t.extractall(tmp / "x", filter="data")
+    prog = next((p for p in (tmp / "x").glob("*/program") if p.is_dir()), None)
+    if not prog or not (prog / "systemmonitor.py").exists():
+        raise RuntimeError("pakken mangler programfilene")
+    return prog
+
+
+def _install_entry(src):
+    dst = Path(APP_DIR) / src.name
+    if src.is_dir():
+        shutil.rmtree(dst, ignore_errors=True)
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy2(src, dst)
+
+
 def apply_update(package_files):
-    """Last ned, kontroller sjekksum og bytt ut programfilene. Returnerer (ok, melding)."""
+    """Last ned, kontroller sjekksum og bytt ut programfilene. Returnerer (ok, melding).
+
+    ALT i pakkens programmappe kopieres – ikke bare det denne (eldre) versjonen kjenner til. Ellers mangler
+    nye mapper (f.eks. remote_web i 0.7.0) etter en oppdatering fra en gammel versjon."""
     tmp = Path(tempfile.mkdtemp())
     try:
-        _smb(f'get {PKG} "{tmp}/{PKG}"; get SHA256SUMS "{tmp}/SHA256SUMS"', 300)
-        sums = dict(reversed(ln.split(None, 1)) for ln in (tmp / "SHA256SUMS").read_text().splitlines() if ln.strip())
-        want = sums.get(PKG, "").strip()
-        if not want or want != _sha256(tmp / PKG):
-            return False, "sjekksummen stemmer ikke – oppdateringen ble ikke installert"
-        with tarfile.open(tmp / PKG) as t:
-            t.extractall(tmp / "x", filter="data")
-        prog = next((p for p in (tmp / "x").glob("*/program") if p.is_dir()), None)
-        if not prog or not (prog / "systemmonitor.py").exists():
-            return False, "pakken mangler programfilene"
+        try:
+            prog = _fetch_program(tmp)
+        except RuntimeError as e:
+            return False, str(e)
         # ta vare på versjonen som kjører nå
         BACKUP.parent.mkdir(parents=True, exist_ok=True)
         with tarfile.open(BACKUP, "w:gz") as t:
             for pat in package_files:
                 for src in Path(APP_DIR).glob(pat):
                     t.add(src, arcname=src.name)
-        for pat in package_files:
-            for src in prog.glob(pat):
-                dst = Path(APP_DIR) / src.name
-                if src.is_dir():
-                    shutil.rmtree(dst, ignore_errors=True)
-                    shutil.copytree(src, dst)
-                else:
-                    shutil.copy2(src, dst)
+        for src in sorted(prog.iterdir()):
+            _install_entry(src)
         return True, f"Oppdatert til {local_version()} ✓ – start Kontrollsenter på nytt"
     except Exception as e:  # noqa: BLE001
         return False, str(e)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def repair_missing(package_files):
+    """Ved oppstart: hent filer/mapper som mangler etter en oppdatering fra en eldre versjon (den kopierte bare
+    det den kjente til). Gjør ingenting på utvikler-PC-en eller når alt er på plass. Returnerer det som ble hentet."""
+    if is_source_pc():
+        return []
+    missing = [p for p in package_files if not any(Path(APP_DIR).glob(p))
+               and not (p == "*.ps1" and sys.platform != "win32")]
+    if not missing or not on_lan():
+        return []
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        prog = _fetch_program(tmp)
+        got = []
+        for pat in missing:
+            for src in prog.glob(pat):
+                _install_entry(src)
+                got.append(src.name)
+        return got
+    except Exception:  # noqa: BLE001
+        return []
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

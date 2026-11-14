@@ -94,6 +94,18 @@ class Background:
         self.history = history.Recorder()
         import homepcs
         self.sharer = homepcs.Sharer(win)
+        # filer som mangler etter oppdatering fra en eldre versjon (f.eks. remote_web) hentes fra NAS-en
+        def _repair():
+            try:
+                import lanupdate
+                import tools
+                got = lanupdate.repair_missing(tools.PACKAGE_FILES)
+                if got:
+                    import applog
+                    applog.log.info("Hentet manglende programfiler fra NAS-en: %s", ", ".join(got))
+            except Exception:  # noqa: BLE001
+                pass
+        threading.Thread(target=_repair, daemon=True).start()
         # fjernstyring fra mobil/nettbrett (av til den slås på i Hjemme-fanen)
         try:
             import remote

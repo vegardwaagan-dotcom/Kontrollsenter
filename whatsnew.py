@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.7.1", "Android-appen kobler til", [
+        ("Rettet", [
+            "Appen viste «error: finnes ikke» når du trykket «Åpne»: oppdateringen fra en eldre versjon tok ikke "
+            "med kontrollpanelet. Nå kopieres hele pakken ved oppdatering, og filer som mangler hentes fra "
+            "NAS-en ved oppstart",
+            "Android-prosjektet kan åpnes og kjøres i Android Studio",
+        ]),
+    ]),
     ("0.7.0", "Android-app for mobil og nettbrett", [
         ("Nytt", [
             "Android-appen «Kontrollsenter» – styr PC-ene fra mobilen eller nettbrettet (laget også for store "

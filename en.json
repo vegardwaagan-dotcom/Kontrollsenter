@@ -1593,5 +1593,8 @@
  "Sist brukt": "Last used",
  "Fjern tilgangen": "Remove access",
  "Skriv koden i appen. Gyldig i {} til.": "Enter the code in the app. Valid for {} more.",
- "«{}» er paret ✓": "“{}” is paired ✓"
+ "«{}» er paret ✓": "“{}” is paired ✓",
+ "Android-appen kobler til": "The Android app connects",
+ "Appen viste «error: finnes ikke» når du trykket «Åpne»: oppdateringen fra en eldre versjon tok ikke med kontrollpanelet. Nå kopieres hele pakken ved oppdatering, og filer som mangler hentes fra NAS-en ved oppstart": "The app showed “error: not found” when you tapped “Open”: updating from an older version left out the control panel. Now the whole package is copied on update, and missing files are fetched from the NAS at startup",
+ "Android-prosjektet kan åpnes og kjøres i Android Studio": "The Android project can be opened and run in Android Studio"
 }

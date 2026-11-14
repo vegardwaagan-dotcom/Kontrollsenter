@@ -515,6 +515,8 @@ def _handler(remote):
                 if p in ("/", "/app"):
                     return self._send(302, b"", "text/plain", {"Location": "/app/"})
                 if p.startswith("/app/"):
+                    if not os.path.isdir(WEB):
+                        return self._missing_web()
                     return self._static(p[5:] or "index.html")
                 if p == "/api/hello":
                     import applog
@@ -570,6 +572,15 @@ def _handler(remote):
                 return self._send(400, {"ok": False, "error": str(e)})
             except Exception as e:  # noqa: BLE001
                 return self._send(500, {"ok": False, "error": str(e)})
+
+        def _missing_web(self):
+            html = ("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+                    "<body style='font:17px system-ui;padding:24px;background:#1e1e24;color:#eee'>"
+                    "<h2>Kontrollpanelet mangler på PC-en</h2><p>Kontrollsenter på denne PC-en mangler mappen "
+                    "<b>remote_web</b> (oppdateringen fra en eldre versjon tok den ikke med). Start Kontrollsenter "
+                    "på nytt på PC-en mens den er på hjemmenettet – da hentes den fra NAS-en automatisk – eller "
+                    "oppdater Kontrollsenter i Verktøy.</p></body>")
+            return self._send(503, html.encode(), "text/html; charset=utf-8")
 
         def _static(self, rel):
             rel = os.path.normpath(rel).replace("\\", "/")
