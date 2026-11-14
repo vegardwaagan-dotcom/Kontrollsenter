@@ -325,7 +325,7 @@ async function checkAppUpdate(force) {
     if (r.code && (!KS.versionCode || r.code > have)) {
       $("#upd").hidden = false;
       if (KS.update) {
-        $("#upd-t").textContent = `Ny versjon av appen er klar: ${r.version}`;
+        $("#upd-t").textContent = `Ny versjon av appen er klar: ${r.version} – virker ikke «Oppdater», åpne ${location.origin}/api/apk i Chrome`;
         $("#upd-go").hidden = false;
         $("#upd-go").onclick = () => KS.update(location.origin + "/api/apk");
       } else {           // eldre app uten oppdateringsfunksjon: installer den nye én gang manuelt

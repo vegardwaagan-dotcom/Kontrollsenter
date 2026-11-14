@@ -1635,5 +1635,7 @@
  "Ugyldig brukernavn": "Invalid user name",
  "Logg inn i nettleseren – samme konto som på mobilen/nettbrettet": "Log in in the browser – same account as on your phone/tablet",
  "Tailscale er på ✓": "Tailscale is on ✓",
- "Tailscale ble ikke startet (avbrutt eller feil)": "Tailscale was not started (cancelled or failed)"
+ "Tailscale ble ikke startet (avbrutt eller feil)": "Tailscale was not started (cancelled or failed)",
+ "App-oppdatering på Samsung": "App update on Samsung",
+ "«Oppdater» i Android-appen feilet med «self update is blocked by unknown source package» på nyere Android/Samsung. Da åpnes nedlastingen i nettleseren i stedet – trykk på filen og velg Oppdater": "“Update” in the Android app failed with “self update is blocked by unknown source package” on newer Android/Samsung. The download now opens in the browser instead – tap the file and choose Update"
 }

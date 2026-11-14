@@ -119,6 +119,16 @@ public class MainActivity extends Activity {
                 status("Oppdatert ✓");
             } else {
                 String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+                String low = msg == null ? "" : msg.toLowerCase();
+                if (low.contains("self update") || low.contains("blocked")) {
+                    // nyere Android (f.eks. Samsung) lar ikke en app fra «ukjent kilde» oppdatere seg selv –
+                    // da lastes den ned i nettleseren i stedet (vanlig, tillatt installasjon), også neste gang
+                    getSharedPreferences("ks", 0).edit().putBoolean("via_nettleser", true).apply();
+                    if (lastUrl != null) {
+                        openInBrowser(lastUrl);
+                        return;
+                    }
+                }
                 status("Oppdateringen feilet: " + (msg != null ? msg : ("kode " + st)));
             }
         } else if (ACTION_UPDATE.equals(intent.getAction())) {
@@ -135,10 +145,29 @@ public class MainActivity extends Activity {
 
     /** Last ned APK-en fra en PC på hjemmenettet og installer den med Android sitt eget installasjonsprogram.
      *  Android godtar bare en oppdatering som er signert med samme nøkkel som appen. */
+    private String lastUrl;
+
+    /** Åpne APK-en i nettleseren: den lastes ned og installeres med Android sitt installasjonsprogram. */
+    void openInBrowser(String url) {
+        status("Android lar ikke appen oppdatere seg selv – åpner nedlastingen i nettleseren. Trykk på "
+                + "Kontrollsenter.apk når den er lastet ned, og velg Oppdater.");
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .addCategory(Intent.CATEGORY_BROWSABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            status("Åpne " + url + " i nettleseren for å laste ned oppdateringen");
+        }
+    }
+
     void installFrom(String url) {
         Uri u = Uri.parse(url);
         if (!"http".equals(u.getScheme()) || !isLocal(u.getHost())) {
             status("Ugyldig adresse");
+            return;
+        }
+        lastUrl = url;
+        if (getSharedPreferences("ks", 0).getBoolean("via_nettleser", false)) {
+            openInBrowser(url);
             return;
         }
         if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
@@ -159,9 +188,6 @@ public class MainActivity extends Activity {
                 PackageInstaller.SessionParams sp =
                         new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
                 sp.setAppPackageName(getPackageName());
-                if (Build.VERSION.SDK_INT >= 31) {
-                    sp.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
-                }
                 int id = pi.createSession(sp);
                 try (PackageInstaller.Session session = pi.openSession(id)) {
                     try (InputStream in = con.getInputStream();

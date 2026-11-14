@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.8.1", "App-oppdatering på Samsung", [
+        ("Rettet", [
+            "«Oppdater» i Android-appen feilet med «self update is blocked by unknown source package» på nyere "
+            "Android/Samsung. Da åpnes nedlastingen i nettleseren i stedet – trykk på filen og velg Oppdater",
+        ]),
+    ]),
     ("0.8.0", "Spillstatistikk og appen utenfor hjemmenettet", [
         ("Spillstatistikk", [
             "CS2 live mens du spiller: stilling, kills, dødsfall, assists, headshots (%), skade, ADR, MVP, liv, "
