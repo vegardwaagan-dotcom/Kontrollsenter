@@ -39,8 +39,33 @@ def _read(path):
         return ""
 
 
+IS_WIN = __import__("sys").platform == "win32"
+
+
+@functools.lru_cache(maxsize=1)
+def _win_devices():
+    import winsupport
+    return winsupport.pnp_devices()
+
+
+def _win_ids(prefixes=("USB\\", "HID\\")):
+    import re
+    out = set()
+    for d in _win_devices():
+        if d["id"].upper().startswith(prefixes):
+            m = re.search(r"VID_([0-9A-F]{4}).*?PID_([0-9A-F]{4})", d["id"], re.I)
+            if m:
+                out.add(f"{m.group(1).lower()}:{m.group(2).lower()}")
+            m = re.search(r"_VID&[0-9A-F]{2}([0-9A-F]{4})_PID&([0-9A-F]{4})", d["id"], re.I)   # Bluetooth-HID
+            if m:
+                out.add(f"{m.group(1).lower()}:{m.group(2).lower()}")
+    return out
+
+
 @functools.lru_cache(maxsize=1)
 def usb_ids():
+    if IS_WIN:
+        return frozenset(_win_ids())
     out = set()
     for d in glob.glob("/sys/bus/usb/devices/*"):
         v, p = _read(f"{d}/idVendor"), _read(f"{d}/idProduct")
@@ -52,6 +77,8 @@ def usb_ids():
 @functools.lru_cache(maxsize=1)
 def hid_vendors():
     """Leverandører av HID-enheter – også trådløse over Bluetooth (f.eks. 0005:046D:B023.0001)."""
+    if IS_WIN:
+        return frozenset(i.split(":")[0] for i in _win_ids())
     out = set()
     for d in glob.glob("/sys/bus/hid/devices/*"):
         parts = os.path.basename(d).split(":")
@@ -75,6 +102,12 @@ def has_lcd():
 def has_rgb():
     if vendors() & RGB_VENDORS:
         return True
+    if IS_WIN:
+        import winsupport
+        b = winsupport.bios_info().get("BaseBoardManufacturer", "").lower()
+        import psutil
+        laptop = bool(getattr(psutil, "sensors_battery", lambda: None)())
+        return not laptop and any(x in b for x in RGB_BOARDS)
     board = _read("/sys/class/dmi/id/board_vendor")
     chassis = _read("/sys/class/dmi/id/chassis_type")
     desktop = chassis in ("3", "4", "5", "6", "7", "13", "15", "16", "17", "23", "24")
@@ -82,10 +115,18 @@ def has_rgb():
 
 
 def has_wifi():
+    if IS_WIN:
+        import re
+        return any(d["cls"] == "Net" and re.search(r"wi-?fi|wireless|wlan|802\.11", d["name"], re.I)
+                   for d in _win_devices())
     return bool(glob.glob("/sys/class/ieee80211/*")) or bool(glob.glob("/sys/class/net/*/wireless"))
 
 
 def has_bluetooth():
+    if IS_WIN:
+        return any(d["cls"] == "Bluetooth" and "radio" in d["name"].lower() or
+                   d["cls"] == "Bluetooth" and "adapter" in d["name"].lower() for d in _win_devices()) or \
+            any(d["cls"] == "Bluetooth" for d in _win_devices())
     return bool(glob.glob("/sys/class/bluetooth/hci*"))
 
 

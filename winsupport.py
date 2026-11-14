@@ -252,3 +252,70 @@ def listen_for_show(on_show):
             ctypes.windll.shell32.Shell_NotifyIconW(self.NIM_DELETE, ctypes.byref(nid))
             ctypes.windll.user32.PostMessageW(self.hwnd, 0x0010, 0, 0)   # WM_CLOSE
             self.hwnd = None
+
+
+# --------------------------------------------------------------------------
+# Enheter (PnP) – hvilke USB-/HID-/Bluetooth-/nettverksenheter som finnes
+# --------------------------------------------------------------------------
+PNP_CACHE = os.path.expanduser("~/.cache/systemmonitor/pnp.json")
+
+
+def _pnp_query():
+    import json
+    ps = ("Get-PnpDevice -PresentOnly | Select-Object InstanceId, Class, FriendlyName, Status | "
+          "ConvertTo-Json -Compress")
+    code, out = run(["powershell", "-NoProfile", "-Command", ps], 40)
+    try:
+        data = json.loads(out[out.find("["):]) if "[" in out else []
+    except ValueError:
+        data = []
+    return [{"id": d.get("InstanceId") or "", "cls": d.get("Class") or "", "name": d.get("FriendlyName") or "",
+             "ok": d.get("Status") == "OK"} for d in data if isinstance(d, dict)]
+
+
+def pnp_devices():
+    """Enhetene fra forrige oppstart (raskt), og frisk liste i bakgrunnen til neste gang.
+    Første gang (ingen hurtigbuffer) hentes lista med en gang."""
+    import json
+    try:
+        with open(PNP_CACHE, encoding="utf-8") as f:
+            cached = json.load(f)
+    except (OSError, ValueError):
+        cached = None
+
+    def refresh():
+        devs = _pnp_query()
+        if devs:
+            os.makedirs(os.path.dirname(PNP_CACHE), exist_ok=True)
+            with open(PNP_CACHE, "w", encoding="utf-8") as f:
+                json.dump(devs, f)
+        return devs
+    if cached is None:
+        return refresh()
+    threading.Thread(target=refresh, daemon=True).start()
+    return cached
+
+
+def bios_info():
+    import winreg
+    out = {}
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\BIOS") as k:
+            for name in ("SystemManufacturer", "SystemProductName", "BaseBoardManufacturer", "BaseBoardProduct",
+                         "BIOSVersion"):
+                try:
+                    out[name] = str(winreg.QueryValueEx(k, name)[0]).strip()
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return out
+
+
+def open_uri(uri):
+    """Åpne en nettadresse, en fil eller en Windows-innstilling (f.eks. ms-settings:bluetooth)."""
+    try:
+        os.startfile(uri)
+        return True
+    except (OSError, AttributeError):
+        return False

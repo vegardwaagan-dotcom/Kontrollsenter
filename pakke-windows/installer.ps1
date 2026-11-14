@@ -73,6 +73,12 @@ if ($Admin) {
         try {   # nyere LibreHardwareMonitor bruker PawnIO-driveren for å lese hovedkortbrikkene
             winget install -e --id namazso.PawnIO --silent --accept-package-agreements --accept-source-agreements | Out-Host
         } catch { Warn "PawnIO kunne ikke installeres automatisk: $_" }
+        try {   # OpenRGB styrer RGB-lys fra Kontrollsenter (valgfritt – hoppes over hvis det feiler)
+            if (-not (Get-Command OpenRGB.exe -ErrorAction SilentlyContinue) -and
+                -not (Test-Path "$env:ProgramFiles\OpenRGB\OpenRGB.exe")) {
+                winget install -e --id CalcProgrammer1.OpenRGB --silent --accept-package-agreements --accept-source-agreements | Out-Host
+            }
+        } catch { Warn "OpenRGB kunne ikke installeres automatisk: $_" }
         # deler målingene bare lokalt på port 8085
         @"
 <?xml version="1.0" encoding="utf-8"?>

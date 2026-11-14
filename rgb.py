@@ -26,7 +26,21 @@ except ImportError:  # biblioteket mangler
 STATE_FILE = os.path.expanduser("~/.config/systemmonitor/rgb.json")
 AUTOSTART = os.path.expanduser("~/.config/autostart/systemmonitor-openrgb.desktop")
 PROFILE = "Systemmonitor"
-OPENRGB_CMD = ["flatpak", "run", "org.openrgb.OpenRGB"]
+def _openrgb_cmd():
+    """Kommandoen som starter OpenRGB: Flatpak på Linux, OpenRGB.exe på Windows."""
+    if sys.platform != "win32":
+        return ["flatpak", "run", "org.openrgb.OpenRGB"]
+    import glob as _g
+    import shutil as _s
+    cands = [_s.which("OpenRGB"), r"C:\Program Files\OpenRGB\OpenRGB.exe",
+             os.path.expandvars(r"%LOCALAPPDATA%\Programs\OpenRGB\OpenRGB.exe")]
+    cands += _g.glob(os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\*OpenRGB*\**\OpenRGB.exe"),
+                     recursive=True)
+    return [next((c for c in cands if c and os.path.exists(c)), "OpenRGB.exe")]
+
+
+OPENRGB_CMD = _openrgb_cmd()
+SPAWN = {"creationflags": 0x08000000} if sys.platform == "win32" else {"start_new_session": True}
 
 # Felles effekter -> OpenRGB-moduser som prøves i rekkefølge for hver enhet
 EFFECTS = [
@@ -184,9 +198,9 @@ class RgbBackend:
             if isinstance(first, ConnectionRefusedError):          # tjenesten kjører ikke: start den
                 self._status("Starter OpenRGB i bakgrunnen … (kan ta 10–30 sek)", True)
                 try:
-                    subprocess.Popen(OPENRGB_CMD + ["--server", "--noautoconnect"],
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                     start_new_session=True)
+                    subprocess.Popen(OPENRGB_CMD + ["--server", "--noautoconnect"] +
+                                     (["--startminimized"] if sys.platform == "win32" else []),
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **SPAWN)
                 except OSError as e:
                     self._status(f"Klarte ikke å starte OpenRGB: {e}")
                     return
@@ -420,6 +434,12 @@ def save_state(state):
 
 def set_autostart(on):
     """Samme oppstartsfil som «Oppstart» i Programmer-fanen (minimert OpenRGB med profilen)."""
+    if sys.platform == "win32":
+        import winsupport
+        exe = OPENRGB_CMD[0]
+        winsupport.autostart_set("Kontrollsenter-OpenRGB", f'"{exe}" --startminimized --server --noautoconnect '
+                                                           f'--profile {PROFILE}' if on else None)
+        return
     import autostart
     app = next(a for a in autostart.apps() if a[0] == "openrgb")
     (autostart.enable if on else autostart.disable)(app)
@@ -751,8 +771,8 @@ class RgbPage(Gtk.ScrolledWindow):
         adv = Gtk.Button(label="Avansert (OpenRGB)")
         adv.set_tooltip_text("Åpner OpenRGB for effekter og innstillinger per enkelt-LED.")
         adv.connect("clicked", lambda *_: subprocess.Popen(
-            OPENRGB_CMD + ["--client"], start_new_session=True,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+            OPENRGB_CMD + (["--client"] if sys.platform != "win32" else []),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **SPAWN))
         bar.append(adv)
         import confirm
         bar.append(confirm.reset_button(

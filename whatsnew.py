@@ -13,6 +13,23 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.6.0", "Alle funksjonene på Windows", [
+        ("Nytt på Windows", [
+            "Vifter – styr viftene via LibreHardwareMonitor, med vifteprofiler og egne kurver",
+            "RGB – OpenRGB finnes og startes automatisk, og installeres av installasjonsfilen",
+            "Lyd – volum og demping for høyttalere og mikrofon, og volum per program",
+            "Logitech – se Logitech-utstyret ditt og åpne eller installer G HUB",
+            "MSI – maskin- og BIOS-info, batteri og snarvei til MSI Center",
+            "Bluetooth og Wi-Fi – tilkoblede enheter, nettverk og signalstyrke",
+            "Programmer – installer populære programmer og oppdater alle med winget, og velg hva som starter "
+            "ved innlogging",
+            "Spill – Steam-spillene dine med startvalg, og spillprofiler når et spill kjører",
+            "Nettverk – ping, ruter og hvilke programmer som bruker nettet",
+            "Verktøy – systeminfo til forum, «Rydd opp» (papirkurv, Temp, shader-cache), diskhelse, "
+            "gjenopprettingspunkt og «Hva tar plass?»",
+            "Systemsjekk – LibreHardwareMonitor, diskplass, programoppdateringer og Windows Update",
+        ]),
+    ]),
     ("0.5.3", "Windows: raskere og CPU-temperatur", [
         ("Rettet", [
             "Windows: vinduet hakket fordi det ventet på LibreHardwareMonitor og strømplanen hvert sekund – "

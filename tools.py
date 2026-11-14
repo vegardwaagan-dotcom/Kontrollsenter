@@ -553,7 +553,16 @@ class ToolsPage(Gtk.ScrolledWindow):
             getattr(box, f"set_margin_{side}")(12)
         self.set_child(Adw.Clamp(maximum_size=1000, child=box))
         self.box = box
-        if sys.platform != "win32":            # Linux-verktøy (Windows-utgaver kommer i en senere runde)
+        if sys.platform == "win32":            # Windows: egne utgaver av kortene + «Hva tar plass?»
+            import wintools
+            wintools.build_cards(self, card)
+            try:
+                import diskusage
+                diskusage.build_card(self, card)
+            except Exception:  # noqa: BLE001
+                import applog
+                applog.log.exception("hva tar plass")
+        if sys.platform != "win32":            # Linux-verktøy
             self._info_card()
             self._cleanup_card()
             try:

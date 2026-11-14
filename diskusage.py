@@ -29,6 +29,9 @@ def du(paths):
     """Størrelse i byte per sti (du -sxb, samme filsystem)."""
     if not paths:
         return {}
+    if __import__("sys").platform == "win32":          # ingen «du» på Windows – tell selv
+        import wintools
+        return {str(p): wintools.tree_size(str(p)) for p in paths}
     try:
         r = subprocess.run(["du", "-sxb", "--", *map(str, paths)], capture_output=True, text=True, timeout=600)
     except (OSError, subprocess.SubprocessError):
@@ -151,6 +154,8 @@ def build_card(page, card_fn):
         res.append(box)
 
     def opener(path):
+        if __import__("sys").platform == "win32":
+            return lambda: os.startfile(str(path))
         return lambda: subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def show(data):

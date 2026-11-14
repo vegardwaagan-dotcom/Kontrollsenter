@@ -35,6 +35,14 @@ def mangohud_log_lines():
 
 def running_game():
     """(appid, navn) for Steam-spillet som kjører, eller None."""
+    if __import__("sys").platform == "win32":                   # Steam skriver RunningAppID i registeret
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as k:
+                aid = str(winreg.QueryValueEx(k, "RunningAppID")[0])
+            return (aid, _name(aid)) if aid not in IGNORE else None
+        except OSError:
+            return None
     for p in glob.glob("/proc/[0-9]*/cmdline"):
         try:
             with open(p, "rb") as f:
@@ -216,7 +224,7 @@ def tick(auto):
                 auto.notify("session", f"Spilløkt: {name}", summary(s))
             try:
                 import savegames
-                if savegames.load_cfg().get("auto"):
+                if savegames.load_cfg().get("auto") and __import__("sys").platform != "win32":
                     savegames.backup_async([s["appid"]])
             except Exception:  # noqa: BLE001
                 pass

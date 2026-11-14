@@ -14,6 +14,7 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import tarfile
 import tempfile
 import threading
@@ -30,8 +31,28 @@ from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 import vdf  # noqa: E402
 
 HOME = Path.home()
-STEAM = next((p for p in (HOME / ".local/share/Steam", HOME / ".steam/steam",
-                          HOME / ".var/app/com.valvesoftware.Steam/data/Steam") if (p / "steamapps").is_dir()), None)
+IS_WIN = sys.platform == "win32"
+
+
+def _steam_dir():
+    if IS_WIN:
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as k:
+                p = Path(winreg.QueryValueEx(k, "SteamPath")[0])
+            if (p / "steamapps").is_dir():
+                return p
+        except OSError:
+            pass
+        for p in (Path(r"C:\Program Files (x86)\Steam"), Path(r"C:\Program Files\Steam")):
+            if (p / "steamapps").is_dir():
+                return p
+        return None
+    return next((p for p in (HOME / ".local/share/Steam", HOME / ".steam/steam",
+                             HOME / ".var/app/com.valvesoftware.Steam/data/Steam") if (p / "steamapps").is_dir()), None)
+
+
+STEAM = _steam_dir()
 COMPAT = STEAM / "compatibilitytools.d" if STEAM else None
 GE_API = "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases/latest"
 
@@ -48,6 +69,8 @@ OPTIONS = [
      "PROTON_ENABLE_HDR=1 ENABLE_HDR_WSI=1"),
     ("log", "Proton-logg", "Lager steam-<id>.log i hjemmemappen – for feilsøking", "env", "PROTON_LOG=1"),
 ]
+if IS_WIN:            # MangoHud, GameMode, Wayland og Proton finnes ikke på Windows – bare egne argumenter
+    OPTIONS = []
 BUILTIN_PROTON = {"Proton - Experimental": "proton_experimental", "Proton Hotfix": "proton_hotfix",
                   "Proton 10.0": "proton_10", "Proton 9.0 (Beta)": "proton_9", "Proton 9.0": "proton_9",
                   "Proton 8.0": "proton_8", "Proton 7.0": "proton_7"}
@@ -127,6 +150,9 @@ def header_image(appid):
 
 
 def steam_running():
+    if IS_WIN:
+        import psutil
+        return any((p.info.get("name") or "").lower() == "steam.exe" for p in psutil.process_iter(["name"]))
     return subprocess.run(["pgrep", "-x", "steam"], capture_output=True).returncode == 0
 
 
@@ -370,14 +396,15 @@ class GamesPage(Gtk.ScrolledWindow):
         self.changes = {}
         self._sessions_card()
         self._steam_card()
-        self._ge_card()
-        try:
-            import savegames
-            savegames.build_card(self, card)
-        except Exception:  # noqa: BLE001
-            import applog
-            applog.log.exception("lagrede spill")
-        self._ctrl_card()
+        if not IS_WIN:                                  # Proton, lagrede spill i Proton-mappene og kontrollere (Linux)
+            self._ge_card()
+            try:
+                import savegames
+                savegames.build_card(self, card)
+            except Exception:  # noqa: BLE001
+                import applog
+                applog.log.exception("lagrede spill")
+            self._ctrl_card()
 
     # --- Siste spilløkter -------------------------------------------------------
     def _sessions_card(self):
@@ -505,6 +532,7 @@ class GamesPage(Gtk.ScrolledWindow):
         dd = Gtk.DropDown.new_from_strings([n for _k, n in self.tools])
         dd.set_selected(keys.index(prot) if prot in keys else 0)
         prow.append(dd)
+        prow.set_visible(not IS_WIN)                    # Proton finnes bare på Linux
         body.append(prow)
         arow = Gtk.Box(spacing=8)
         arow.append(Gtk.Label(label="Egne argumenter"))

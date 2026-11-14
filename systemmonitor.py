@@ -199,8 +199,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         self._menu_actions()
         menu = Gio.Menu()
         sec = Gio.Menu()
-        if not IS_WIN:
-            sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
+        sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
         sec.append(i18n.tr("Mini-vindu"), "win.mini")
         menu.append_section(None, sec)
         sec = Gio.Menu()
@@ -340,7 +339,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         page.append(self.power)
         self.fans = FanCard(self.nvidia.available)
         page.append(self.fans)
-        self.fans.set_visible(not IS_WIN)               # Windows: viftestyring kommer i neste runde
+        # (Windows: viftene styres via LibreHardwareMonitor)
         self.connect("close-request", lambda *_: self.fans.all_auto_now() or False)
         # Tidsrom for grafene: 1 min, 10 min eller 1 time (hold musa over en graf for verdi og tid)
         rng = Gtk.Box(spacing=8)
@@ -418,6 +417,8 @@ class MonitorWindow(Adw.ApplicationWindow):
                 holder = Gtk.Box()
                 stack.add_titled_with_icon(holder, name, title, icon)
                 self._lazy[name] = [holder, mod, cls, None]
+        if IS_WIN and "bluetooth" in self._lazy:
+            self._lazy["bluetooth"][1:3] = ["win_pages", "BluetoothWinPage"]
         self.msi_page = None
         import msi
         if msi.is_msi():                      # MSI-fanen vises bare på MSI-maskiner
@@ -435,11 +436,6 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.sidebar.add_css_class("navigation-sidebar")
         self._rows = {}
         pages = stack.get_pages()
-        if IS_WIN:                                     # runde 1 på Windows: disse kommer senere
-            for name in ("programmer", "lyd", "nettverk", "spill", "automatikk"):
-                child = stack.get_child_by_name(name)
-                if child is not None:
-                    stack.remove(child)
         order = ["oversikt", "historikk", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "nettverk",
                  "spill", "automatikk", "programmer", "hjemme", "verktoy", "msi"]
         all_pages = [pages.get_item(i) for i in range(pages.get_n_items())]
@@ -563,6 +559,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         return True
 
     def _open_syscheck(self, _btn):
+        if IS_WIN:
+            import wintools
+            wintools.WinSysCheckDialog().present(self)
+            return
         import syscheck
         syscheck.SysCheckDialog().present(self)
 
@@ -583,38 +583,62 @@ class MonitorWindow(Adw.ApplicationWindow):
             lz[0].append(page)
             lz[3] = page
         if stack.get_visible_child_name() == "msi" and self.msi_page is None:
-            import msi
-            self.msi_page = msi.MsiPage()
+            if IS_WIN:
+                import win_pages
+                self.msi_page = win_pages.MsiWinPage()
+            else:
+                import msi
+                self.msi_page = msi.MsiPage()
             self.msi_page.set_hexpand(True)
             self.msi_page.set_vexpand(True)
             self.msi_holder.append(self.msi_page)
         if stack.get_visible_child_name() == "lyd" and self.audio_page is None:
-            import audio
-            self.audio_page = audio.AudioPage()
+            if IS_WIN:
+                import winaudio
+                self.audio_page = winaudio.AudioWinPage()
+            else:
+                import audio
+                self.audio_page = audio.AudioPage()
             self.audio_page.set_hexpand(True)
             self.audio_page.set_vexpand(True)
             self.audio_holder.append(self.audio_page)
         if stack.get_visible_child_name() == "wifi" and self.wifi_page is None:
-            import wifi
-            self.wifi_page = wifi.WifiPage()
+            if IS_WIN:
+                import win_pages
+                self.wifi_page = win_pages.WifiWinPage()
+            else:
+                import wifi
+                self.wifi_page = wifi.WifiPage()
             self.wifi_page.set_hexpand(True)
             self.wifi_page.set_vexpand(True)
             self.wifi_holder.append(self.wifi_page)
         if stack.get_visible_child_name() == "programmer" and self.prog_page is None:
-            import programs
-            self.prog_page = programs.ProgramsPage()
+            if IS_WIN:
+                import win_pages
+                self.prog_page = win_pages.ProgramsWinPage()
+            else:
+                import programs
+                self.prog_page = programs.ProgramsPage()
             self.prog_page.set_hexpand(True)
             self.prog_page.set_vexpand(True)
             self.prog_holder.append(self.prog_page)
         if stack.get_visible_child_name() == "cpuskjerm" and self.lcd_page is None:
-            import lcd
-            self.lcd_page = lcd.LcdPage()
+            if IS_WIN:
+                import win_pages
+                self.lcd_page = win_pages.LcdWinPage()
+            else:
+                import lcd
+                self.lcd_page = lcd.LcdPage()
             self.lcd_page.set_hexpand(True)
             self.lcd_page.set_vexpand(True)
             self.lcd_holder.append(self.lcd_page)
         if stack.get_visible_child_name() == "logitech" and self.logi_page is None:
-            import logitech
-            self.logi_page = logitech.LogitechPage()
+            if IS_WIN:
+                import win_pages
+                self.logi_page = win_pages.LogitechWinPage()
+            else:
+                import logitech
+                self.logi_page = logitech.LogitechPage()
             self.logi_page.set_hexpand(True)
             self.logi_page.set_vexpand(True)
             self.logi_holder.append(self.logi_page)

@@ -799,14 +799,25 @@ class FanCard(Gtk.Box):
 
     # --- oppbygging ---------------------------------------------------------
     def ready(self):
+        if IS_WIN:
+            return bool(getattr(self, "_win_controls", None))
         return os.path.exists(FAN_HELPER)
 
     def build(self):
         while (c := self.grid.get_first_child()):
             self.grid.remove(c)
         self.rows = {}
-        self.chip, self.chip_path = board_fan_chip()
+        self.chip, self.chip_path = (None, None) if IS_WIN else board_fan_chip()
         r = 0
+        if IS_WIN:
+            # Windows: styrbare vifter fra LibreHardwareMonitor (hovedkort og skjermkort)
+            from sensors_win import Lhm
+            self._win_controls = {s["id"]: s for s in Lhm.find("Control")}
+            for sid, s in sorted(self._win_controls.items()):
+                gpu = "/gpu" in sid
+                title = f"{'Skjermkort' if gpu else 'Hovedkort'} – {s['name'].replace('Fan Control', 'Vifte')}"
+                self.rows["lhm:" + sid] = FanRow(self, "lhm:" + sid, title, self.grid, r, 30 if gpu else 20)
+                r += 1
         if self.chip:
             for pwm in sorted(glob.glob(os.path.join(self.chip_path, "pwm[1-7]")),
                               key=lambda x: int(x[-1])):
@@ -814,11 +825,28 @@ class FanCard(Gtk.Box):
                 key = f"board:{self.chip}:{ch}"
                 self.rows[key] = FanRow(self, key, f"Hovedkortvifte {ch}", self.grid, r, 20)
                 r += 1
-        if self.has_nvidia:
+        if self.has_nvidia and not IS_WIN:
             self.rows["gpu"] = FanRow(self, "gpu", "Skjermkort (begge)", self.grid, r, 30)
             r += 1
 
         ok = self.ready()
+        if IS_WIN:
+            self.setup_row.set_visible(not ok)
+            self.setup_btn.set_visible(False)
+            from sensors_win import Lhm
+            self.setup_lbl.set_label(
+                "Venter på LibreHardwareMonitor …" if not Lhm.ok else
+                "Fant ingen vifter som kan styres. På mange bærbare (f.eks. MSI) styres viftene bare av "
+                "produsentens program (MSI Center).")
+            for w in (self.grid, self.presets, self.note):
+                w.set_sensitive(ok)
+            if not ok and not getattr(self, "_win_retry", False):
+                self._win_retry = True                         # LHM kan bruke litt tid etter innlogging
+                GLib.timeout_add_seconds(10, lambda: (setattr(self, "_win_retry", False), self.build(), False)[2])
+            prefs = self._load()
+            for key, row in self.rows.items():
+                row.set_value(prefs.get(key, "auto"), send=False)
+            return
         missing_board = self.chip is None
         self.setup_row.set_visible(not ok or missing_board)
         if not ok:
@@ -872,7 +900,9 @@ class FanCard(Gtk.Box):
             self.set_curve(False, apply_auto=False)
         self.panic = False
         v = "auto" if val == "auto" else str(int(val))
-        if key == "gpu":
+        if key.startswith("lhm:"):
+            self.q.put(["lhm", key[4:], v])
+        elif key == "gpu":
             self.q.put(["gpu", v])
         else:
             _b, chip, ch = key.split(":")
@@ -910,7 +940,7 @@ class FanCard(Gtk.Box):
         try:
             parts = []
             for key, row in self.rows.items():
-                kind = "gpu" if key == "gpu" else "board"
+                kind = "gpu" if key == "gpu" or "/gpu" in key else "board"
                 temp = gpu_t if kind == "gpu" else cpu_t
                 pct = fancurve.interp(cfg[kind], temp, fancurve.MIN[kind])
                 if pct is None:
@@ -934,15 +964,37 @@ class FanCard(Gtk.Box):
         """Brukes ved lukking og ved overoppheting."""
         if not self.ready():
             return
+        if IS_WIN:
+            for key in self.rows:
+                if key.startswith("lhm:"):
+                    self._lhm_set(key[4:], "auto")
+            return
         try:
             subprocess.run(["sudo", "-n", FAN_HELPER, "all-auto"], timeout=15,
                            capture_output=True)
         except (OSError, subprocess.SubprocessError):
             pass
 
+    @staticmethod
+    def _lhm_set(sid, v):
+        """Sett en vifte via LibreHardwareMonitor (bare lokalt). «auto» gir styringen tilbake til maskinen."""
+        import urllib.parse
+        import urllib.request
+        q = urllib.parse.urlencode({"action": "Set", "id": sid, "value": "null" if v == "auto" else v})
+        with urllib.request.urlopen(f"http://127.0.0.1:8085/Sensor?{q}", timeout=5) as r:
+            body = r.read().decode("utf-8", "replace")
+        if '"error"' in body.lower() or "fail" in body.lower():
+            raise RuntimeError(body[:200])
+
     def _worker(self):
         while True:
             args = self.q.get()
+            if args[0] == "lhm":
+                try:
+                    self._lhm_set(args[1], args[2])
+                except Exception as e:  # noqa: BLE001
+                    GLib.idle_add(self.status.set_label, f"Feil: {str(e) or type(e).__name__}")
+                continue
             try:
                 r = subprocess.run(["sudo", "-n", FAN_HELPER, *args],
                                    capture_output=True, text=True, timeout=15)
@@ -970,7 +1022,22 @@ class FanCard(Gtk.Box):
 
     # --- oppdatering hvert sekund ------------------------------------------
     def refresh(self, cpu_t, gpu_t, gpu_fan):
+        if IS_WIN:
+            from sensors_win import Lhm
+            fans = {s["id"]: s["value"] for s in Lhm.find("Fan")}
+            ctl = {s["id"]: s["value"] for s in Lhm.find("Control")}
+            for key, row in self.rows.items():
+                sid = key[4:]
+                rpm = fans.get(sid.replace("/control/", "/fan/"))
+                row.rpm.set_label(f"{rpm:.0f} RPM" if rpm is not None else
+                                  (f"{ctl[sid]:.0f} %" if ctl.get(sid) is not None else "–"))
+                row.stopped = rpm is not None and rpm < 1
+            if not self.rows and Lhm.ok and not getattr(self, "_win_built_after_lhm", False):
+                self._win_built_after_lhm = True
+                GLib.idle_add(lambda: self.build() or False)
         for key, row in self.rows.items():
+            if key.startswith("lhm:"):
+                continue
             if key == "gpu":
                 row.rpm.set_label(f"{gpu_fan:.0f} %" if gpu_fan is not None else "–")
             else:

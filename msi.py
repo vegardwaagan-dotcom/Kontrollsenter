@@ -73,6 +73,9 @@ def read(path, default=""):
 
 
 def is_msi():
+    if __import__("sys").platform == "win32":
+        import winsupport
+        return "micro-star" in winsupport.bios_info().get("SystemManufacturer", "").lower()
     return DEMO or "micro-star" in read(f"{DMI}/sys_vendor").lower() or os.environ.get("SYSTEMMONITOR_MSI_ROOT")
 
 

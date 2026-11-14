@@ -2,6 +2,7 @@
 import os
 import re
 import subprocess
+import sys
 import threading
 import time
 import urllib.request
@@ -20,6 +21,13 @@ UP_URL = "https://speed.cloudflare.com/__up"
 
 
 def gateway():
+    if sys.platform == "win32":
+        import winsupport
+        code, out = winsupport.run(["powershell", "-NoProfile", "-Command",
+                                    "(Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | "
+                                    "Select-Object -First 1).NextHop"], 15)
+        m = re.search(r"\d+\.\d+\.\d+\.\d+", out)
+        return m.group(0) if m else None
     try:
         out = subprocess.run(["ip", "-4", "route", "show", "default"], capture_output=True, text=True, timeout=5).stdout
         m = re.search(r"via (\S+)", out)
@@ -46,6 +54,15 @@ def targets():
 
 def ping(host, count=5):
     """(snitt ms, tap i %) eller (None, 100)."""
+    if sys.platform == "win32":
+        import winsupport
+        code, out = winsupport.run(["ping", "-n", str(count), "-w", "2000", host], count * 3 + 6)
+        times = [int(t) for t in re.findall(r"[=<](\d+)\s*ms", out, re.I)]
+        loss = re.search(r"\((\d+)\s*%", out)
+        replies = [t for t in times]
+        avg_m = re.search(r"(?:Average|Gjennomsnitt|Middel)\w*\s*=\s*(\d+)\s*ms", out, re.I)
+        avg = float(avg_m.group(1)) if avg_m else (sum(replies) / len(replies) if replies else None)
+        return avg, (float(loss.group(1)) if loss else (0.0 if replies else 100.0))
     try:
         r = subprocess.run(["ping", "-n", "-q", "-c", str(count), "-i", "0.25", "-W", "2", host],
                            capture_output=True, text=True, timeout=count * 2 + 6)
@@ -130,6 +147,20 @@ def _prog_name(pid, fallback):
 
 def connections():
     """[(program, antall forbindelser, eksempler på mål)] – egne programmer (uten root)."""
+    if sys.platform == "win32":
+        import psutil
+        progs = {}
+        for c in psutil.net_connections(kind="inet"):
+            if c.status != "ESTABLISHED" or not c.raddr or not c.pid:
+                continue
+            try:
+                name = psutil.Process(c.pid).name().replace(".exe", "")
+            except Exception:  # noqa: BLE001
+                continue
+            e = progs.setdefault(name, [0, set()])
+            e[0] += 1
+            e[1].add(c.raddr.ip)
+        return sorted(((n, c, sorted(p)[:3]) for n, (c, p) in progs.items()), key=lambda x: -x[1])
     try:
         out = subprocess.run(["ss", "-tunpH", "state", "established"], capture_output=True, text=True,
                              timeout=10).stdout
