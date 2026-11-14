@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.8.4", "WoW-addonen uten «disable/ignore»", [
+        ("Rettet", [
+            "WoW spurte om å slå av addonen etter /reload: den ba om /played, som er låst for addons i nyere "
+            "WoW. Nå lytter den bare på spilletiden WoW sender selv, og regner videre mellom svarene",
+        ]),
+    ]),
     ("0.8.3", "WoW-addonen uten «blocked»-melding", [
         ("Rettet", [
             "WoW: «KontrollsenterStats has been blocked from an action only available to the Blizzard UI». Addonen "

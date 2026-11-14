@@ -79,26 +79,9 @@ local function save()
   C.zone = GetRealZoneText and GetRealZoneText() or nil
 end
 
--- /played uten at det skrives i chatten: chatvinduene slutter å lytte på svaret et øyeblikk.
--- (Blizzards egne funksjoner byttes ALDRI ut – det ville «smitte» grensesnittet og gi «blocked from an action».)
-local muted = {}
-local function muteChat(on)
-  for i = 1, (NUM_CHAT_WINDOWS or 10) do
-    local cf = _G["ChatFrame" .. i]
-    if cf and cf.UnregisterEvent then
-      if on then
-        if cf:IsEventRegistered("TIME_PLAYED_MSG") then cf:UnregisterEvent("TIME_PLAYED_MSG"); muted[cf] = true end
-      elseif muted[cf] then
-        cf:RegisterEvent("TIME_PLAYED_MSG"); muted[cf] = nil
-      end
-    end
-  end
-end
-local function requestPlayed()
-  muteChat(true)
-  RequestTimePlayed()
-  C_Timer.After(5, function() muteChat(false) end)       -- sikkerhetsnett hvis svaret aldri kommer
-end
+-- Spilletid: addonen BER IKKE om /played (RequestTimePlayed er låst for addons i nyere WoW og gir
+-- «blocked from an action only available to the Blizzard UI»). WoW sender TIME_PLAYED_MSG selv ved
+-- innlogging og når du skriver /played – mellom svarene regnes tiden videre her.
 
 -- distanse: fart (yards/s) × tid, sortert etter hvordan du beveger deg
 local acc = 0
@@ -170,11 +153,12 @@ f:SetScript("OnEvent", function(_, event, ...)
     ensureChar()
     session = { start = now(), kills = 0, xp = 0, dist = 0, gold = 0, dmg = 0, deaths = 0, quests = 0,
                 level_start = UnitLevel("player") }
-    C.zones[GetRealZoneText() or "?"] = true
-    C_Timer.After(3, requestPlayed)
+    local z = GetRealZoneText()
+    if z and z ~= "" then C.zones[z] = true end
+    -- fortsett fra sist lagrede spilletid til WoW sender et nøyaktig tall
+    playedBase, playedLevelBase, playedAt = C.played or 0, C.played_level or 0, GetTime()
   elseif event == "TIME_PLAYED_MSG" then
     local total, level = ...
-    C_Timer.After(0, function() muteChat(false) end)     -- chatten lytter igjen (etter at svaret er levert)
     playedBase, playedLevelBase, playedAt = total, level, GetTime()
     C.played, C.played_level = total, level
   elseif event == "PLAYER_LEVEL_UP" then
@@ -184,7 +168,6 @@ f:SetScript("OnEvent", function(_, event, ...)
     C.levels[newLevel] = { reached = now(), played = total }
     playedBase, playedLevelBase, playedAt = total, 0, GetTime()
     C.level = newLevel
-    C_Timer.After(2, requestPlayed)
   elseif event == "PLAYER_DEAD" then
     C.deaths = C.deaths + 1
     if session then session.deaths = session.deaths + 1 end
