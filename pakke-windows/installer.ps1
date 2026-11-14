@@ -122,10 +122,22 @@ if ($Admin) {
 
         # Fjernstyring fra mobil/nettbrett: åpne port 27100 for Kontrollsenter – bare på private nettverk
         # (hjemmenettet), ikke på offentlige nett. Tjenesten er av til den slås på i Hjemme-fanen.
+        # Fjerner også blokkeringsregler Windows lager for Python hvis «Tillat»-spørsmålet ble avbrutt.
         try {
+            Get-NetFirewallApplicationFilter | Where-Object { $_.Program -like "*msys64*python*" } | ForEach-Object {
+                $r = $_ | Get-NetFirewallRule
+                if ($r.Direction -eq "Inbound" -and $r.Action -eq "Block") { Remove-NetFirewallRule -Name $r.Name }
+            }
+            Remove-NetFirewallRule -DisplayName "Kontrollsenter (Python)" -ErrorAction SilentlyContinue
+            foreach ($exe in "$MSYS\ucrt64\bin\pythonw.exe", "$MSYS\ucrt64\bin\python.exe") {
+                if (Test-Path $exe) {
+                    New-NetFirewallRule -DisplayName "Kontrollsenter (Python)" -Direction Inbound -Action Allow -Program $exe `
+                        -Protocol TCP -LocalPort 27100 -Profile Private,Domain | Out-Null
+                }
+            }
             Remove-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring" -ErrorAction SilentlyContinue
             New-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring" -Direction Inbound -Action Allow `
-                -Protocol TCP -LocalPort 27100 -Profile Private | Out-Null
+                -Protocol TCP -LocalPort 27100 -Profile Private,Domain | Out-Null
             Green "Brannmuren slipper inn mobil/nettbrett på hjemmenettet (port 27100, bare private nett)"
             # utenfor hjemmenettet: bare fra Tailscale-adresser (dine egne enheter), uansett nettverksprofil
             Remove-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring (Tailscale)" -ErrorAction SilentlyContinue

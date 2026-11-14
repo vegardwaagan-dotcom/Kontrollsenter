@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.9.1", "Appen finner Windows-PC-er", [
+        ("Rettet", [
+            "Windows: Android-appen fant ikke PC-en når Windows-brannmuren blokkerte Kontrollsenter (f.eks. etter at "
+            "«Tillat»-spørsmålet ble lukket). Ny knapp «Rett brannmuren» i PC-er hjemme → Mobil og nettbrett, og "
+            "installasjonsfilen retter det selv",
+            "Feilsøkingsrapporten fra Windows viser fjernstyring, nettverksprofil og brannmurregler",
+        ]),
+    ]),
     ("0.9.0", "26 nye funksjoner i Android-appen", [
         ("Varsler og overvåking", [
             "Varsler på mobilen/nettbrettet fra PC-ene: varm CPU/GPU, vifte stoppet, full disk, spilletid nådd, "

@@ -1663,5 +1663,12 @@
  "Wake-on-LAN må også være på i BIOS.": "Wake-on-LAN must also be enabled in BIOS.",
  "Slå det på her, og sjekk at Wake-on-LAN er på i BIOS.": "Turn it on here, and check that Wake-on-LAN is enabled in BIOS.",
  "Wake-on-LAN er slått på ✓": "Wake-on-LAN is on ✓",
- "Slå på «Wake on Magic Packet» i nettverkskortets innstillinger (Enhetsbehandling) og Wake-on-LAN i BIOS. Appen sender signalet.": "Turn on “Wake on Magic Packet” in the network adapter settings (Device Manager) and Wake-on-LAN in BIOS. The app sends the signal."
+ "Slå på «Wake on Magic Packet» i nettverkskortets innstillinger (Enhetsbehandling) og Wake-on-LAN i BIOS. Appen sender signalet.": "Turn on “Wake on Magic Packet” in the network adapter settings (Device Manager) and Wake-on-LAN in BIOS. The app sends the signal.",
+ "Appen finner Windows-PC-er": "The app finds Windows PCs",
+ "Rett brannmuren": "Fix the firewall",
+ "Brannmuren er rettet ✓ – prøv appen igjen": "The firewall is fixed ✓ – try the app again",
+ "Ble avbrutt": "Was cancelled",
+ "Finner ikke appen PC-en? Windows-brannmuren kan blokkere Kontrollsenter (særlig hvis «Tillat»-spørsmålet ble lukket). Denne knappen retter det, og setter hjemmenettet som privat.": "The app can't find the PC? Windows Firewall may be blocking Control Center (especially if the “Allow” prompt was closed). This button fixes it and sets your home network to private.",
+ "Windows: Android-appen fant ikke PC-en når Windows-brannmuren blokkerte Kontrollsenter (f.eks. etter at «Tillat»-spørsmålet ble lukket). Ny knapp «Rett brannmuren» i PC-er hjemme → Mobil og nettbrett, og installasjonsfilen retter det selv": "Windows: the Android app could not find the PC when Windows Firewall blocked Control Center (e.g. after the “Allow” prompt was closed). New “Fix the firewall” button in Home PCs → Phone and tablet, and the installer fixes it automatically",
+ "Feilsøkingsrapporten fra Windows viser fjernstyring, nettverksprofil og brannmurregler": "The Windows diagnostics report shows remote control, network profile and firewall rules"
 }

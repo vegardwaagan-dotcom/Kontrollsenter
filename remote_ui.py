@@ -11,6 +11,29 @@ import i18n  # noqa: E402
 import remote  # noqa: E402
 
 
+FIX_PS = r'''$ErrorActionPreference = "Continue"
+# 1) blokkeringsregler Windows lagde for Kontrollsenters Python (når «Tillat»-spørsmålet ble avbrutt)
+Get-NetFirewallApplicationFilter | Where-Object { $_.Program -like "*msys64*python*" } | ForEach-Object {
+  $r = $_ | Get-NetFirewallRule
+  if ($r.Direction -eq "Inbound" -and $r.Action -eq "Block") { Remove-NetFirewallRule -Name $r.Name }
+}
+# 2) tillat Kontrollsenter (Python fra MSYS2) og port 27100 – hjemmenett og Tailscale
+foreach ($n in "Kontrollsenter fjernstyring", "Kontrollsenter fjernstyring (Tailscale)", "Kontrollsenter (Python)") {
+  Remove-NetFirewallRule -DisplayName $n -ErrorAction SilentlyContinue
+}
+New-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 27100 -Profile Private,Domain | Out-Null
+New-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring (Tailscale)" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 27100 -RemoteAddress 100.64.0.0/10 -Profile Any | Out-Null
+foreach ($exe in "C:\msys64\ucrt64\bin\pythonw.exe", "C:\msys64\ucrt64\bin\python.exe") {
+  if (Test-Path $exe) {
+    New-NetFirewallRule -DisplayName "Kontrollsenter (Python)" -Direction Inbound -Action Allow -Program $exe -Protocol TCP -LocalPort 27100 -Profile Private,Domain | Out-Null
+  }
+}
+# 3) hjemmenettet som «Privat» (ellers gjelder ikke reglene over) – bare nettverk med en vanlig ruter
+Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq "Public" -and $_.IPv4Connectivity -ne "Disconnected" -and $_.InterfaceAlias -notlike "*Tailscale*" } |
+  ForEach-Object { Set-NetConnectionProfile -InterfaceIndex $_.InterfaceIndex -NetworkCategory Private }
+'''
+
+
 def _dim(text, wrap=True):
     lab = Gtk.Label(label=i18n.tr(text), xalign=0, wrap=wrap)
     lab.add_css_class("dim-label")
@@ -66,6 +89,17 @@ class RemoteCard(Gtk.Box):
         self.lb = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         self.lb.add_css_class("boxed-list")
         inner.append(self.lb)
+        import sys
+        if sys.platform == "win32":
+            fw = Gtk.Box(spacing=8)
+            fl = _dim("Finner ikke appen PC-en? Windows-brannmuren kan blokkere Kontrollsenter (særlig hvis "
+                      "«Tillat»-spørsmålet ble lukket). Denne knappen retter det, og setter hjemmenettet som privat.")
+            fl.set_hexpand(True)
+            fw.append(fl)
+            fb = Gtk.Button(label=i18n.tr("Rett brannmuren"), valign=Gtk.Align.CENTER)
+            fb.connect("clicked", self._fix_firewall)
+            fw.append(fb)
+            inner.append(fw)
         # utenfor hjemmenettet
         sep = Gtk.Label(label=i18n.tr("Utenfor hjemmenettet (Tailscale)"), xalign=0)
         sep.add_css_class("heading")
@@ -147,6 +181,26 @@ class RemoteCard(Gtk.Box):
         self.lb.set_visible(bool(devs))
         self._ts_refresh()
         self._wol_refresh()
+
+    # ---- Windows-brannmuren -------------------------------------------
+    def _fix_firewall(self, *_):
+        import os
+        import tempfile
+        import threading
+        self.msg.set_label(i18n.tr("Windows ber om administratortilgang …"))
+        script = os.path.join(tempfile.gettempdir(), "kontrollsenter-brannmur.ps1")
+        with open(script, "w", encoding="utf-8-sig") as f:
+            f.write(FIX_PS)
+
+        def work():
+            import winsupport as WS
+            code, out = WS.run(["powershell", "-NoProfile", "-Command",
+                                f"Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList "
+                                f"'-NoProfile -ExecutionPolicy Bypass -File \"{script}\"'"], 180)
+            msg = (i18n.tr("Brannmuren er rettet ✓ – prøv appen igjen") if code == 0 else
+                   i18n.tr("Ble avbrutt") + f" ({out.strip()[:120]})")
+            GLib.idle_add(lambda: (self.msg.set_label(msg), False)[1])
+        threading.Thread(target=work, daemon=True).start()
 
     # ---- Wake-on-LAN --------------------------------------------------
     def _wol_refresh(self):

@@ -154,6 +154,22 @@ def windows_report():
     except Exception as e:  # noqa: BLE001
         parts.append(_section("LibreHardwareMonitor-status", str(e)))
     try:
+        import remote as _r
+        import winsupport as _ws
+        lines = [f"slått på: {_r.load_cfg().get('enabled')} · enheter: {len(_r.load_cfg().get('devices', []))} · "
+                 f"lytter: {bool(_r.INSTANCE and _r.INSTANCE.running)}"]
+        for title, ps in (("Nettverksprofil", "Get-NetConnectionProfile | Format-Table -AutoSize InterfaceAlias,"
+                                                "NetworkCategory,IPv4Connectivity | Out-String -Width 200"),
+                          ("Brannmurregler", "Get-NetFirewallRule -Direction Inbound -Enabled True | Where-Object { "
+                                             "$_.DisplayName -like '*Kontrollsenter*' -or $_.DisplayName -like '*python*' }"
+                                             " | Format-Table -AutoSize DisplayName,Action,Profile | Out-String -Width 200"),
+                          ("Port 27100", "netstat -ano -p tcp | Select-String ':27100'")):
+            code, out = _ws.run(["powershell", "-NoProfile", "-Command", ps], 30)
+            lines.append(f"--- {title} ---\n{out.strip()[:2500] or '(ingenting)'}")
+        parts.append(_section("Fjernstyring", "\n".join(lines)))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("Fjernstyring", str(e)))
+    try:
         import msi as _msi
         if _msi.is_msi():
             import winmsi
