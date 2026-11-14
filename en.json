@@ -1546,5 +1546,20 @@
  "Systemsjekk – LibreHardwareMonitor, diskplass, programoppdateringer og Windows Update": "System check – LibreHardwareMonitor, disk space, program updates and Windows Update",
  "Venter på LibreHardwareMonitor …": "Waiting for LibreHardwareMonitor …",
  "Fant ingen vifter som kan styres. På mange bærbare (f.eks. MSI) styres viftene bare av produsentens program (MSI Center).": "No controllable fans found. On many laptops (e.g. MSI) the fans are only controlled by the manufacturer's program (MSI Center).",
- "kunne ikke bytte strømplan": "could not change power plan"
+ "kunne ikke bytte strømplan": "could not change power plan",
+ "MSI-innstillinger på Windows": "MSI settings on Windows",
+ "MSI på Windows: brukerscenario, Cooler Boost, viftemodus, Battery Master (ladegrense), Super Battery og webkamera styres nå direkte fra Kontrollsenter – uten MSI Center": "MSI on Windows: user scenario, Cooler Boost, fan mode, Battery Master (charge limit), Super Battery and webcam are now controlled directly from Control Center – no MSI Center needed",
+ "MSI-fanen viser CPU- og GPU-temperatur og viftefart rett fra MSI-kontrolleren": "The MSI tab shows CPU and GPU temperature and fan speed straight from the MSI controller",
+ "Windows nektet å starte Kontrollsenter-Setup.exe fra NAS-en («ingen tilgang») – filene får nå kjørerett": "Windows refused to start Kontrollsenter-Setup.exe from the NAS (“no access”) – the files now get execute permission",
+ "Kobler til MSI-kontrolleren …": "Connecting to the MSI controller …",
+ "Windows krever administratorrett for MSI-innstillingene. Kjør installasjonsfilen (Kontrollsenter-Setup.exe) på nytt – da lages en oppgave som gir Kontrollsenter tilgang uten å spørre hver gang.": "Windows requires administrator rights for the MSI settings. Run the installer (Kontrollsenter-Setup.exe) again – it creates a task that gives Control Center access without asking every time.",
+ "Fikk ikke kontakt med MSI-kontrolleren:": "Could not reach the MSI controller:",
+ "EC-fastvaren {} er ikke kjent for Kontrollsenter, så ingenting endres herfra. Bruk MSI Center.": "EC firmware {} is not known to Control Center, so nothing is changed from here. Use MSI Center.",
+ "Egendefinert": "Custom",
+ "vifte": "fan",
+ "Lagrer …": "Saving …",
+ "Lagret ✓": "Saved ✓",
+ "Kunne ikke endre:": "Could not change:",
+ "Sparer strøm ved å begrense ytelsen.": "Saves power by limiting performance.",
+ "Slå av kameraet helt (som Fn-tasten for kamera).": "Turn the camera off completely (like the Fn camera key)."
 }

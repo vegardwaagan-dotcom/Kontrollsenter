@@ -73,6 +73,7 @@ Section "Kontrollsenter (påkrevd)" SecMain
   CreateDirectory "$Shared"
   SetOutPath "$Shared"
   File "installer.ps1"
+  File "msi_wmi.ps1"
   Delete "$Shared\installasjon-admin.status"
   DetailPrint "Installerer GTK4, Python og LibreHardwareMonitor (administrator) – kan ta noen minutter første gang …"
   ReadEnvStr $2 USERDOMAIN

@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.6.1", "MSI-innstillinger på Windows", [
+        ("Nytt", [
+            "MSI på Windows: brukerscenario, Cooler Boost, viftemodus, Battery Master (ladegrense), Super Battery "
+            "og webkamera styres nå direkte fra Kontrollsenter – uten MSI Center",
+            "MSI-fanen viser CPU- og GPU-temperatur og viftefart rett fra MSI-kontrolleren",
+        ]),
+        ("Rettet", [
+            "Windows nektet å starte Kontrollsenter-Setup.exe fra NAS-en («ingen tilgang») – filene får nå kjørerett",
+        ]),
+    ]),
     ("0.6.0", "Alle funksjonene på Windows", [
         ("Nytt på Windows", [
             "Vifter – styr viftene via LibreHardwareMonitor, med vifteprofiler og egne kurver",

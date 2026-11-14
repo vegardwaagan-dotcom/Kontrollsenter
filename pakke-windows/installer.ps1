@@ -108,6 +108,25 @@ if ($Admin) {
         Get-Process LibreHardwareMonitor -ErrorAction SilentlyContinue | Stop-Process -Force
         Start-ScheduledTask -TaskName $task
         Green "LibreHardwareMonitor kjører i bakgrunnen og starter med Windows"
+
+        # MSI-innstillinger (brukerscenario, Cooler Boost, batterigrense …) via MSI sitt WMI-grensesnitt.
+        # Skriptet legges i Program Files (bare administratorer kan endre det), og oppgaven lar Kontrollsenter
+        # kjøre det med administratorrett uten UAC-spørsmål. Skriptet skriver bare faste, kjente verdier.
+        $msiSrc = Join-Path $PSScriptRoot "msi_wmi.ps1"
+        $isMsi = (Get-CimInstance Win32_ComputerSystem).Manufacturer -match "Micro-Star|MSI"
+        if ($isMsi -and $ForUser -and (Test-Path $msiSrc)) {
+            $PF = Join-Path $env:ProgramFiles "Kontrollsenter"
+            New-Item -ItemType Directory -Force -Path $PF | Out-Null
+            Copy-Item $msiSrc "$PF\msi_wmi.ps1" -Force
+            $mact = New-ScheduledTaskAction -Execute "powershell.exe" `
+                -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PF\msi_wmi.ps1`""
+            $mprn = New-ScheduledTaskPrincipal -UserId $ForUser -LogonType Interactive -RunLevel Highest
+            $mset = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+                -ExecutionTimeLimit (New-TimeSpan -Minutes 2) -MultipleInstances Queue
+            Register-ScheduledTask -TaskName "Kontrollsenter - MSI" -Action $mact -Settings $mset -Principal $mprn `
+                -Force | Out-Null
+            Green "MSI-styring er satt opp"
+        }
         $code = 0
     } catch {
         Write-Host "`n✗ Administratordelen stoppet: $_" -ForegroundColor Red
@@ -142,6 +161,8 @@ try {
     # installeringsskriptet kopieres lokalt, så administratordelen kan kjøre det uten NAS-tilgang
     $ADMINPS = Join-Path $SHARED "installer.ps1"
     Copy-Item $PSCommandPath $ADMINPS -Force
+    $msiPs = Join-Path $PSScriptRoot "msi_wmi.ps1"
+    if (Test-Path $msiPs) { Copy-Item $msiPs (Join-Path $SHARED "msi_wmi.ps1") -Force }
     Green "Hentet og kontrollert"
 
     Blue "2/5 Felles programvare (administrator)"

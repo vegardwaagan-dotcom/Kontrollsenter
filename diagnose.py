@@ -150,6 +150,13 @@ def windows_report():
     except Exception as e:  # noqa: BLE001
         parts.append(_section("LibreHardwareMonitor-status", str(e)))
     try:
+        import msi as _msi
+        if _msi.is_msi():
+            import winmsi
+            parts.append(_section("MSI-styring", winmsi.diagnose()))
+    except Exception as e:  # noqa: BLE001
+        parts.append(_section("MSI-styring", str(e)))
+    try:
         from sensors import NvidiaReader
         n = NvidiaReader()
         n.poll()

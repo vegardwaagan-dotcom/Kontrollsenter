@@ -283,7 +283,7 @@ def publish(make_package):
         win = Path(APP_DIR) / "pakke-windows"
         if win.is_dir():
             smb_mkdir(f"{folder}/Windows")
-            for f in sorted(win.iterdir()):
+            for f in sorted(win.iterdir()) + [Path(APP_DIR) / "msi_wmi.ps1"]:
                 if f.is_file() and f.suffix in (".cmd", ".ps1"):
                     _smb(f'cd "Windows"; put "{f}" "{f.name}"', 120)
                     _allow_exec(f"Windows/{f.name}")

@@ -584,8 +584,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             lz[3] = page
         if stack.get_visible_child_name() == "msi" and self.msi_page is None:
             if IS_WIN:
-                import win_pages
-                self.msi_page = win_pages.MsiWinPage()
+                import winmsi
+                self.msi_page = winmsi.MsiWinPage()
             else:
                 import msi
                 self.msi_page = msi.MsiPage()
