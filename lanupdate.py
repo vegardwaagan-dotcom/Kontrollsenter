@@ -174,6 +174,20 @@ def _smb(cmds, timeout=120):
     return out
 
 
+def _allow_exec(rel):
+    """Gi «Everyone» full tilgang (inkl. kjøring) til en fil på NAS-en. Uten kjørerett nekter Windows å starte
+    .exe/.cmd fra nettverksmappen («Du har ikke tilgang»). Feiler stille – bare et forsøk."""
+    if sys.platform == "win32" or not shutil.which("smbcacls"):
+        return
+    _host, share, folder = _split()
+    path = f"{folder}/{rel}" if folder else rel
+    try:
+        subprocess.run(["smbcacls", share, path, "-N", "--modify", "ACL:Everyone:ALLOWED/0x0/FULL"],
+                       capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def remote_version():
     tmp = tempfile.mkdtemp()
     try:
@@ -272,10 +286,12 @@ def publish(make_package):
             for f in sorted(win.iterdir()):
                 if f.is_file() and f.suffix in (".cmd", ".ps1"):
                     _smb(f'cd "Windows"; put "{f}" "{f.name}"', 120)
+                    _allow_exec(f"Windows/{f.name}")
             # installasjonsfilen (bygges med bygg-windows-installer.sh) – alltid samme navn på NAS-en
             setup = Path(APP_DIR) / "dist" / f"Kontrollsenter-Setup-{local_version()}.exe"
             if setup.exists():
                 _smb(f'cd "Windows"; put "{setup}" "Kontrollsenter-Setup.exe"', 300)
+                _allow_exec("Windows/Kontrollsenter-Setup.exe")
         return True, f"Versjon {local_version()} er lagt på hjemmenettet ✓ ({location()})"
     except Exception as e:  # noqa: BLE001
         return False, str(e)
