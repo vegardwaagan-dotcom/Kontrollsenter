@@ -1,5 +1,6 @@
 #!/bin/bash
 # Bygg Android-appen Kontrollsenter.apk (mobil og nettbrett) i en container – ingenting installeres på PC-en.
+# (Prosjektet kan også åpnes i Android Studio: android/ – samme kilder og samme signeringsnøkkel.)
 #   ./bygg-android.sh      -> dist/Kontrollsenter-<versjon>.apk  (+ kopi i remote_web/kontrollsenter.apk)
 #
 # Signeringsnøkkelen lages én gang i ~/.local/share/kontrollsenter-android/ (ikke i Git). Ta vare på den:
@@ -38,14 +39,16 @@ fi
 
 OUT="$(mktemp -d)"
 trap 'rm -rf "$OUT"' EXIT
-podman run --rm -v "$PWD/android:/src:ro,Z" -v "$OUT:/out:Z" -v "$KEYDIR:/key:Z" \
+podman run --rm -v "$PWD/android/app/src/main:/src:ro,Z" -v "$OUT:/out:Z" -v "$KEYDIR:/key:Z" \
     -e VER="$VER" -e CODE="$CODE" "$IMAGE" bash -euo pipefail -c '
     JAR=$ANDROID_HOME/platforms/android-35/android.jar
     W=/tmp/b; mkdir -p $W/gen $W/classes $W/dex; cd $W
+    # Gradle vil ha pakkenavnet i build.gradle.kts (namespace) – aapt2 vil ha det i manifestet
+    sed "s|<manifest |<manifest package=\"no.waagan.kontrollsenter\" |" /src/AndroidManifest.xml > AndroidManifest.xml
     aapt2 compile --dir /src/res -o res.zip
-    aapt2 link -o base.apk -I $JAR --manifest /src/AndroidManifest.xml -A /src/assets res.zip \
+    aapt2 link -o base.apk -I $JAR --manifest AndroidManifest.xml -A /src/assets res.zip \
         --min-sdk-version 26 --target-sdk-version 35 --version-code "$CODE" --version-name "$VER" --java gen
-    javac -nowarn -Xlint:-options --release 17 -cp $JAR -d classes $(find gen /src/src -name "*.java")
+    javac -nowarn -Xlint:-options --release 17 -cp $JAR -d classes $(find gen /src/java -name "*.java")
     d8 --release --min-api 26 --lib $JAR --output dex $(find classes -name "*.class")
     (cd dex && zip -q ../base.apk classes.dex)
     zipalign -f -p 4 base.apk aligned.apk

@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 dist/
 remote_web/kontrollsenter.apk
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/.kotlin/
