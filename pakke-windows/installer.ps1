@@ -120,6 +120,15 @@ if ($Admin) {
         Start-ScheduledTask -TaskName $task
         Green "LibreHardwareMonitor kjører i bakgrunnen og starter med Windows"
 
+        # Fjernstyring fra mobil/nettbrett: åpne port 27100 for Kontrollsenter – bare på private nettverk
+        # (hjemmenettet), ikke på offentlige nett. Tjenesten er av til den slås på i Hjemme-fanen.
+        try {
+            Remove-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring" -ErrorAction SilentlyContinue
+            New-NetFirewallRule -DisplayName "Kontrollsenter fjernstyring" -Direction Inbound -Action Allow `
+                -Protocol TCP -LocalPort 27100 -Profile Private | Out-Null
+            Green "Brannmuren slipper inn mobil/nettbrett på hjemmenettet (port 27100, bare private nett)"
+        } catch { Warn "Kunne ikke åpne brannmuren for fjernstyring: $_" }
+
         # MSI-innstillinger (brukerscenario, Cooler Boost, batterigrense …) via MSI sitt WMI-grensesnitt.
         # Skriptet legges i Program Files (bare administratorer kan endre det), og oppgaven lar Kontrollsenter
         # kjøre det med administratorrett uten UAC-spørsmål. Skriptet skriver bare faste, kjente verdier.

@@ -94,6 +94,18 @@ class Background:
         self.history = history.Recorder()
         import homepcs
         self.sharer = homepcs.Sharer(win)
+        # fjernstyring fra mobil/nettbrett (av til den slås på i Hjemme-fanen)
+        try:
+            import remote
+            remote.INSTANCE = remote.Remote(win)
+            if remote.load_cfg()["enabled"]:
+                ok, err = remote.INSTANCE.start()
+                if not ok:
+                    import applog
+                    applog.log.warning("Fjernstyring: %s", err)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("fjernstyring")
         # feilsøkingsrapport til NAS-en (én gang per versjon og døgn) – så feil på andre PC-er kan finnes
         GLib.timeout_add_seconds(120, lambda: (__import__("diagnose").auto_upload(), False)[1])
         win.ov_button.connect("toggled", lambda *_: self.refresh_menu())

@@ -196,6 +196,12 @@ class HomePage(Gtk.ScrolledWindow):
         ref.connect("clicked", lambda *_: self.refresh(publish_first=True))
         top.append(ref)
         box.append(top)
+        try:
+            import remote_ui
+            box.append(remote_ui.RemoteCard())
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("fjernstyring-kort")
         self.flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=3,
                                 min_children_per_line=1, column_spacing=12, row_spacing=12)
         box.append(self.flow)

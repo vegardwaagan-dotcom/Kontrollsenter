@@ -292,6 +292,12 @@ def publish(make_package):
             if setup.exists():
                 _smb(f'cd "Windows"; put "{setup}" "Kontrollsenter-Setup.exe"', 300)
                 _allow_exec("Windows/Kontrollsenter-Setup.exe")
+        # Android-appen (bygges med bygg-android.sh): \\NAS\Public\Kontrollsenter\Android\Kontrollsenter.apk
+        apk = Path(APP_DIR) / "dist" / f"Kontrollsenter-{local_version()}.apk"
+        if apk.exists():
+            smb_mkdir(f"{folder}/Android")
+            _smb(f'cd "Android"; put "{apk}" "Kontrollsenter.apk"', 120)
+            _allow_exec("Android/Kontrollsenter.apk")
         return True, f"Versjon {local_version()} er lagt på hjemmenettet ✓ ({location()})"
     except Exception as e:  # noqa: BLE001
         return False, str(e)

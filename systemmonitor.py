@@ -936,6 +936,9 @@ class MonitorWindow(Adw.ApplicationWindow):
             c.add_css_class("error" if tt >= 85 else "warning" if tt >= 70 else "success")
         self.c_temp.details.set_visible(False)
 
+        # øyeblikksbilde for fjernstyringen (mobil/nettbrett)
+        self._remote = {"mem": [used, mt], "disk": [rr, wr], "net": [rx, tx], "temps": rows, "freq": f}
+
         # Strømmodus: fart nå og målt topp
         nvd = self.nvidia.data or {}
         self.power.tick(CpuReader.freq_ghz(), nvd)

@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.7.0", "Android-app for mobil og nettbrett", [
+        ("Nytt", [
+            "Android-appen «Kontrollsenter» – styr PC-ene fra mobilen eller nettbrettet (laget også for store "
+            "nettbrett som Galaxy Tab S11 Ultra)",
+            "Oversikt med CPU, GPU, minne, temperaturer, strøm, disk og nett – oppdateres hvert 2. sekund",
+            "Kontroll: strømmodus, vifter, lyd, RGB-lys, spill-overlay og MSI-innstillinger",
+            "Historikk for siste time, døgn og uke, og start Steam-spill rett fra nettbrettet",
+            "System: lås skjermen, hvilemodus, start på nytt og slå av",
+            "Appen finner PC-ene på hjemmenettet selv. Slå på «Tillat fjernstyring» i PC-er hjemme og par "
+            "med en 6-sifret kode",
+        ]),
+    ]),
     ("0.6.5", "Riktige temperaturer", [
         ("Rettet", [
             "Grenseverdier ble vist som temperaturer – f.eks. RAM-ens «Critical High Limit» (85 °C) ga rødt "

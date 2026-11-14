@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kontrollsenter</title>
+<style>
+:root { --bg:#1e1e24; --card:#2a2a32; --card2:#33333d; --fg:#f2f2f5; --dim:#a3a3b0; --line:#3c3c47; --acc:#3584e4; --ok:#33b36b; --bad:#e0464b; }
+@media (prefers-color-scheme: light) { :root { --bg:#f4f4f7; --card:#fff; --card2:#ececf1; --fg:#1d1d22; --dim:#62626e; --line:#dcdce3; } }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui, Roboto, sans-serif; }
+main { max-width:1100px; margin:0 auto; padding:20px 16px 40px; }
+h1 { font-size:26px; margin:6px 0 2px; } .dim { color:var(--dim); } .small { font-size:13px; }
+.bar { display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
+button { font:inherit; color:var(--fg); background:var(--card2); border:0; border-radius:12px; padding:12px 18px; min-height:48px; }
+button.primary { background:var(--acc); color:#fff; }
+input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; flex:1; min-width:180px; }
+.list { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); }
+.pc { background:var(--card); border-radius:18px; padding:18px; display:flex; gap:14px; align-items:center; }
+.pc .ic { width:52px; height:52px; border-radius:14px; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:26px; flex:none; }
+.pc .t { flex:1; min-width:0; } .pc b { display:block; font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pc .x { background:transparent; color:var(--dim); padding:8px 10px; min-height:40px; }
+.dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--dim); margin-right:6px; }
+.dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
+#scan-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; margin-top:8px; }
+#scan-bar i { display:block; height:100%; width:0; background:var(--acc); transition:width .2s; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kontrollsenter</h1>
+  <div class="dim">Velg PC-en du vil styre. PC-en må ha Kontrollsenter med <b>Tillat fjernstyring</b> slått på
+    (Hjemme → Mobil og nettbrett).</div>
+  <div class="bar">
+    <button id="scan" class="primary">Søk etter PC-er</button>
+    <input id="manual" placeholder="Eller skriv adressen, f.eks. 192.168.1.20" inputmode="url">
+    <button id="add">Legg til</button>
+  </div>
+  <div id="status" class="dim small"></div>
+  <div id="scan-bar" hidden><i></i></div>
+  <h2 class="dim small" style="text-transform:uppercase;letter-spacing:.5px;margin-top:24px">PC-er</h2>
+  <div id="pcs" class="list"></div>
+  <p class="dim small" id="ver"></p>
+</main>
+<script>
+"use strict";
+const PORT = 27100, $ = (s) => document.querySelector(s);
+const KS = window.KS || null;
+let pcs = []; try { pcs = JSON.parse(localStorage.getItem("pcs") || "[]"); } catch (e) {}
+const save = () => localStorage.setItem("pcs", JSON.stringify(pcs));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+async function hello(host, ms) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms || 1500);
+  try {
+    const r = await fetch(`http://${host}:${PORT}/api/hello`, { signal: ctl.signal, cache: "no-store" });
+    const j = await r.json();
+    return j && j.app === "Kontrollsenter" ? j : null;
+  } catch (e) { return null; } finally { clearTimeout(t); }
+}
+function remember(host, j) {
+  const p = pcs.find((x) => x.host === host || (j.name && x.name === j.name));
+  if (p) Object.assign(p, { host, name: j.name, os: j.os, version: j.version });
+  else pcs.push({ host, name: j.name, os: j.os, version: j.version });
+  save();
+}
+function open(p) {
+  p.last = Date.now(); save();
+  localStorage.setItem("lastHost", p.host);
+  location.href = `http://${p.host}:${PORT}/app/`;
+}
+function render(online) {
+  online = online || {};
+  pcs.sort((a, b) => (b.last || 0) - (a.last || 0));
+  $("#pcs").innerHTML = pcs.map((p, i) => `<div class="pc" data-i="${i}"><div class="ic">${p.os === "windows" ? "🪟" : "🐧"}</div>
+    <div class="t"><b>${esc(p.name || p.host)}</b><span class="dim small"><span class="dot ${online[p.host] === true ? "ok" : online[p.host] === false ? "bad" : ""}"></span>${esc(p.host)} · ${esc(p.version || "")}</span></div>
+    <button class="primary go">Åpne</button><button class="x" title="Fjern">✕</button></div>`).join("")
+    || '<p class="dim">Ingen PC-er ennå – trykk «Søk etter PC-er».</p>';
+  document.querySelectorAll(".pc").forEach((el) => {
+    const p = pcs[+el.dataset.i];
+    el.querySelector(".go").onclick = () => open(p);
+    el.querySelector(".x").onclick = () => { pcs.splice(pcs.indexOf(p), 1); save(); render(online); };
+  });
+}
+async function check() {
+  const online = {};
+  await Promise.all(pcs.map(async (p) => { const j = await hello(p.host, 2000); online[p.host] = !!j; if (j) remember(p.host, j); }));
+  render(online);
+  return online;
+}
+async function scan() {
+  const sn = KS ? KS.subnet() : "";
+  const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\/(\d+)$/.exec(sn);
+  if (!m) { $("#status").textContent = "Fant ikke nettverksadressen – er nettbrettet på Wi-Fi? Skriv inn adressen til PC-en."; return; }
+  const base = `${m[1]}.${m[2]}.${m[3]}.`;
+  $("#status").textContent = `Søker i ${base}0/24 …`; $("#scan-bar").hidden = false; $("#scan").disabled = true;
+  let done = 0; const seen = new Set(); const queue = Array.from({ length: 254 }, (_, i) => base + (i + 1));
+  async function worker() {
+    while (queue.length) {
+      const h = queue.shift(); const j = await hello(h, 1200);
+      if (j) { remember(h, j); seen.add(j.name || h); render(); }
+      done++; $("#scan-bar i").style.width = (done / 254) * 100 + "%";
+    }
+  }
+  await Promise.all(Array.from({ length: 48 }, worker));
+  $("#scan").disabled = false; $("#scan-bar").hidden = true;
+  const found = seen.size;
+  $("#status").textContent = found ? `Fant ${found} PC${found > 1 ? "-er" : ""} med Kontrollsenter.` :
+    "Fant ingen. Sjekk at Kontrollsenter kjører og at «Tillat fjernstyring» er på.";
+  check();
+}
+$("#scan").onclick = scan;
+$("#add").onclick = async () => {
+  const h = $("#manual").value.trim().replace(/^https?:\/\//, "").replace(/[:/].*$/, "");
+  if (!h) return;
+  $("#status").textContent = "Kobler til " + h + " …";
+  const j = await hello(h, 3000);
+  if (!j) { $("#status").textContent = `Fikk ikke svar fra ${h}:${PORT}.`; return; }
+  remember(h, j); $("#manual").value = ""; $("#status").textContent = "La til " + j.name; render();
+};
+$("#manual").addEventListener("keydown", (e) => e.key === "Enter" && $("#add").click());
+if (KS && KS.version) $("#ver").textContent = "App-versjon " + KS.version();
+
+(async () => {
+  render();
+  const home = /[?&]hjem=1/.test(location.search);
+  const last = localStorage.getItem("lastHost");
+  if (!home && last) {                          // åpne sist brukte PC direkte hvis den svarer
+    $("#status").textContent = "Kobler til sist brukte PC …";
+    if (await hello(last, 1500)) { const p = pcs.find((x) => x.host === last); if (p) return open(p); }
+    $("#status").textContent = "";
+  }
+  const online = await check();
+  if (!pcs.length) scan();
+  else if (!Object.values(online).some(Boolean)) $("#status").textContent = "Ingen av PC-ene svarer akkurat nå. Prøv «Søk etter PC-er».";
+})();
+</script>
+</body>
+</html>
