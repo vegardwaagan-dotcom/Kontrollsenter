@@ -218,7 +218,7 @@ class Tile(Gtk.Box):
         if gauge:
             inner.append(gauge)
         elif icon:
-            img = Gtk.Image(icon_name=icon, pixel_size=40)
+            img = Gtk.Image(icon_name=icon, pixel_size=24, valign=Gtk.Align.CENTER)
             img.add_css_class("tile-icon")
             inner.append(img)
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER, spacing=2, hexpand=True)
@@ -237,10 +237,10 @@ class Tile(Gtk.Box):
         inner.append(col)
 
 
-BLUE = (0.21, 0.52, 0.89)
+BLUE = (0.36, 0.55, 1.00)     # merkevarens blå
 GREEN = (0.20, 0.72, 0.42)
 ORANGE = (0.96, 0.55, 0.15)
-PURPLE = (0.57, 0.38, 0.85)
+PURPLE = (0.54, 0.36, 1.00)   # merkevarens lilla
 RED = (0.88, 0.27, 0.29)
 TEAL = (0.13, 0.66, 0.70)
 

@@ -391,7 +391,7 @@ class GamesPage(Gtk.ScrolledWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         for side in ("top", "bottom", "start", "end"):
             getattr(box, f"set_margin_{side}")(12)
-        self.set_child(Adw.Clamp(maximum_size=1100, child=box))
+        self.set_child(Adw.Clamp(maximum_size=__import__("theme").PAGE_WIDTH, child=box))
         self.box = box
         self.changes = {}
         try:

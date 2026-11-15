@@ -161,7 +161,7 @@ def page_box():
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
     for side in ("top", "bottom", "start", "end"):
         getattr(box, f"set_margin_{side}")(12)
-    clamp = Adw.Clamp(maximum_size=900, child=box)
+    clamp = Adw.Clamp(maximum_size=__import__("theme").PAGE_WIDTH, child=box)
     sc.set_child(clamp)
     return sc, box
 
@@ -795,9 +795,10 @@ class LogitechPage(Gtk.Box):
         try:
             import battery_ui
             bc = battery_ui.BatteryCard(logitech_only=True, title="Batteri")
-            for side in ("top", "start", "end"):
-                getattr(bc, f"set_margin_{side}")(12)
-            self.append(bc)
+            bc.set_margin_top(12)
+            for side in ("start", "end"):
+                getattr(bc, f"set_margin_{side}")(4)
+            self.append(Adw.Clamp(maximum_size=__import__("theme").PAGE_WIDTH, child=bc))
         except Exception:  # noqa: BLE001
             pass
         self.append(self.stack)

@@ -1769,5 +1769,15 @@
  "lader": "charging",
  "Installerer HeadsetControl (kan ta noen minutter, spør om passord) …": "Installing HeadsetControl (may take a few minutes, asks for password) …",
  "HeadsetControl er installert ✓ – slå hodesettet av og på hvis batteriet ikke vises": "HeadsetControl is installed ✓ – turn the headset off and on if the battery does not appear",
- "HeadsetControl er installert": "HeadsetControl is installed"
+ "HeadsetControl er installert": "HeadsetControl is installed",
+ "Overvåking": "Monitoring",
+ "Enheter": "Devices",
+ "God natt": "Good night",
+ "God morgen": "Good morning",
+ "God dag": "Good afternoon",
+ "God kveld": "Good evening",
+ "oppe": "up",
+ "Alt ser bra ut": "All good",
+ "Varm – sjekk viftene": "Hot – check the fans",
+ "Litt varm": "A bit warm"
 }

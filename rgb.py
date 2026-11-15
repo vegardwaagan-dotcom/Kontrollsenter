@@ -422,9 +422,11 @@ def load_state():
 
 
 def save_state(state):
+    if os.environ.get("SYSTEMMONITOR_APP_ID"):          # test- og demoutgaver skal aldri endre RGB-oppsettet
+        return
     try:
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        tmp = STATE_FILE + ".tmp"
+        tmp = f"{STATE_FILE}.{os.getpid()}.tmp"
         with open(tmp, "w") as f:
             json.dump(state, f, indent=1)
         os.replace(tmp, STATE_FILE)

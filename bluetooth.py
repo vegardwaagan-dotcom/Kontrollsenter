@@ -50,7 +50,7 @@ class BluetoothPage(Gtk.ScrolledWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         for side in ("top", "bottom", "start", "end"):
             getattr(box, f"set_margin_{side}")(12)
-        self.set_child(Adw.Clamp(maximum_size=900, child=box))
+        self.set_child(Adw.Clamp(maximum_size=__import__("theme").PAGE_WIDTH, child=box))
 
         top = Gtk.Box(spacing=8)
         t = Gtk.Label(label="Bluetooth", xalign=0, hexpand=True)

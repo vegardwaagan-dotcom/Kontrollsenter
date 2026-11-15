@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.14.0", "Nytt design", [
+        ("Nytt", [
+            "Helt nytt utseende på Linux og Windows: blå–lilla merkevare som i mobilappen, mykere kort med dybde, "
+            "rolig lys bakgrunn og samme bredde på alle sider",
+            "Sidemenyen er delt i Overvåking, Enheter, Spill og System, med logo, PC-navn og livestatus "
+            "(CPU, GPU og watt) nederst",
+            "Oversikt starter med en hilsen og en statusbrikke («Alt ser bra ut»), og toppfeltet viser PC-navn og oppetid",
+            "Knapper, brytere, glidebrytere og valg følger det nye designet, i både lyst og mørkt tema",
+        ]),
+    ]),
     ("0.13.2", "RGB tilbake etter hvilemodus", [
         ("Rettet", [
             "RGB (bl.a. CPU-kjøleren på hovedkortets ARGB-uttak) ble mørk etter hvilemodus og etter omstart til du "

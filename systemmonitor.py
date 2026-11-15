@@ -34,7 +34,7 @@ from cards import _monitor_geometry  # noqa: E402
 # Spill-overlay (MangoHud)
 # --------------------------------------------------------------------------
 APP_ICON = "no.waagan.Systemmonitor"
-MAX_WIDTH = 1280          # innholdet strekkes ikke bredere enn dette på store skjermer
+MAX_WIDTH = 1120          # innholdet strekkes ikke bredere enn dette på store skjermer
 MANGOHUD_CONF = os.path.expanduser("~/.config/MangoHud/MangoHud.conf")
 MANGOHUD_ENV = os.path.expanduser("~/.config/environment.d/90-systemmonitor-mangohud.conf")
 
@@ -155,9 +155,11 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.set_default_size(1000, 760)
             self.maximize()
         self.add_css_class("sysmon")
-        theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
-        theme.add_search_path(os.path.join(APP_DIR, "icons", "symbolic"))   # enhetlige ensfargede ikoner
-        theme.add_search_path(os.path.join(APP_DIR, "icons"))               # programikonet
+        import theme as ks_theme
+        ks_theme.load()
+        icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+        icon_theme.add_search_path(os.path.join(APP_DIR, "icons", "symbolic"))   # enhetlige ensfargede ikoner
+        icon_theme.add_search_path(os.path.join(APP_DIR, "icons"))               # programikonet
         Gtk.Window.set_default_icon_name(APP_ICON)
         install_app_icon()
         self._font_css = Gtk.CssProvider()
@@ -181,9 +183,10 @@ class MonitorWindow(Adw.ApplicationWindow):
 
         toolbar = Adw.ToolbarView()             # innholdet (høyre side)
         header = Adw.HeaderBar()
-        self.uptime_lbl = Gtk.Label()
-        self.uptime_lbl.add_css_class("dim-label")
-        header.pack_start(self.uptime_lbl)
+        self.uptime_lbl = Gtk.Label()                    # beholdes for eldre kode – vises i undertittelen
+        self.page_title = Adw.WindowTitle(title=i18n.tr("Oversikt"))
+        header.set_title_widget(self.page_title)
+        toolbar.add_css_class("ks-content")
         self.batteries = laptop_batteries()
         self.bat_lbl = Gtk.Label()
         self.bat_lbl.add_css_class("dim-label")
@@ -335,6 +338,21 @@ class MonitorWindow(Adw.ApplicationWindow):
             if t:
                 tiles.append(t)
                 t.get_parent().set_focusable(False)
+        hero = Gtk.Box(spacing=16)
+        hero.set_margin_top(6)
+        hero.set_margin_bottom(4)
+        hcol = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
+        self.hello = Gtk.Label(xalign=0)
+        self.hello.add_css_class("ks-hello")
+        hcol.append(self.hello)
+        self.hello_sub = Gtk.Label(xalign=0, wrap=True)
+        self.hello_sub.add_css_class("ks-hello-sub")
+        hcol.append(self.hello_sub)
+        hero.append(hcol)
+        self.hello_chip = Gtk.Label(valign=Gtk.Align.CENTER)
+        self.hello_chip.add_css_class("ks-chip")
+        hero.append(self.hello_chip)
+        page.append(hero)
         page.append(tiles)
         try:                                  # batteri i mus, tastatur og hodesett
             import battery_ui
@@ -439,10 +457,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         # Sidemenyen: én rad per fane, med ensfarget ikon
         self.sidebar = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
         self.sidebar.add_css_class("navigation-sidebar")
+        self.sidebar.add_css_class("ks-sidebar")
+        import theme as ks_theme
         self._rows = {}
         pages = stack.get_pages()
-        order = ["oversikt", "historikk", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "nettverk",
-                 "spill", "automatikk", "programmer", "hjemme", "verktoy", "msi"]
+        order = ks_theme.ORDER
         all_pages = [pages.get_item(i) for i in range(pages.get_n_items())]
         all_pages.sort(key=lambda p: order.index(p.get_name()) if p.get_name() in order else 99)
         for pg in all_pages:
@@ -452,12 +471,15 @@ class MonitorWindow(Adw.ApplicationWindow):
                 getattr(box, f"set_margin_{side}")(6)
             box.set_margin_start(6)
             box.append(Gtk.Image(icon_name=pg.get_icon_name()))
-            box.append(Gtk.Label(label=pg.get_title(), xalign=0, hexpand=True))
+            tl = Gtk.Label(label=pg.get_title(), xalign=0, hexpand=True)
+            tl.add_css_class("ks-row-title")
+            box.append(tl)
             badge = Gtk.Label(xalign=1)
             badge.add_css_class("dim-label")
             badge.add_css_class("numeric")
             badge.add_css_class("sidebar-badge")
             badge.set_margin_end(6)
+            badge.set_visible(False)
             box.append(badge)
             self._badges = getattr(self, "_badges", {})
             self._badges[pg.get_name()] = badge
@@ -466,12 +488,60 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.sidebar.append(row)
             self._rows[pg.get_name()] = row
         self.sidebar.connect("row-activated", self._on_sidebar)
+
+        def section_header(row, before):
+            sec = ks_theme.SECTION_OF.get(row.page_name)
+            prev = ks_theme.SECTION_OF.get(before.page_name) if before else None
+            if sec and sec != prev:
+                lab = Gtk.Label(label=i18n.tr(sec).upper(), xalign=0)
+                lab.add_css_class("ks-section")
+                if before is None:
+                    lab.add_css_class("first")
+                row.set_header(lab)
+            else:
+                row.set_header(None)
+        self.sidebar.set_header_func(section_header)
         side_tv = Adw.ToolbarView()
-        side_header = Adw.HeaderBar()
-        side_header.set_title_widget(Adw.WindowTitle(title="Kontrollsenter"))
+        side_tv.add_css_class("ks-side")
+        side_header = Adw.HeaderBar(show_title=True, show_start_title_buttons=False)
+        brand = Gtk.Box(spacing=10, halign=Gtk.Align.START)
+        logo = Gtk.Image(icon_name="ks-overview-symbolic", pixel_size=16)
+        logo.add_css_class("ks-brand-logo")
+        brand.append(logo)
+        bcol = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
+        bt = Gtk.Label(label="Kontrollsenter", xalign=0)
+        bt.add_css_class("ks-brand-title")
+        bcol.append(bt)
+        try:
+            import savegames
+            pcn = savegames.pc_name()
+        except Exception:  # noqa: BLE001
+            pcn = ""
+        self.brand_sub = Gtk.Label(label=pcn, xalign=0)
+        self.brand_sub.add_css_class("ks-brand-sub")
+        bcol.append(self.brand_sub)
+        brand.append(bcol)
+        side_header.set_title_widget(brand)
         side_header.pack_end(self.menu_btn)
         side_tv.add_top_bar(side_header)
-        side_tv.set_content(Gtk.ScrolledWindow(child=self.sidebar, hscrollbar_policy=Gtk.PolicyType.NEVER))
+        side_tv.set_content(Gtk.ScrolledWindow(child=self.sidebar, hscrollbar_policy=Gtk.PolicyType.NEVER,
+                                               vexpand=True))
+        # livestatus nederst: CPU, GPU og watt
+        pulse = Gtk.Box(homogeneous=True)
+        pulse.add_css_class("ks-pulse")
+        self._pulse = {}
+        for key, name in (("cpu", "CPU"), ("gpu", "GPU"), ("w", "WATT")):
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            v = Gtk.Label(label="–")
+            v.add_css_class("ks-pulse-value")
+            v.add_css_class("numeric")
+            lab = Gtk.Label(label=name)
+            lab.add_css_class("ks-pulse-label")
+            col.append(v)
+            col.append(lab)
+            pulse.append(col)
+            self._pulse[key] = v
+        side_tv.add_bottom_bar(pulse)
         side_page = Adw.NavigationPage(title=i18n.tr("Kontrollsenter"), child=side_tv)
         self.split = Adw.NavigationSplitView(sidebar=side_page, content=self.content_page,
                                              min_sidebar_width=210, max_sidebar_width=250)
@@ -756,6 +826,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         lbl = getattr(self, "_badges", {}).get(name)
         if lbl is not None and lbl.get_label() != (text or ""):
             lbl.set_label(text or "")
+        if lbl is not None:
+            lbl.set_visible(bool(text))
 
     def _open_mini(self, *_):
         import miniwin
@@ -808,6 +880,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         pg = self.stack.get_page(self.stack.get_visible_child())
         if pg and hasattr(self, "content_page"):
             self.content_page.set_title(pg.get_title())
+            if hasattr(self, "page_title"):
+                self.page_title.set_title(pg.get_title())
 
     def toast(self, text):
         self.toast_overlay.add_toast(Adw.Toast(title=i18n.tr(text), timeout=3))
@@ -1039,7 +1113,59 @@ class MonitorWindow(Adw.ApplicationWindow):
         up = uptime_seconds()
         h, rem = divmod(int(up), 3600)
         self.uptime_lbl.set_label(f"Oppetid {h} t {rem // 60} min")
+        d, hh = divmod(h, 24)
+        up_txt = (f"{d} d {hh} t" if d else f"{h} t {rem // 60} min")
+        try:
+            self._refresh_chrome(up_txt)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("design")
         return True
+
+    def _refresh_chrome(self, up_txt):
+        """Toppfelt, velkomst og livestatus i sidemenyen."""
+        import time as _t
+        import theme
+        sub = self.brand_sub.get_label() if hasattr(self, "brand_sub") else ""
+        self.page_title.set_subtitle(" · ".join(x for x in (sub, i18n.tr("oppe") + " " + up_txt) if x))
+        ct = getattr(self, "_cpu_t", None)
+        nv = self.nvidia.data if self.nvidia.available else {}
+        gt = nv.get("temp") if nv else None
+        watts = (getattr(self, "_power", None) or {}).get("total")
+        self._pulse["cpu"].set_label(f"{ct:.0f}°" if ct is not None else "–")
+        self._pulse["gpu"].set_label(f"{gt:.0f}°" if gt is not None else "–")
+        self._pulse["w"].set_label(f"{watts:.0f}" if watts else "–")
+        if hasattr(self, "hello"):
+            name = os.environ.get("USER") or os.environ.get("USERNAME") or ""
+            first = ""
+            try:
+                import pwd
+                first = (pwd.getpwnam(name).pw_gecos.split(",")[0].split() or [""])[0]
+            except Exception:  # noqa: BLE001
+                first = ""
+            hi = i18n.tr(theme.greeting(_t.localtime().tm_hour))
+            self.hello.set_label(f"{hi}, {first}" if first else hi)
+            game = getattr(getattr(self, "bg", None), "game_name", None)
+            parts = []
+            if game:
+                parts.append("🎮 " + game)
+            mode = self.t_mode.value.get_label() if getattr(self, "t_mode", None) else ""
+            if mode:
+                parts.append(mode)
+            if watts:
+                parts.append(f"{watts:.0f} W")
+            self.hello_sub.set_label("  ·  ".join(parts))
+            hot = max((x for x in (ct, gt) if x is not None), default=None)
+            lvl, txt = ("", i18n.tr("Alt ser bra ut"))
+            if hot is not None and hot >= 85:
+                lvl, txt = "bad", i18n.tr("Varm – sjekk viftene")
+            elif hot is not None and hot >= 75:
+                lvl, txt = "warn", i18n.tr("Litt varm")
+            for c in ("warn", "bad"):
+                self.hello_chip.remove_css_class(c)
+            if lvl:
+                self.hello_chip.add_css_class(lvl)
+            self.hello_chip.set_label(("● " + txt))
 
 
 class MonitorApp(Adw.Application):

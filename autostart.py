@@ -178,7 +178,7 @@ class AutostartPage(Gtk.ScrolledWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         for side in ("top", "bottom", "start", "end"):
             getattr(box, f"set_margin_{side}")(4)
-        self.set_child(Adw.Clamp(maximum_size=900, child=box))
+        self.set_child(Adw.Clamp(maximum_size=__import__("theme").PAGE_WIDTH, child=box))
         intro = Gtk.Label(label="Velg hvilke programmer som skal starte av seg selv – minimert – når du "
                                 "logger inn.", xalign=0, wrap=True)
         intro.add_css_class("dim-label")
