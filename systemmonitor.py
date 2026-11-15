@@ -484,6 +484,10 @@ class MonitorWindow(Adw.ApplicationWindow):
             GLib.idle_add(lambda: (stack.set_visible_child_name(os.environ["SYSTEMMONITOR_START_TAB"]), False)[1])
         self.rgb_page = None
         self.set_content(self.split)
+        # RGB: legg inn de lagrede fargene ved oppstart og etter hvilemodus – OpenRGB husker dem ikke selv
+        if self.hw.get("rgb") and not os.environ.get("SYSTEMMONITOR_APP_ID"):
+            GLib.timeout_add_seconds(12, lambda: (self.rgb_restore("oppstart"), False)[1])
+            self._watch_sleep()
 
         self.update()
         GLib.timeout_add(INTERVAL_MS, self.update)
@@ -571,14 +575,53 @@ class MonitorWindow(Adw.ApplicationWindow):
         import syscheck
         syscheck.SysCheckDialog().present(self)
 
-    def _on_tab(self, stack, _p):
-        # RGB-fanen (og OpenRGB) startes først når du åpner den
-        if stack.get_visible_child_name() == "rgb" and self.rgb_page is None:
+    def ensure_rgb_page(self):
+        if self.rgb_page is None:
             import rgb
             self.rgb_page = rgb.RgbPage()
             self.rgb_page.set_hexpand(True)
             self.rgb_page.set_vexpand(True)
             self.rgb_holder.append(self.rgb_page)
+            return True
+        return False
+
+    def rgb_restore(self, why=""):
+        """Send de lagrede RGB-fargene til enhetene (oppretter RGB-siden i bakgrunnen ved behov)."""
+        try:
+            import rgb
+            st = rgb.load_state()
+            if not st.get("groups") or not st.get("autostart", True):
+                return
+            if not self.ensure_rgb_page():                    # ny side legger inn fargene av seg selv
+                self.rgb_page.apply_all_now()
+            import applog
+            applog.log.info("RGB lagt inn på nytt (%s)", why)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("RGB ved %s", why)
+
+    def _watch_sleep(self):
+        """logind sender PrepareForSleep(false) etter hvilemodus – også når et forsøk på hvile mislykkes.
+        Da har USB-kontrollerne (ASUS Aura m.fl.) mistet fargene."""
+        if IS_WIN:
+            return
+        try:
+            bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+
+            def on_sleep(_c, _s, _p, _i, _n, params):
+                if not params.unpack()[0]:
+                    GLib.timeout_add_seconds(4, lambda: (self.rgb_restore("etter hvilemodus"), False)[1])
+            self._sleep_sub = bus.signal_subscribe("org.freedesktop.login1", "org.freedesktop.login1.Manager",
+                                                   "PrepareForSleep", "/org/freedesktop/login1", None,
+                                                   Gio.DBusSignalFlags.NONE, on_sleep)
+            self._sleep_bus = bus
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _on_tab(self, stack, _p):
+        # RGB-fanen (og OpenRGB) startes først når du åpner den – eller av rgb_restore ved oppstart
+        if stack.get_visible_child_name() == "rgb":
+            self.ensure_rgb_page()
         lz = getattr(self, "_lazy", {}).get(stack.get_visible_child_name())
         if lz and lz[3] is None:
             import importlib

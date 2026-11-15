@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.13.2", "RGB tilbake etter hvilemodus", [
+        ("Rettet", [
+            "RGB (bl.a. CPU-kjøleren på hovedkortets ARGB-uttak) ble mørk etter hvilemodus og etter omstart til du "
+            "åpnet RGB-fanen. Nå legges de lagrede fargene inn av seg selv ved oppstart og hver gang PC-en våkner",
+        ]),
+    ]),
     ("0.13.1", "Batteri i mus og hodesett", [
         ("Nytt", [
             "Batteriprosent for alle trådløse enheter – mus, tastatur og hodesett – øverst på Oversikt, på "
