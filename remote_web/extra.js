@@ -56,7 +56,7 @@ const EN = {
   "Volum per program": "Volume per app", "Grense per dag": "Daily limit", "Nytt mål": "New goal", "Start et spill": "Start a game",
   "Programmer som bruker nettet": "Programs using the network", "Åpne lenke": "Open link", "Kopier": "Copy", "Hent utklipp": "Get clipboard",
   "Glem paringen": "Forget pairing", "Åpne på PC-en": "Open on the PC", "Bruk": "Apply", "Lagre": "Save", "NAS": "NAS",
-  "CS2 kamp for kamp": "CS2 match by match", "Ladegrense": "Charge limit",
+  "CS2 kamp for kamp": "CS2 match by match", "Ladegrense": "Charge limit", "Klipp": "Clips", "Lagre klipp": "Save clip",
   "Oversikt": "Overview", "Kontroll": "Control", "Historikk": "History", "Spill": "Games", "Mer": "More", "System": "System",
   "Temperaturer": "Temperatures", "Maskin": "Machine", "Helse": "Health", "Strømmodus": "Power mode", "Vifter": "Fans",
   "Lyd": "Sound", "RGB-lys": "RGB lighting", "Spill-overlay": "Game overlay", "Spillmodus": "Game mode",
@@ -119,6 +119,7 @@ $$("#quick button").forEach((b) => (b.onclick = async () => {
   const q = b.dataset.q;
   if (q === "second") return openSecond();
   if (q === "lock") return act({ a: "system", do: "lock" });
+  if (q === "clip") { const r = await act({ a: "clip" }); setTimeout(loadClips, 5000); return r; }
   if (q === "gamemode") { const on = !b.classList.contains("on"); b.classList.toggle("on", on); holdFor("gm", 6000);
     return act({ a: "gamemode", on, color: $("#gm-color").value }); }
   if (q === "power" && last && last.power) {
@@ -330,13 +331,43 @@ $("#goal-save").onclick = () => {
   act({ a: "wowgoal", key: `${realm}-${name}`, level: +$("#goal-level").value || null, by }).then(loadGoals);
 };
 
+// ---------- klipp: opptak i bakgrunnen ----------
+const lenName = (s) => (s < 60 ? s + " s" : s / 60 + " min");
+async function loadClips() {
+  try {
+    const c = await X("clips");
+    $("#clip-on").checked = !!c.enabled; $("#clip-og").checked = !!c.only_games;
+    $("#clip-linux").hidden = c.os === "windows";
+    $("#clip-len").innerHTML = (c.lengths || []).map((s) => `<button data-s="${s}" class="${s === c.length ? "on" : ""}">${lenName(s)}</button>`).join("");
+    $$("#clip-len button").forEach((b) => (b.onclick = () => act({ a: "clipcfg", length: +b.dataset.s }, true).then(loadClips)));
+    $("#q-clip").textContent = c.os === "windows" ? "Game Bar" : "Siste " + lenName(c.length);
+    $("#clip-status").textContent = !c.enabled ? "av" : c.os === "linux" && !c.installed ? "mangler opptaksprogram (installer på PC-en)"
+      : c.running ? "🔴 tar opp" : c.only_games ? "venter på spill" : "starter …";
+    $("#clip-list").innerHTML = c.clips.slice(0, 12).map((x) => `<div class="clip"><div><b>${esc(x.name)}</b><span class="dim small">${fmtB(x.size)} · ${hhmm(x.t)}</span></div>
+      <button class="soft" data-play="${esc(x.name)}">▶</button><button class="danger" data-del="${esc(x.name)}">Slett</button></div>`).join("")
+      || '<p class="dim small">Ingen klipp ennå. Slå på opptak, spill litt og trykk F8.</p>';
+    $$("[data-play]").forEach((b) => (b.onclick = () => {
+      const v = $("#clip-video"); v.hidden = false;
+      v.src = `/api/clipfile?name=${encodeURIComponent(b.dataset.play)}&k=${encodeURIComponent(token)}`; v.play().catch(() => {});
+      v.scrollIntoView({ behavior: "smooth", block: "center" });
+    }));
+    $$("[data-del]").forEach((b) => (b.onclick = async () => {
+      if (await confirmDlg(`Slette ${b.dataset.del}?`)) { await act({ a: "clipdel", name: b.dataset.del }); loadClips(); }
+    }));
+  } catch (e) { $("#clip-status").textContent = e.message; }
+}
+$("#clip-on").onchange = () => act({ a: "clipcfg", enabled: $("#clip-on").checked }, true).then(loadClips);
+$("#clip-og").onchange = () => act({ a: "clipcfg", only_games: $("#clip-og").checked }, true).then(loadClips);
+$("#clip-save").onclick = async () => { await act({ a: "clip" }); setTimeout(loadClips, 5000); };
+
 // ---------- kobling til fanene ----------
 const baseSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   baseSetTab(t);
   if (t === "mer") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
   if (t === "kontroll") loadMedia();
-  if (t === "spill") { loadPlaytime(); loadCs2(); loadGoals(); }
+  if (t === "spill") { loadClips(); loadPlaytime(); loadCs2(); loadGoals(); }
+  if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? "Game Bar" : "Siste " + lenName(c.length); }).catch(() => {});
   if (t === "oversikt") loadHealth(false);
   applyLang();
 };

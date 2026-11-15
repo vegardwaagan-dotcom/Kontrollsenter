@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.11.0", "Klipp – opptak i bakgrunnen", [
+        ("Nytt", [
+            "Klipp (som Medal/ShadowPlay): spillet tas opp i bakgrunnen, og F8 lagrer de siste sekundene som video",
+            "Velg lengden selv (15 s – 5 min) og om opptaket bare skal gå mens et spill kjører",
+            "Linux: GPU Screen Recorder (skjermkortets videokoder, med lyd) – installeres med én knapp. "
+            "Windows: Xbox Game Bar sitt «Ta opp det som skjedde»",
+            "Android: «Lagre klipp» på Hjem, hurtigflis i nedtrekksmenyen, og se eller slett klippene i appen",
+        ]),
+    ]),
     ("0.10.1", "Enkel visning kan slås av igjen", [
         ("Rettet", [
             "Appen: i enkel visning forsvant innstillingene, så den kunne ikke slås av. Innstillinger vises nå alltid, "

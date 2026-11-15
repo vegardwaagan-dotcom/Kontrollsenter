@@ -50,6 +50,13 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+        <service android:name=".ClipTile" android:label="Lagre klipp" android:exported="true"
+            android:icon="@android:drawable/ic_menu_camera"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
         <service android:name=".GameModeTile" android:label="Spillmodus" android:exported="true"
             android:icon="@android:drawable/ic_media_play"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">

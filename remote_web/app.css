@@ -95,13 +95,17 @@ main { padding: 4px 14px 24px; max-width: 1500px; margin: 0 auto; }
 .row input[type=range] { flex: 1; }
 
 /* hurtigknapper */
-.quick { display: grid; gap: 10px; grid-template-columns: repeat(4, 1fr); margin-bottom: var(--gap); }
+.quick { display: grid; gap: 10px; grid-template-columns: repeat(5, 1fr); margin-bottom: var(--gap); }
+#clip-video { width: 100%; border-radius: 14px; margin-top: 12px; background: #000; max-height: 60vh; }
+.clip { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.clip div { flex: 1; min-width: 0; } .clip b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clip button { padding: 6px 12px; min-height: 36px; }
 .quick button { background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 18px; padding: 12px 6px;
   display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 92px; }
 .quick .qi { font-size: 24px; } .quick .ql { font-size: 13px; font-weight: 600; } .quick .qs { font-size: 12px; color: var(--dim); }
 .quick button.on { background: var(--grad); color: #fff; border-color: transparent; }
 .quick button.on .qs { color: rgba(255,255,255,.85); }
-@media (max-width: 420px) { .quick { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .quick { grid-template-columns: repeat(3, 1fr); } }
 
 /* målere */
 .tiles { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }

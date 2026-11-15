@@ -397,6 +397,8 @@ class GamesPage(Gtk.ScrolledWindow):
         try:
             import gamestats_ui
             box.append(gamestats_ui.StatsCard(card))
+            import clips_ui
+            box.append(clips_ui.ClipsCard(card))
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("spillstatistikk")

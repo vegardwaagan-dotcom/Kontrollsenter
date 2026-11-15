@@ -500,6 +500,20 @@ def do_action(win, a):
     if kind == "syscheck":
         _call_main(lambda: (win.get_application().activate(), win._open_syscheck(None)))
         return True, "Systemsjekk er åpnet på PC-en"
+    if kind == "clip":
+        import clips
+        if not clips.INSTANCE:
+            raise RuntimeError("klipp er ikke klart")
+        ok, msg = clips.INSTANCE.save()
+        return ok, msg
+    if kind == "clipcfg":
+        import clips
+        clips.set_cfg(a.get("enabled"), a.get("length"), a.get("only_games"))
+        return True, "Lagret"
+    if kind == "clipdel":
+        import clips
+        clips.delete(str(a.get("name", "")))
+        return True, "Klippet er slettet"
     if kind == "wol":
         X.send_wol(a.get("mac"))
         return True, "Wake-on-LAN er sendt"
@@ -567,7 +581,7 @@ def _msi_action(a):
 INSTANCE = None          # settes av bakgrunnsdelen (background.py)
 
 
-LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show"}   # «begrenset» tilgang
+LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip"}   # «begrenset» tilgang
 
 
 class Remote:
@@ -731,6 +745,15 @@ def _handler(remote):
                     with open(path, "rb") as f:
                         return self._send(200, f.read(), "application/vnd.android.package-archive",
                                           {"Content-Disposition": 'attachment; filename="Kontrollsenter.apk"'})
+                if p == "/api/clipfile":                  # video til appen (nøkkel i adressen – <video> kan ikke sende den)
+                    q = parse_qs(u.query)
+                    if not remote.check((q.get("k") or [""])[0]):
+                        return self._send(401, {"error": "ikke paret"})
+                    import clips
+                    path = clips.clip_path((q.get("name") or [""])[0])
+                    if not path:
+                        return self._send(404, {"error": "finnes ikke"})
+                    return self._video(path)
                 if p == "/api/hello":
                     import applog
                     import savegames
@@ -839,10 +862,50 @@ def _handler(remote):
                 return self._send(200, X.nas_state())
             if what == "health":
                 return self._send(200, X.health(arg("force") == "1"))
+            if what == "clips":
+                import clips
+                st = clips.INSTANCE.state() if clips.INSTANCE else clips.load_cfg()
+                return self._send(200, {**st, "clips": clips.clips()})
             if what == "homepcs":
                 import homepcs
                 return self._send(200, {"pcs": homepcs.fetch() or []})
             return self._send(404, {"error": "finnes ikke"})
+
+        def _video(self, path):
+            size = os.path.getsize(path)
+            rng = self.headers.get("Range", "")
+            m = re.match(r"bytes=(\d*)-(\d*)", rng)
+            start, end = 0, size - 1
+            if m and (m.group(1) or m.group(2)):
+                if m.group(1):
+                    start = int(m.group(1))
+                    end = int(m.group(2)) if m.group(2) else size - 1
+                else:
+                    start = max(0, size - int(m.group(2)))
+                end = min(end, size - 1, start + 8 * 1024 * 1024 - 1)       # høyst 8 MB per bit
+            length = end - start + 1
+            self.send_response(206 if m else 200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(length))
+            if m:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            if self.command == "HEAD":
+                return
+            with open(path, "rb") as f:
+                f.seek(start)
+                left = length
+                while left > 0:
+                    chunk = f.read(min(262144, left))
+                    if not chunk:
+                        break
+                    try:
+                        self.wfile.write(chunk)
+                    except (BrokenPipeError, ConnectionResetError):
+                        return
+                    left -= len(chunk)
 
         def _static(self, rel):
             rel = os.path.normpath(rel).replace("\\", "/")

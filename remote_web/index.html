@@ -52,6 +52,7 @@
     <div class="quick" id="quick">
       <button data-q="gamemode"><span class="qi">🎮</span><span class="ql">Spillmodus</span><span class="qs" id="q-gm">Av</span></button>
       <button data-q="power"><span class="qi">⚡</span><span class="ql">Strømmodus</span><span class="qs" id="q-power">–</span></button>
+      <button data-q="clip"><span class="qi">🎬</span><span class="ql">Lagre klipp</span><span class="qs" id="q-clip">Siste minutt</span></button>
       <button data-q="second"><span class="qi">🖥️</span><span class="ql">Andreskjerm</span><span class="qs">Store tall</span></button>
       <button data-q="lock"><span class="qi">🔒</span><span class="ql">Lås PC-en</span><span class="qs">Skjermlås</span></button>
     </div>
@@ -105,6 +106,15 @@
     <div class="card" id="stats-card"><h2>Statistikk</h2>
       <select id="stats-sel" class="search"></select>
       <div id="stats" class="statsbody"><p class="dim">Henter …</p></div></div>
+    <div class="card" id="c-clips" style="margin-top:var(--gap)"><div class="row between"><h2>Klipp</h2><span id="clip-status" class="dim small"></span></div>
+      <div class="row"><span>Opptak i bakgrunnen (F8 lagrer)</span><label class="switch"><input type="checkbox" id="clip-on"><i></i></label></div>
+      <div id="clip-linux">
+        <div class="seg small-seg" id="clip-len"></div>
+        <div class="row"><span>Bare mens et spill kjører</span><label class="switch"><input type="checkbox" id="clip-og"><i></i></label></div>
+      </div>
+      <button id="clip-save" class="primary wide">🎬 Lagre klipp nå</button>
+      <video id="clip-video" controls playsinline hidden></video>
+      <div id="clip-list"></div></div>
     <div class="grid">
       <div class="card"><h2>Spilletid</h2><canvas id="pt-chart"></canvas><div id="pt-week" class="kvgrid"></div>
         <details><summary>Grense per dag</summary>

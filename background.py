@@ -94,6 +94,13 @@ class Background:
         self.history = history.Recorder()
         import homepcs
         self.sharer = homepcs.Sharer(win)
+        # klipp: opptak i bakgrunnen + F8 (av til det slås på)
+        try:
+            import clips
+            clips.setup(self.notify)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("klipp")
         # spillstatistikk: CS2 live (lytter bare lokalt) og WoW-addonen
         try:
             import gamestats
@@ -193,6 +200,12 @@ class Background:
             self.history.flush()
         except Exception:  # noqa: BLE001
             pass
+        try:
+            import clips
+            if clips.INSTANCE:
+                clips.INSTANCE.stop()
+        except Exception:  # noqa: BLE001
+            pass
         try:                                              # si fra at PC-en ble slått av med vilje (appen)
             import homepcs
             import remote_extra
@@ -274,6 +287,12 @@ class Background:
                 import remote_extra
                 self.play = remote_extra.PlayTracker(self.notify)
             self.play.tick(getattr(self, "game_name", None), dt)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            import clips
+            if clips.INSTANCE:
+                clips.INSTANCE.tick(getattr(self, "game_name", None))
         except Exception:  # noqa: BLE001
             pass
         try:
