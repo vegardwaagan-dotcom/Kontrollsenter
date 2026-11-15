@@ -90,6 +90,11 @@ if ($Admin) {
                 if (-not $done) { Warn "OpenRGB ble ikke installert – kan installeres i Programmer-fanen" }
             }
         } catch { Warn "OpenRGB kunne ikke installeres automatisk: $_" }
+        try {   # ffmpeg: redigering av klipp (klipp til, GIF, montasje …) – valgfritt
+            if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+                winget install -e --id Gyan.FFmpeg --silent --accept-package-agreements --accept-source-agreements | Out-Host
+            }
+        } catch { Warn "ffmpeg kunne ikke installeres automatisk: $_" }
         # deler målingene bare lokalt på port 8085
         @"
 <?xml version="1.0" encoding="utf-8"?>

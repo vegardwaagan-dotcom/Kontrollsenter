@@ -92,6 +92,16 @@ class ClipsCard(Gtk.Box):
             self.inst.connect("clicked", self._install)
             btns.append(self.inst)
         i.append(btns)
+        b2 = Gtk.Box(spacing=8)
+        for label, fn in (("Beste fra uka", lambda: __import__("clipx").weekly()),
+                          ("Skjermbilde", lambda: __import__("clipx").screenshot(getattr(clips.INSTANCE, "game", None))),
+                          ("Start/stopp opptak", lambda: clips.INSTANCE and clips.INSTANCE.toggle_record())):
+            bt = Gtk.Button(label=i18n.tr(label))
+            bt.connect("clicked", lambda _b, f=fn: (threading.Thread(target=f, daemon=True).start(),
+                                                     GLib.timeout_add_seconds(3, lambda: (self.refresh(), False)[1])))
+            b2.append(bt)
+        i.append(b2)
+        i.append(self._options())
         self.list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         self.list.add_css_class("boxed-list")
         i.append(self.list)
@@ -101,7 +111,12 @@ class ClipsCard(Gtk.Box):
     def refresh(self):
         def work():
             st = clips.INSTANCE.state() if clips.INSTANCE else {**clips.load_cfg(), "installed": True}
-            GLib.idle_add(self._show, st, clips.clips(6))
+            import clipx
+            fs = clipx.files()[:12]
+            for x in fs:
+                if not x["thumb"]:
+                    clipx.thumb(clipx.any_path(x["name"]) or "")
+            GLib.idle_add(self._show, st, fs)
         threading.Thread(target=work, daemon=True).start()
 
     def _show(self, st, items):
@@ -125,16 +140,40 @@ class ClipsCard(Gtk.Box):
         self.status.set_label(txt)
         while (ch := self.list.get_first_child()):
             self.list.remove(ch)
+        import clipx
         for c in items:
             r = Gtk.Box(spacing=10)
-            for side, v in (("top", 6), ("bottom", 6), ("start", 12), ("end", 8)):
+            for side, v in (("top", 6), ("bottom", 6), ("start", 8), ("end", 8)):
                 getattr(r, f"set_margin_{side}")(v)
-            r.append(Gtk.Label(label="🎬  " + c["name"], xalign=0, hexpand=True, ellipsize=3))
-            r.append(_dim(f"{c['size'] / 2**20:.0f} MB · " + time.strftime("%d.%m %H:%M", time.localtime(c["t"]))))
-            pb = Gtk.Button(icon_name="media-playback-start-symbolic", valign=Gtk.Align.CENTER)
+            tp = os.path.join(clipx.THUMBS, c["name"] + ".jpg")
+            if os.path.exists(tp):
+                pic = Gtk.Picture.new_for_filename(tp)
+                pic.set_size_request(112, 63)
+                pic.set_content_fit(Gtk.ContentFit.COVER)
+                r.append(pic)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            icon = "🖼️ " if c["kind"] == "image" else "🏆 " if c["kind"] in ("highlight", "boss") else "🎬 "
+            col.append(Gtk.Label(label=icon + c["name"], xalign=0, ellipsize=3))
+            extra = (c.get("meta") or {}).get("cs2") or {}
+            info = f"{c['size'] / 2**20:.0f} MB · " + time.strftime("%d.%m %H:%M", time.localtime(c["t"]))
+            if extra.get("map"):
+                info += f" · {extra['map']} · {extra.get('kills', '?')}/{extra.get('deaths', '?')}"
+            col.append(_dim(info))
+            r.append(col)
+            fav = Gtk.ToggleButton(label="★" if c["fav"] else "☆", active=c["fav"], valign=Gtk.Align.CENTER,
+                                   tooltip_text=i18n.tr("Favoritt – slettes aldri automatisk"))
+            fav.add_css_class("flat")
+            fav.connect("toggled", lambda b, n=c["name"]: (clipx.set_fav(n, b.get_active()),
+                                                            b.set_label("★" if b.get_active() else "☆")))
+            r.append(fav)
+            pb = Gtk.Button(icon_name="media-playback-start-symbolic", valign=Gtk.Align.CENTER, tooltip_text=i18n.tr("Spill av"))
             pb.add_css_class("flat")
             pb.connect("clicked", lambda _b, n=c["name"]: _open(os.path.join(clips.clip_dir(), n)))
             r.append(pb)
+            db = Gtk.Button(icon_name="user-trash-symbolic", valign=Gtk.Align.CENTER, tooltip_text=i18n.tr("Slett"))
+            db.add_css_class("flat")
+            db.connect("clicked", lambda _b, n=c["name"]: self._delete(n))
+            r.append(db)
             self.list.append(r)
         self.list.set_visible(bool(items))
         return False
@@ -214,6 +253,96 @@ class ClipsCard(Gtk.Box):
                 return False
             return True
         GLib.timeout_add(250, poll)
+
+    def _delete(self, name):
+        from gi.repository import Adw
+        d = Adw.AlertDialog(heading=i18n.tr("Slette klippet?"), body=name)
+        d.add_response("nei", i18n.tr("Avbryt"))
+        d.add_response("ja", i18n.tr("Slett"))
+        d.set_response_appearance("ja", Adw.ResponseAppearance.DESTRUCTIVE)
+
+        def done(_d, resp):
+            if resp == "ja":
+                try:
+                    __import__("clipx").delete(name)
+                except Exception as e:  # noqa: BLE001
+                    self.status.set_label(str(e))
+                self.refresh()
+        d.connect("response", done)
+        d.present(self.get_root())
+
+    def _options(self):
+        """Sammenfoldet: kvalitet, lyd, webkamera, ekstra hurtigtaster, automatikk, rydding, NAS og vannmerke."""
+        c = clips.load_cfg()
+        exp = Gtk.Expander(label=i18n.tr("Flere valg"))
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_margin_top(8)
+        exp.set_child(box)
+
+        def row(label, widget):
+            r = Gtk.Box(spacing=10)
+            r.append(Gtk.Label(label=i18n.tr(label), xalign=0, hexpand=True, wrap=True))
+            widget.set_valign(Gtk.Align.CENTER)
+            r.append(widget)
+            box.append(r)
+
+        def choice(label, key, values, names):
+            dd = Gtk.DropDown.new_from_strings([i18n.tr(n) for n in names])
+            dd.set_selected(values.index(c.get(key)) if c.get(key) in values else 0)
+            dd.connect("notify::selected", lambda d, _p: self._opt(**{key: values[d.get_selected()]}))
+            row(label, dd)
+
+        def switch(label, key):
+            sw = Gtk.Switch(active=bool(c.get(key)))
+            sw.connect("notify::active", lambda s, _p: self._opt(**{key: s.get_active()}))
+            row(label, sw)
+
+        def number(label, key, hi):
+            sp = Gtk.SpinButton.new_with_range(0, hi, 1)
+            sp.set_value(c.get(key) or 0)
+            sp.connect("value-changed", lambda s: self._opt(**{key: int(s.get_value())}))
+            row(label, sp)
+        if not IS_WIN:
+            choice("Kvalitet", "quality", ["medium", "high", "very_high", "ultra"], ["Middels", "Høy", "Veldig høy", "Maks"])
+            choice("Bilder per sekund", "fps", [30, 60, 120], ["30", "60", "120"])
+            choice("Oppløsning", "scale", ["", "2560x1440", "1920x1080", "1280x720"], ["Som skjermen", "1440p", "1080p", "720p"])
+            switch("Ta opp mikrofonen", "mic")
+            choice("Lydspor", "tracks", ["mixed", "separate"], ["Alt på ett spor", "Spill, Discord og mikrofon hver for seg"])
+            switch("Webkamera i hjørnet", "webcam")
+        for k, label in (("bookmark", "Bokmerke (siste 10 s)"), ("save30", "Lagre siste 30 s"), ("save5m", "Lagre siste 5 min"),
+                         ("record", "Start/stopp opptak"), ("shot", "Skjermbilde")):
+            e = Gtk.Entry(text=c["keys"].get(k) or "", placeholder_text=i18n.tr("av"), width_chars=12)
+            e.connect("activate", lambda en, kk=k: self._key(kk, en.get_text().strip()))
+            row(label + " – " + i18n.tr("hurtigtast (Enter for å lagre)"), e)
+        switch("CS2: klipp av seg selv ved 3K, 4K og ACE", "auto_cs2")
+        switch("CS2: kort ned høydepunkter rundt killene", "killzoom")
+        switch("CS2: lengre buffer (3 min) i Competitive/Premier", "cs2_long")
+        switch("CS2: ta opp hele kampen, behold bare seier/MVP", "cs2_match")
+        switch("WoW: klipp av boss-kills og dødsfall (/combatlog)", "wow_log")
+        switch("Pause opptaket når du er borte (5 min)", "idle_pause")
+        switch("Kontroller: Select + Start (eller Share) lagrer klipp", "controller")
+        switch("Lyd når et klipp lagres", "sound")
+        number("Slett klipp eldre enn (dager, 0 = aldri)", "keep_days", 3650)
+        number("Plassgrense for klipp (GB, 0 = ingen)", "max_gb", 10000)
+        number("Flytt klipp til NAS-en etter (dager, 0 = aldri)", "nas_days", 3650)
+        switch("Del nye klipp med de andre PC-ene (NAS)", "share_nas")
+        wm = Gtk.Entry(text=c.get("watermark") or "", placeholder_text=i18n.tr("navnet ditt"), width_chars=16)
+        wm.connect("changed", lambda en: self._opt(watermark=en.get_text()))
+        row("Vannmerke på delte klipp", wm)
+        return exp
+
+    def _opt(self, **kw):
+        try:
+            clips.set_options(**kw)
+        except Exception as e:  # noqa: BLE001
+            self.status.set_label(str(e))
+
+    def _key(self, which, spec):
+        try:
+            clips.set_extra_key(which, spec)
+            self.status.set_label(i18n.tr("Hurtigtasten er lagret ✓"))
+        except Exception as e:  # noqa: BLE001
+            self.status.set_label(str(e))
 
     def _on_switch(self, sw, _p):
         try:

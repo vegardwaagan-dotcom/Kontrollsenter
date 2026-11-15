@@ -31,7 +31,19 @@ def load_cfg():
             c = json.load(f)
     except (OSError, ValueError):
         c = {}
-    return {"enabled": False, "length": 60, "only_games": True, "hotkey": "F8", **c}
+    d = {"enabled": False, "length": 60, "only_games": True, "hotkey": "F8",
+         # opptak
+         "fps": 60, "quality": "very_high", "scale": "", "mic": False, "tracks": "mixed", "webcam": False,
+         # flere hurtigtaster («» = av)
+         "keys": {"bookmark": "F7", "save30": "", "save5m": "", "record": "", "shot": "F9"},
+         # automatikk
+         "auto_cs2": True, "killzoom": True, "cs2_long": False, "cs2_match": False, "wow_log": True,
+         "idle_pause": True, "controller": False, "sound": True,
+         # rydding og deling
+         "keep_days": 0, "max_gb": 0, "nas_days": 0, "share_nas": False, "watermark": ""}
+    d.update(c)
+    d["keys"] = {**{"bookmark": "F7", "save30": "", "save5m": "", "record": "", "shot": "F9"}, **(c.get("keys") or {})}
+    return d
 
 
 def save_cfg(c):
@@ -119,9 +131,45 @@ class Recorder:
     def tick(self, game):
         self.game = game or self.game
         c = load_cfg()
+        try:
+            import clipx
+            clipx.health_tick(self, game)
+            if c["enabled"] and c.get("controller") and not getattr(self, "pad", None):
+                self.pad = clipx.Controller(lambda: threading.Thread(target=self.save, daemon=True).start())
+            elif not c.get("controller") and getattr(self, "pad", None):
+                self.pad.stop, self.pad = True, None
+            if c["enabled"] and c.get("wow_log"):
+                self.wowlog = getattr(self, "wowlog", None) or clipx.WowLog(self)
+                if time.time() - getattr(self, "_wl_t", 0) > 2:
+                    self._wl_t = time.time()
+                    self.wowlog.tick(game)
+        except Exception:  # noqa: BLE001
+            pass
         if IS_WIN:
             return
-        want = c["enabled"] and (bool(game) or not c["only_games"])
+        # AFK: stopp opptaket etter 5 min uten tastetrykk/mus, start igjen når du er tilbake
+        idle = False
+        if c.get("idle_pause") and time.time() - getattr(self, "_idle_t", 0) > 10:
+            self._idle_t = time.time()
+            try:
+                import clipx
+                self._idle = clipx.idle_seconds() > 300
+            except Exception:  # noqa: BLE001
+                self._idle = False
+        idle = getattr(self, "_idle", False) and c.get("idle_pause")
+        # lengre buffer i CS2 Competitive/Premier
+        want_len = c["length"]
+        try:
+            import gamestats
+            cs = gamestats.LIVE.state()
+            if c.get("cs2_long") and cs and str(cs.get("mode", "")).lower() in ("competitive", "premier", "scrimcomp2v2"):
+                want_len = max(want_len, 180)
+        except Exception:  # noqa: BLE001
+            pass
+        if self.running() and getattr(self, "length_now", want_len) != want_len and self.proc:
+            self.stop()
+        self.want_len = want_len
+        want = c["enabled"] and (bool(game) or not c["only_games"]) and not idle
         if want and not self.running():
             self.start(c)
         elif not want and self.running():
@@ -141,11 +189,23 @@ class Recorder:
             self.error = "GPU Screen Recorder er ikke installert"
             return
         os.makedirs(clip_dir(), exist_ok=True)
-        length = max(5, min(int(c["length"]), 600))
-        cmd = ["flatpak", "run", f"--command=gpu-screen-recorder", GSR_APP,
-               "-w", "portal", "-restore-portal-session", "yes", "-f", "60", "-r", str(length),
-               "-c", "mp4", "-k", "h264", "-ac", "aac", "-a", "default_output", "-q", "very_high",
-               "-o", clip_dir(), "-v", "no"]
+        length = max(5, min(int(getattr(self, "want_len", 0) or c["length"]), 600))
+        src = "portal"
+        if c.get("webcam") and glob.glob("/dev/video0"):
+            src = "portal|v4l2:/dev/video0"                       # webkamera i hjørnet
+        if c.get("tracks") == "separate":                          # spill, Discord og mikrofon på egne spor
+            audio = ["-a", "app-inverse:discord", "-a", "app:discord"] + (["-a", "default_input"] if c.get("mic") else [])
+        else:
+            audio = ["-a", "default_output|default_input" if c.get("mic") else "default_output"]
+        os.makedirs(os.path.join(clip_dir(), "Opptak"), exist_ok=True)
+        cmd = ["flatpak", "run", "--command=gpu-screen-recorder", GSR_APP,
+               "-w", src, "-restore-portal-session", "yes", "-f", str(int(c.get("fps") or 60)), "-r", str(length),
+               "-c", "mp4", "-k", "h264", "-ac", "aac", *audio, "-q", str(c.get("quality") or "very_high"),
+               "-o", clip_dir(), "-ro", os.path.join(clip_dir(), "Opptak"), "-v", "no"]
+        if c.get("scale"):
+            cmd[cmd.index("-c"):cmd.index("-c")] = ["-s", str(c["scale"])]
+        self.length_now = length
+        self.recording = False
         try:
             self.proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, start_new_session=True)
             self.started = time.time()
@@ -192,8 +252,11 @@ class Recorder:
         return out
 
     # ---- lagre de siste sekundene ----
-    def save(self):
-        """Lagre klipp nå. Returnerer (ok, melding)."""
+    SECS = {10: 1, 30: 2, 60: 3, 300: 4, 600: 5, 1800: 6}       # SIGRTMIN+n lagrer de siste … sekundene
+
+    def save(self, seconds=None, label=None, meta=None, keep=None, kind="clip"):
+        """Lagre klipp nå. seconds: bare de siste … sekundene. keep: (fra, til) sekunder før lagring som skal
+        beholdes (CS2: rundt killene). Returnerer (ok, melding)."""
         if time.time() - self.last_save < 2:
             return False, "Vent litt mellom hvert klipp"
         self.last_save = time.time()
@@ -201,22 +264,51 @@ class Recorder:
             return self._save_windows()
         if not self.running():
             return False, "Opptaket i bakgrunnen er ikke på"
-        before = {c["name"] for c in clips(200)}
+        before = {c["name"] for c in clips(400)}
         pids = self._gsr_pids()
         if not pids:
             return False, "Fant ikke opptaket"
+        sig = signal.SIGUSR1
+        if seconds and seconds in self.SECS:
+            sig = signal.SIGRTMIN + self.SECS[seconds]
         for pid in pids:
             try:
-                os.kill(pid, signal.SIGUSR1)
+                os.kill(pid, sig)
             except OSError:
                 pass
-        threading.Thread(target=self._rename_new, args=(before, self.game), daemon=True).start()
+        info = {"game": self.game, "kind": kind, "t": time.time(), **(meta or {})}
+        try:
+            import gamestats
+            cs = gamestats.LIVE.state()
+            if cs:
+                info["cs2"] = {k: cs.get(k) for k in ("map", "mode", "round", "ct", "t", "kills", "deaths", "assists",
+                                                     "hs_pct", "mvps", "team")}
+        except Exception:  # noqa: BLE001
+            pass
+        threading.Thread(target=self._rename_new, args=(before, label or self.game, info, keep), daemon=True).start()
         return True, "Klippet lagres …"
 
-    def _rename_new(self, before, game):
-        for _ in range(40):                                   # vent til filen er ferdig skrevet
+    def toggle_record(self):
+        """Start/stopp vanlig opptak (hele økta) ved siden av opptaket i bakgrunnen."""
+        if IS_WIN or not self.running():
+            return False, "Opptaket i bakgrunnen må være på"
+        for pid in self._gsr_pids():
+            try:
+                os.kill(pid, signal.SIGRTMIN)
+            except OSError:
+                pass
+        self.recording = not getattr(self, "recording", False)
+        try:
+            import remote_extra
+            remote_extra.event("clip", "Opptak startet" if self.recording else "Opptak stoppet og lagret", "", "game")
+        except Exception:  # noqa: BLE001
+            pass
+        return True, "Opptak startet" if self.recording else "Opptaket er lagret"
+
+    def _rename_new(self, before, game, info=None, keep=None):
+        for _ in range(60):                                   # vent til filen er ferdig skrevet
             time.sleep(0.5)
-            new = [c for c in clips(200) if c["name"] not in before]
+            new = [c for c in clips(400) if c["name"] not in before]
             if new:
                 time.sleep(1.5)
                 src = os.path.join(clip_dir(), new[0]["name"])
@@ -226,6 +318,15 @@ class Recorder:
                     os.replace(src, dst)
                 except OSError:
                     dst = src
+                try:
+                    import clipx
+                    if keep:
+                        clipx.keep_tail(dst, *keep)
+                    clipx.write_meta(dst, info or {})
+                    clipx.thumb(dst)
+                    clipx.after_save(dst)
+                except Exception:  # noqa: BLE001
+                    pass
                 self._saved(os.path.basename(dst))
                 return
 
@@ -233,6 +334,11 @@ class Recorder:
         try:
             import remote_extra
             remote_extra.event("clip", "Klipp lagret", name, "game")
+        except Exception:  # noqa: BLE001
+            pass
+        try:                                                  # bekreftelse: lyd + varsel (synlig også i spill)
+            import clipx
+            clipx.confirm(name)
         except Exception:  # noqa: BLE001
             pass
 
@@ -321,7 +427,10 @@ class Hotkey:
     Andre skrivebord: portalen for globale hurtigtaster. Windows: RegisterHotKey."""
     ACTION = ["kontrollsenter", "lagre-klipp", "Kontrollsenter", "Lagre klipp"]
 
-    def __init__(self, cb, spec="F8"):
+    def __init__(self, cb, spec="F8", action=None, wid=0x4B53):
+        if action:
+            self.ACTION = ["kontrollsenter", action[0], "Kontrollsenter", action[1]]
+        self.wid = wid
         self.cb = cb
         self.spec = spec
         self.ok = False
@@ -383,7 +492,7 @@ class Hotkey:
 
     def _kde_signal(self, _c, _s, _p, _i, _sig, params):
         comp, action = params.unpack()[:2]
-        if comp == "kontrollsenter" and action == "lagre-klipp":
+        if comp == "kontrollsenter" and action == self.ACTION[1]:
             GLib.idle_add(lambda: (self.pressed(), False)[1])
 
     # ---------------- portal (GNOME m.fl.) ----------------
@@ -397,7 +506,7 @@ class Hotkey:
             pass
         self.bus = bus
         sender = bus.get_unique_name()[1:].replace(".", "_")
-        tok = f"ks{os.getpid()}"
+        tok = f"ks{os.getpid()}{self.ACTION[1].replace('-', '')}"
         req = f"/org/freedesktop/portal/desktop/request/{sender}/{tok}"
 
         def created(_c, _s, _p, _i, _sig, params):
@@ -418,7 +527,7 @@ class Hotkey:
 
     def _portal_bind(self):
         tok = f"ksb{os.getpid()}"
-        sc = [("lagre-klipp", {"description": GLib.Variant("s", "Lagre klipp (Kontrollsenter)"),
+        sc = [(self.ACTION[1], {"description": GLib.Variant("s", self.ACTION[3] + " (Kontrollsenter)"),
                                "preferred_trigger": GLib.Variant("s", self.spec.upper().replace("META", "LOGO"))})]
         self.bus.call("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
                       "org.freedesktop.portal.GlobalShortcuts", "BindShortcuts",
@@ -427,7 +536,7 @@ class Hotkey:
         self.ok = True
 
     def _portal_signal(self, _c, _s, _p, _i, _sig, params):
-        if params.unpack()[1] == "lagre-klipp":
+        if params.unpack()[1] == self.ACTION[1]:
             GLib.idle_add(lambda: (self.pressed(), False)[1])
 
     # ---------------- Windows ----------------
@@ -438,9 +547,9 @@ class Hotkey:
         self._win_tid = k.GetCurrentThreadId()
 
         def bind():
-            u.UnregisterHotKey(None, 0x4B53)
+            u.UnregisterHotKey(None, self.wid)
             m, vk = win_code(self.spec)
-            self.ok = bool(u.RegisterHotKey(None, 0x4B53, m, vk))
+            self.ok = bool(u.RegisterHotKey(None, self.wid, m, vk))
             self.how = "windows"
             self.error = None if self.ok else f"{self.spec} er allerede i bruk av et annet program – velg en annen tast"
         bind()
@@ -467,6 +576,50 @@ def enable_hotkey():
     r = INSTANCE
     if r and not r.hotkey:
         r.hotkey = Hotkey(lambda: _hotkey_pressed(), load_cfg().get("hotkey") or "F8")
+        enable_extra_keys()
+
+
+EXTRA = {  # handling: (KDE-id, navn, Windows-id, funksjon)
+    "bookmark": ("bokmerke", "Bokmerke (lagre 10 s)", 0x4B54, lambda r: r.save(10, kind="bookmark",
+                                                                                label=f"Bokmerke {r.game or ''}".strip())),
+    "save30": ("lagre-30s", "Lagre siste 30 s", 0x4B55, lambda r: r.save(30)),
+    "save5m": ("lagre-5min", "Lagre siste 5 min", 0x4B56, lambda r: r.save(300)),
+    "record": ("opptak", "Start/stopp opptak", 0x4B57, lambda r: r.toggle_record()),
+    "shot": ("skjermbilde", "Skjermbilde", 0x4B58, lambda r: __import__("clipx").screenshot(r.game)),
+}
+
+
+def enable_extra_keys():
+    r = INSTANCE
+    if not r:
+        return
+    r.extra = getattr(r, "extra", {})
+    keys = load_cfg()["keys"]
+    for k, (aid, name, wid, fn) in EXTRA.items():
+        spec = keys.get(k) or ""
+        h = r.extra.get(k)
+        if not spec:
+            continue
+        try:
+            parse_key(spec)
+        except ValueError:
+            continue
+        if h:
+            h.set_key(spec)
+        else:
+            r.extra[k] = Hotkey(lambda f=fn: threading.Thread(target=f, args=(INSTANCE,), daemon=True).start(),
+                                spec, (aid, name), wid)
+
+
+def set_extra_key(which, spec):
+    if which not in EXTRA:
+        raise ValueError("ukjent hurtigtast")
+    if spec:
+        parse_key(spec)
+    c = load_cfg()
+    c["keys"][which] = spec or ""
+    save_cfg(c)
+    enable_extra_keys()
 
 
 def set_hotkey(spec):
@@ -496,6 +649,42 @@ def _hotkey_pressed():
     r = INSTANCE
     if r:
         threading.Thread(target=r.save, daemon=True).start()
+
+
+OPTS = {"fps": (30, 60, 120), "quality": ("medium", "high", "very_high", "ultra"),
+        "scale": ("", "1920x1080", "2560x1440", "1280x720"), "tracks": ("mixed", "separate")}
+BOOLS = ("mic", "webcam", "auto_cs2", "killzoom", "cs2_long", "cs2_match", "wow_log", "idle_pause", "controller",
+         "sound", "share_nas")
+NUMS = {"keep_days": (0, 3650), "max_gb": (0, 10000), "nas_days": (0, 3650)}
+
+
+def set_options(**kw):
+    """Andre valg (kvalitet, lydspor, automatikk, rydding …). Restart opptaket når noe påvirker det."""
+    c = load_cfg()
+    restart = False
+    for k, v in kw.items():
+        if k in OPTS:
+            if v not in OPTS[k]:
+                raise ValueError(f"ugyldig verdi for {k}")
+            restart |= c.get(k) != v
+            c[k] = v
+        elif k in BOOLS:
+            restart |= k in ("mic", "webcam") and c.get(k) != bool(v)
+            c[k] = bool(v)
+        elif k in NUMS:
+            v = int(v)
+            if not NUMS[k][0] <= v <= NUMS[k][1]:
+                raise ValueError(f"ugyldig verdi for {k}")
+            c[k] = v
+        elif k == "watermark":
+            c[k] = str(v)[:40]
+        else:
+            raise ValueError(f"ukjent valg {k}")
+    save_cfg(c)
+    r = INSTANCE
+    if restart and r and r.running() and not IS_WIN:
+        r.stop()
+    return c
 
 
 def set_cfg(enabled=None, length=None, only_games=None):

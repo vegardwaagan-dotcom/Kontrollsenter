@@ -350,10 +350,10 @@ async function loadClips() {
       : c.hotkey_error ? "⚠️ " + c.hotkey_error : c.enabled ? (c.hotkey_ok ? "Registrert" : "Ikke registrert ennå") : "";
     $("#clip-status").textContent = !c.enabled ? "av" : c.os === "linux" && !c.installed ? "mangler opptaksprogram (installer på PC-en)"
       : c.running ? "🔴 tar opp" : c.only_games ? "venter på spill" : "starter …";
-    $("#clip-list").innerHTML = c.clips.slice(0, 12).map((x) => `<div class="clip"><div><b>${esc(x.name)}</b><span class="dim small">${fmtB(x.size)} · ${hhmm(x.t)}</span></div>
+    if (false) $("#clip-list").innerHTML = c.clips.slice(0, 12).map((x) => `<div class="clip"><div><b>${esc(x.name)}</b><span class="dim small">${fmtB(x.size)} · ${hhmm(x.t)}</span></div>
       <button class="soft" data-play="${esc(x.name)}">▶</button><button class="danger" data-del="${esc(x.name)}">Slett</button></div>`).join("")
       || '<p class="dim small">Ingen klipp ennå. Slå på opptak, spill litt og trykk F8.</p>';
-    $$("[data-play]").forEach((b) => (b.onclick = () => {
+    if (false) $$("[data-play]").forEach((b) => (b.onclick = () => {
       const v = $("#clip-video"); v.hidden = false;
       v.src = `/api/clipfile?name=${encodeURIComponent(b.dataset.play)}&k=${encodeURIComponent(token)}`; v.play().catch(() => {});
       v.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -369,7 +369,118 @@ $("#clip-test").onclick = async () => {
   await act({ a: "cliptest" });
   let n = 0; const t = setInterval(async () => { n++; await loadClips(); if (n > 16 || /virker/.test($("#clip-key-status").textContent)) clearInterval(t); }, 1000);
 };
-$("#clip-save").onclick = async () => { await act({ a: "clip" }); setTimeout(loadClips, 5000); };
+$("#clip-save").onclick = async () => { await act({ a: "clip" }); setTimeout(() => { loadClips(); loadClips2(); }, 6000); };
+
+// ---------- klipp: galleri, redigering, deling, montasje, statistikk ----------
+let clipData = null, curClip = null, picked = new Set();
+const enc = encodeURIComponent;
+const fileUrl = (n, pc) => `/api/clipfile?name=${enc(n)}&k=${enc(token)}` + (pc ? `&pc=${enc(pc)}` : "");
+const thumbUrl = (n) => `/api/clipthumb?name=${enc(n)}&k=${enc(token)}`;
+async function loadClips2() {
+  try {
+    const c = clipData = await X("clips");
+    const games = [...new Set(c.clips.map((x) => x.game))];
+    const f = $("#clip-filter").value;
+    $("#clip-filter").innerHTML = `<option value="">Alle spill (${c.clips.length})</option><option value="fav">★ Favoritter</option>`
+      + games.map((g) => `<option ${g === f ? "selected" : ""}>${esc(g)}</option>`).join("");
+    if (f === "fav") $("#clip-filter").value = "fav";
+    renderClipGrid();
+    $("#clip-images").innerHTML = c.images.map((x) => `<div class="ct"><img loading="lazy" src="${thumbUrl(x.name)}" data-img="${esc(x.name)}"><div class="cb"><b>${esc(x.name)}</b></div>
+      <div class="ca"><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`).join("") || '<p class="dim small">Ingen skjermbilder ennå.</p>';
+    $$("[data-img]").forEach((im) => (im.onclick = () => window.open(fileUrl(im.dataset.img))));
+    wireClipButtons();
+    const jobs = Object.values(c.jobs || {}).filter((j) => Date.now() / 1000 - j.t < 900);
+    $("#clip-jobs").textContent = jobs.map((j) => `${j.state === "kjører" ? "⏳" : j.state === "ferdig" ? "✅" : "❌"} ${j.title}${j.error ? " – " + j.error : ""}`).join(" · ");
+    if (jobs.some((j) => j.state === "kjører")) setTimeout(loadClips2, 3000);
+    $("#clip-make").hidden = !c.ffmpeg;
+    for (const k of ["quality", "fps", "keep_days", "max_gb", "nas_days", "watermark"]) if ($("#o-" + k) && document.activeElement !== $("#o-" + k)) $("#o-" + k).value = c[k] ?? "";
+    for (const k of ["mic", "webcam", "auto_cs2", "cs2_match", "wow_log", "idle_pause", "controller", "share_nas"]) $("#o-" + k).checked = !!c[k];
+    $("#o-tracks").checked = c.tracks === "separate";
+  } catch (e) {}
+}
+function renderClipGrid() {
+  const f = $("#clip-filter").value;
+  const list = clipData.clips.filter((x) => !f || (f === "fav" ? x.fav : x.game === f));
+  $("#clip-list").innerHTML = list.map((x) => {
+    const cs = (x.meta && x.meta.cs2) || {};
+    const tag = x.kind === "highlight" ? "🏆 " + (x.meta && x.meta.label || "Høydepunkt") : x.kind === "boss" ? "🐉 Boss" : x.kind === "bookmark" ? "🔖" : "";
+    return `<div class="ct ${picked.has(x.name) ? "picked" : ""}" data-n="${esc(x.name)}"><button class="sel-tick" data-pick="${esc(x.name)}">✓</button>
+      ${tag ? `<span class="badge2">${esc(tag)}</span>` : ""}<img loading="lazy" src="${thumbUrl(x.name)}" data-play="${esc(x.name)}">
+      <div class="cb"><b>${esc(x.name)}</b><span class="dim">${fmtB(x.size)} · ${hhmm(x.t)}${cs.map ? ` · ${esc(cs.map)} ${cs.kills ?? ""}/${cs.deaths ?? ""}` : ""}</span></div>
+      <div class="ca"><button data-fav="${esc(x.name)}" data-on="${x.fav ? 1 : 0}">${x.fav ? "★" : "☆"}</button><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`;
+  }).join("") || '<p class="dim small">Ingen klipp ennå. Slå på opptak, spill litt og trykk hurtigtasten.</p>';
+  wireClipButtons();
+}
+function wireClipButtons() {
+  $$("[data-play]").forEach((b) => (b.onclick = () => playClip(b.dataset.play)));
+  $$("[data-fav]").forEach((b) => (b.onclick = () => act({ a: "clipfav", name: b.dataset.fav, on: b.dataset.on !== "1" }, true).then(loadClips2)));
+  $$("[data-cdel]").forEach((b) => (b.onclick = async () => { if (await confirmDlg(`Slette ${b.dataset.cdel}?`)) { await act({ a: "clipdel", name: b.dataset.cdel }); loadClips2(); } }));
+  $$("[data-dl]").forEach((b) => (b.onclick = () => download(b.dataset.dl)));
+  $$("[data-pick]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); const n = b.dataset.pick; picked.has(n) ? picked.delete(n) : picked.add(n); renderClipGrid(); }));
+}
+function playClip(name, pc) {
+  curClip = { name, pc };
+  $("#clip-player").hidden = false;
+  const v = $("#clip-video"); v.src = fileUrl(name, pc); v.play().catch(() => {});
+  const x = clipData && clipData.clips.find((y) => y.name === name);
+  const cs = x && x.meta && x.meta.cs2;
+  $("#clip-meta").textContent = name + (cs ? ` — ${cs.map} · runde ${cs.round} · CT ${cs.ct}–${cs.t} T · ${cs.kills}/${cs.deaths}/${cs.assists} · HS ${cs.hs_pct || "–"}` : "");
+  v.onloadedmetadata = () => { for (const id of ["trim-a", "trim-b"]) $("#" + id).max = v.duration.toFixed(1); $("#trim-b").value = v.duration.toFixed(1); $("#trim-a").value = 0; trimLabels(); };
+  $("#clip-player").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function trimLabels() { $("#trim-av").textContent = (+$("#trim-a").value).toFixed(1) + " s"; $("#trim-bv").textContent = (+$("#trim-b").value).toFixed(1) + " s"; }
+$("#trim-a").oninput = () => { trimLabels(); $("#clip-video").currentTime = +$("#trim-a").value; };
+$("#trim-b").oninput = () => { trimLabels(); $("#clip-video").currentTime = +$("#trim-b").value; };
+$("#trim-go").onclick = () => curClip && act({ a: "clipexport", name: curClip.name, kind: "trim", start: +$("#trim-a").value, end: +$("#trim-b").value }).then(() => setTimeout(loadClips2, 1500));
+$$("[data-mk]").forEach((b) => (b.onclick = () => curClip && act({ a: "clipexport", name: curClip.name, kind: b.dataset.mk }).then(() => setTimeout(loadClips2, 1500))));
+function download(name, pc) {
+  const url = location.origin + fileUrl(name, pc);
+  if (KS && KS.download) { KS.download(url, name); toast("Lastes ned til telefonen – del den fra Varsler eller Galleri"); }
+  else window.open(url);
+}
+$("#clip-dl").onclick = () => curClip && download(curClip.name, curClip.pc);
+$("#clip-link").onclick = async () => {
+  if (!curClip) return;
+  const r = await api("/api/action", { a: "clipshare", name: curClip.name, pc: curClip.pc || "" });
+  const link = location.origin + r.msg;
+  try { await navigator.clipboard.writeText(link); toast("Lenken er kopiert – virker i 24 timer på hjemmenettet/Tailscale"); } catch (e) { $("#clip-meta").textContent = link; }
+};
+$("#clip-shot").onclick = () => act({ a: "clipshot" }).then(() => setTimeout(loadClips2, 2500));
+$("#clip-rec").onclick = () => act({ a: "cliprecord" });
+$("#clip-weekly").onclick = () => act({ a: "clipweekly" }).then(() => setTimeout(loadClips2, 2000));
+$("#clip-filter").onchange = renderClipGrid;
+$("#mont-go").onclick = () => {
+  if (!picked.size) return toast("Trykk ✓ på klippene du vil ha med først");
+  act({ a: "clipmontage", names: [...picked], music: $("#mont-music").value || null, title: $("#mont-title").value || "Montasje" })
+    .then(() => { picked.clear(); setTimeout(loadClips2, 2000); });
+};
+async function loadClipExtras() {
+  try {
+    const m = await X("music");
+    $("#mont-music").innerHTML = `<option value="">Uten musikk (spillets lyd)</option>` + m.music.map((x) => `<option>${esc(x)}</option>`).join("");
+  } catch (e) {}
+  try {
+    const s = await X("clipstats");
+    const rows = [["Klipp", s.count], ["Favoritter", s.favs], ["Plass", fmtB(s.size)]]
+      .concat(s.best_week ? [["Beste uke", `${s.best_week[0]} (${s.best_week[1]})`]] : [])
+      .concat(s.per_game.map(([g, n]) => [g, n + " klipp"])).concat(s.maps.map(([mp, n]) => ["Kart " + mp, n]));
+    $("#clip-stats").innerHTML = rows.map(([a, b]) => `<div><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join("");
+    if (s.on_this_day.length) toast(`📅 Denne dagen i fjor: ${s.on_this_day[0].name}`);
+  } catch (e) {}
+  try {
+    const n = await X("nasclips");
+    $("#clip-nas").innerHTML = n.clips.map((x) => `<div class="clip"><div><b>${esc(x.name)}</b><span class="dim small">${esc(x.pc)} · ${fmtB(x.size)}</span></div>
+      <button class="soft" data-nplay="${esc(x.name)}" data-pc="${esc(x.pc)}">▶</button></div>`).join("") || '<p class="dim small">Ingen delte klipp på NAS-en.</p>';
+    $$("[data-nplay]").forEach((b) => (b.onclick = () => playClip(b.dataset.nplay, b.dataset.pc)));
+  } catch (e) {}
+}
+const optSave = (k, v) => act({ a: "clipopts", [k]: v }, true);
+for (const k of ["quality"]) $("#o-" + k).onchange = () => optSave(k, $("#o-" + k).value);
+$("#o-fps").onchange = () => optSave("fps", +$("#o-fps").value);
+for (const k of ["mic", "webcam", "auto_cs2", "cs2_match", "wow_log", "idle_pause", "controller", "share_nas"]) $("#o-" + k).onchange = () => optSave(k, $("#o-" + k).checked);
+$("#o-tracks").onchange = () => optSave("tracks", $("#o-tracks").checked ? "separate" : "mixed");
+for (const k of ["keep_days", "max_gb", "nas_days"]) $("#o-" + k).onchange = () => optSave(k, +$("#o-" + k).value || 0);
+$("#o-watermark").onchange = () => optSave("watermark", $("#o-watermark").value);
 
 // ---------- kobling til fanene ----------
 const baseSetTab = setTab;
@@ -377,7 +488,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   baseSetTab(t);
   if (t === "mer") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
   if (t === "kontroll") loadMedia();
-  if (t === "spill") { loadClips(); loadPlaytime(); loadCs2(); loadGoals(); }
+  if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); loadGoals(); }
   if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? "Game Bar" : "Siste " + lenName(c.length); }).catch(() => {});
   if (t === "oversikt") loadHealth(false);
   applyLang();

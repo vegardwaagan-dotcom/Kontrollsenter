@@ -520,9 +520,53 @@ def do_action(win, a):
         _call_main(lambda: clips.test_hotkey(15))
         return True, "Trykk hurtigtasten på PC-en nå"
     if kind == "clipdel":
+        import clipx
+        clipx.delete(str(a.get("name", "")))
+        return True, "Slettet"
+    if kind == "clipfav":
+        import clipx
+        clipx.set_fav(str(a.get("name", "")), bool(a.get("on")))
+        return True, "Favoritt" if a.get("on") else "Ikke favoritt"
+    if kind == "clipexport":
+        import clipx
+        opts = {k: a[k] for k in ("start", "end", "seconds", "text", "area") if k in a}
+        jid = clipx.export(str(a.get("name", "")), str(a.get("kind", "")), **opts)
+        return True, f"Jobb startet ({jid})"
+    if kind == "clipmontage":
+        import clipx
+        names = [str(x) for x in (a.get("names") or [])][:20]
+        jid = clipx.montage(names, a.get("music") or None, str(a.get("title") or "Montasje")[:40])
+        return True, f"Montasjen lages ({jid})"
+    if kind == "clipweekly":
+        import clipx
+        clipx.weekly()
+        return True, "«Beste fra uka» lages – den dukker opp blant klippene"
+    if kind == "clipshare":
+        import clipx
+        import urllib.parse as up
+        name, pc = str(a.get("name", "")), str(a.get("pc", ""))
+        if not (clipx.any_path(name) or pc):
+            raise ValueError("fant ikke klippet")
+        tok = clipx.share_token(f"{pc}/{name}" if pc else name)
+        q = f"name={up.quote(name)}&s={tok}" + (f"&pc={up.quote(pc)}" if pc else "")
+        return True, f"/api/clipfile?{q}"
+    if kind == "clipopts":
         import clips
-        clips.delete(str(a.get("name", "")))
-        return True, "Klippet er slettet"
+        opts = {k: v for k, v in a.items() if k != "a"}
+        clips.set_options(**opts)
+        return True, "Lagret"
+    if kind == "clipextrakey":
+        import clips
+        which, spec = str(a.get("which", "")), str(a.get("key", ""))
+        _call_main(lambda: clips.set_extra_key(which, spec))
+        return True, "Hurtigtasten er lagret"
+    if kind == "cliprecord":
+        import clips
+        return clips.INSTANCE.toggle_record() if clips.INSTANCE else (False, "ikke klart")
+    if kind == "clipshot":
+        import clipx
+        import clips
+        return clipx.screenshot(clips.INSTANCE.game if clips.INSTANCE else None)
     if kind == "wol":
         X.send_wol(a.get("mac"))
         return True, "Wake-on-LAN er sendt"
@@ -754,14 +798,28 @@ def _handler(remote):
                     with open(path, "rb") as f:
                         return self._send(200, f.read(), "application/vnd.android.package-archive",
                                           {"Content-Disposition": 'attachment; filename="Kontrollsenter.apk"'})
-                if p == "/api/clipfile":                  # video til appen (nøkkel i adressen – <video> kan ikke sende den)
+                if p in ("/api/clipfile", "/api/clipthumb"):   # nøkkel i adressen – <video>/<img> kan ikke sende den
                     q = parse_qs(u.query)
-                    if not remote.check((q.get("k") or [""])[0]):
-                        return self._send(401, {"error": "ikke paret"})
-                    import clips
-                    path = clips.clip_path((q.get("name") or [""])[0])
+                    import clipx
+                    name = (q.get("name") or [""])[0]
+                    pc = (q.get("pc") or [""])[0]
+                    ok = remote.check((q.get("k") or [""])[0]) or (q.get("s") and clipx.check_share(
+                        f"{pc}/{name}" if pc else name, q["s"][0]))
+                    if not ok:
+                        return self._send(401, {"error": "ikke paret eller utløpt lenke"})
+                    if p == "/api/clipthumb":
+                        t = clipx.thumb(clipx.any_path(name) or "") if clipx.any_path(name) else None
+                        if not t:
+                            return self._send(404, {"error": "finnes ikke"})
+                        with open(t, "rb") as f:
+                            return self._send(200, f.read(), "image/jpeg")
+                    path = clipx.nas_fetch(pc, name) if pc else clipx.any_path(name)
                     if not path:
                         return self._send(404, {"error": "finnes ikke"})
+                    if path.lower().endswith((".png", ".jpg", ".gif")):
+                        ctype = {".png": "image/png", ".gif": "image/gif"}.get(os.path.splitext(path)[1].lower(), "image/jpeg")
+                        with open(path, "rb") as f:
+                            return self._send(200, f.read(), ctype)
                     return self._video(path)
                 if p == "/api/hello":
                     import applog
@@ -873,8 +931,22 @@ def _handler(remote):
                 return self._send(200, X.health(arg("force") == "1"))
             if what == "clips":
                 import clips
+                import clipx
                 st = clips.INSTANCE.state() if clips.INSTANCE else clips.load_cfg()
-                return self._send(200, {**st, "clips": clips.clips()})
+                st = {k: v for k, v in st.items() if k != "share_secret"}
+                fs = clipx.files()
+                return self._send(200, {**st, "clips": [x for x in fs if x["kind"] != "image"][:120],
+                                        "images": [x for x in fs if x["kind"] == "image"][:60],
+                                        "jobs": dict(list(clipx.JOBS.items())[-10:]), "ffmpeg": bool(clipx.ffmpeg())})
+            if what == "clipstats":
+                import clipx
+                return self._send(200, clipx.stats())
+            if what == "nasclips":
+                import clipx
+                return self._send(200, {"clips": clipx.nas_list()})
+            if what == "music":
+                import clipx
+                return self._send(200, {"music": clipx.music_files()[0]})
             if what == "homepcs":
                 import homepcs
                 return self._send(200, {"pcs": homepcs.fetch() or []})

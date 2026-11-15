@@ -52,6 +52,7 @@ public class MainActivity extends Activity {
     static final String START = "file:///android_asset/start.html";
     static final String ACTION_UPDATE = "no.waagan.kontrollsenter.OPPDATER";     // fra varselet
     static final String ACTION_INSTALL = "no.waagan.kontrollsenter.INSTALLER";   // svar fra PackageInstaller
+    static final String ACTION_CLIP = "no.waagan.kontrollsenter.KLIPP";           // snarvei «Lagre klipp»
     private WebView web;
     private FrameLayout root;
     private String sharedText;                       // tekst/lenke delt fra en annen app («Del» → Kontrollsenter)
@@ -99,6 +100,7 @@ public class MainActivity extends Activity {
             if ("http".equals(u.getScheme()) && isLocal(u.getHost())) installFrom(url);
         });
         takeShared(getIntent());
+        if (ACTION_CLIP.equals(getIntent().getAction())) saveClip();
         if (saved != null) {
             web.restoreState(saved);
         } else {
@@ -124,9 +126,28 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    /** Snarveien «Lagre klipp» (hold på app-ikonet, eller Google Assistant): lagre klipp på PC-en som sist ble brukt. */
+    void saveClip() {
+        new Thread(() -> {
+            String msg;
+            try {
+                JSONObject r = Net.action(this, new JSONObject().put("a", "clip"));
+                msg = r.optBoolean("ok") ? "🎬 Klipp lagret på PC-en" : r.optString("msg", "Feil");
+            } catch (Exception e) {
+                msg = "Kunne ikke lagre klipp: " + e.getMessage();
+            }
+            String m = msg;
+            runOnUiThread(() -> android.widget.Toast.makeText(this, m, android.widget.Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (ACTION_CLIP.equals(intent.getAction())) {
+            saveClip();
+            return;
+        }
         if (takeShared(intent)) {
             String q = JSONObject.quote(sharedText);
             web.evaluateJavascript("window.ksShared ? window.ksShared(" + q + ") : 0", null);
@@ -358,6 +379,20 @@ public class MainActivity extends Activity {
                 // bruk modellnavnet
             }
             return (n != null && !n.isEmpty()) ? n : (Build.MANUFACTURER + " " + Build.MODEL);
+        }
+
+        /** Last ned et klipp/bilde fra PC-en til telefonen (Nedlastinger) – kan deles derfra. */
+        @JavascriptInterface
+        public void download(String url, String name) {
+            Uri u = Uri.parse(url);
+            if (!"http".equals(u.getScheme()) || !isLocal(u.getHost())) return;
+            String safe = name == null ? "klipp.mp4" : name.replaceAll("[\\\\/:*?\"<>|]", "_");
+            android.app.DownloadManager.Request r = new android.app.DownloadManager.Request(u)
+                    .setTitle(safe).setDescription("Kontrollsenter")
+                    .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "Kontrollsenter/" + safe);
+            android.app.DownloadManager dm = getSystemService(android.app.DownloadManager.class);
+            if (dm != null) dm.enqueue(r);
         }
 
         @JavascriptInterface

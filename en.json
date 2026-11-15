@@ -1718,5 +1718,19 @@
  "Velg hurtigtasten selv – en tast eller kombinasjon (F8, F9, Alt+F10, Ctrl+Shift+S …) – og «Test tasten»": "Choose the hotkey yourself – a key or combination (F8, F9, Alt+F10, Ctrl+Shift+S …) – and “Test the key”",
  "Hurtigtasten kan velges og testes fra appen på mobilen også": "The hotkey can be chosen and tested from the phone app too",
  "F8 virket ikke på KDE: hurtigtasten registreres nå direkte hos KDE (uten spørsmål), og virker i spill": "F8 did not work on KDE: the hotkey is now registered directly with KDE (no prompt), and works in games",
- "Opptaket i bakgrunnen kunne starte flere ganger samtidig": "Background recording could start several times at once"
+ "Opptaket i bakgrunnen kunne starte flere ganger samtidig": "Background recording could start several times at once",
+ "Klipp: galleri, redigering og automatikk": "Clips: gallery, editing and automation",
+ "Beste fra uka": "Best of the week",
+ "Skjermbilde": "Screenshot",
+ "Start/stopp opptak": "Start/stop recording",
+ "Slette klippet?": "Delete the clip?",
+ "Spill av": "Play",
+ "Favoritt – slettes aldri automatisk": "Favourite – never deleted automatically",
+ "Kvalitet": "Quality",
+ "Bilder per sekund": "Frames per second",
+ "Oppløsning": "Resolution",
+ "Ta opp mikrofonen": "Record the microphone",
+ "Lydspor": "Audio tracks",
+ "Webkamera i hjørnet": "Webcam in the corner",
+ "Hurtigtasten er lagret ✓": "The hotkey is saved ✓"
 }

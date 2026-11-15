@@ -13,6 +13,20 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.12.0", "Klipp: galleri, redigering og automatikk", [
+        ("Nytt", [
+            "Slett, favoritt (★) og miniatyrbilder for klipp – i Spill-fanen på PC-en og i appen",
+            "CS2: klipp av seg selv ved 3K, 4K og ACE, kortet ned rundt killene, og hele kampen beholdes ved seier/MVP",
+            "WoW: klipp av boss-kills og dødsfall fra kamploggen (skriv /combatlog i spillet)",
+            "Flere hurtigtaster: bokmerke (10 s), siste 30 s, siste 5 min, start/stopp opptak og skjermbilde",
+            "Kvalitet, bilder per sekund, oppløsning, mikrofon, egne lydspor (spill/Discord/mikrofon) og webkamera",
+            "Redigering: klipp til, GIF, kort 720p, jevn lyd, vannmerke, skjul chat, HDR → SDR, montasje med musikk "
+            "og «Beste fra uka»",
+            "Rydding etter dager eller plass (favoritter beholdes), flytting og deling via NAS-en, delingslenke i 24 t",
+            "Lyd og varsel når klipp lagres, pause når du er borte, kontroller (Select + Start), varsel om opptakshelse",
+            "Appen: galleri med filter, avspilling med spilldata, last ned til telefonen, statistikk og «denne dagen»",
+        ]),
+    ]),
     ("0.11.1", "Velg hurtigtast for klipp", [
         ("Nytt", [
             "Velg hurtigtasten selv – en tast eller kombinasjon (F8, F9, Alt+F10, Ctrl+Shift+S …) – og «Test tasten»",

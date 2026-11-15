@@ -115,9 +115,48 @@
       <div class="label">Hurtigtast på PC-en</div>
       <div class="chips" id="clip-keys"></div>
       <div class="row"><span id="clip-key-status" class="dim small"></span><button id="clip-test" class="soft">Test tasten</button></div>
-      <button id="clip-save" class="primary wide">🎬 Lagre klipp nå</button>
-      <video id="clip-video" controls playsinline hidden></video>
-      <div id="clip-list"></div></div>
+      <div class="row wrap"><button id="clip-save" class="primary">🎬 Lagre klipp nå</button>
+        <button id="clip-shot" class="soft">📸 Skjermbilde</button><button id="clip-rec" class="soft">⏺ Opptak</button>
+        <button id="clip-weekly" class="soft">⭐ Beste fra uka</button></div>
+      <div id="clip-jobs" class="dim small"></div>
+      <div id="clip-player" hidden>
+        <video id="clip-video" controls playsinline></video>
+        <div class="dim small" id="clip-meta"></div>
+        <details><summary>Klipp til</summary>
+          <div class="row"><span>Start</span><input type="range" id="trim-a" min="0" max="100" step="0.1" value="0"><span id="trim-av" class="num"></span></div>
+          <div class="row"><span>Slutt</span><input type="range" id="trim-b" min="0" max="100" step="0.1" value="100"><span id="trim-bv" class="num"></span></div>
+          <button id="trim-go" class="soft">Lagre utsnittet</button></details>
+        <div class="chips" id="clip-make">
+          <button data-mk="gif">GIF</button><button data-mk="short">Kort 720p</button><button data-mk="loud">Jevn lyd</button>
+          <button data-mk="watermark">Vannmerke</button><button data-mk="blur">Skjul chat</button><button data-mk="sdr">HDR → SDR</button>
+          <button id="clip-dl">⬇ Til telefonen</button><button id="clip-link">🔗 Delingslenke (24 t)</button></div>
+      </div>
+      <div class="row wrap"><select id="clip-filter" class="search"></select></div>
+      <div id="clip-list" class="clipgrid"></div>
+      <details><summary>Montasje med musikk</summary>
+        <p class="dim small">Trykk ✓ på klippene du vil ha med, velg musikk og trykk «Lag montasje».</p>
+        <select id="mont-music" class="search"></select><input id="mont-title" placeholder="Tittel (f.eks. Fredagskveld)">
+        <button id="mont-go" class="soft">Lag montasje</button></details>
+      <details><summary>Skjermbilder</summary><div id="clip-images" class="clipgrid"></div></details>
+      <details><summary>Klipp fra de andre PC-ene</summary><div id="clip-nas"></div></details>
+      <details><summary>Statistikk</summary><div id="clip-stats" class="kvgrid"></div></details>
+      <details><summary>Innstillinger for klipp</summary>
+        <div class="row"><span>Kvalitet</span><select id="o-quality" class="num-in"><option value="medium">Middels</option><option value="high">Høy</option><option value="very_high">Veldig høy</option><option value="ultra">Maks</option></select></div>
+        <div class="row"><span>Bilder per sekund</span><select id="o-fps" class="num-in"><option>30</option><option>60</option><option>120</option></select></div>
+        <div class="row"><span>Mikrofon</span><label class="switch"><input type="checkbox" id="o-mic"><i></i></label></div>
+        <div class="row"><span>Spill, Discord og mikrofon på egne lydspor</span><label class="switch"><input type="checkbox" id="o-tracks"><i></i></label></div>
+        <div class="row"><span>Webkamera i hjørnet</span><label class="switch"><input type="checkbox" id="o-webcam"><i></i></label></div>
+        <div class="row"><span>CS2: klipp ved 3K/4K/ACE</span><label class="switch"><input type="checkbox" id="o-auto_cs2"><i></i></label></div>
+        <div class="row"><span>CS2: hele kampen, behold seier/MVP</span><label class="switch"><input type="checkbox" id="o-cs2_match"><i></i></label></div>
+        <div class="row"><span>WoW: boss-kills og dødsfall</span><label class="switch"><input type="checkbox" id="o-wow_log"><i></i></label></div>
+        <div class="row"><span>Pause når du er borte</span><label class="switch"><input type="checkbox" id="o-idle_pause"><i></i></label></div>
+        <div class="row"><span>Kontroller (Select + Start)</span><label class="switch"><input type="checkbox" id="o-controller"><i></i></label></div>
+        <div class="row"><span>Del nye klipp via NAS</span><label class="switch"><input type="checkbox" id="o-share_nas"><i></i></label></div>
+        <div class="row"><span>Slett etter (dager, 0 = aldri)</span><input type="number" id="o-keep_days" class="num-in" min="0"></div>
+        <div class="row"><span>Plassgrense (GB, 0 = ingen)</span><input type="number" id="o-max_gb" class="num-in" min="0"></div>
+        <div class="row"><span>Til NAS etter (dager)</span><input type="number" id="o-nas_days" class="num-in" min="0"></div>
+        <div class="row"><span>Vannmerke</span><input id="o-watermark" class="num-in" placeholder="navnet ditt"></div>
+      </details></div>
     <div class="grid">
       <div class="card"><h2>Spilletid</h2><canvas id="pt-chart"></canvas><div id="pt-week" class="kvgrid"></div>
         <details><summary>Grense per dag</summary>

@@ -281,20 +281,80 @@ class Cs2Live:
         rnd = mp.get("round", 0)
         if mine:
             st = pl.get("state") or {}
+            # tidspunkt for hver kill i runden (til høydepunkt-klipp)
+            rk = st.get("round_kills", 0) or 0
+            kt = m.setdefault("_kt", {}).setdefault(rnd, [])
+            while len(kt) < rk:
+                kt.append(time.time())
             # round_killhs / round_totaldmg nullstilles hver runde – ta vare på høyeste verdi per runde
             r = m["_r"].setdefault(rnd, {"hs": 0, "dmg": 0})
             r["hs"] = max(r["hs"], st.get("round_killhs", 0) or 0)
             r["dmg"] = max(r["dmg"], st.get("round_totaldmg", 0) or 0)
             m["hs"] = sum(x["hs"] for x in m["_r"].values())
             m["dmg"] = sum(x["dmg"] for x in m["_r"].values())
+        # runden er over: høydepunkt-klipp ved 3+ kills (eller ace), kortet ned rundt killene
+        if mine and m.get("round") is not None and rnd != m.get("round"):
+            self._highlight(m, m["round"], mp)
+        if mine and mp.get("phase") == "live" and rnd in (0, 1) and not m.get("rec_started"):
+            m["rec_started"] = True
+            self._match_record(True)
         m["round"] = rnd
         if mp.get("phase") == "gameover" and not m.get("saved"):
             m["saved"] = True
+            self._highlight(m, rnd, mp)
+            if m.get("rec_started"):
+                st = self.state() or {}
+                team = (st.get("team") or "").upper()
+                mine_s, their = (st.get("ct"), st.get("t")) if team == "CT" else (st.get("t"), st.get("ct"))
+                self._match_record(False, keep=(mine_s or 0) > (their or 0) or (st.get("mvps") or 0) > 0)
             try:
                 import remote_extra
                 remote_extra.record_cs2_match(self.state())
             except Exception:  # noqa: BLE001
                 pass
+
+    def _highlight(self, m, rnd, mp):
+        kt = (m.get("_kt") or {}).get(rnd) or []
+        if len(kt) < 3 or (m.get("_hl") or {}).get(rnd):
+            return
+        m.setdefault("_hl", {})[rnd] = True
+        try:
+            import clips
+            c = clips.load_cfg()
+            r = clips.INSTANCE
+            if not (r and c["enabled"] and c.get("auto_cs2") and r.running()):
+                return
+            what = {3: "3K", 4: "4K"}.get(len(kt), "ACE")
+            now = time.time()
+            keep = (now - kt[0] + 3, max(0.0, now - kt[-1] - 2)) if c.get("killzoom") else None
+            r.save(label=f"CS2 {what} på {mp.get('name', '').replace('de_', '').title()}", kind="highlight",
+                   keep=keep, meta={"highlight": what})
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _match_record(self, start, keep=True):
+        """Hele kampen som vanlig opptak – beholdes bare ved seier eller MVP (valg «cs2_match»)."""
+        try:
+            import clips
+            c = clips.load_cfg()
+            r = clips.INSTANCE
+            if not (r and c["enabled"] and c.get("cs2_match") and r.running()):
+                return
+            if start and not getattr(r, "recording", False):
+                r.toggle_record()
+            elif not start and getattr(r, "recording", False):
+                r.toggle_record()
+                if not keep:
+                    def drop():
+                        time.sleep(8)
+                        import glob as _g
+                        import os as _o
+                        fs = sorted(_g.glob(_o.path.join(clips.clip_dir(), "Opptak", "*.mp4")), key=_o.path.getmtime)
+                        if fs and time.time() - _o.path.getmtime(fs[-1]) < 60:
+                            _o.remove(fs[-1])
+                    threading.Thread(target=drop, daemon=True).start()
+        except Exception:  # noqa: BLE001
+            pass
 
     def state(self):
         """Kampen som pågår (eller None hvis CS2 ikke har sendt noe på 30 s)."""

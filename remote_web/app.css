@@ -96,6 +96,14 @@ main { padding: 4px 14px 24px; max-width: 1500px; margin: 0 auto; }
 
 /* hurtigknapper */
 .quick { display: grid; gap: 10px; grid-template-columns: repeat(5, 1fr); margin-bottom: var(--gap); }
+.clipgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); margin-top: 10px; }
+.ct { background: var(--card2); border-radius: 14px; overflow: hidden; position: relative; }
+.ct img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #000; cursor: pointer; }
+.ct .cb { padding: 8px 10px; font-size: 13px; } .ct .cb b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.ct .ca { display: flex; gap: 4px; padding: 0 6px 6px; } .ct .ca button { flex: 1; padding: 4px; min-height: 34px; font-size: 15px; background: transparent; }
+.ct .sel-tick { position: absolute; top: 6px; left: 6px; width: 30px; height: 30px; min-height: 0; padding: 0; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; }
+.ct.picked { outline: 3px solid var(--acc); } .ct.picked .sel-tick { background: var(--acc); }
+.ct .badge2 { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.6); color: #fff; border-radius: 8px; padding: 2px 7px; font-size: 12px; }
 #clip-video { width: 100%; border-radius: 14px; margin-top: 12px; background: #000; max-height: 60vh; }
 .clip { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .clip div { flex: 1; min-width: 0; } .clip b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
