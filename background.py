@@ -354,7 +354,13 @@ class Background:
                     self.win.set_badge("bluetooth", str(n) if n else "")
                 except Exception:  # noqa: BLE001
                     pass
-                for path, name, pct in device_batteries():
+                try:
+                    import batteries
+                    devs = [(d["id"], d["name"], d["pct"]) for d in batteries.cached()
+                            if d.get("pct") is not None and not d.get("charging")]
+                except Exception:  # noqa: BLE001
+                    devs = device_batteries()
+                for path, name, pct in devs:
                     if pct <= c["battery_limit"]:
                         self.notify("bat" + path, f"Lavt batteri: {name}", f"{pct:.0f} % igjen – lad snart.")
                 self.refresh_menu()

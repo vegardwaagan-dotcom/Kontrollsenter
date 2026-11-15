@@ -1761,5 +1761,13 @@
  "Skriv klokkeslettet som tt:mm": "Write the time as hh:mm",
  "Leggetiden er lagret ✓": "Bedtime saved ✓",
  "Arbeider …": "Working …",
- "Ferdig ✓": "Done ✓"
+ "Ferdig ✓": "Done ✓",
+ "Batterier": "Batteries",
+ "Hodesett vises når HeadsetControl er installert.": "Headsets appear when HeadsetControl is installed.",
+ "Ingen trådløse enheter med batteri funnet (av eller i dvale?)": "No wireless devices with a battery found (off or asleep?)",
+ "av / ikke tilkoblet": "off / not connected",
+ "lader": "charging",
+ "Installerer HeadsetControl (kan ta noen minutter, spør om passord) …": "Installing HeadsetControl (may take a few minutes, asks for password) …",
+ "HeadsetControl er installert ✓ – slå hodesettet av og på hvis batteriet ikke vises": "HeadsetControl is installed ✓ – turn the headset off and on if the battery does not appear",
+ "HeadsetControl er installert": "HeadsetControl is installed"
 }

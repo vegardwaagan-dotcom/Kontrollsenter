@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.13.1", "Batteri i mus og hodesett", [
+        ("Nytt", [
+            "Batteriprosent for alle trådløse enheter – mus, tastatur og hodesett – øverst på Oversikt, på "
+            "Logitech-siden og på Hjem i appen",
+            "Hodesett (Logitech G PRO X 2, G733, G535, G435, G933/G935 m.fl.) leses med HeadsetControl, som kan "
+            "installeres med én knapp. Varsel om lavt batteri gjelder nå også hodesettet",
+        ]),
+    ]),
     ("0.13.0", "Familie, knappebord og mye mer", [
         ("Nytt", [
             "Familie: chat og «Middag!» til én eller alle PC-ene (vises over spillet med lyd), ekstra spilletid som "

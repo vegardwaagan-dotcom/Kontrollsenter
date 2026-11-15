@@ -792,6 +792,14 @@ class LogitechPage(Gtk.Box):
         bar.append(self.status_lbl)
         bar.append(self._reset_btn)
         self.append(bar)
+        try:
+            import battery_ui
+            bc = battery_ui.BatteryCard(logitech_only=True, title="Batteri")
+            for side in ("top", "start", "end"):
+                getattr(bc, f"set_margin_{side}")(12)
+            self.append(bc)
+        except Exception:  # noqa: BLE001
+            pass
         self.append(self.stack)
         self.pages = []
 

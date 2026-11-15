@@ -336,6 +336,11 @@ class MonitorWindow(Adw.ApplicationWindow):
                 tiles.append(t)
                 t.get_parent().set_focusable(False)
         page.append(tiles)
+        try:                                  # batteri i mus, tastatur og hodesett
+            import battery_ui
+            page.append(battery_ui.BatteryCard())
+        except Exception:  # noqa: BLE001
+            pass
         page.append(self.power)
         self.fans = FanCard(self.nvidia.available)
         page.append(self.fans)

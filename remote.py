@@ -181,6 +181,7 @@ def build_status(win):
         "msi": _is_msi(),
         "cs2": _cs2_live(),
         "gamemode": bool(INSTANCE and INSTANCE.gamemode.on),
+        "batteries": _batteries(),
         "timer": INSTANCE.timer.state() if INSTANCE else None,
     })
     return st
@@ -636,6 +637,9 @@ def _feature_action(win, kind, a):
     if kind == "lanname":
         F.name_device(str(a.get("mac", "")).lower(), a.get("name", ""))
         return True, "Navnet er lagret"
+    if kind == "headsetinstall":
+        import batteries
+        return batteries.install_headsetcontrol()
     if kind == "huepair":
         F.hue_pair()
         return True, "Hue er koblet til"
@@ -646,6 +650,14 @@ def _feature_action(win, kind, a):
         F.hue_set(a.get("on"), col, a.get("ids"))
         return True, "OK"
     raise ValueError("ukjent kommando")
+
+
+def _batteries():
+    try:
+        import batteries
+        return {"devices": batteries.cached(), "headsetcontrol": bool(batteries.headsetcontrol_bin())}
+    except Exception:  # noqa: BLE001
+        return {"devices": [], "headsetcontrol": False}
 
 
 def _notify(win):

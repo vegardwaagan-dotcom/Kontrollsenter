@@ -242,3 +242,7 @@ body.dash #tabs, body.dash .top, body.dash #quick, body.dash #simple-off { displ
 body.dash main { max-width: none; padding: 16px; }
 body.dash #oversikt .grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
 body.dash .tile .gauge { width: 150px; height: 150px; }
+
+.batbar { display: inline-block; width: 70px; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-right: 8px; vertical-align: middle; }
+.batbar i { display: block; height: 100%; background: #33d17a; } .batbar i.low { background: #e01b24; }
+#bats .row { padding: 3px 0; }

@@ -30,6 +30,22 @@ const famGrid = h(`<div class="grid" id="fam-grid">
 </div>`);
 $("#spill").insertBefore(famGrid, $("#spill .grid"));
 
+const batCard = h(`<div class="card" id="c-bat"><h2>Batterier</h2><div id="bats"></div>
+  <div id="bat-hint" class="row" hidden><span class="dim small">Hodesett vises når HeadsetControl er installert på PC-en.</span><button id="bat-inst" class="soft full-only">Installer</button></div></div>`);
+$("#oversikt .grid").prepend(batCard);
+const BICON = { mouse: "🖱️", keyboard: "⌨️", headset: "🎧", gamepad: "🎮", speaker: "🔊" };
+function renderBatteries(b) {
+  if (!b) return;
+  const ds = b.devices || [];
+  $("#bats").innerHTML = ds.map((d) => {
+    const p = d.pct, low = p != null && p <= 20 && !d.charging;
+    return `<div class="row between"><span>${BICON[d.kind] || "🔋"} ${esc(d.name)}</span><span class="row"><span class="batbar"><i style="width:${p || 0}%" class="${low ? "low" : ""}"></i></span>
+      <b class="num ${low ? "t-bad" : ""}">${p == null ? (d.charging ? "lader" : "av") : p + " %"}${d.charging ? " ⚡" : ""}</b></span></div>`;
+  }).join("") || `<p class="dim small">Ingen trådløse enheter med batteri (av eller i dvale?).</p>`;
+  $("#bat-hint").hidden = b.headsetcontrol || ds.some((d) => d.kind === "headset");
+}
+$("#bat-inst").onclick = () => { toast("Installerer på PC-en – godkjenn passordet der"); act({ a: "headsetinstall" }); };
+
 const deck = h(`<div class="card" id="c-deck"><div class="row between"><h2>Knappebord</h2><button id="deck-edit" class="link">Endre</button></div>
   <div id="deck" class="deck"></div><div id="deck-pick" class="chips" hidden></div></div>`);
 $("#mer").insertBefore(deck, $("#mer").firstChild);
@@ -288,6 +304,7 @@ poll = async function () {                           // eslint-disable-line no-g
   if (eco && Date.now() - lastPoll < 10000) return;
   lastPoll = Date.now();
   await famPoll();
+  if (last) renderBatteries(last.batteries);
   if (failures === 0 && last) {
     try { localStorage.setItem("ks_last_" + pcName, JSON.stringify({ t: Date.now(), s: last })); } catch (e) {}
     $("#offline") && ($("#offline").hidden = true);

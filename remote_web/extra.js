@@ -83,7 +83,7 @@ const EN = {
   "Bruk farge": "Apply colour", "På": "On", "Koble til": "Connect", "Selvtest og feilrapport": "Self-test and error report",
   "Kjør selvtest": "Run self-test", "Send feilrapport til NAS-en": "Send error report to the NAS", "Gi navn": "Name",
   "Sikkerhetskopi av innstillingene": "Settings backup", "Ta kopi nå (NAS)": "Back up now (NAS)", "Gjenopprett valgt": "Restore selected",
-  "Panelet": "Panel", "Vis og skjul kort": "Show and hide cards", "Lukk": "Close", "Bli med": "Join",
+  "Panelet": "Panel", "Batterier": "Batteries", "Installer": "Install", "Vis og skjul kort": "Show and hide cards", "Lukk": "Close", "Bli med": "Join",
 };
 const NB = {};
 function applyLang() {
