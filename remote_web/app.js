@@ -55,8 +55,9 @@ const fmtUp = (s) => { const d = Math.floor(s / 86400), h = Math.floor((s % 8640
 function setTab(t) {
   tab = t;
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
-  ["oversikt", "kontroll", "historikk", "spill", "system"].forEach((id) => ($("#" + id).hidden = id !== t || !token));
-  if (t === "historikk") loadHistory();
+  ["oversikt", "kontroll", "spill", "mer", "system"].forEach((id) => ($("#" + id).hidden = id !== t || !token));
+  if (t === "mer") loadHistory();
+  window.scrollTo(0, 0);
   if (t === "spill") loadGames();
   if (t === "kontroll") pollExtra();
   try { sessionStorage.setItem("ks_tab", t); } catch (e) {}
@@ -327,7 +328,7 @@ async function checkAppUpdate(force) {
     if (r.code && (!KS.versionCode || r.code > have)) {
       $("#upd").hidden = false;
       if (KS.update) {
-        $("#upd-t").textContent = `Ny versjon av appen er klar: ${r.version} – virker ikke «Oppdater», åpne ${location.origin}/api/apk i Chrome`;
+        $("#upd-t").textContent = `Ny versjon av appen: ${r.version}`;
         $("#upd-go").hidden = false;
         $("#upd-go").onclick = () => KS.update(location.origin + "/api/apk");
       } else {           // eldre app uten oppdateringsfunksjon: installer den nye én gang manuelt
@@ -345,7 +346,7 @@ $("#upd-check").onclick = () => { $("#upd-msg").textContent = "Sjekker NAS-en �
 setInterval(() => checkAppUpdate(false), 30 * 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAppUpdate(false); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { poll(); pollExtra(); } });
-window.addEventListener("resize", () => tab === "historikk" && loadHistory());
+window.addEventListener("resize", () => tab === "mer" && loadHistory());
 setInterval(() => poll(), 2000);
 setInterval(() => tab === "kontroll" && pollExtra(), 8000);
 

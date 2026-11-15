@@ -4,41 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kontrollsenter</title>
-<style>
-:root { --bg:#1e1e24; --card:#2a2a32; --card2:#33333d; --fg:#f2f2f5; --dim:#a3a3b0; --line:#3c3c47; --acc:#3584e4; --ok:#33b36b; --bad:#e0464b; }
-@media (prefers-color-scheme: light) { :root { --bg:#f4f4f7; --card:#fff; --card2:#ececf1; --fg:#1d1d22; --dim:#62626e; --line:#dcdce3; } }
+<style>:root { --bg:#0f1016; --card:#191a23; --card2:#23242f; --fg:#f3f3f7; --dim:#9a9bab; --line:rgba(255,255,255,.07);
+  --acc:#5b8cff; --grad:linear-gradient(135deg,#5b8cff,#8a5cff); --ok:#3ccf7e; --bad:#ff5a5f; --shadow:0 6px 24px rgba(0,0,0,.25); }
+@media (prefers-color-scheme: light) { :root { --bg:#f3f4f8; --card:#fff; --card2:#eef0f5; --fg:#17181f; --dim:#646678;
+  --line:rgba(0,0,0,.07); --shadow:0 4px 18px rgba(20,25,60,.07); } }
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui, Roboto, sans-serif; }
-main { max-width:1100px; margin:0 auto; padding:20px 16px 40px; }
-h1 { font-size:26px; margin:6px 0 2px; } .dim { color:var(--dim); } .small { font-size:13px; }
+html,body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.45 system-ui, Roboto, sans-serif; -webkit-font-smoothing:antialiased; }
+main { max-width:1100px; margin:0 auto; padding:26px 16px 40px; }
+.head { display:flex; align-items:center; gap:14px; }
+.logo { width:46px; height:46px; border-radius:15px; background:var(--grad); box-shadow:0 6px 18px rgba(91,140,255,.4); flex:none; }
+h1 { font-size:26px; margin:0; letter-spacing:-.3px; } .dim { color:var(--dim); } .small { font-size:13px; }
 .bar { display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
-button { font:inherit; color:var(--fg); background:var(--card2); border:0; border-radius:12px; padding:12px 18px; min-height:48px; }
-button.primary { background:var(--acc); color:#fff; }
-input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; flex:1; min-width:180px; }
-.list { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); }
-.pc { background:var(--card); border-radius:18px; padding:18px; display:flex; gap:14px; align-items:center; }
-.pc .ic { width:52px; height:52px; border-radius:14px; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:26px; flex:none; }
+button { font:inherit; color:var(--fg); background:var(--card2); border:0; border-radius:14px; padding:12px 18px; min-height:48px; transition:transform .08s; }
+button:active { transform:scale(.97); }
+button.primary, .pc .go { background:var(--grad); color:#fff; font-weight:600; box-shadow:0 4px 14px rgba(91,140,255,.3); }
+input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid transparent; border-radius:14px; padding:12px 14px; flex:1; min-width:180px; outline:none; }
+input:focus { border-color:var(--acc); }
+h2 { font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; margin:26px 2px 10px; }
+.list { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(min(100%,320px), 1fr)); }
+.pc { background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow); border-radius:20px; padding:16px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+.pc .ic { width:52px; height:52px; border-radius:16px; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:26px; flex:none; }
 .pc .t { flex:1; min-width:0; } .pc b { display:block; font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pc .x { background:transparent; color:var(--dim); padding:8px 10px; min-height:40px; }
+.pc .wake { background:rgba(60,207,126,.15); color:var(--ok); font-weight:600; }
+.pc .live { width:100%; font-size:14px; color:var(--dim); padding-top:10px; border-top:1px solid var(--line); }
+.pc .live:empty { display:none; } .pc .live b { display:inline; font-size:14px; color:var(--fg); font-weight:600; }
 .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--dim); margin-right:6px; }
 .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
-.upd { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--acc); color:#fff; border-radius:16px; margin:14px 0; }
-.upd span { flex:1; } .upd button { background:#fff; color:var(--acc); }
-.pc { flex-wrap: wrap; } .pc .live { width: 100%; font-size: 14px; color: var(--dim); margin-top: 2px; }
-.pc .live b { color: var(--fg); font-weight: 600; }
-.gl { display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); margin-top:12px; }
-.gi { background:var(--card); border-radius:16px; padding:12px 14px; }
+#scan-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; margin-top:8px; }
+#scan-bar i { display:block; height:100%; width:0; background:var(--grad); transition:width .2s; }
+.upd { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--grad); color:#fff; border-radius:18px; margin:14px 0; }
+.upd span { flex:1; } .upd button { background:#fff; color:var(--acc); font-weight:600; }
+.gl { display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(min(100%,320px),1fr)); margin-top:12px; }
+.gi { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:12px 14px; }
 .gi b { display:block; margin-bottom:8px; } .gi .btns { display:flex; gap:8px; flex-wrap:wrap; }
 .gi button { padding:8px 12px; min-height:40px; }
-#scan-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; margin-top:8px; }
-#scan-bar i { display:block; height:100%; width:0; background:var(--acc); transition:width .2s; }
+[hidden] { display:none !important; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Kontrollsenter</h1>
-  <div class="dim">Velg PC-en du vil styre. PC-en må ha Kontrollsenter med <b>Tillat fjernstyring</b> slått på
-    (Hjemme → Mobil og nettbrett).</div>
+  <div class="head"><span class="logo"></span><div><h1>Kontrollsenter</h1>
+    <div class="dim small">Velg PC-en du vil styre</div></div></div>
   <div id="upd" class="upd" hidden><span id="upd-t"></span><button id="upd-go">Oppdater nå</button></div>
   <div class="bar">
     <button id="scan" class="primary">Søk etter PC-er</button>
@@ -48,10 +55,11 @@ input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid
   </div>
   <div id="status" class="dim small"></div>
   <div id="scan-bar" hidden><i></i></div>
-  <h2 class="dim small" style="text-transform:uppercase;letter-spacing:.5px;margin-top:24px">PC-er</h2>
+  <h2>PC-er</h2>
   <div id="pcs" class="list"></div>
   <div class="bar"><button id="all-games">Spill på alle PC-er</button></div>
   <div id="games" class="gl"></div>
+  <p class="dim small">PC-en må ha Kontrollsenter med <b>Tillat fjernstyring</b> på (PC-er hjemme → Mobil og nettbrett).</p>
   <p class="dim small" id="ver"></p>
 </main>
 <script>

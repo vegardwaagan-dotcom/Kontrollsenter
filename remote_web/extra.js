@@ -50,6 +50,12 @@ $("#auto-second").onchange = () => setPref("auto_second", $("#auto-second").chec
 $("#bio").onchange = () => setPref("bio", $("#bio").checked);
 
 const EN = {
+  "Hjem": "Home", "Styr": "Control", "Verktøy": "Tools", "Innstillinger": "Settings", "Statistikk": "Statistics",
+  "Lås PC-en": "Lock PC", "Andreskjerm": "Second screen", "Vis alle": "Show all", "Hver vifte": "Each fan",
+  "Volum per program": "Volume per app", "Grense per dag": "Daily limit", "Nytt mål": "New goal", "Start et spill": "Start a game",
+  "Programmer som bruker nettet": "Programs using the network", "Åpne lenke": "Open link", "Kopier": "Copy", "Hent utklipp": "Get clipboard",
+  "Glem paringen": "Forget pairing", "Åpne på PC-en": "Open on the PC", "Bruk": "Apply", "Lagre": "Save", "NAS": "NAS",
+  "CS2 kamp for kamp": "CS2 match by match", "Ladegrense": "Charge limit",
   "Oversikt": "Overview", "Kontroll": "Control", "Historikk": "History", "Spill": "Games", "Mer": "More", "System": "System",
   "Temperaturer": "Temperatures", "Maskin": "Machine", "Helse": "Health", "Strømmodus": "Power mode", "Vifter": "Fans",
   "Lyd": "Sound", "RGB-lys": "RGB lighting", "Spill-overlay": "Game overlay", "Spillmodus": "Game mode",
@@ -74,7 +80,7 @@ function applyLang() {
   const en = pref("lang", "nb") === "en";
   $$("#lang button").forEach((b) => b.classList.toggle("on", b.dataset.v === (en ? "en" : "nb")));
   document.documentElement.lang = en ? "en" : "nb";
-  $$("h2, button, .label, #tabs button").forEach((el) => {
+  $$("h2, button, .label, #tabs span, .quick .ql, summary").forEach((el) => {
     if (el.children.length) return;
     const cur = el.textContent.trim();
     if (!NB[cur] && EN[cur]) NB[EN[cur]] = cur;
@@ -90,9 +96,11 @@ async function loadHealth(force) {
   try {
     const h = await X("health", force ? "force=1" : "");
     $("#grade").textContent = h.grade; $("#grade").className = "grade " + h.grade;
-    const bad = h.items.filter((i) => i.level !== "ok");
+    const bad = h.items.filter((i) => i.level === "warn" || i.level === "error");
+    const info = h.items.filter((i) => i.level !== "ok" && !bad.includes(i));
     $("#health-sum").textContent = bad.length ? `${bad.length} ting bør sjekkes` : "Alt ser bra ut ✓";
-    $("#health-items").innerHTML = bad.map((i) => `<p class="small"><b>${i.level === "error" ? "❌" : "⚠️"} ${esc(i.title)}</b><br><span class="dim">${esc(String(i.detail).slice(0, 200))}</span></p>`).join("");
+    $("#health-items").innerHTML = bad.map((i) => `<p class="small"><b>${i.level === "error" ? "❌" : "⚠️"} ${esc(i.title)}</b><br><span class="dim">${esc(String(i.detail).slice(0, 200))}</span></p>`).join("")
+      + (info.length ? `<details><summary>Til info (${info.length})</summary>${info.map((i) => `<p class="small"><b>${esc(i.title)}</b><br><span class="dim">${esc(String(i.detail).slice(0, 200))}</span></p>`).join("")}</details>` : "");
   } catch (e) { $("#health-sum").textContent = e.message; }
 }
 $("#health-refresh").onclick = () => { $("#health-sum").textContent = "Sjekker …"; loadHealth(true); };
@@ -104,7 +112,26 @@ $$("[data-timer]").forEach((b) => (b.onclick = () => {
   const v = b.dataset.timer;
   act({ a: "timer", minutes: /^\d+$/.test(v) ? +v : null, when_idle: v === "idle" });
 }));
+// ---------- hurtigknapper på Hjem ----------
+const PNAME = { "power-saver": "Strømsparing", balanced: "Balansert", performance: "Max ytelse" };
+$$("#quick button").forEach((b) => (b.onclick = async () => {
+  const q = b.dataset.q;
+  if (q === "second") return openSecond();
+  if (q === "lock") return act({ a: "system", do: "lock" });
+  if (q === "gamemode") { const on = !b.classList.contains("on"); b.classList.toggle("on", on); holdFor("gm", 6000);
+    return act({ a: "gamemode", on, color: $("#gm-color").value }); }
+  if (q === "power" && last && last.power) {
+    const keys = last.power.modes.map((m) => m[0]); const nxt = keys[(keys.indexOf(last.power.active) + 1) % keys.length];
+    $("#q-power").textContent = PNAME[nxt] || nxt; holdFor("power"); return act({ a: "power", mode: nxt });
+  }
+}));
+$("#temps-more").onclick = () => { const c = $("#temps").classList.toggle("collapsed"); $("#temps-more").textContent = c ? "Vis alle" : "Vis færre"; };
+
 function renderExtraStatus(s) {
+  if (!held("gm")) { $("#quick [data-q=gamemode]").classList.toggle("on", !!s.gamemode); $("#q-gm").textContent = s.gamemode ? "På" : "Av"; }
+  if (s.power && !held("power")) $("#q-power").textContent = PNAME[s.power.active] || s.power.active || "–";
+  $("#quick [data-q=power]").hidden = !s.power;
+  $("#temps-more").hidden = (s.temps || []).length <= 8;
   if (!held("gm")) $("#gm-on").checked = !!s.gamemode;
   const t = s.timer || {};
   $("#timer-state").textContent = t.at ? "PC-en slås av kl. " + new Date(t.at * 1000).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })
@@ -306,8 +333,8 @@ $("#goal-save").onclick = () => {
 const baseSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   baseSetTab(t);
-  $("#mer").hidden = t !== "mer" || !token;
-  if (t === "mer") { loadEvents(); loadEnergy(); loadNetwork(); loadMedia(); loadProcs(); loadNas(); }
+  if (t === "mer") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
+  if (t === "kontroll") loadMedia();
   if (t === "spill") { loadPlaytime(); loadCs2(); loadGoals(); }
   if (t === "oversikt") loadHealth(false);
   applyLang();

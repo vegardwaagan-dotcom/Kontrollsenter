@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.10.0", "Ny, enklere Android-app", [
+        ("Nytt utseende", [
+            "Appen er ryddet: fem faner – Hjem, Styr, Spill, Verktøy og Innstillinger – nederst på mobilen og som "
+            "sidemeny på nettbrettet",
+            "Hjem har hurtigknapper for spillmodus, strømmodus, andreskjerm og lås PC-en",
+            "Roligere og mer elegant design med mørkt tema som standard; sjeldne valg er foldet sammen",
+            "Ny startside med samme utseende",
+        ]),
+    ]),
     ("0.9.2", "Appen finner PC-ene også med VPN på", [
         ("Rettet", [
             "Android-appen fant ikke PC-ene når telefonen hadde VPN på (f.eks. Tailscale): den søkte i VPN-nettet. "
