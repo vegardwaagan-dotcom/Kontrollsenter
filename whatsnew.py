@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.13.0", "Familie, knappebord og mye mer", [
+        ("Nytt", [
+            "Familie: chat og «Middag!» til én eller alle PC-ene (vises over spillet med lyd), ekstra spilletid som "
+            "belønning, leggetid som slår av PC-en, oversikt og ranking for alle PC-ene, og «Bli med» i samme spill",
+            "Sikkerhetskopi og gjenoppretting av alle innstillinger på NAS-en, selvtest, feilrapport med ett trykk, "
+            "og automatisk oppdatering om natten som rulles tilbake hvis den nye versjonen ikke starter",
+            "Ytelse per spill (FPS, temperatur, strømkostnad), skjermkortdriver og varsel når Steam lager shadere",
+            "Oppstartsprogrammer, enheter på hjemmenettet (varsel om nye), sikkerhetssjekk og Philips Hue-lys",
+            "Tilbud på Steam-ønskelisten, prestasjoner og «Måneden i tall»",
+            "Appen: knappebord (Stream Deck), søk, vis og skjul kort, dashbord for nettbrett, PC-skjermen live, "
+            "batterisparing, offline-visning (meldinger sendes når PC-en svarer) og snarveien «Status»",
+        ]),
+    ]),
     ("0.12.1", "«Bare mens et spill kjører» virker", [
         ("Rettet", [
             "Klipp: «Bare mens et spill kjører» stoppet ikke opptaket, så F8 virket uten spill. Nå stopper opptaket "

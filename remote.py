@@ -588,7 +588,69 @@ def do_action(win, a):
             c["enabled"] = bool(a["enabled"])
         X._jsave(X.LIMITS, c)
         return True, "Grensene er lagret"
+    return _feature_action(win, kind, a)
+
+
+def _feature_action(win, kind, a):
+    import features as F
+    if kind == "chat":
+        F.send_to(a.get("to"), a.get("_dev") or "Mobil", a.get("text"), _notify(win), urgent=bool(a.get("urgent")))
+        return True, "Sendt"
+    if kind == "dinner":
+        F.send_to(a.get("to") or "*", a.get("_dev") or "Mobil", a.get("text") or "🍽️ Middag! Kom og spis.",
+                  _notify(win), urgent=True)
+        return True, "«Middag!» er sendt"
+    if kind == "bedtime":
+        c = F.cfg()
+        for k in ("weekday", "weekend"):
+            if k in a:
+                if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", str(a[k])):
+                    raise ValueError("ugyldig klokkeslett")
+                c["bedtime"][k] = a[k]
+        if "enabled" in a:
+            c["bedtime"]["enabled"] = bool(a["enabled"])
+        F.save_cfg(c)
+        return True, "Leggetiden er lagret"
+    if kind == "bonus":
+        F.give_bonus(int(a.get("minutes", 0)))
+        return True, f"{int(a['minutes'])} min ekstra i dag"
+    if kind == "feature":                                   # brytere: auto_update, wishlist
+        c = F.cfg()
+        k = a.get("key")
+        if k not in ("auto_update", "wishlist"):
+            raise ValueError("ukjent innstilling")
+        c[k] = bool(a.get("on"))
+        F.save_cfg(c)
+        return True, "Lagret"
+    if kind == "setbackup":
+        return True, "Sikkerhetskopiert: " + F.backup_settings()
+    if kind == "restore":
+        F.restore_settings(str(a.get("name", "")))
+        return True, "Gjenopprettet – start Kontrollsenter på nytt"
+    if kind == "report":
+        return (True, "Feilrapporten er lagt på NAS-en") if F.send_report(str(a.get("note", ""))[:2000]) \
+            else (False, "Kunne ikke sende (er PC-en på hjemmenettet?)")
+    if kind == "startup":
+        F.startup_set(str(a.get("id", "")), bool(a.get("on")))
+        return True, "Lagret – gjelder fra neste oppstart"
+    if kind == "lanname":
+        F.name_device(str(a.get("mac", "")).lower(), a.get("name", ""))
+        return True, "Navnet er lagret"
+    if kind == "huepair":
+        F.hue_pair()
+        return True, "Hue er koblet til"
+    if kind == "hue":
+        col = a.get("color")
+        if col and not re.fullmatch(r"#?[0-9a-fA-F]{6}", col):
+            raise ValueError("ugyldig farge")
+        F.hue_set(a.get("on"), col, a.get("ids"))
+        return True, "OK"
     raise ValueError("ukjent kommando")
+
+
+def _notify(win):
+    bg = getattr(win, "bg", None)
+    return bg.notify if bg else None
 
 
 def _msi_action(a):
@@ -634,7 +696,7 @@ def _msi_action(a):
 INSTANCE = None          # settes av bakgrunnsdelen (background.py)
 
 
-LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip"}   # «begrenset» tilgang
+LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat"}   # «begrenset» tilgang
 
 
 class Remote:
@@ -880,6 +942,7 @@ def _handler(remote):
                     role = (getattr(self, "device", None) or {}).get("role", "full")
                     if role == "begrenset" and body.get("a") not in LIMITED_OK:
                         return self._send(403, {"ok": False, "error": "denne enheten har begrenset tilgang"})
+                    body["_dev"] = (getattr(self, "device", None) or {}).get("name", "Mobil")
                     ok, msg = do_action(remote.win, body)
                     return self._send(200, {"ok": bool(ok), "msg": str(msg)})
                 return self._send(404, {"error": "finnes ikke"})
@@ -950,6 +1013,18 @@ def _handler(remote):
             if what == "homepcs":
                 import homepcs
                 return self._send(200, {"pcs": homepcs.fetch() or []})
+            import features as F
+            simple = {"chat": lambda: {"messages": F.chat_list()}, "family": F.family,
+                      "perf": lambda: {"games": F.perf_per_game(), "driver": F.driver_info()},
+                      "startup": lambda: {"items": F.startup_list()}, "lan": lambda: {"devices": F.lan_devices()},
+                      "security": lambda: {"items": F.security()}, "wishlist": lambda: {"sales": F.wishlist_check()},
+                      "hue": lambda: {"paired": bool(F.cfg()["hue"].get("user")), "lights": F.hue_lights()},
+                      "achievements": lambda: {"items": F.achievements()},
+                      "wrapped": lambda: F.wrapped(arg("month")), "backups": lambda: {"backups": F.list_backups()},
+                      "selftest": lambda: {"items": F.selftest(remote.win)},
+                      "features": lambda: {k: v for k, v in F.cfg().items() if not k.startswith("_") and k != "hue"}}
+            if what in simple:
+                return self._send(200, simple[what]())
             return self._send(404, {"error": "finnes ikke"})
 
         def _video(self, path):

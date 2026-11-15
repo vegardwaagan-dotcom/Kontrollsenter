@@ -6,4 +6,10 @@
             android:targetPackage="no.waagan.kontrollsenter"
             android:targetClass="no.waagan.kontrollsenter.MainActivity" />
     </shortcut>
+    <shortcut android:shortcutId="status" android:enabled="true" android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_status" android:shortcutLongLabel="@string/sc_status_long">
+        <intent android:action="android.intent.action.MAIN"
+            android:targetPackage="no.waagan.kontrollsenter"
+            android:targetClass="no.waagan.kontrollsenter.MainActivity" />
+    </shortcut>
 </shortcuts>

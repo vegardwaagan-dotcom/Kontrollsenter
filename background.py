@@ -295,6 +295,11 @@ class Background:
                 clips.INSTANCE.tick(getattr(self, "game_name", None))
         except Exception:  # noqa: BLE001
             pass
+        try:                                              # familie, leggetid, oppdatering, hjemmenett, tilbud …
+            import features
+            features.tick(self.notify, self.win)
+        except Exception:  # noqa: BLE001
+            pass
         try:
             w = self.win
             nv = w.nvidia.data if w.nvidia.available else None

@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">Kontrollsenter</string>
     <string name="sc_clip">Lagre klipp</string>
+    <string name="sc_status">Status</string>
+    <string name="sc_status_long">Status for PC-ene</string>
     <string name="sc_clip_long">Lagre klipp på PC-en</string>
     <style name="Theme.Kontrollsenter" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>

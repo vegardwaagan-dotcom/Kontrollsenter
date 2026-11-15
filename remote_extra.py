@@ -121,7 +121,12 @@ def limit_today():
     c = limit_cfg()
     if not c["enabled"]:
         return None
-    return c["weekend"] if time.localtime().tm_wday >= 5 else c["weekday"]
+    base = c["weekend"] if time.localtime().tm_wday >= 5 else c["weekday"]
+    try:
+        import features
+        return base + features.bonus_today() / 60
+    except Exception:  # noqa: BLE001
+        return base
 
 
 def playtime_summary(days=14):

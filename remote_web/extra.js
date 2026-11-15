@@ -75,6 +75,15 @@ const EN = {
   "Ta sikkerhetskopi av lagrede spill nå": "Back up saved games now", "Om 30 min": "In 30 min", "Om 1 time": "In 1 hour",
   "Om 2 timer": "In 2 hours", "Når nedlastingene er ferdige": "When downloads are finished", "Avbryt": "Cancel",
   "Start et spill på PC-en": "Start a game on the PC", "Spill litt, så dukker statistikken opp her.": "Play a bit and the statistics appear here.",
+  "Familie": "Family", "Ranking": "Ranking", "Send": "Send", "🍽️ Middag!": "🍽️ Dinner!", "Belønning og leggetid": "Reward and bedtime",
+  "+15 min": "+15 min", "+1 time": "+1 hour", "Lagre leggetid": "Save bedtime", "Ytelse per spill": "Performance per game",
+  "Prestasjoner": "Achievements", "Måneden i tall": "The month in numbers", "Tilbud på ønskelisten": "Wishlist sales", "Sjekk nå": "Check now",
+  "Knappebord": "Button board", "Endre": "Edit", "Ferdig": "Done", "Skjermen live": "Live screen", "Hjemmenett": "Home network",
+  "Sikkerhetssjekk": "Security check", "Sjekk": "Check", "Oppstartsprogrammer": "Startup programs", "Hue-lys": "Hue lights",
+  "Bruk farge": "Apply colour", "På": "On", "Koble til": "Connect", "Selvtest og feilrapport": "Self-test and error report",
+  "Kjør selvtest": "Run self-test", "Send feilrapport til NAS-en": "Send error report to the NAS", "Gi navn": "Name",
+  "Sikkerhetskopi av innstillingene": "Settings backup", "Ta kopi nå (NAS)": "Back up now (NAS)", "Gjenopprett valgt": "Restore selected",
+  "Panelet": "Panel", "Vis og skjul kort": "Show and hide cards", "Lukk": "Close", "Bli med": "Join",
 };
 const NB = {};
 function applyLang() {

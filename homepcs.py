@@ -100,7 +100,15 @@ def status(win):
             "cpu_l": round(getattr(win, "_cpu_load", 0) or 0), "watts": round((getattr(win, "_power", {}) or {})
                                                                               .get("total") or 0),
             "uptime": int(up), "game": getattr(bg, "game_name", None) if bg else None, "battery": bats,
-            "time": time.time()}
+            "time": time.time(), **_extra()}
+
+
+def _extra():
+    try:
+        import features
+        return features.share_fields()
+    except Exception:  # noqa: BLE001
+        return {}
 
 
 def publish(win, off=False):
@@ -203,6 +211,12 @@ class HomePage(Gtk.ScrolledWindow):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("fjernstyring-kort")
+        try:
+            import family_ui
+            box.append(family_ui.FamilyCard())
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("familie-kort")
         self.flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=3,
                                 min_children_per_line=1, column_spacing=12, row_spacing=12)
         box.append(self.flow)

@@ -225,3 +225,20 @@ body.simple .tile .gauge { width: 160px; height: 160px; } body.simple .tile .gau
 .simple-only { display: none; margin-top: var(--gap); }
 body.simple .simple-only { display: block; }
 [hidden] { display: none !important; }
+
+/* familie, knappebord, widgets, dashbord (0.13) */
+.deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-top: 8px; }
+.deck button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 6px; min-height: 92px; border-radius: 18px; background: var(--card2, color-mix(in srgb, var(--acc) 10%, var(--card))); }
+.deck .qi { font-size: 30px; } .deck .ql { font-size: 13px; text-align: center; }
+.chips button.on { background: var(--acc); color: #fff; }
+.chat { max-height: 260px; overflow-y: auto; margin-bottom: 8px; }
+.chat .ev.warn { color: var(--warn, #e5a50a); }
+.user-hidden { display: none !important; }
+.card.flash { outline: 3px solid var(--acc); transition: outline .3s; }
+#live-img { width: 100%; border-radius: 12px; margin-top: 10px; }
+#fam-pcs .row { padding: 6px 0; border-bottom: 1px solid var(--line); }
+body.limited .full-only { display: none !important; }
+body.dash #tabs, body.dash .top, body.dash #quick, body.dash #simple-off { display: none !important; }
+body.dash main { max-width: none; padding: 16px; }
+body.dash #oversikt .grid { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+body.dash .tile .gauge { width: 150px; height: 150px; }

@@ -1006,6 +1006,11 @@ class MonitorApp(Adw.Application):
                 win = self.win = MonitorWindow(self)
                 import background
                 win.bg = background.Background(self, win)
+                try:
+                    import features
+                    features.check_rollback()
+                except Exception:  # noqa: BLE001
+                    pass
             except Exception:  # noqa: BLE001
                 applog.crash("Kontrollsenter kunne ikke starte")
                 self.quit()
