@@ -46,6 +46,7 @@ function applyLook() {
 }
 $$("#theme button").forEach((b) => (b.onclick = () => { setPref("theme", b.dataset.v); applyLook(); if (KS && KS.setTheme) KS.setTheme(b.dataset.v); }));
 $("#simple").onchange = () => { setPref("simple", $("#simple").checked); applyLook(); };
+$("#simple-off").onclick = () => { setPref("simple", false); applyLook(); toast("Enkel visning er av"); };
 $("#auto-second").onchange = () => setPref("auto_second", $("#auto-second").checked);
 $("#bio").onchange = () => setPref("bio", $("#bio").checked);
 

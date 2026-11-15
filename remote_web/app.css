@@ -210,4 +210,6 @@ body.simple .tile .gauge { width: 160px; height: 160px; } body.simple .tile .gau
   .live .kvgrid { grid-template-columns: 1fr 1fr; } .live .kvgrid div { font-size: 14px; }
   .card { padding: 15px; } main { padding: 4px 10px 24px; }
 }
+.simple-only { display: none; margin-top: var(--gap); }
+body.simple .simple-only { display: block; }
 [hidden] { display: none !important; }

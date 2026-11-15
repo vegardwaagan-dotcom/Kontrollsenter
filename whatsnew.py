@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.10.1", "Enkel visning kan slås av igjen", [
+        ("Rettet", [
+            "Appen: i enkel visning forsvant innstillingene, så den kunne ikke slås av. Innstillinger vises nå alltid, "
+            "og Hjem har knappen «Avslutt enkel visning»",
+        ]),
+    ]),
     ("0.10.0", "Ny, enklere Android-app", [
         ("Nytt utseende", [
             "Appen er ryddet: fem faner – Hjem, Styr, Spill, Verktøy og Innstillinger – nederst på mobilen og som "

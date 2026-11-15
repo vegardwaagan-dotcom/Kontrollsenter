@@ -1677,5 +1677,7 @@
  "Appen er ryddet: fem faner – Hjem, Styr, Spill, Verktøy og Innstillinger – nederst på mobilen og som sidemeny på nettbrettet": "The app is tidied up: five tabs – Home, Control, Games, Tools and Settings – at the bottom on phones and as a side menu on tablets",
  "Hjem har hurtigknapper for spillmodus, strømmodus, andreskjerm og lås PC-en": "Home has quick buttons for game mode, power mode, second screen and locking the PC",
  "Roligere og mer elegant design med mørkt tema som standard; sjeldne valg er foldet sammen": "A calmer, more elegant design with a dark theme by default; rarely used options are folded away",
- "Ny startside med samme utseende": "New start page with the same look"
+ "Ny startside med samme utseende": "New start page with the same look",
+ "Enkel visning kan slås av igjen": "Simple view can be turned off again",
+ "Appen: i enkel visning forsvant innstillingene, så den kunne ikke slås av. Innstillinger vises nå alltid, og Hjem har knappen «Avslutt enkel visning»": "The app: in simple view the settings disappeared, so it could not be turned off. Settings are now always shown, and Home has an “Exit simple view” button"
 }
