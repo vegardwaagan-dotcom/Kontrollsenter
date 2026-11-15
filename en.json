@@ -1732,5 +1732,10 @@
  "Ta opp mikrofonen": "Record the microphone",
  "Lydspor": "Audio tracks",
  "Webkamera i hjørnet": "Webcam in the corner",
- "Hurtigtasten er lagret ✓": "The hotkey is saved ✓"
+ "Hurtigtasten er lagret ✓": "The hotkey is saved ✓",
+ "«Bare mens et spill kjører» virker": "“Only while a game is running” works",
+ "Klipp: «Bare mens et spill kjører» stoppet ikke opptaket, så F8 virket uten spill. Nå stopper opptaket når ingen spill kjører (60 s etter at spillet er avsluttet), og F8 sier fra": "Clips: “Only while a game is running” did not stop recording, so F8 worked without a game. Recording now stops when no game is running (60 s after the game ends), and F8 tells you",
+ "Spill utenfor Steam gjenkjennes: World of Warcraft, Diablo, Warcraft III, Overwatch, Hearthstone m.fl.": "Games outside Steam are recognised: World of Warcraft, Diablo, Warcraft III, Overwatch, Hearthstone and more",
+ "Flere opptak samtidig (fra en eldre utgave) ryddes bort automatisk": "Several recordings at once (from an older version) are cleaned up automatically",
+ "Ingen spill kjører – opptaket går bare mens et spill kjører": "No game is running – recording only runs while a game is running"
 }

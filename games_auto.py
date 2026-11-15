@@ -33,16 +33,42 @@ def mangohud_log_lines():
     return f"output_folder={LOG_DIR}\nautostart_log=5\nlog_interval=500\n"
 
 
+# Spill utenfor Steam (Battle.net m.fl., også under Wine/Proton på Linux): programfil → navn
+OTHER_GAMES = {"wow.exe": "World of Warcraft", "wowclassic.exe": "World of Warcraft Classic",
+               "wow-64.exe": "World of Warcraft", "diablo iv.exe": "Diablo IV", "d2r.exe": "Diablo II: Resurrected",
+               "warcraft iii.exe": "Warcraft III", "overwatch.exe": "Overwatch 2", "hearthstone.exe": "Hearthstone",
+               "league of legends.exe": "League of Legends", "valorant-win64-shipping.exe": "VALORANT",
+               "fortniteclient-win64-shipping.exe": "Fortnite", "minecraft.exe": "Minecraft",
+               "javaw.exe": None}
+
+
+def _other_game():
+    try:
+        import psutil
+        for p in psutil.process_iter(["name", "cmdline"]):
+            name = (p.info.get("name") or "").lower()
+            cmd = " ".join(p.info.get("cmdline") or []).lower()
+            for exe, nice in OTHER_GAMES.items():
+                if nice and (name == exe or name == exe[:15] or cmd.endswith("\\" + exe) or f"\\{exe} " in cmd + " "
+                             or cmd.endswith("/" + exe)):
+                    return "ext:" + exe, nice
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def running_game():
-    """(appid, navn) for Steam-spillet som kjører, eller None."""
+    """(appid, navn) for spillet som kjører (Steam, Battle.net m.fl.), eller None."""
     if __import__("sys").platform == "win32":                   # Steam skriver RunningAppID i registeret
         try:
             import winreg
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as k:
                 aid = str(winreg.QueryValueEx(k, "RunningAppID")[0])
-            return (aid, _name(aid)) if aid not in IGNORE else None
+            if aid not in IGNORE and aid != "0":
+                return aid, _name(aid)
         except OSError:
-            return None
+            pass
+        return _other_game()
     for p in glob.glob("/proc/[0-9]*/cmdline"):
         try:
             with open(p, "rb") as f:
@@ -54,7 +80,7 @@ def running_game():
         m = re.search(r"AppId=(\d+)", cmd)
         if m and m.group(1) not in IGNORE:
             return m.group(1), _name(m.group(1))
-    return None
+    return _other_game()
 
 
 _NAMES = {}

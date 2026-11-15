@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.12.1", "«Bare mens et spill kjører» virker", [
+        ("Rettet", [
+            "Klipp: «Bare mens et spill kjører» stoppet ikke opptaket, så F8 virket uten spill. Nå stopper opptaket "
+            "når ingen spill kjører (60 s etter at spillet er avsluttet), og F8 sier fra",
+            "Spill utenfor Steam gjenkjennes: World of Warcraft, Diablo, Warcraft III, Overwatch, Hearthstone m.fl.",
+            "Flere opptak samtidig (fra en eldre utgave) ryddes bort automatisk",
+        ]),
+    ]),
     ("0.12.0", "Klipp: galleri, redigering og automatikk", [
         ("Nytt", [
             "Slett, favoritt (★) og miniatyrbilder for klipp – i Spill-fanen på PC-en og i appen",

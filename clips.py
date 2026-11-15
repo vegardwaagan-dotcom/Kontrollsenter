@@ -169,17 +169,16 @@ class Recorder:
         if self.running() and getattr(self, "length_now", want_len) != want_len and self.proc:
             self.stop()
         self.want_len = want_len
-        want = c["enabled"] and (bool(game) or not c["only_games"]) and not idle
+        if game:
+            self._last_game = time.time()
+        recent = time.time() - getattr(self, "_last_game", 0) < 60      # rekk å lagre slutten av spillet
+        want = c["enabled"] and (bool(game) or recent or not c["only_games"]) and not idle
         if want and not self.running():
             self.start(c)
         elif not want and self.running():
-            # vent litt etter at spillet er avsluttet, så du rekker å lagre slutten
-            if not game and time.time() - getattr(self, "_game_gone", time.time()) > 60:
-                self.stop()
-            elif not c["enabled"]:
-                self.stop()
-        if game:
-            self._game_gone = time.time()
+            self.stop()
+        elif want and len(self._gsr_pids()) > 1:
+            self.dedupe()
 
     def start(self, c=None):
         c = c or load_cfg()
@@ -221,19 +220,28 @@ class Recorder:
             self.error = (err.strip().splitlines() or [f"stoppet ({code})"])[-1][:200]
 
     def stop(self):
+        """Stopp opptaket i bakgrunnen – alle opptak som skriver til klippmappen (de er Kontrollsenters)."""
+        for pid in self._gsr_pids():
+            try:
+                os.kill(pid, signal.SIGINT)
+            except OSError:
+                pass
         if self.proc and self.proc.poll() is None:
-            for pid in self._gsr_pids():                  # bare vårt eget opptak (samme sesjon), ikke andres
-                try:
-                    if os.getsid(pid) == self.proc.pid:
-                        os.kill(pid, signal.SIGINT)        # SIGINT: lagrer og avslutter pent
-                except OSError:
-                    pass
             try:
                 self.proc.terminate()
                 self.proc.wait(5)
             except (OSError, subprocess.SubprocessError):
                 pass
         self.proc = None
+
+    def dedupe(self):
+        """Flere opptak samtidig (f.eks. etter en eldre utgave): behold det nyeste."""
+        pids = sorted(self._gsr_pids())
+        for pid in pids[:-1]:
+            try:
+                os.kill(pid, signal.SIGINT)
+            except OSError:
+                pass
 
     @staticmethod
     def _gsr_pids():
@@ -245,8 +253,9 @@ class Recorder:
                     if f.read().strip() != "gpu-screen-reco":
                         continue
                 with open(d + "/cmdline", "rb") as f:
-                    if b"-r\x00" in f.read():
-                        out.append(int(os.path.basename(d)))
+                    cmd = f.read()
+                if b"-r\x00" in cmd and b"-o\x00" + clip_dir().encode() + b"\x00" in cmd:
+                    out.append(int(os.path.basename(d)))
             except OSError:
                 continue
         return out
@@ -263,6 +272,9 @@ class Recorder:
         if IS_WIN:
             return self._save_windows()
         if not self.running():
+            c = load_cfg()
+            if c["enabled"] and c["only_games"]:
+                return False, "Ingen spill kjører – opptaket går bare mens et spill kjører"
             return False, "Opptaket i bakgrunnen er ikke på"
         before = {c["name"] for c in clips(400)}
         pids = self._gsr_pids()
