@@ -30,6 +30,43 @@ const famGrid = h(`<div class="grid" id="fam-grid">
 </div>`);
 $("#spill").insertBefore(famGrid, $("#spill .grid"));
 
+// ---------- spill på telefonen (Sunshine + Moonlight) og RustDesk ----------
+const streamCard = h(`<div class="card accent" id="c-stream"><h2>Spill på telefonen</h2>
+  <p class="dim small">Se og spill det som skjer på PC-en her på telefonen – også spillet som kjører nå. Sunshine på PC-en sender bildet, Moonlight-appen viser det.</p>
+  <div class="row between"><b id="st-state">Sjekker …</b><button id="st-start" class="soft">Start Sunshine</button></div>
+  <div class="row wrap"><button id="st-moon" class="primary">▶ Åpne Moonlight</button></div>
+  <details><summary>Første gang: par telefonen</summary>
+    <ol class="steps"><li>Åpne Moonlight. PC-en dukker opp av seg selv hjemme – borte: legg til Tailscale-adressen under.</li>
+      <li>Trykk på PC-en. Moonlight viser en kode med 4 sifre.</li><li>Skriv koden her og trykk «Par».</li><li>Velg «Desktop» for hele skjermen.</li></ol>
+    <div id="st-addr" class="dim small sel"></div>
+    <div class="row"><input id="st-pin" inputmode="numeric" maxlength="4" placeholder="PIN fra Moonlight"><button id="st-pair" class="primary">Par</button></div>
+    <p class="dim small" id="st-login"></p></details></div>`);
+$("#spill").insertBefore(streamCard, $("#spill").firstChild);
+const rustCard = h(`<div class="card" id="c-rust"><h2>RustDesk – fjernhjelp</h2>
+  <p class="dim small">Styr PC-en med mus og tastatur fra telefonen – eller la noen hjelpe deg. Bruk ID-en og passordet som vises i RustDesk på PC-en.</p>
+  <div class="row between"><div><div class="dim small">ID</div><b id="rd-id" class="num sel">–</b></div><button id="rd-copy" class="soft">Kopier</button></div>
+  <div class="row wrap"><button id="rd-open" class="primary">Åpne RustDesk</button><button id="rd-pc" class="soft full-only">Start RustDesk på PC-en</button></div></div>`);
+$("#tool-grid").prepend(rustCard);
+async function loadStream() {
+  try {
+    const s = await X("stream");
+    $("#st-state").textContent = !s.installed ? "Sunshine er ikke installert på PC-en" : s.running ? "● Sunshine kjører – klar" : "○ Sunshine er av";
+    $("#st-state").className = s.running ? "ok" : "";
+    $("#st-start").hidden = !s.installed || s.running;
+    $("#st-addr").innerHTML = (s.addresses || []).map((a) => `${esc(a.kind)}: <b>${esc(a.ip)}</b>`).join("<br>");
+    $("#st-login").textContent = s.has_login ? "" : "Paring herfra krever at innloggingen til Sunshine er lagt inn på PC-en (Strømming → Innlogging).";
+    const rd = s.rustdesk || {};
+    $("#rd-id").textContent = rd.id || (rd.installed ? "–" : "ikke installert på PC-en");
+  } catch (e) { $("#st-state").textContent = e.message; }
+}
+const MOON = "com.limelight", RUST = "com.carriez.flutter_hbb";
+$("#st-moon").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(MOON)) toast("Installer Moonlight fra Google Play"); } else location.href = "https://moonlight-stream.org"; };
+$("#rd-open").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(RUST)) toast("Installer RustDesk fra Google Play"); } else location.href = "https://rustdesk.com"; };
+$("#st-start").onclick = async () => { await act({ a: "stream", do: "start" }); setTimeout(loadStream, 22000); };
+$("#st-pair").onclick = async () => { const p = $("#st-pin").value.trim(); if (p.length !== 4) return toast("Koden har 4 sifre"); $("#st-pin").value = ""; await act({ a: "streampin", pin: p }); };
+$("#rd-pc").onclick = () => act({ a: "rustdesk" });
+$("#rd-copy").onclick = () => { try { navigator.clipboard.writeText($("#rd-id").textContent); toast("Kopiert"); } catch (e) {} };
+
 const batCard = h(`<div class="card" id="c-bat"><h2>Batterier</h2><div id="bats"></div>
   <div id="bat-hint" class="row" hidden><span class="dim small">Hodesett vises når HeadsetControl er installert på PC-en.</span><button id="bat-inst" class="soft full-only">Installer</button></div></div>`);
 $("#oversikt .grid").prepend(batCard);
@@ -325,8 +362,8 @@ if (navigator.getBattery) navigator.getBattery().then((b) => { const f = () => (
 const famSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   famSetTab(t);
-  if (t === "spill") { loadFamily(); loadGameExtras(); }
-  if (t === "mer") { loadLan(); loadStartup(); loadHue(); }
+  if (t === "spill") { loadFamily(); loadGameExtras(); loadStream(); }
+  if (t === "mer") { loadLan(); loadStartup(); loadHue(); loadStream(); }
   if (t === "system") { loadBackups(); renderWidgets(); loadFamily(); }
   if (t !== "mer" && liveT) { clearInterval(liveT); liveT = null; $("#live-on").checked = false; }
   applyWidgets();

@@ -332,6 +332,9 @@ class PowerCard(Gtk.Box):
         self.status.add_css_class("dim-label")
         head.append(self.status)
         inner.append(head)
+        _d = Gtk.Label(label='Hvor mye kraft prosessoren og skjermkortet får. Max Ytelse til spill, Balansert til det meste, Strømsparing når PC-en bare står på.', xalign=0, wrap=True)
+        _d.add_css_class("ks-sub")
+        inner.append(_d)
 
         row = Gtk.Box(homogeneous=True)
         row.add_css_class("linked")
@@ -739,6 +742,9 @@ class FanCard(Gtk.Box):
         self.status.add_css_class("dim-label")
         head.append(self.status)
         inner.append(head)
+        _d = Gtk.Label(label='Velg en ferdig innstilling for alle viftene, lag en kurve etter temperatur, eller styr hver vifte for seg. «Auto» lar hovedkortet bestemme.', xalign=0, wrap=True)
+        _d.add_css_class("ks-sub")
+        inner.append(_d)
 
         presets = Gtk.Box(spacing=6)
         for label, val in PRESETS:

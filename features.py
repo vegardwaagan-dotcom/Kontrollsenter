@@ -822,6 +822,14 @@ def tick(notify, win=None):
             auto_update_tick()
         if every("shader", 20):
             shader_tick()
+        if every("stream", 60):
+            def _wd():
+                try:
+                    import streaming
+                    streaming.watchdog()
+                except Exception:  # noqa: BLE001
+                    pass
+            threading.Thread(target=_wd, daemon=True).start()
         if every("mail", 60):
             threading.Thread(target=mailbox_tick, args=(notify,), daemon=True).start()
         if every("lan", 600):

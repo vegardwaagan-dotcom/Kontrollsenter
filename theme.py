@@ -7,6 +7,7 @@ med seksjoner og roligere typografi.
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, Gtk  # noqa: E402
 
 PAGE_WIDTH = 1120          # alle sider har samme bredde på store skjermer
@@ -149,6 +150,24 @@ popover > contents { border-radius: 14px; }
 /* tynn rullefelt */
 scrollbar slider { min-width: 6px; min-height: 6px; border-radius: 99px; }
 
+/* ---------- skrift: luft, faste størrelser og rolige forklaringer ---------- */
+label { line-height: 1.28; }
+.caption { font-size: 0.86em; line-height: 1.4; }
+box > label.caption:not(:first-child), box > label.dim-label:not(:first-child) { margin-top: 2px; }
+.card .heading { margin-bottom: 2px; }
+.title-4 { font-size: 1.16em; font-weight: 750; letter-spacing: -0.01em; }
+.ks-desc { opacity: 0.72; line-height: 1.5; }
+.ks-sub { opacity: 0.62; font-size: 0.9em; line-height: 1.4; }
+.ks-mono { font-family: monospace; opacity: 0.8; }
+.ks-step {
+  min-width: 24px; min-height: 24px; border-radius: 99px; font-weight: 800; font-size: 0.82em; color: white;
+  background-image: linear-gradient(135deg, #5b8cff, #8a5cff);
+}
+.ks-ok { color: #2ec27e; }
+.ks-off { color: alpha(currentColor, 0.35); }
+.ks-pagehelp { opacity: 0.68; line-height: 1.5; font-size: 0.95em; }
+expander title > label { font-weight: 600; }
+
 levelbar.disk-ok block.filled { background-color: var(--accent-bg-color); }
 levelbar.disk-warn block.filled { background-color: var(--warning-bg-color); }
 levelbar.disk-crit block.filled { background-color: var(--error-bg-color); }
@@ -176,11 +195,32 @@ def load():
 SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
     ("Enheter", ["rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
-    ("Spill", ["spill"]),
+    ("Spill", ["spill", "stromming"]),
     ("System", ["nettverk", "automatikk", "programmer", "hjemme", "verktoy"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
 SECTION_OF = {n: s for s, names in SECTIONS for n in names}
+
+
+# Kort forklaring øverst på hver side (og som verktøytips i sidemenyen)
+PAGE_HELP = {
+    "oversikt": "Temperaturer, strømforbruk, vifter og strømmodus – alt det viktigste på ett sted.",
+    "historikk": "Temperatur, belastning og strømforbruk over tid. Finn ut når PC-en ble varm eller brukte mye strøm.",
+    "rgb": "Farger og effekter på alle lysene – hovedkort, vifter, CPU-kjøler, RAM, skjermkort, mus og tastatur.",
+    "logitech": "Batteri, DPI, rapporteringsfrekvens, profiler og knapper på Logitech-musen og -tastaturet.",
+    "cpuskjerm": "Hva skjermen på CPU-kjøleren viser: temperaturer, bilder, video eller et tema.",
+    "lyd": "Velg høyttalere og mikrofon, juster volum per program og lag lydprofiler.",
+    "bluetooth": "Koble til og fra hodetelefoner, kontrollere og andre Bluetooth-enheter.",
+    "wifi": "Trådløse nett i nærheten, signalstyrke og tilkobling.",
+    "msi": "Ytelsesmodus, viftene, Cooler Boost og ladegrense på MSI-laptopen.",
+    "spill": "Spillstatistikk, klipp av de beste øyeblikkene, spilløkter og oppsett av spill.",
+    "stromming": "Spill og se PC-skjermen på telefonen (Sunshine + Moonlight), og fjernhjelp med RustDesk.",
+    "nettverk": "Hastighet, ping, hvilke programmer som bruker nettet, og enhetene på hjemmenettet.",
+    "automatikk": "Ting som skjer av seg selv: spillmodus når et spill starter, nattmodus, profiler per spill.",
+    "programmer": "Installer, oppdater og velg hvilke programmer som starter med PC-en.",
+    "hjemme": "De andre PC-ene i huset, mobilappen, familie-chat og fjernstyring.",
+    "verktoy": "Rydding, oppdateringer, varsler, feilsøking og innstillinger for Kontrollsenter.",
+}
 
 
 def greeting(hour):

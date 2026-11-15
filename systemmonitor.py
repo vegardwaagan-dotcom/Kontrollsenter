@@ -431,6 +431,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),
                 ("nettverk", "Nettverk", "ks-network-symbolic", "netpage", "NetworkPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
+                ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
                 ("automatikk", "Automatikk", "ks-auto-symbolic", "automation", "AutomationPage"),
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
                 ("verktoy", "Verktøy", "ks-tools-symbolic", "tools", "ToolsPage")):
@@ -451,6 +452,12 @@ class MonitorWindow(Adw.ApplicationWindow):
         stack.connect("notify::visible-child-name", self._on_tab)
         stack.connect("notify::visible-child-name", self._sync_sidebar)
         self.toast_overlay = Adw.ToastOverlay(child=stack)
+        self.page_help = Gtk.Label(xalign=0, wrap=True)
+        self.page_help.add_css_class("ks-pagehelp")
+        for side, v in (("start", 18), ("end", 18), ("top", 4), ("bottom", 8)):
+            getattr(self.page_help, f"set_margin_{side}")(v)
+        self.page_help_clamp = Adw.Clamp(maximum_size=MAX_WIDTH, child=self.page_help, visible=False)
+        toolbar.add_top_bar(self.page_help_clamp)
         toolbar.set_content(self.toast_overlay)
         self.content_page = Adw.NavigationPage(title=i18n.tr("Oversikt"), child=toolbar)
 
@@ -485,6 +492,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             self._badges[pg.get_name()] = badge
             row.set_child(box)
             row.page_name = pg.get_name()
+            if ks_theme.PAGE_HELP.get(pg.get_name()):
+                row.set_tooltip_text(i18n.tr(ks_theme.PAGE_HELP[pg.get_name()]))
             self.sidebar.append(row)
             self._rows[pg.get_name()] = row
         self.sidebar.connect("row-activated", self._on_sidebar)
@@ -505,7 +514,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         side_tv.add_css_class("ks-side")
         side_header = Adw.HeaderBar(show_title=True, show_start_title_buttons=False)
         brand = Gtk.Box(spacing=10, halign=Gtk.Align.START)
-        logo = Gtk.Image(icon_name="ks-overview-symbolic", pixel_size=16)
+        logo = Gtk.Image(icon_name="ks-overview-symbolic", pixel_size=16, valign=Gtk.Align.CENTER,
+                         halign=Gtk.Align.CENTER)
         logo.add_css_class("ks-brand-logo")
         brand.append(logo)
         bcol = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER)
@@ -882,6 +892,11 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.content_page.set_title(pg.get_title())
             if hasattr(self, "page_title"):
                 self.page_title.set_title(pg.get_title())
+            if hasattr(self, "page_help"):
+                import theme as ks_theme
+                txt = ks_theme.PAGE_HELP.get(name, "") if name != "oversikt" else ""
+                self.page_help.set_label(i18n.tr(txt))
+                self.page_help_clamp.set_visible(bool(txt))
 
     def toast(self, text):
         self.toast_overlay.add_toast(Adw.Toast(title=i18n.tr(text), timeout=3))

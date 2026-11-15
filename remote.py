@@ -637,6 +637,23 @@ def _feature_action(win, kind, a):
     if kind == "lanname":
         F.name_device(str(a.get("mac", "")).lower(), a.get("name", ""))
         return True, "Navnet er lagret"
+    if kind == "stream":
+        import streaming as ST
+        do = a.get("do")
+        fn = {"start": ST.sunshine_start, "stop": ST.sunshine_stop, "restart": ST.sunshine_restart}.get(do)
+        if not fn:
+            raise ValueError("ukjent kommando")
+        threading.Thread(target=fn, daemon=True).start()
+        return True, {"start": "Sunshine starter (tar ca. 20 sekunder)", "stop": "Sunshine stoppes",
+                      "restart": "Sunshine starter på nytt"}[do]
+    if kind == "streampin":
+        import streaming as ST
+        ST.pair(a.get("pin", ""), a.get("_dev") or "Telefon")
+        return True, "Paret ✓ – Moonlight er klar"
+    if kind == "rustdesk":
+        import streaming as ST
+        ST.rustdesk_open()
+        return True, "RustDesk er startet på PC-en"
     if kind == "headsetinstall":
         import batteries
         return batteries.install_headsetcontrol()
@@ -1035,6 +1052,12 @@ def _handler(remote):
                       "wrapped": lambda: F.wrapped(arg("month")), "backups": lambda: {"backups": F.list_backups()},
                       "selftest": lambda: {"items": F.selftest(remote.win)},
                       "features": lambda: {k: v for k, v in F.cfg().items() if not k.startswith("_") and k != "hue"}}
+            if what == "stream":
+                import streaming as ST
+                st = ST.sunshine_state()
+                st["clients"] = ST.clients() if st["running"] and st["has_login"] else []
+                st["rustdesk"] = ST.rustdesk_state()
+                return self._send(200, st)
             if what in simple:
                 return self._send(200, simple[what]())
             return self._send(404, {"error": "finnes ikke"})

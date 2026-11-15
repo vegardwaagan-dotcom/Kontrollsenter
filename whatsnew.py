@@ -13,6 +13,20 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.15.0", "Strømming til telefonen, RustDesk og ryddigere skrift", [
+        ("Nytt", [
+            "Ny fane «Strømming»: spill og se PC-skjermen på telefonen med Sunshine og Moonlight – start/stopp, "
+            "start med PC-en, hold i gang (starter igjen hvis den krasjer), paring med PIN og innstillinger",
+            "I appen: «Spill på telefonen» åpner Moonlight direkte, og du kan pare telefonen uten å gå til PC-en",
+            "RustDesk for fjernhjelp: ID-en vises på PC-en og i appen, og RustDesk kan åpnes og startes herfra",
+            "Moonlight på PC-en: spill fra en annen PC i huset",
+            "Hver side har en kort forklaring øverst, og kortene på Oversikt forklarer hva de gjør",
+        ]),
+        ("Rettet", [
+            "Ryddigere skrift: mer luft mellom linjene, fast avstand mellom tittel og forklaring og like størrelser overalt",
+            "Sunshine sto stoppet etter et krasj – Kontrollsenter starter den nå igjen av seg selv",
+        ]),
+    ]),
     ("0.14.0", "Nytt design", [
         ("Nytt", [
             "Helt nytt utseende på Linux og Windows: blå–lilla merkevare som i mobilappen, mykere kort med dybde, "

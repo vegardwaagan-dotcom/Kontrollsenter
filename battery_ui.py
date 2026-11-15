@@ -22,6 +22,10 @@ class BatteryCard(Gtk.Box):
         t = Gtk.Label(label=i18n.tr(title), xalign=0)
         t.add_css_class("heading")
         i.append(t)
+        d = Gtk.Label(label=i18n.tr("Batteriet i trådløs mus, tastatur og hodesett. Du får varsel når det blir lavt."),
+                      xalign=0, wrap=True)
+        d.add_css_class("ks-sub")
+        i.append(d)
         self.rows = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         i.append(self.rows)
         self.hint = Gtk.Box(spacing=8)

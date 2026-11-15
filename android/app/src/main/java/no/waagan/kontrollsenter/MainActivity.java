@@ -395,6 +395,32 @@ public class MainActivity extends Activity {
             if (dm != null) dm.enqueue(r);
         }
 
+        /** Åpne en annen app (Moonlight, RustDesk). Mangler den: åpne Google Play. */
+        @JavascriptInterface
+        public boolean openApp(String pkg) {
+            if (pkg == null || !pkg.matches("[a-zA-Z0-9_.]{3,100}")) return false;
+            Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+            try {
+                if (i != null) {
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                    return true;
+                }
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception e) {
+                startActivity(new Intent(Intent.ACTION_VIEW,
+                        Uri.parse("https://play.google.com/store/apps/details?id=" + pkg))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            }
+            return false;
+        }
+
+        @JavascriptInterface
+        public boolean hasApp(String pkg) {
+            return pkg != null && getPackageManager().getLaunchIntentForPackage(pkg) != null;
+        }
+
         @JavascriptInterface
         public void keepAwake(boolean on) {
             runOnUiThread(() -> {
