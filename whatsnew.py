@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.11.1", "Velg hurtigtast for klipp", [
+        ("Nytt", [
+            "Velg hurtigtasten selv – en tast eller kombinasjon (F8, F9, Alt+F10, Ctrl+Shift+S …) – og «Test tasten»",
+            "Hurtigtasten kan velges og testes fra appen på mobilen også",
+        ]),
+        ("Rettet", [
+            "F8 virket ikke på KDE: hurtigtasten registreres nå direkte hos KDE (uten spørsmål), og virker i spill",
+            "Opptaket i bakgrunnen kunne starte flere ganger samtidig",
+        ]),
+    ]),
     ("0.11.0", "Klipp – opptak i bakgrunnen", [
         ("Nytt", [
             "Klipp (som Medal/ShadowPlay): spillet tas opp i bakgrunnen, og F8 lagrer de siste sekundene som video",

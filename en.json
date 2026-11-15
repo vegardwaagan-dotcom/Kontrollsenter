@@ -1706,5 +1706,17 @@
  "Klipp (som Medal/ShadowPlay): spillet tas opp i bakgrunnen, og F8 lagrer de siste sekundene som video": "Clips (like Medal/ShadowPlay): the game is recorded in the background, and F8 saves the last seconds as video",
  "Velg lengden selv (15 s – 5 min) og om opptaket bare skal gå mens et spill kjører": "Choose the length (15 s – 5 min) and whether recording only runs while a game is running",
  "Linux: GPU Screen Recorder (skjermkortets videokoder, med lyd) – installeres med én knapp. Windows: Xbox Game Bar sitt «Ta opp det som skjedde»": "Linux: GPU Screen Recorder (the graphics card's video encoder, with sound) – installed with one button. Windows: Xbox Game Bar's “Record what happened”",
- "Android: «Lagre klipp» på Hjem, hurtigflis i nedtrekksmenyen, og se eller slett klippene i appen": "Android: “Save clip” on Home, a quick settings tile, and watch or delete clips in the app"
+ "Android: «Lagre klipp» på Hjem, hurtigflis i nedtrekksmenyen, og se eller slett klippene i appen": "Android: “Save clip” on Home, a quick settings tile, and watch or delete clips in the app",
+ "Velg hurtigtast for klipp": "Choose the clip hotkey",
+ "Hurtigtast": "Hotkey",
+ "Test tasten": "Test the key",
+ "Velg hurtigtast": "Choose hotkey",
+ "Trykk hurtigtasten nå": "Press the hotkey now",
+ "Tasten virker! Den lagrer klipp når opptaket er på.": "The key works! It saves clips when recording is on.",
+ "Fikk ikke tastetrykket. Prøv en annen tast (noen taster brukes av skrivebordet eller spillet).": "Did not get the key press. Try another key (some keys are used by the desktop or the game).",
+ "Hurtigtasten er ikke registrert ennå (godta snarveien hvis skrivebordet spør)": "The hotkey is not registered yet (accept the shortcut if the desktop asks)",
+ "Velg hurtigtasten selv – en tast eller kombinasjon (F8, F9, Alt+F10, Ctrl+Shift+S …) – og «Test tasten»": "Choose the hotkey yourself – a key or combination (F8, F9, Alt+F10, Ctrl+Shift+S …) – and “Test the key”",
+ "Hurtigtasten kan velges og testes fra appen på mobilen også": "The hotkey can be chosen and tested from the phone app too",
+ "F8 virket ikke på KDE: hurtigtasten registreres nå direkte hos KDE (uten spørsmål), og virker i spill": "F8 did not work on KDE: the hotkey is now registered directly with KDE (no prompt), and works in games",
+ "Opptaket i bakgrunnen kunne starte flere ganger samtidig": "Background recording could start several times at once"
 }

@@ -61,6 +61,18 @@ class ClipsCard(Gtk.Box):
             og.connect("notify::active", lambda s, _p: clips.set_cfg(only_games=s.get_active()))
             r3.append(og)
             i.append(r3)
+        hk = Gtk.Box(spacing=8)
+        hk.append(Gtk.Label(label=i18n.tr("Hurtigtast"), xalign=0, hexpand=True))
+        self.key_lab = Gtk.Label(label=cfg.get("hotkey") or "F8")
+        self.key_lab.add_css_class("heading")
+        hk.append(self.key_lab)
+        kb = Gtk.Button(label=i18n.tr("Velg tast"))
+        kb.connect("clicked", self._choose_key)
+        hk.append(kb)
+        self.test_btn = Gtk.Button(label=i18n.tr("Test tasten"))
+        self.test_btn.connect("clicked", self._test_key)
+        hk.append(self.test_btn)
+        i.append(hk)
         self.status = Gtk.Label(xalign=0, wrap=True)
         i.append(self.status)
         btns = Gtk.Box(spacing=8)
@@ -105,8 +117,11 @@ class ClipsCard(Gtk.Box):
             txt = i18n.tr("Venter på et spill") if st.get("only_games") else i18n.tr("Starter …")
         if st.get("error"):
             txt += " · " + st["error"]
-        if st.get("enabled") and not st.get("hotkey_ok"):
-            txt += " · " + i18n.tr("F8 er ikke registrert ennå (godta snarveien hvis skrivebordet spør)")
+        if st.get("hotkey_error"):
+            txt += " · " + st["hotkey_error"]
+        elif st.get("enabled") and not st.get("hotkey_ok"):
+            txt += " · " + i18n.tr("Hurtigtasten er ikke registrert ennå (godta snarveien hvis skrivebordet spør)")
+        self.key_lab.set_label(st.get("hotkey") or "F8")
         self.status.set_label(txt)
         while (ch := self.list.get_first_child()):
             self.list.remove(ch)
@@ -123,6 +138,82 @@ class ClipsCard(Gtk.Box):
             self.list.append(r)
         self.list.set_visible(bool(items))
         return False
+
+    # ---- velg tast: trykk kombinasjonen du vil bruke ----
+    NAMES = {"Page_Up": "PageUp", "Page_Down": "PageDown", "Scroll_Lock": "ScrollLock", "space": "Space",
+             "Print": "Print", "Insert": "Insert", "Delete": "Delete", "Home": "Home", "End": "End", "Pause": "Pause"}
+
+    def _choose_key(self, *_):
+        from gi.repository import Adw, Gdk
+        dlg = Adw.Dialog(title=i18n.tr("Velg hurtigtast"), content_width=420, content_height=220)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        for side in ("top", "bottom", "start", "end"):
+            getattr(box, f"set_margin_{side}")(24)
+        lab = Gtk.Label(label=i18n.tr("Trykk tasten eller kombinasjonen du vil bruke …\n(f.eks. F8, F9, Alt+F10 eller Ctrl+Shift+S)"),
+                        justify=Gtk.Justification.CENTER, wrap=True)
+        lab.add_css_class("title-4")
+        box.append(lab)
+        msg = Gtk.Label(wrap=True)
+        msg.add_css_class("dim-label")
+        box.append(msg)
+        tv = Adw.ToolbarView()
+        tv.add_top_bar(Adw.HeaderBar())
+        tv.set_content(box)
+        dlg.set_child(tv)
+        ctl = Gtk.EventControllerKey()
+
+        def key(_c, keyval, _code, state):
+            name = Gdk.keyval_name(keyval) or ""
+            if name in ("Control_L", "Control_R", "Shift_L", "Shift_R", "Alt_L", "Alt_R", "Super_L", "Super_R",
+                        "Meta_L", "Meta_R", "ISO_Level3_Shift"):
+                return False
+            if name == "Escape":
+                dlg.close()
+                return True
+            name = self.NAMES.get(name, name)
+            if len(name) == 1:
+                name = name.upper()
+            mods = [m for m, mask in (("Ctrl", Gdk.ModifierType.CONTROL_MASK), ("Alt", Gdk.ModifierType.ALT_MASK),
+                                      ("Shift", Gdk.ModifierType.SHIFT_MASK), ("Meta", Gdk.ModifierType.SUPER_MASK))
+                    if state & mask]
+            spec = "+".join(mods + [name])
+            try:
+                clips.set_hotkey(spec)
+            except ValueError as e:
+                msg.set_label(str(e))
+                return True
+            self.key_lab.set_label(spec)
+            dlg.close()
+            GLib.timeout_add(600, lambda: (self.refresh(), False)[1])
+            return True
+        ctl.connect("key-pressed", key)
+        dlg.add_controller(ctl)
+        dlg.present(self.get_root())
+
+    def _test_key(self, *_):
+        try:
+            clips.test_hotkey(15)
+        except Exception as e:  # noqa: BLE001
+            self.status.set_label(str(e))
+            return
+        self.test_btn.set_sensitive(False)
+        self.status.set_label(i18n.tr("Trykk hurtigtasten nå") + f" ({self.key_lab.get_label()}) …")
+        t0 = time.time()
+
+        def poll():
+            r = clips.INSTANCE
+            hk = r.hotkey if r else None
+            if hk and hk.tested and hk.tested >= t0:
+                self.status.set_label("✅ " + i18n.tr("Tasten virker! Den lagrer klipp når opptaket er på."))
+                self.test_btn.set_sensitive(True)
+                return False
+            if time.time() - t0 > 15:
+                self.status.set_label("❌ " + i18n.tr("Fikk ikke tastetrykket. Prøv en annen tast (noen taster brukes av "
+                                                       "skrivebordet eller spillet)."))
+                self.test_btn.set_sensitive(True)
+                return False
+            return True
+        GLib.timeout_add(250, poll)
 
     def _on_switch(self, sw, _p):
         try:

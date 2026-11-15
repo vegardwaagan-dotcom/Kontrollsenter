@@ -341,6 +341,13 @@ async function loadClips() {
     $("#clip-len").innerHTML = (c.lengths || []).map((s) => `<button data-s="${s}" class="${s === c.length ? "on" : ""}">${lenName(s)}</button>`).join("");
     $$("#clip-len button").forEach((b) => (b.onclick = () => act({ a: "clipcfg", length: +b.dataset.s }, true).then(loadClips)));
     $("#q-clip").textContent = c.os === "windows" ? "Game Bar" : "Siste " + lenName(c.length);
+    const KEYS = ["F8", "F9", "F10", "F12", "Alt+F10", "Ctrl+Shift+S", "Print"];
+    const cur = c.hotkey || "F8";
+    $("#clip-keys").innerHTML = [...new Set([cur, ...KEYS])].map((k) => `<button class="${k === cur ? "primary" : ""}" data-key="${esc(k)}">${esc(k)}</button>`).join("");
+    $$("[data-key]").forEach((b) => (b.onclick = () => act({ a: "clipkey", key: b.dataset.key }).then(() => setTimeout(loadClips, 700))));
+    $("#clip-key-status").textContent = c.hotkey_testing ? "Trykk tasten på PC-en nå …"
+      : c.hotkey_tested && Date.now() / 1000 - c.hotkey_tested < 60 ? "✅ Tasten virker!"
+      : c.hotkey_error ? "⚠️ " + c.hotkey_error : c.enabled ? (c.hotkey_ok ? "Registrert" : "Ikke registrert ennå") : "";
     $("#clip-status").textContent = !c.enabled ? "av" : c.os === "linux" && !c.installed ? "mangler opptaksprogram (installer på PC-en)"
       : c.running ? "🔴 tar opp" : c.only_games ? "venter på spill" : "starter …";
     $("#clip-list").innerHTML = c.clips.slice(0, 12).map((x) => `<div class="clip"><div><b>${esc(x.name)}</b><span class="dim small">${fmtB(x.size)} · ${hhmm(x.t)}</span></div>
@@ -358,6 +365,10 @@ async function loadClips() {
 }
 $("#clip-on").onchange = () => act({ a: "clipcfg", enabled: $("#clip-on").checked }, true).then(loadClips);
 $("#clip-og").onchange = () => act({ a: "clipcfg", only_games: $("#clip-og").checked }, true).then(loadClips);
+$("#clip-test").onclick = async () => {
+  await act({ a: "cliptest" });
+  let n = 0; const t = setInterval(async () => { n++; await loadClips(); if (n > 16 || /virker/.test($("#clip-key-status").textContent)) clearInterval(t); }, 1000);
+};
 $("#clip-save").onclick = async () => { await act({ a: "clip" }); setTimeout(loadClips, 5000); };
 
 // ---------- kobling til fanene ----------

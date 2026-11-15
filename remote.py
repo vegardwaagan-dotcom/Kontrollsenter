@@ -510,6 +510,15 @@ def do_action(win, a):
         import clips
         clips.set_cfg(a.get("enabled"), a.get("length"), a.get("only_games"))
         return True, "Lagret"
+    if kind == "clipkey":
+        import clips
+        spec = str(a.get("key", ""))
+        _call_main(lambda: clips.set_hotkey(spec))
+        return True, f"Hurtigtasten er {spec}"
+    if kind == "cliptest":
+        import clips
+        _call_main(lambda: clips.test_hotkey(15))
+        return True, "Trykk hurtigtasten på PC-en nå"
     if kind == "clipdel":
         import clips
         clips.delete(str(a.get("name", "")))
