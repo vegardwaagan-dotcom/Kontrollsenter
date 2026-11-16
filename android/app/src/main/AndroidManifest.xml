@@ -50,6 +50,8 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />
         </receiver>
+        <provider android:name=".ShareProvider" android:authorities="no.waagan.kontrollsenter.share"
+            android:exported="false" android:grantUriPermissions="true" />
         <receiver android:name=".TempWidget" android:exported="false" android:label="Temperaturer">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

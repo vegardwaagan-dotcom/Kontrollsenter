@@ -398,6 +398,47 @@ public class MainActivity extends Activity {
             if (dm != null) dm.enqueue(r);
         }
 
+        /** Del et skjermbilde/klipp fra PC-en: hent det til telefonen og åpne Androids delemeny. */
+        @JavascriptInterface
+        public void share(String url, String name) {
+            Uri u = Uri.parse(url);
+            if (!"http".equals(u.getScheme()) || !isLocal(u.getHost())) return;
+            String safe = (name == null || name.isEmpty() ? "klipp.mp4" : name).replaceAll("[\\\\/:*?\"<>|]", "_");
+            if (safe.startsWith(".")) safe = "_" + safe;
+            String fname = safe;
+            new Thread(() -> {
+                try {
+                    java.io.File dir = ShareProvider.dir(MainActivity.this);
+                    java.io.File[] old = dir.listFiles();               // rydd bort det som ble delt før
+                    if (old != null) for (java.io.File f : old) if (System.currentTimeMillis() - f.lastModified() > 3600_000L) f.delete();
+                    java.io.File out = new java.io.File(dir, fname);
+                    HttpURLConnection c = (HttpURLConnection) new java.net.URL(url).openConnection();
+                    c.setConnectTimeout(8000);
+                    c.setReadTimeout(30000);
+                    if (c.getResponseCode() != 200) throw new IOException("PC-en svarte " + c.getResponseCode());
+                    try (InputStream in = c.getInputStream(); OutputStream o = new java.io.FileOutputStream(out)) {
+                        byte[] b = new byte[65536];
+                        int n;
+                        while ((n = in.read(b)) > 0) o.write(b, 0, n);
+                    }
+                    Uri cu = new Uri.Builder().scheme("content").authority(ShareProvider.AUTH).appendPath(fname).build();
+                    Intent send = new Intent(Intent.ACTION_SEND)
+                            .setType(ShareProvider.mime(fname))
+                            .putExtra(Intent.EXTRA_STREAM, cu)
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    send.setClipData(android.content.ClipData.newRawUri(fname, cu));
+                    Intent ch = Intent.createChooser(send, "Del " + fname).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    runOnUiThread(() -> {
+                        web.evaluateJavascript("window.ksShareReady && window.ksShareReady()", null);
+                        startActivity(ch);
+                    });
+                } catch (Exception e) {
+                    String m = "Kunne ikke dele: " + e.getMessage();
+                    runOnUiThread(() -> android.widget.Toast.makeText(MainActivity.this, m, android.widget.Toast.LENGTH_LONG).show());
+                }
+            }).start();
+        }
+
         /** Åpne en annen app (Moonlight, RustDesk). Mangler den: åpne Google Play. */
         @JavascriptInterface
         public boolean openApp(String pkg) {

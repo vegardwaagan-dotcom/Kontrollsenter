@@ -402,7 +402,7 @@ details summary { margin-top: 14px; padding: 4px 0; }
 @media (max-width: 600px) { .tiles .tile:nth-child(n+4) .sub { font-size: 10px; } }
 .row.wrap > button { flex: 1 1 0; min-width: 76px; }
 .chips button.on { background: var(--grad); color: #fff; box-shadow: 0 8px 18px -10px rgba(111,139,255,.9); }
-.statsbody.clip { max-height: 360px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.statsbody.folded { max-height: 360px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
 #stats-more { margin-top: 6px; }
 
 /* elegante velgere (picker.js) */

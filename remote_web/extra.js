@@ -386,6 +386,7 @@ const enc = encodeURIComponent;
 const fileUrl = (n, pc) => `/api/clipfile?name=${enc(n)}&k=${enc(token)}` + (pc ? `&pc=${enc(pc)}` : "");
 // reserve-bilde når PC-en ikke kan lage miniatyrbilde (f.eks. Windows uten ffmpeg)
 window.NOTHUMB = (icon) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a3570"/><stop offset="1" stop-color="#402a7a"/></linearGradient></defs><rect width="160" height="90" fill="url(#g)"/><text x="80" y="56" font-size="34" text-anchor="middle">${icon}</text></svg>`;
+const SHARE_IC = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
 const thumbUrl = (n) => `/api/clipthumb?name=${enc(n)}&k=${enc(token)}`;
 async function loadClips2() {
   try {
@@ -397,7 +398,7 @@ async function loadClips2() {
     if (f === "fav") $("#clip-filter").value = "fav";
     renderClipGrid();
     $("#clip-images").innerHTML = c.images.map((x) => `<div class="ct"><img loading="lazy" src="${thumbUrl(x.name)}" data-img="${esc(x.name)}" onerror="this.onerror=null;this.classList.add('nothumb');this.src='data:image/svg+xml,'+encodeURIComponent(NOTHUMB('🖼️'))"><div class="cb"><b>${esc(x.name)}</b></div>
-      <div class="ca"><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`).join("") || '<p class="dim small">Ingen skjermbilder ennå.</p>';
+      <div class="ca"><button data-share="${esc(x.name)}" aria-label="Del">${SHARE_IC}</button><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`).join("") || '<p class="dim small">Ingen skjermbilder ennå.</p>';
     $$("[data-img]").forEach((im) => (im.onclick = () => window.open(fileUrl(im.dataset.img))));
     wireClipButtons();
     const jobs = Object.values(c.jobs || {}).filter((j) => Date.now() / 1000 - j.t < 900);
@@ -418,7 +419,7 @@ function renderClipGrid() {
     return `<div class="ct ${picked.has(x.name) ? "picked" : ""}" data-n="${esc(x.name)}"><button class="sel-tick" data-pick="${esc(x.name)}">✓</button>
       ${tag ? `<span class="badge2">${esc(tag)}</span>` : ""}<img loading="lazy" src="${thumbUrl(x.name)}" data-play="${esc(x.name)}" onerror="this.onerror=null;this.classList.add('nothumb');this.src='data:image/svg+xml,'+encodeURIComponent(NOTHUMB('🎬'))">
       <div class="cb"><b>${esc(x.name)}</b><span class="dim">${fmtB(x.size)} · ${hhmm(x.t)}${cs.map ? ` · ${esc(cs.map)} ${cs.kills ?? ""}/${cs.deaths ?? ""}` : ""}</span></div>
-      <div class="ca"><button data-fav="${esc(x.name)}" data-on="${x.fav ? 1 : 0}">${x.fav ? "★" : "☆"}</button><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`;
+      <div class="ca"><button data-fav="${esc(x.name)}" data-on="${x.fav ? 1 : 0}">${x.fav ? "★" : "☆"}</button><button data-share="${esc(x.name)}" aria-label="Del">${SHARE_IC}</button><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`;
   }).join("") || '<p class="dim small">Ingen klipp ennå. Slå på opptak, spill litt og trykk hurtigtasten.</p>';
   wireClipButtons();
 }
@@ -427,6 +428,7 @@ function wireClipButtons() {
   $$("[data-fav]").forEach((b) => (b.onclick = () => act({ a: "clipfav", name: b.dataset.fav, on: b.dataset.on !== "1" }, true).then(loadClips2)));
   $$("[data-cdel]").forEach((b) => (b.onclick = async () => { if (await confirmDlg(`Slette ${b.dataset.cdel}?`)) { await act({ a: "clipdel", name: b.dataset.cdel }); loadClips2(); } }));
   $$("[data-dl]").forEach((b) => (b.onclick = () => download(b.dataset.dl)));
+  $$("[data-share]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); shareFile(b.dataset.share); }));
   $$("[data-pick]").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); const n = b.dataset.pick; picked.has(n) ? picked.delete(n) : picked.add(n); renderClipGrid(); }));
 }
 function playClip(name, pc) {
@@ -450,6 +452,23 @@ function download(name, pc) {
   else window.open(url);
 }
 $("#clip-dl").onclick = () => curClip && download(curClip.name, curClip.pc);
+$("#clip-share").onclick = () => curClip && shareFile(curClip.name, curClip.pc);
+// del et skjermbilde/klipp: Android-appen henter filen og åpner delemenyen; i nettleser brukes Web Share
+async function shareFile(name, pc) {
+  const url = location.origin + fileUrl(name, pc);
+  if (KS && KS.share) { toast("Henter " + name + " fra PC-en …"); KS.share(url, name); return; }
+  try {
+    if (navigator.canShare) {
+      toast("Henter " + name + " …");
+      const blob = await (await fetch(url)).blob();
+      const file = new File([blob], name, { type: blob.type || (/\.(png|jpe?g|webp)$/i.test(name) ? "image/jpeg" : "video/mp4") });
+      if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+    }
+  } catch (e) { if (e.name === "AbortError") return; }
+  if (KS && KS.download) { download(name, pc); toast("Denne versjonen av appen kan ikke dele – lastet ned i stedet. Oppdater appen for deling."); }
+  else window.open(url);
+}
+window.ksShareReady = () => {};
 $("#clip-link").onclick = async () => {
   if (!curClip) return;
   const r = await api("/api/action", { a: "clipshare", name: curClip.name, pc: curClip.pc || "" });

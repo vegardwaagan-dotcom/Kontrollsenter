@@ -202,7 +202,7 @@ async function loadGameExtras() {
     const w = await X("wrapped");
     const rows = [["Spilt", (w.hours ?? 0) + " t"], ["Økter", w.sessions ?? 0], ["Klipp", w.clips ?? 0], ["Strøm", w.kwh != null ? `${w.kwh} kWh (${w.kr} kr)` : "–"],
       ["Varmeste CPU", w.hottest ? Math.round(w.hottest) + " °C" : "–"], ...(w.top || []).map(([g, t], i) => [`#${i + 1}`, `${g} – ${t} t`])];
-    $("#wrapped").innerHTML = rows.map(([k, v]) => `<div class="row between"><span class="dim">${esc(k)}</span><span>${esc(v)}</span></div>`).join("");
+    $("#wrapped").innerHTML = rows.map(([k, v]) => `<div><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join("");
   } catch (e) {}
 }
 $("#wl-check").onclick = async () => {
@@ -417,10 +417,10 @@ $("#live-go").onclick = () => openWatch(pcName, last && last.game);
 // ---------- statistikken: foldet sammen til du vil se alt ----------
 (() => {
   const st = $("#stats"); if (!st) return;
-  st.classList.add("clip");
+  st.classList.add("folded");
   const more = h(`<button id="stats-more" class="link">Vis all statistikk</button>`);
   st.after(more);
-  more.onclick = () => { const c = st.classList.toggle("clip"); more.textContent = c ? "Vis all statistikk" : "Vis mindre"; };
+  more.onclick = () => { const c = st.classList.toggle("folded"); more.textContent = c ? "Vis all statistikk" : "Vis mindre"; };
 })();
 
 // ---------- oppdater Kontrollsenter på PC-en fra telefonen ----------
@@ -437,7 +437,7 @@ function checkWide() {
   const W = document.documentElement.clientWidth, bad = [];
   document.querySelectorAll("main *").forEach((e) => {
     const r = e.getBoundingClientRect();
-    if (r.width > 0 && r.right > W + 2 && !e.closest(".quick") && !e.closest("[hidden]") && !e.closest(".statsbody.clip"))
+    if (r.width > 0 && r.right > W + 2 && !e.closest(".quick") && !e.closest("[hidden]") && !e.closest(".statsbody.folded"))
       bad.push(`${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}.${String(e.className || "").split(" ")[0]} (${Math.round(r.right)}px) «${(e.textContent || "").trim().slice(0, 60)}»`);
   });
   if (bad.length && !wideSent[tab]) {

@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.22.0", "Del skjermbilder og klipp", [
+        ("Nytt", [
+            "Appen: Del-knapp på skjermbilder og klipp – også klipp fra de andre PC-ene. Bildet eller klippet hentes "
+            "fra PC-en og åpnes i Androids delemeny (Messenger, Snapchat, Disk …). Krever den nye Android-appen",
+        ]),
+        ("Rettet", [
+            "Statistikk på Spill-fanen var kuttet og rotete til du trykket «Vis all statistikk»",
+            "«Måneden i tall» viser tekst til venstre og tall til høyre igjen",
+        ]),
+    ]),
     ("0.21.1", "Jevn dra-bevegelse på fanelinjen", [
         ("Rettet", [
             "Når du drar fingeren langs fanelinjen i appen, hopper ikke glasslinsen lenger tilbake til fanen du startet på",
