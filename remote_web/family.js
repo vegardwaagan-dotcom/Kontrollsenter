@@ -431,6 +431,21 @@ $("#pc-upd").onclick = async () => {
 };
 fetch("/api/hello").then((r) => r.json()).then((h) => ($("#pc-ver").textContent = h.version || "–")).catch(() => {});
 
+// ---------- vakt: noe er bredere enn skjermen → si fra til PC-en (feilloggen) så det kan rettes ----------
+let wideSent = {};
+function checkWide() {
+  const W = document.documentElement.clientWidth, bad = [];
+  document.querySelectorAll("main *").forEach((e) => {
+    const r = e.getBoundingClientRect();
+    if (r.width > 0 && r.right > W + 2 && !e.closest(".quick") && !e.closest("[hidden]") && !e.closest(".statsbody.clip"))
+      bad.push(`${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}.${String(e.className || "").split(" ")[0]} (${Math.round(r.right)}px) «${(e.textContent || "").trim().slice(0, 60)}»`);
+  });
+  if (bad.length && !wideSent[tab]) {
+    wideSent[tab] = 1;
+    api("/api/action", { a: "uilog", tab, width: W, items: bad.slice(0, 8) }).catch(() => {});
+  }
+}
+
 // ---------- kobling til fanene ----------
 const famSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
@@ -439,6 +454,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (t === "mer") { loadLan(); loadStartup(); loadHue(); loadStream(); }
   if (t === "system") { loadBackups(); renderWidgets(); loadFamily(); }
   applyWidgets();
+  setTimeout(checkWide, 2500);
 };
 $$("#tabs button").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
 setInterval(() => tab === "spill" && !document.hidden && loadChat(), 15000);

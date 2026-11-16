@@ -557,3 +557,8 @@ main, .main-col, .card, .grid > *, .kvgrid > *, .kv > *, .row > *, .tile, .game,
 img, video, canvas { max-width: 100%; }
 .tabs { max-width: calc(100vw - 24px); }
 @media (min-width: 900px) { .tabs { max-width: none; } }
+/* Chrome på Android utvider skjermbredden (og flytter fanelinjen) når noe stikker ut – klipp i stedet */
+html, body { overflow-x: clip; }
+main, .main-col, .page { overflow-x: clip; max-width: 100%; }
+.card, .grid, .tiles, .deck, .chips, .row { max-width: 100%; }
+.row.between { flex-wrap: wrap; row-gap: 8px; }

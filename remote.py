@@ -654,6 +654,12 @@ def _feature_action(win, kind, a):
         import streaming as ST
         ST.rustdesk_open()
         return True, "RustDesk er startet på PC-en"
+    if kind == "uilog":                          # appen melder at noe er bredere enn skjermen (for feilsøking)
+        import applog
+        items = [str(x)[:160] for x in (a.get("items") or [])][:8]
+        applog.log.warning("Appen: for bredt på fanen %s (%s px): %s", str(a.get("tab"))[:20],
+                           str(a.get("width"))[:6], " | ".join(items))
+        return True, "OK"
     if kind == "pcupdate":                       # oppdater Kontrollsenter på denne PC-en fra NAS-en
         import lanupdate as L
         import tools
@@ -753,7 +759,7 @@ WEB_TYPES = {".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js
              ".apk": "application/vnd.android.package-archive"}
 
 
-LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat"}   # «begrenset» tilgang
+LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "uilog"}   # «begrenset» tilgang
 
 
 class Remote:
