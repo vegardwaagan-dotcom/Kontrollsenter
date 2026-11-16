@@ -1180,7 +1180,7 @@ def _handler(remote):
                 if bg:
                     GLib.idle_add(lambda: (bg.notify("watch", "📺 " + name + " ser på skjermen din",
                                                      "Bare visning – ingen kan styre PC-en. Slå av under "
-                                                     "PC-er hjemme → «La andre se skjermen min».", force=True), False)[1])
+                                                     "Familie → «La andre i huset se skjermen min».", force=True), False)[1])
                 try:
                     import remote_extra
                     remote_extra.event("watch", f"{name} så på skjermen", "", "info")

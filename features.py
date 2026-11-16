@@ -574,7 +574,7 @@ def security():
             pass
     unknown = [d for d in lan_devices() if not d["name"]]
     items.append({"title": "Enheter på hjemmenettet uten navn", "level": "ok" if len(unknown) < 15 else "warn",
-                  "detail": f"{len(unknown)} enheter – gi dem navn i appen (Verktøy → Hjemmenett)"})
+                  "detail": f"{len(unknown)} enheter – gi dem navn i appen (Smart Hjem)"})
     return items
 
 

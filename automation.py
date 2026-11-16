@@ -309,3 +309,8 @@ class AutomationPage(Gtk.ScrolledWindow):
         note.add_css_class("dim-label")
         i.append(note)
         self.box.append(c)
+
+
+def night_card(page):
+    """«Stille om natten»-kortet i en annen side (Innstillinger → Automatikk). Skriver til page.box."""
+    AutomationPage._night_card(page)

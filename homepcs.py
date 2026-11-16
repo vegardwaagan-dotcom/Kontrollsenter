@@ -200,27 +200,13 @@ class HomePage(Gtk.ScrolledWindow):
                                        "statusfil på NAS-en hvert 5. minutt."), xalign=0, wrap=True, hexpand=True)
         info.add_css_class("dim-label")
         top.append(info)
-        sw = Gtk.Switch(active=load_cfg().get("share", True), valign=Gtk.Align.CENTER)
-
-        def set_share(w, _p):
-            c = load_cfg()
-            c["share"] = w.get_active()
-            save_cfg(c)
-        sw.connect("notify::active", set_share)
-        top.append(Gtk.Label(label=i18n.tr("Del denne PC-en")))
-        top.append(sw)
         ref = Gtk.Button(icon_name="view-refresh-symbolic", tooltip_text=i18n.tr("Oppdater"), valign=Gtk.Align.CENTER)
         ref.add_css_class("flat")
         ref.connect("clicked", lambda *_: self.refresh(publish_first=True))
         top.append(ref)
         box.append(top)
-        try:
-            import remote_ui
-            box.append(remote_ui.RemoteCard())
-        except Exception:  # noqa: BLE001
-            import applog
-            applog.log.exception("fjernstyring-kort")
-        hint = Gtk.Label(label=i18n.tr("Familie-chat, familiekontroll og «Se på» ligger i fanen Familie."), xalign=0)
+        hint = Gtk.Label(label=i18n.tr("Mobilappen, fjernstyring og «Del denne PC-en» ligger i Innstillinger → Mobil. "
+                                       "Familie-chat og «Se på» ligger i Familie."), xalign=0, wrap=True)
         hint.add_css_class("ks-sub")
         box.append(hint)
         self.flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=3,

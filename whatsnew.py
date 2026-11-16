@@ -13,6 +13,20 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.27.0", "Ryddet opp", [
+        ("Endret", [
+            "Ny side «Innstillinger» nederst i sidemenyen – alt du stiller inn i Kontrollsenter er samlet der i faner: "
+            "Generelt (oppstart, bakgrunn, glass og språk), Varsler, Automatikk (stille om natten), Widgets, "
+            "Mobil (mobilappen, fjernstyring og «Del denne PC-en») og Oppdatering (oppdatering og sikkerhetskopi)",
+            "«Verktøy» heter nå «Vedlikehold» og har faner: System, Rydd opp, Gjenoppretting og Feilsøking "
+            "(med Systemsjekk)",
+            "Spill har fått faner: Statistikk, Klipp, Bibliotek, Spillprofiler og Kontrollere. Spillprofiler er flyttet "
+            "hit fra Automatikk",
+            "Sidemenyen er ryddet: Familie, PC-er hjemme og Smart Hjem ligger sammen under «Hjemmet», og siden "
+            "«Automatikk» er borte (innholdet ligger i Spill og Innstillinger)",
+            "Sidene husker hvilken fane du var på sist",
+        ]),
+    ]),
     ("0.26.0", "Smart Hjem", [
         ("Nytt", [
             "Ny side «Smart Hjem» på PC-en: finner alle enhetene på hjemmenettet – lys, TV-er, Chromecast/Nest, "

@@ -211,6 +211,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         sec = Gio.Menu()
         sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
         sec.append(i18n.tr("Mini-vindu"), "win.mini")
+        sec.append(i18n.tr("Innstillinger"), "win.settings")
         menu.append_section(None, sec)
         sec = Gio.Menu()
         sec.append(i18n.tr("Hva er nytt?"), "win.whatsnew")
@@ -442,9 +443,9 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
                 ("familie", "Familie", "ks-family-symbolic", "family_page", "FamilyPage"),
                 ("smarthjem", "Smart Hjem", "ks-smarthome-symbolic", "smarthome_ui", "SmartHomePage"),
-                ("automatikk", "Automatikk", "ks-auto-symbolic", "automation", "AutomationPage"),
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
-                ("verktoy", "Verktøy", "ks-tools-symbolic", "tools", "ToolsPage")):
+                ("verktoy", "Vedlikehold", "ks-tools-symbolic", "tools", "ToolsPage"),
+                ("innstillinger", "Innstillinger", "ks-settings-symbolic", "tools", "SettingsPage")):
             if name == "bluetooth" and not self.hw["bluetooth"]:
                 continue
             if os.path.exists(os.path.join(APP_DIR, mod + ".py")):
@@ -897,7 +898,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         for name, fn in (("syscheck", lambda *_: self._open_syscheck(None)),
                          ("mini", self._open_mini), ("welcome", self._open_welcome),
                          ("whatsnew", lambda *_: self._open_whatsnew()),
-                         ("about", lambda *_: self._open_about())):
+                         ("about", lambda *_: self._open_about()),
+                         ("settings", lambda *_: self._on_sidebar(None, self._rows["innstillinger"]))):
             act = Gio.SimpleAction.new(name, None)
             act.connect("activate", fn)
             self.add_action(act)

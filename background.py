@@ -355,7 +355,7 @@ class Background:
                     if pct >= c["disk_limit"]:
                         self.notify("disk" + d["dev"], "Disken er nesten full",
                                     f"{nice_mount(d['mnt'])} er {pct:.0f} % full. "
-                                    "Verktøy → Rydd opp kan frigjøre plass.")
+                                    "Vedlikehold → Rydd opp kan frigjøre plass.")
                 try:
                     import bluetooth
                     objs = bluetooth.objects()
@@ -399,7 +399,7 @@ class Background:
             if new:
                 GLib.idle_add(lambda: self.notify(
                     "lanupdate", "Ny versjon av Kontrollsenter",
-                    f"Versjon {new} ligger på hjemmenettet. Verktøy → Se etter oppdatering → Oppdater nå.",
+                    f"Versjon {new} ligger på hjemmenettet. Innstillinger → Oppdatering → Se etter oppdatering.",
                     action="app.show") and False)
         threading.Thread(target=work, daemon=True).start()
 

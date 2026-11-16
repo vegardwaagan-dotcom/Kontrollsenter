@@ -1,4 +1,4 @@
-"""Verktøy-fanen i Kontrollsenter.
+"""Vedlikehold- og Innstillinger-sidene i Kontrollsenter.
 
 * Systeminfo – med «Kopier til forum» (perfekt når du ber om hjelp på Reddit/forum)
 * Rydd opp – papirkurv, Steam shader-cache, Proton-prefikser, Flatpak-rester, logger, pakkecache
@@ -27,6 +27,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+
+from tabbed import TabbedPage  # noqa: E402
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME = Path.home()
@@ -545,40 +547,15 @@ def make_package(dest_dir):
 # --------------------------------------------------------------------------
 # Fanen
 # --------------------------------------------------------------------------
-class ToolsPage(Gtk.ScrolledWindow):
-    def __init__(self):
-        super().__init__(hscrollbar_policy=Gtk.PolicyType.NEVER)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        for side in ("top", "bottom", "start", "end"):
-            getattr(box, f"set_margin_{side}")(12)
-        self.set_child(Adw.Clamp(maximum_size=__import__("theme").PAGE_WIDTH, child=box))
-        self.box = box
-        if sys.platform == "win32":            # Windows: egne utgaver av kortene + «Hva tar plass?»
-            import wintools
-            wintools.build_cards(self, card)
-            try:
-                import diskusage
-                diskusage.build_card(self, card)
-            except Exception:  # noqa: BLE001
-                import applog
-                applog.log.exception("hva tar plass")
-        if sys.platform != "win32":            # Linux-verktøy
-            self._info_card()
-            self._cleanup_card()
-            try:
-                import diskusage
-                diskusage.build_card(self, card)
-            except Exception:  # noqa: BLE001
-                import applog
-                applog.log.exception("hva tar plass")
-            self._health_card()
-            self._restore_card()
-            self._backup_card()
-        self._widgets_card()
-        self._notify_card()
-        self._app_card()
-        self._diag_card()
-        self._log_card()
+class _Cards:
+    """Alle kortene. Vedlikehold og Innstillinger bygger hver sine faner av dem."""
+    def _try(self, fn, *a):
+        try:
+            fn(*a)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("kort i %s", type(self).__name__)
+
 
     # --- feilsøkingsrapport ---------------------------------------------------------
     def _diag_card(self):
@@ -929,45 +906,32 @@ class ToolsPage(Gtk.ScrolledWindow):
         self.box.append(c)
 
     # --- bakgrunn og varsler ------------------------------------------------------
-    def _notify_card(self):
+    def _switch_row(self, box, title, sub, active, cb):
+        r = Gtk.Box(spacing=12)
+        tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        tb.append(Gtk.Label(label=title, xalign=0))
+        if sub:
+            tb.append(dim(sub))
+        r.append(tb)
+        sw = Gtk.Switch(active=active, valign=Gtk.Align.CENTER)
+        sw.connect("notify::active", cb)
+        r.append(sw)
+        box.append(r)
+        return sw
+
+    def _general_card(self):
         import background
         cfg = background.load()
-        c, i = card("Bakgrunn og varsler",
-                    "Kontrollsenter kan fortsette i bakgrunnen når vinduet lukkes, og si fra når noe er galt.")
-        rows = [("background", "Kjør i bakgrunnen når vinduet lukkes",
-                 "Overlay, vifter og varsler fortsetter. Avslutt fra ikonet i statusfeltet."),
-                ("tray", "Ikon i systemstatusfeltet", "Viser temperaturer, strømmodus, overlay og Avslutt."),
-                ("notify", "Varsler", "Høy temperatur, nesten full disk og lavt batteri i trådløse enheter."),
-                ("periodic", "Sjekk systemet og oppdateringer hver 6. time",
-                 "Kjører Systemsjekk i bakgrunnen og sier fra om den finner noe.")]
-        for key, title, sub in rows:
-            r = Gtk.Box(spacing=12)
-            tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-            tb.append(Gtk.Label(label=title, xalign=0))
-            tb.append(dim(sub))
-            r.append(tb)
-            sw = Gtk.Switch(active=cfg[key], valign=Gtk.Align.CENTER)
-            sw.connect("notify::active", self._notify_set, key)
-            r.append(sw)
-            i.append(r)
-        lim = Gtk.Box(spacing=8)
-        for key, title, lo, hi in (("cpu_limit", "CPU °C", 60, 100), ("gpu_limit", "GPU °C", 60, 95),
-                                   ("disk_limit", "Disk %", 70, 99), ("battery_limit", "Batteri %", 5, 50)):
-            lim.append(Gtk.Label(label=title))
-            sp = Gtk.SpinButton.new_with_range(lo, hi, 1)
-            sp.set_value(cfg[key])
-            sp.connect("value-changed", lambda w, k=key: self._notify_set_val(k, int(w.get_value())))
-            lim.append(sp)
-        i.append(Gtk.Label(label="Varsle ved:", xalign=0))
-        i.append(lim)
+        c, i = card("Oppstart og bakgrunn",
+                    "Kontrollsenter kan fortsette i bakgrunnen når vinduet lukkes, så overlay, vifter og varsler "
+                    "virker selv om vinduet er lukket.")
+        for key, title, sub in (("background", "Kjør i bakgrunnen når vinduet lukkes",
+                                 "Avslutt fra ikonet i statusfeltet."),
+                                ("tray", "Ikon i systemstatusfeltet", "Viser temperaturer, strømmodus, overlay og Avslutt.")):
+            self._switch_row(i, title, sub, cfg[key], lambda w, p, k=key: self._notify_set(w, p, k))
         if sys.platform == "win32":
             import winsupport
-            r = Gtk.Box(spacing=12)
-            tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-            tb.append(Gtk.Label(label="Start Kontrollsenter ved innlogging", xalign=0))
-            tb.append(dim("Starter skjult med ikon i systemstatusfeltet."))
-            r.append(tb)
-            sw = Gtk.Switch(active=bool(winsupport.autostart_get("Kontrollsenter")), valign=Gtk.Align.CENTER)
+
             def _auto(w, _p):
                 import familylock
                 if w.get_active():
@@ -981,21 +945,73 @@ class ToolsPage(Gtk.ScrolledWindow):
                         w._rev = False
                     familylock.ask(self.get_root(), "Familiekontroll er på – skriv koden for å slå av oppstart.",
                                    lambda: winsupport.autostart_set("Kontrollsenter", None), cancel)
-            sw.connect("notify::active", _auto)
-            r.append(sw)
-            i.append(r)
+            self._switch_row(i, "Start Kontrollsenter ved innlogging", "Starter skjult med ikon i systemstatusfeltet.",
+                             bool(winsupport.autostart_get("Kontrollsenter")), _auto)
         else:
             i.append(dim("Start Kontrollsenter skjult ved innlogging: Programmer → Oppstart → Kontrollsenter."))
+        self.box.append(c)
+
+    def _look_card(self):
+        import i18n
         import theme as ks_theme
+        c, i = card("Utseende og språk")
+        self._switch_row(i, "Flytende glass",
+                         "Glassaktige kort og knapper med lysrefleks i kanten og farger som skinner gjennom.",
+                         ks_theme.glass_on(), lambda w, _p: ks_theme.set_glass(w.get_active()))
         r = Gtk.Box(spacing=12)
         tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-        tb.append(Gtk.Label(label="Flytende glass", xalign=0))
-        tb.append(dim("Glassaktige kort og knapper med lysrefleks i kanten og farger som skinner gjennom."))
+        tb.append(Gtk.Label(label="Språk", xalign=0))
+        tb.append(dim("Programmet starter på nytt når du bytter språk."))
         r.append(tb)
-        gsw = Gtk.Switch(active=ks_theme.glass_on(), valign=Gtk.Align.CENTER)
-        gsw.connect("notify::active", lambda w, _p: ks_theme.set_glass(w.get_active()))
-        r.append(gsw)
+        codes = [code for code, _s, _f in i18n.LANGS]
+        names = [i18n.tr("Automatisk (som Linux)" if code == "auto" else full) for code, _s, full in i18n.LANGS]
+        dd = Gtk.DropDown.new_from_strings(names)
+        dd.set_valign(Gtk.Align.CENTER)
+        if i18n.CHOICE in codes:
+            dd.set_selected(codes.index(i18n.CHOICE))
+
+        def pick(w, _p):
+            win = self.get_root()
+            if hasattr(win, "_set_lang"):
+                win._set_lang(codes[w.get_selected()])
+        dd.connect("notify::selected", pick)
+        r.append(dd)
         i.append(r)
+        self.box.append(c)
+
+    def _share_card(self):
+        import homepcs
+        c, i = card("PC-er hjemme", "Hver PC med Kontrollsenter deler en liten statusfil på NAS-en hvert 5. minutt, "
+                                    "så de andre PC-ene i huset kan se den under «PC-er hjemme».")
+
+        def set_share(w, _p):
+            cfg = homepcs.load_cfg()
+            cfg["share"] = w.get_active()
+            homepcs.save_cfg(cfg)
+        self._switch_row(i, "Del denne PC-en", None, homepcs.load_cfg().get("share", True), set_share)
+        self.box.append(c)
+
+    def _notify_card(self):
+        import background
+        cfg = background.load()
+        c, i = card("Varsler", "Kontrollsenter sier fra når noe er galt.")
+        for key, title, sub in (("notify", "Varsler", "Høy temperatur, nesten full disk og lavt batteri i trådløse enheter."),
+                                ("periodic", "Sjekk systemet og oppdateringer hver 6. time",
+                                 "Kjører Systemsjekk i bakgrunnen og sier fra om den finner noe.")):
+            self._switch_row(i, title, sub, cfg[key], lambda w, p, k=key: self._notify_set(w, p, k))
+        i.append(Gtk.Label(label="Varsle ved:", xalign=0))
+        lim = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=4, column_spacing=12,
+                          row_spacing=6)
+        for key, title, lo, hi in (("cpu_limit", "CPU °C", 60, 100), ("gpu_limit", "GPU °C", 60, 95),
+                                   ("disk_limit", "Disk %", 70, 99), ("battery_limit", "Batteri %", 5, 50)):
+            one = Gtk.Box(spacing=8)
+            one.append(Gtk.Label(label=title))
+            sp = Gtk.SpinButton.new_with_range(lo, hi, 1)
+            sp.set_value(cfg[key])
+            sp.connect("value-changed", lambda w, k=key: self._notify_set_val(k, int(w.get_value())))
+            one.append(sp)
+            lim.append(one)
+        i.append(lim)
         self.box.append(c)
 
     def _notify_set(self, sw, _p, key):
@@ -1139,3 +1155,72 @@ class ToolsPage(Gtk.ScrolledWindow):
         bb.append(self.log_status)
         i.append(bb)
         self.box.append(c)
+
+
+class ToolsPage(TabbedPage, _Cards):
+    """Vedlikehold: systeminfo, opprydding, gjenoppretting og feilsøking."""
+    def __init__(self):
+        TabbedPage.__init__(self, "vedlikehold")
+        import diskusage
+        win = sys.platform == "win32"
+        if win:
+            import wintools as W
+        self.tab("system", "System")
+        if win:
+            self._try(W._info_card, self, card)
+            self._try(W._health_card, self, card)
+        else:
+            self._try(self._info_card)
+            self._try(self._health_card)
+        self.tab("rydd", "Rydd opp")
+        self._try(W._cleanup_card, self, card) if win else self._try(self._cleanup_card)
+        self._try(diskusage.build_card, self, card)
+        self.tab("gjenoppretting", "Gjenoppretting")
+        self._try(W._restore_card, self, card) if win else self._try(self._restore_card)
+        self.tab("feilsoking", "Feilsøking")
+        self._syscheck_card()
+        self._try(self._diag_card)
+        self._try(self._log_card)
+        self.finish()
+
+    def _syscheck_card(self):
+        c, i = card("Systemsjekk", "Går gjennom drivere, disker, oppdateringer og vanlige feil, og forteller hva "
+                                   "som bør fikses.")
+        b = Gtk.Button(label="Kjør systemsjekk", halign=Gtk.Align.START)
+        b.add_css_class("suggested-action")
+        b.connect("clicked", lambda *_: self.get_root().activate_action("win.syscheck", None))
+        i.append(b)
+        self.box.append(c)
+
+
+class SettingsPage(TabbedPage, _Cards):
+    """Alle innstillingene for selve Kontrollsenter samlet på ett sted."""
+    def __init__(self):
+        TabbedPage.__init__(self, "innstillinger")
+        self.tab("generelt", "Generelt")
+        self._try(self._general_card)
+        self._try(self._look_card)
+        self.tab("varsler", "Varsler")
+        self._try(self._notify_card)
+        self.tab("automatikk", "Automatikk")
+        try:
+            import automation
+            automation.night_card(self)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("stille om natten")
+        self.tab("widgets", "Widgets")
+        self._try(self._widgets_card)
+        self.tab("mobil", "Mobil")
+        self._try(self._share_card)
+        try:
+            import remote_ui
+            self.box.append(remote_ui.RemoteCard())
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("fjernstyring-kort")
+        self.tab("oppdatering", "Oppdatering")
+        self._try(self._app_card)
+        if sys.platform != "win32":
+            self._try(self._backup_card)
+        self.finish()

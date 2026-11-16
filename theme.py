@@ -367,9 +367,8 @@ SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
     ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
     ("Spill", ["spill", "stromming"]),
-    ("Familie", ["familie"]),
-    ("Smart Hjem", ["smarthjem"]),
-    ("System", ["nettverk", "automatikk", "programmer", "hjemme", "verktoy"]),
+    ("Hjemmet", ["familie", "hjemme", "smarthjem"]),
+    ("System", ["nettverk", "programmer", "verktoy", "innstillinger"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
 SECTION_OF = {n: s for s, names in SECTIONS for n in names}
@@ -388,16 +387,18 @@ PAGE_HELP = {
     "bluetooth": "Koble til og fra hodetelefoner, kontrollere og andre Bluetooth-enheter.",
     "wifi": "Trådløse nett i nærheten, signalstyrke og tilkobling.",
     "msi": "Ytelsesmodus, viftene, Cooler Boost og ladegrense på MSI-laptopen.",
-    "spill": "Spillstatistikk, klipp av de beste øyeblikkene, spilløkter og oppsett av spill.",
+    "spill": "Statistikk og spilløkter, klipp, Steam-biblioteket, spillprofiler som slår på spillmodus "
+             "automatisk, og kontrollere.",
     "stromming": "Spill og se PC-skjermen på telefonen (Sunshine + Moonlight), og fjernhjelp med RustDesk.",
     "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "
                "ekstra spilletid og leggetid.",
     "nettverk": "Hastighet, ping, hvilke programmer som bruker nettet, og enhetene på hjemmenettet.",
-    "automatikk": "Ting som skjer av seg selv: spillmodus når et spill starter, nattmodus, profiler per spill.",
     "programmer": "Installer, oppdater og velg hvilke programmer som starter med PC-en.",
     "smarthjem": "Alle smartenhetene på hjemmenettet: styr Hue-lys, Samsung-TV og Chromecast/Nest, og se alt annet som er koblet til.",
-    "hjemme": "De andre PC-ene i huset, mobilappen, familie-chat og fjernstyring.",
-    "verktoy": "Rydding, oppdateringer, varsler, feilsøking og innstillinger for Kontrollsenter.",
+    "hjemme": "De andre PC-ene i huset med Kontrollsenter: status, temperatur og hvem som spiller.",
+    "verktoy": "Hold PC-en i form: systeminfo, diskhelse, opprydding, gjenoppretting og feilsøking.",
+    "innstillinger": "Alt du kan stille inn i Kontrollsenter: oppstart, utseende, språk, varsler, stille om natten, "
+                     "widgets, mobilappen og oppdateringer.",
 }
 
 

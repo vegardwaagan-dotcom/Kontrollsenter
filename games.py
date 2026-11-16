@@ -28,6 +28,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 
+from tabbed import TabbedPage  # noqa: E402
+
 import vdf  # noqa: E402
 
 HOME = Path.home()
@@ -385,31 +387,33 @@ def card(title, subtitle=None):
     return outer, inner
 
 
-class GamesPage(Gtk.ScrolledWindow):
+class GamesPage(TabbedPage):
     def __init__(self):
-        super().__init__(hscrollbar_policy=Gtk.PolicyType.NEVER)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        for side in ("top", "bottom", "start", "end"):
-            getattr(box, f"set_margin_{side}")(12)
-        self.set_child(Adw.Clamp(maximum_size=__import__("theme").PAGE_WIDTH, child=box))
-        self.box = box
+        super().__init__("spill")
         self.changes = {}
+        self.tab("statistikk", "Statistikk")
         try:
             import gamestats_ui
             stats = gamestats_ui.StatsCard(card)
-            box.append(stats)
+            self.box.append(stats)
             if gamestats_ui.gamestats.wow_flavors():     # alt om WoW samlet i ett kort, rett under statistikken
                 wow = gamestats_ui.WowPlusCard(card)
                 stats.also = wow.load
-                box.append(wow)
-            import clips_ui
-            box.append(clips_ui.ClipsCard(card))
+                self.box.append(wow)
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("spillstatistikk")
         self._sessions_card()
+        self.tab("klipp", "Klipp")
+        try:
+            import clips_ui
+            self.box.append(clips_ui.ClipsCard(card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("klipp")
+        self.tab("bibliotek", "Bibliotek")
         self._steam_card()
-        if not IS_WIN:                                  # Proton, lagrede spill i Proton-mappene og kontrollere (Linux)
+        if not IS_WIN:                                  # Proton og lagrede spill i Proton-mappene (Linux)
             self._ge_card()
             try:
                 import savegames
@@ -417,7 +421,17 @@ class GamesPage(Gtk.ScrolledWindow):
             except Exception:  # noqa: BLE001
                 import applog
                 applog.log.exception("lagrede spill")
+        self.tab("profiler", "Spillprofiler")
+        try:
+            import games_auto
+            games_auto.build_cards(self)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("spillprofiler")
+        if not IS_WIN:
+            self.tab("kontrollere", "Kontrollere")
             self._ctrl_card()
+        self.finish()
 
     # --- Siste spilløkter -------------------------------------------------------
     def _sessions_card(self):
@@ -426,7 +440,7 @@ class GamesPage(Gtk.ScrolledWindow):
         ss = list(reversed(games_auto.load_sessions()))[:8]
         c, i = card("Siste spilløkter", "Rapport etter hver økt: spilletid, FPS («1 % low» = de tregeste "
                                         "bildene), høyeste temperaturer og strømforbruk. Slås av og på under "
-                                        "Automatikk → Spillprofiler.")
+                                        "fanen Spillprofiler.")
         if not ss:
             import ui
             i.append(ui.empty("ks-games-symbolic", "Ingen spilløkter ennå",
