@@ -131,16 +131,34 @@ def _hwmon_inputs():
     return lst
 
 
+_SLOW = {}          # sensorbrikke -> {"t": sist lest, "vals": {sti: verdi}, "slow": bool}
+
+
 def hwmon_temps():
-    """Returnerer liste med (enhet, etikett, °C)."""
-    out = []
+    """Returnerer liste med (enhet, etikett, °C).
+
+    Noen sensorbrikker er trege å lese (f.eks. nct67xx på hovedkortet henter alle registrene på nytt, RAM- og
+    NVMe-sensorer går over en treg buss). De leses bare hvert 5. sekund; raske (CPU, GPU) hvert sekund."""
+    import time as _time
+    now = _time.monotonic()
+    by_dev = {}
     for name, label, inp in _hwmon_inputs():
-        v = read(inp)
-        if not v or not v.lstrip("-").isdigit():
-            continue
-        t = int(v) / 1000
-        if plausible(label, t):
-            out.append((name, label, t))
+        by_dev.setdefault(os.path.dirname(inp), []).append((name, label, inp))
+    out = []
+    for dev, items in by_dev.items():
+        st = _SLOW.setdefault(dev, {"t": 0.0, "vals": {}, "slow": False})
+        if not (st["slow"] and now - st["t"] < 5):
+            t0 = _time.perf_counter()
+            st["vals"] = {inp: read(inp) for _n, _l, inp in items}
+            st["slow"] = st["slow"] or (_time.perf_counter() - t0) > 0.001     # treg én gang = treg
+            st["t"] = now
+        for name, label, inp in items:
+            v = st["vals"].get(inp)
+            if not v or not v.lstrip("-").isdigit():
+                continue
+            t = int(v) / 1000
+            if plausible(label, t):
+                out.append((name, label, t))
     return out
 
 

@@ -960,7 +960,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         return d.get("temp") if d else None
 
     def update(self):
-        if not self.get_mapped():                      # skjult: bare det bakgrunnen trenger, ingen tegning/tekst
+        # skjult: bare det bakgrunnen trenger. Åpent men ikke i fokus (f.eks. mens du spiller): vinduet
+        # oppdateres annethvert sekund – dataene samles fortsatt hvert sekund.
+        self._tick_n = getattr(self, "_tick_n", 0) + 1
+        if not self.get_mapped() or (not self.is_active() and self._tick_n % 2):
             try:
                 self._update_quiet()
             except Exception:  # noqa: BLE001

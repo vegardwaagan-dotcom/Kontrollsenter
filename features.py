@@ -804,6 +804,9 @@ def tick(notify, win=None):
     global WIN
     WIN = win
     now = time.time()
+    if not _T:                                  # spre de tyngre jobbene utover etter oppstart
+        _T.update({"lan": now - 600 + 120, "wish": now - 3600 + 900, "ach": now - 1800 + 300,
+                   "mail": now - 60 + 20, "stream": now - 60 + 45, "shader": now - 20 + 10})
 
     def every(key, secs):
         if now - _T.get(key, 0) >= secs:

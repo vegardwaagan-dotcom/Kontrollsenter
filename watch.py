@@ -206,28 +206,55 @@ class Capture:
         from gi.repository import Gst
         Gst.init(None)
         c = cfg()
-        pipe = Gst.parse_launch(
-            f"pipewiresrc fd={fd} path={node} do-timestamp=true keepalive-time=1000 ! videoconvert ! "
-            f"videoscale ! video/x-raw,width={c['width']},pixel-aspect-ratio=1/1 ! videorate ! "
-            f"video/x-raw,framerate={c['fps']}/1 ! jpegenc quality=70 ! "
-            "appsink name=out emit-signals=false max-buffers=1 drop=true sync=false")
-        sink = pipe.get_by_name("out")
-        pipe.set_state(Gst.State.PLAYING)
+        tail = (f"videoscale ! video/x-raw,width={c['width']},pixel-aspect-ratio=1/1 ! videorate ! "
+                f"video/x-raw,framerate={c['fps']}/1 ! jpegenc quality=70 ! "
+                "appsink name=out emit-signals=false max-buffers=1 drop=true sync=false")
+        # Flere oppsett, prøves etter tur til ett gir bilder. Det første kopierer bildet fra GPU-minnet
+        # (DMA-BUF) til vanlig minne – det løser «forhandlingsproblem» (not-negotiated) på de fleste maskiner.
+        variants = [
+            f"pipewiresrc fd={{fd}} path={node} do-timestamp=true always-copy=true ! video/x-raw ! videoconvert ! {tail}",
+            f"pipewiresrc fd={{fd}} path={node} do-timestamp=true always-copy=true ! videoconvert ! {tail}",
+            f"pipewiresrc fd={{fd}} target-object={node} do-timestamp=true always-copy=true ! video/x-raw ! "
+            f"videoconvert ! {tail}",
+            f"pipewiresrc fd={{fd}} path={node} do-timestamp=true keepalive-time=1000 ! videoconvert ! {tail}",
+        ]
+        last_err = None
         try:
-            while not self._stop.is_set():
-                s = sink.emit("try-pull-sample", 500 * Gst.MSECOND)
-                if s is None:
-                    msg = pipe.get_bus().pop_filtered(Gst.MessageType.ERROR)
-                    if msg:
-                        raise RuntimeError(msg.parse_error()[0].message)
-                    continue
-                b = s.get_buffer()
-                ok, info = b.map(Gst.MapFlags.READ)
-                if ok:
-                    self._push(bytes(info.data))
-                    b.unmap(info)
+            for v in variants:
+                if self._stop.is_set():
+                    return
+                pipe = Gst.parse_launch(v.format(fd=os.dup(fd)))
+                sink = pipe.get_by_name("out")
+                pipe.set_state(Gst.State.PLAYING)
+                got = False
+                t0 = time.monotonic()
+                try:
+                    while not self._stop.is_set():
+                        smp = sink.emit("try-pull-sample", 500 * Gst.MSECOND)
+                        if smp is None:
+                            msg = pipe.get_bus().pop_filtered(Gst.MessageType.ERROR)
+                            if msg:
+                                raise RuntimeError(msg.parse_error()[0].message)
+                            if not got and time.monotonic() - t0 > 6:
+                                raise RuntimeError("fikk ikke bilde fra skjermen")
+                            continue
+                        b = smp.get_buffer()
+                        ok, info = b.map(Gst.MapFlags.READ)
+                        if ok:
+                            got = True
+                            self._push(bytes(info.data))
+                            b.unmap(info)
+                    return
+                except RuntimeError as e:
+                    last_err = e
+                    if got:                                    # virket en stund, så feil – ikke prøv videre
+                        raise
+                    import applog
+                    applog.log.info("Se på: prøver neste oppsett (%s)", e)
+                finally:
+                    pipe.set_state(Gst.State.NULL)
+            raise last_err or RuntimeError("fikk ikke bilde fra skjermen")
         finally:
-            pipe.set_state(Gst.State.NULL)
             try:
                 os.close(fd)
             except OSError:

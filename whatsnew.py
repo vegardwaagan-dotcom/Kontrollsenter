@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.20.2", "Enda lettere, og «Se på» på Linux", [
+        ("Forbedret", [
+            "Trege sensorer (RAM, NVMe og hovedkortbrikken) leses sjeldnere – CPU og GPU fortsatt hvert sekund – og "
+            "vifteturtallet leses bare når du ser på det. Det fjerner små CPU-topper annethvert sekund",
+            "Vinduet oppdateres annethvert sekund når det er åpent men ikke i fokus (f.eks. mens du spiller)",
+            "Tyngre jobber (hjemmenett, prestasjoner, ønskeliste) spres utover etter oppstart i stedet for å kjøre samtidig",
+        ]),
+        ("Rettet", [
+            "«Se på» på Linux kunne stoppe med «forhandlingsproblem» – bildet hentes nå på en måte som virker med "
+            "skjermkortminne, og flere oppsett prøves automatisk",
+        ]),
+    ]),
     ("0.20.1", "Raskere og lettere", [
         ("Forbedret", [
             "Bruker langt mindre CPU: rundt 60 % mindre med vinduet åpent og rundt 90 % mindre når det ligger i "

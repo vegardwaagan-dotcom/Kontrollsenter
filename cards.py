@@ -1028,6 +1028,14 @@ class FanCard(Gtk.Box):
 
     # --- oppdatering hvert sekund ------------------------------------------
     def refresh(self, cpu_t, gpu_t, gpu_fan):
+        # Omdreiningstallene vises bare – les dem kun når kortet er synlig, og hvert 3. sekund. (Hovedkortbrikken
+        # henter alle registrene på nytt ved lesing, ~50 ms kjernetid.) Viftekurven styres av temperaturene.
+        self._rpm_tick = getattr(self, "_rpm_tick", 0) + 1
+        if self.get_mapped() and self._rpm_tick % 3 == 1:
+            self._read_rpm(gpu_fan)
+        self._control(cpu_t, gpu_t)
+
+    def _read_rpm(self, gpu_fan):
         if IS_WIN:
             from sensors_win import Lhm
             fans = {s["id"]: s["value"] for s in Lhm.find("Fan")}
@@ -1052,6 +1060,8 @@ class FanCard(Gtk.Box):
                 row.rpm.set_label(f"{rpm} RPM" if rpm is not None else "–")
                 row.stopped = str(rpm).strip() == "0"
         self._update_hidden()
+
+    def _control(self, cpu_t, gpu_t):
         self.last_temps = (cpu_t, gpu_t)
         manual = any(r.value() != "auto" for r in self.rows.values())
         hot = (cpu_t or 0) >= CPU_PANIC or (gpu_t or 0) >= GPU_PANIC
