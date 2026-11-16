@@ -886,8 +886,11 @@ class RgbPage(Gtk.ScrolledWindow):
             return
         self.state["all_color"] = c
         if update_button:
-            self.all_color.set_rgba(rgba(c))
-            return                                   # notify::rgba kaller oss igjen
+            if from_rgba(self.all_color.get_rgba()) != list(c):
+                self.all_color.set_rgba(rgba(c))
+                return                               # notify::rgba kaller oss igjen
+            # samme farge som før: knappen sier ikke fra, så send den på nytt her (f.eks. etter et spill
+            # eller en automatikk som byttet lys)
         for card in self.cards:
             if not EFFECT[card.st["effect"]][3]:
                 card.set_effect("static", push=False)

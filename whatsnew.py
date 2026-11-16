@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.22.2", "Samme farge sendes på nytt", [
+        ("Rettet", [
+            "RGB: et trykk på fargen som allerede er valgt under «Alle enheter» gjorde ingenting. Nå sendes den på nytt "
+            "til alle enhetene – nyttig når tastatur, mus eller andre lys har kommet ut av takt",
+        ]),
+    ]),
     ("0.22.1", "CPU-kjøleren lyser i fast farge", [
         ("Rettet", [
             "RGB: med en fast farge (f.eks. grønn) ble lys på hovedkortets uttak – som CPU-kjøleren – slått av. "
