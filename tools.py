@@ -915,15 +915,47 @@ class ToolsPage(Gtk.ScrolledWindow):
             tb.append(dim("Starter skjult med ikon i systemstatusfeltet."))
             r.append(tb)
             sw = Gtk.Switch(active=bool(winsupport.autostart_get("Kontrollsenter")), valign=Gtk.Align.CENTER)
-            sw.connect("notify::active", lambda w, _p: winsupport.autostart_set(
-                "Kontrollsenter", winsupport.self_command() if w.get_active() else None))
+            def _auto(w, _p):
+                import familylock
+                if w.get_active():
+                    winsupport.autostart_set("Kontrollsenter", winsupport.self_command())
+                elif getattr(w, "_rev", False):
+                    return
+                else:
+                    def cancel():
+                        w._rev = True
+                        w.set_active(True)
+                        w._rev = False
+                    familylock.ask(self.get_root(), "Familiekontroll er på – skriv koden for å slå av oppstart.",
+                                   lambda: winsupport.autostart_set("Kontrollsenter", None), cancel)
+            sw.connect("notify::active", _auto)
             r.append(sw)
             i.append(r)
         else:
             i.append(dim("Start Kontrollsenter skjult ved innlogging: Programmer → Oppstart → Kontrollsenter."))
+        import theme as ks_theme
+        r = Gtk.Box(spacing=12)
+        tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        tb.append(Gtk.Label(label="Flytende glass", xalign=0))
+        tb.append(dim("Glassaktige kort og knapper med lysrefleks i kanten og farger som skinner gjennom."))
+        r.append(tb)
+        gsw = Gtk.Switch(active=ks_theme.glass_on(), valign=Gtk.Align.CENTER)
+        gsw.connect("notify::active", lambda w, _p: ks_theme.set_glass(w.get_active()))
+        r.append(gsw)
+        i.append(r)
         self.box.append(c)
 
     def _notify_set(self, sw, _p, key):
+        import familylock
+        if key in ("background", "tray") and not sw.get_active() and familylock.locked() \
+                and not getattr(self, "_reverting", False):
+            def cancel():
+                self._reverting = True
+                sw.set_active(True)
+                self._reverting = False
+            familylock.ask(self.get_root(), "Familiekontroll er på – skriv koden for å slå av dette.",
+                           lambda: self._notify_set_val(key, False), cancel)
+            return
         self._notify_set_val(key, sw.get_active())
 
     def _notify_set_val(self, key, val):

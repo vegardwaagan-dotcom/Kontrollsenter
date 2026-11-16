@@ -185,7 +185,8 @@ class Background:
 
     def on_close(self):
         """True = vinduet skjules og programmet kjører videre."""
-        if self.cfg["background"]:
+        import familylock
+        if self.cfg["background"] or familylock.locked():
             self.win.set_visible(False)
             if not self.sent.get("_bg_info"):
                 self.sent["_bg_info"] = time.time()
@@ -194,6 +195,15 @@ class Background:
                             "eller velg Avslutt der.", force=True)
             return True
         return False
+
+    def request_quit(self):
+        """Avslutt fra menyen – med familiekontroll må koden tastes først."""
+        import familylock
+        if not familylock.locked():
+            self.quit()
+            return
+        self.show()
+        familylock.ask(self.win, "Skriv koden for å lukke Kontrollsenter.", self.quit)
 
     def quit(self):
         try:
@@ -234,7 +244,7 @@ class Background:
                    self.win.ov_button.get_active(), "checkmark"),
                   (5, "Systemsjekk …", lambda: (self.show(), self.win._open_syscheck())),
                   (8, "Mini-vindu", lambda: self.win._open_mini()),
-                  (6, "-", None), (7, "Avslutt", self.quit)]
+                  (6, "-", None), (7, "Avslutt", self.request_quit)]
         return items
 
     def _set_mode(self, key):

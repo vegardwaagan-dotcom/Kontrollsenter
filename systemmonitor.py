@@ -157,6 +157,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.add_css_class("sysmon")
         import theme as ks_theme
         ks_theme.load()
+        if ks_theme.glass_on():
+            self.add_css_class("ks-glass")
         icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
         icon_theme.add_search_path(os.path.join(APP_DIR, "icons", "symbolic"))   # enhetlige ensfargede ikoner
         icon_theme.add_search_path(os.path.join(APP_DIR, "icons"))               # programikonet

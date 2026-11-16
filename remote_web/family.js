@@ -17,6 +17,9 @@ const famGrid = h(`<div class="grid" id="fam-grid">
     <details class="full-only"><summary>Belønning og leggetid</summary>
       <div class="label">Ekstra spilletid i dag</div>
       <div class="chips" id="bonus"><button data-m="15">+15 min</button><button data-m="30">+30 min</button><button data-m="60">+1 time</button></div>
+      <div class="label">Familiekontroll</div>
+      <div class="row"><span>Kode for å lukke Kontrollsenter på PC-en</span>${sw("fl-on")}</div>
+      <p class="dim small">Når den er på, må koden tastes for å lukke Kontrollsenter, endre familieinnstillingene på PC-en eller gi ekstra spilletid der. Glemt koden? Slå den av her.</p>
       <div class="row"><span>La andre i huset se skjermen til denne PC-en</span>${sw("wa-on")}</div>
       <div class="row"><span>Leggetid (PC-en slås av)</span>${sw("bt-on")}</div>
       <div class="row"><span>Søn–tor</span><input type="time" id="bt-wd" class="num-in"></div>
@@ -148,6 +151,7 @@ async function loadFamily() {
     $("#bt-on").checked = !!c.bedtime.enabled; $("#bt-wd").value = c.bedtime.weekday; $("#bt-we").value = c.bedtime.weekend;
     $("#wl-on").checked = !!c.wishlist; $("#au-on").checked = !!c.auto_update;
     const me = f.pcs.find((p) => p.name === pcName); $("#wa-on").checked = !me || me.watch !== false;
+    try { $("#fl-on").checked = !!(await X("familylock")).on; } catch (e) {}
   } catch (e) {}
 }
 async function loadChat() {
@@ -172,6 +176,14 @@ $("#chat-send").onclick = () => { const t = $("#chat-text").value.trim(); if (t)
 $("#chat-text").onkeydown = (e) => e.key === "Enter" && $("#chat-send").onclick();
 $("#dinner").onclick = () => sendChat({ a: "dinner", to: $("#chat-to").value || "*" });
 $$("#bonus button").forEach((b) => (b.onclick = () => act({ a: "bonus", minutes: +b.dataset.m })));
+$("#fl-on").onchange = async () => {
+  if ($("#fl-on").checked) {
+    const pin = prompt("Velg kode (4–8 sifre) for familiekontroll på PC-en:");
+    if (!pin || !/^\d{4,8}$/.test(pin)) { $("#fl-on").checked = false; if (pin) toast("Koden må være 4–8 sifre"); return; }
+    const r = await act({ a: "familylock", on: true, pin });
+    if (!r || !r.ok) $("#fl-on").checked = false;
+  } else await act({ a: "familylock", on: false });
+};
 $("#wa-on").onchange = () => act({ a: "watchallow", on: $("#wa-on").checked }, true);
 $("#bt-save").onclick = () => act({ a: "bedtime", enabled: $("#bt-on").checked, weekday: $("#bt-wd").value, weekend: $("#bt-we").value });
 $("#wl-on").onchange = () => act({ a: "feature", key: "wishlist", on: $("#wl-on").checked }, true);

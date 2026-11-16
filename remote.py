@@ -654,6 +654,13 @@ def _feature_action(win, kind, a):
         import streaming as ST
         ST.rustdesk_open()
         return True, "RustDesk er startet på PC-en"
+    if kind == "familylock":
+        import familylock
+        if a.get("on"):
+            familylock.set_pin(str(a.get("pin", "")))
+            return True, "Familiekontroll er på – koden trengs for å lukke Kontrollsenter"
+        familylock.turn_off()
+        return True, "Familiekontroll er slått av (koden er fjernet)"
     if kind == "watchallow":
         import watch as W
         c = W.cfg()
@@ -1060,6 +1067,9 @@ def _handler(remote):
                       "wrapped": lambda: F.wrapped(arg("month")), "backups": lambda: {"backups": F.list_backups()},
                       "selftest": lambda: {"items": F.selftest(remote.win)},
                       "features": lambda: {k: v for k, v in F.cfg().items() if not k.startswith("_") and k != "hue"}}
+            if what == "familylock":
+                import familylock
+                return self._send(200, {"on": familylock.locked()})
             if what == "stream":
                 import streaming as ST
                 st = ST.sunshine_state()

@@ -444,3 +444,70 @@ button.picker:disabled { opacity: .5; }
 .row.wrap > button { line-height: 1.25; }
 .small-seg button, .seg button { white-space: nowrap; }
 @media (max-width: 600px) { .small-seg button { padding: 6px 4px; font-size: 12.5px; } }
+
+/* =====================================================================================
+   FLYTENDE GLASS (body.glass) – uskarp, mettet bakgrunn gjennom flatene, lysrefleks i kanten,
+   speilende skinn og en glasslinse som glir mellom fanene.
+   ===================================================================================== */
+body.glass { --gl-hi: rgba(255,255,255,.30); --gl-edge: rgba(255,255,255,.13); --gl-sheen: rgba(255,255,255,.14); --gl-fill: rgba(255,255,255,.055); }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) body.glass { --gl-hi: rgba(255,255,255,.95); --gl-edge: rgba(20,24,60,.09); --gl-sheen: rgba(255,255,255,.55); --gl-fill: rgba(255,255,255,.55); } }
+:root[data-theme="light"] body.glass { --gl-hi: rgba(255,255,255,.95); --gl-edge: rgba(20,24,60,.09); --gl-sheen: rgba(255,255,255,.55); --gl-fill: rgba(255,255,255,.55); }
+body.glass::before {
+  background:
+    radial-gradient(42% 32% at 12% 6%, rgba(91,140,255,.42), transparent 70%),
+    radial-gradient(38% 30% at 92% 12%, rgba(154,107,255,.38), transparent 70%),
+    radial-gradient(46% 30% at 30% 62%, rgba(0,200,180,.16), transparent 70%),
+    radial-gradient(40% 28% at 85% 88%, rgba(255,120,170,.14), transparent 70%);
+  animation: ks-drift 38s ease-in-out infinite alternate;
+}
+:root[data-theme="amoled"] body.glass::before { opacity: .45; }
+@keyframes ks-drift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-3%, 2%, 0) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { body.glass::before { animation: none; } }
+body.glass .card, body.glass .tile, body.glass .quick button, body.glass .game, body.glass .big, body.glass .gi,
+body.glass button.picker, body.glass .upd {
+  position: relative;
+  background-color: var(--gl-fill);
+  background-image: linear-gradient(150deg, var(--gl-sheen), rgba(255,255,255,.02) 36%, rgba(255,255,255,0) 60%, rgba(255,255,255,.05));
+  border-color: var(--gl-edge);
+  -webkit-backdrop-filter: blur(28px) saturate(190%) brightness(1.06); backdrop-filter: blur(28px) saturate(190%) brightness(1.06);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 rgba(255,255,255,.04), inset 1px 0 0 rgba(255,255,255,.06),
+              0 24px 48px -24px rgba(0,0,0,.65);
+}
+body.glass .card::after, body.glass .tile::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,.14), transparent 42%),
+              radial-gradient(70% 45% at 100% 100%, rgba(255,255,255,.05), transparent 55%);
+}
+body.glass .card.accent { background-image: linear-gradient(150deg, rgba(91,140,255,.26), rgba(138,92,255,.08) 50%, var(--gl-fill)); }
+body.glass .top, body.glass .tabs {
+  background-color: rgba(14,15,26,.45); background-image: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.01));
+  -webkit-backdrop-filter: blur(30px) saturate(200%); backdrop-filter: blur(30px) saturate(200%);
+  border-color: var(--gl-edge);
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme]) body.glass .top, :root:not([data-theme]) body.glass .tabs { background-color: rgba(255,255,255,.5); } }
+:root[data-theme="light"] body.glass .top, :root[data-theme="light"] body.glass .tabs { background-color: rgba(255,255,255,.5); }
+body.glass .tabs { box-shadow: inset 0 1px 0 var(--gl-hi), 0 24px 50px -18px rgba(0,0,0,.7); }
+body.glass .tabs button { position: relative; z-index: 1; background: transparent !important; }
+.tabs .lens { position: absolute; left: 0; top: 0; z-index: 0; border-radius: 20px; pointer-events: none; opacity: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.06));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(255,255,255,.08), 0 6px 18px -8px rgba(111,139,255,.8),
+              0 0 0 1px rgba(255,255,255,.10);
+  -webkit-backdrop-filter: blur(6px) saturate(220%) brightness(1.15); backdrop-filter: blur(6px) saturate(220%) brightness(1.15);
+  transition: transform .5s cubic-bezier(.3,1.45,.45,1), width .5s cubic-bezier(.3,1.45,.45,1), height .3s, opacity .2s; }
+.tabs .lens.wobble { animation: ks-wobble .5s ease; }
+@keyframes ks-wobble { 0% { scale: 1 1; } 35% { scale: 1.12 .9; } 70% { scale: .97 1.04; } 100% { scale: 1 1; } }
+@media (min-width: 900px) { .tabs .lens { border-radius: 14px; } }
+body.glass button.soft, body.glass .seg, body.glass .chips button, body.glass .actions button, body.glass .deck button,
+body.glass input:not([type=range]):not([type=color]):not([type=checkbox]), body.glass select {
+  background-color: rgba(255,255,255,.07); background-image: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 60%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 1px var(--gl-edge);
+}
+body.glass button.primary, body.glass .seg button.on, body.glass .chips button.primary, body.glass .quick button.on {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -3px 8px rgba(0,0,0,.14), 0 12px 26px -12px rgba(111,139,255,.95);
+}
+body.glass .switch i::after { box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 8px rgba(0,0,0,.35); }
+body.glass .switch input:checked + i { box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
+body.glass .sheet { background-color: rgba(20,21,36,.72); background-image: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 30%);
+  -webkit-backdrop-filter: blur(34px) saturate(200%); backdrop-filter: blur(34px) saturate(200%); box-shadow: inset 0 1px 0 var(--gl-hi), 0 -24px 60px -20px rgba(0,0,0,.7); }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) body.glass .sheet { background-color: rgba(255,255,255,.72); } }
+:root[data-theme="light"] body.glass .sheet { background-color: rgba(255,255,255,.72); }

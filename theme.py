@@ -4,6 +4,9 @@ Bygger på libadwaitas fargevariabler, så lyst/mørkt og høykontrast følger s
 merkevare: blå–lilla gradient (samme som appen på mobil og nettbrett), mykere kort, ryddig sidemeny
 med seksjoner og roligere typografi.
 """
+import json
+import os
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -27,8 +30,8 @@ window.sysmon {
 /* ---------- innholdet: rolig bakgrunn med et svakt lys øverst ---------- */
 .ks-content {
   background-color: var(--window-bg-color);
-  background-image: radial-gradient(circle farthest-side at 50% 0%, alpha(#6a7bff, 0.09), transparent);
-  background-size: 100% 520px;
+  background-image: radial-gradient(ellipse 70% 40% at 50% 0%, alpha(#6a7bff, 0.09), transparent);
+  background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 .ks-content > headerbar, .ks-content headerbar {
@@ -179,6 +182,74 @@ levelbar.disk-warn block.filled { background-color: var(--warning-bg-color); }
 levelbar.disk-crit block.filled { background-color: var(--error-bg-color); }
 """
 
+# Flytende glass: lysrefleks i kanten, mykt skinn over flatene og farger som skinner gjennom.
+GLASS_CSS = """
+window.ks-glass .ks-content {
+  background-image:
+    radial-gradient(ellipse 55% 45% at 10% 0%, alpha(#5b8cff, 0.30), transparent),
+    radial-gradient(ellipse 45% 40% at 95% 6%, alpha(#9a6bff, 0.26), transparent),
+    radial-gradient(ellipse 70% 40% at 55% 100%, alpha(#00c8b4, 0.12), transparent);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+window.ks-glass .card {
+  background-color: color-mix(in srgb, var(--card-bg-color) 60%, transparent);
+  background-image: linear-gradient(160deg, alpha(white, 0.11), alpha(white, 0.02) 38%, transparent 62%, alpha(white, 0.05));
+  box-shadow: inset 0 1px alpha(white, 0.32), inset 0 -1px alpha(black, 0.10), inset 1px 0 alpha(white, 0.06),
+              0 0 0 1px alpha(currentColor, 0.08), 0 20px 40px -20px alpha(black, 0.45);
+}
+window.ks-glass .card.tile:hover {
+  box-shadow: inset 0 1px alpha(white, 0.40), 0 0 0 1px alpha(#6a7bff, 0.35), 0 22px 40px -18px alpha(#6a7bff, 0.45);
+}
+window.ks-glass button:not(.flat):not(.suggested-action):not(.destructive-action):not(.circular):not(.image-button) {
+  background-color: color-mix(in srgb, currentColor 7%, transparent);
+  background-image: linear-gradient(180deg, alpha(white, 0.13), alpha(white, 0) 62%);
+  box-shadow: inset 0 1px alpha(white, 0.26), 0 0 0 1px alpha(currentColor, 0.08);
+}
+window.ks-glass button.suggested-action, window.ks-glass .linked > togglebutton:checked,
+window.ks-glass .linked > button:checked {
+  box-shadow: inset 0 1px alpha(white, 0.50), inset 0 -3px 8px alpha(black, 0.14), 0 10px 22px -10px alpha(#6a7bff, 0.95);
+}
+window.ks-glass .ks-side {
+  background-color: color-mix(in srgb, var(--sidebar-bg-color, var(--window-bg-color)) 72%, transparent);
+  background-image: linear-gradient(180deg, alpha(white, 0.07), transparent 35%),
+                    radial-gradient(circle farthest-side at 0% 0%, alpha(#5b8cff, 0.18), transparent);
+  background-size: 100% 100%, 100% 420px; background-repeat: no-repeat;
+  box-shadow: inset -1px 0 alpha(white, 0.08);
+}
+window.ks-glass .navigation-sidebar.ks-sidebar > row:selected {
+  box-shadow: inset 0 1px alpha(white, 0.32), 0 0 0 1px alpha(#6a7bff, 0.28);
+}
+window.ks-glass .ks-pulse, window.ks-glass .ks-chip, window.ks-glass .sidebar-badge {
+  background-image: linear-gradient(160deg, alpha(white, 0.12), transparent 70%);
+  box-shadow: inset 0 1px alpha(white, 0.28), 0 0 0 1px alpha(currentColor, 0.06);
+}
+window.ks-glass switch slider { box-shadow: inset 0 1px alpha(white, 0.7), 0 2px 6px alpha(black, 0.28); }
+window.ks-glass .tile-icon, window.ks-glass .ks-brand-logo, window.ks-glass .ks-step {
+  box-shadow: inset 0 1px alpha(white, 0.55), inset 0 -2px 5px alpha(black, 0.18), 0 8px 18px -8px alpha(#6a7bff, 0.9);
+}
+window.ks-glass popover > contents, window.ks-glass dialog-host floating-sheet > sheet, window.ks-glass .dialog-contents {
+  box-shadow: inset 0 1px alpha(white, 0.25), 0 0 0 1px alpha(currentColor, 0.08), 0 24px 48px -16px alpha(black, 0.5);
+}
+"""
+LOOK = os.path.expanduser("~/.config/systemmonitor/utseende.json")
+
+
+def glass_on():
+    try:
+        return bool(json.load(open(LOOK)).get("glass", True))
+    except (OSError, ValueError):
+        return True
+
+
+def set_glass(on, window=None):
+    os.makedirs(os.path.dirname(LOOK), exist_ok=True)
+    json.dump({"glass": bool(on)}, open(LOOK, "w"))
+    for w in ([window] if window else Gtk.Window.list_toplevels()):
+        if w is not None:
+            (w.add_css_class if on else w.remove_css_class)("ks-glass")
+
+
 _LOADED = False
 
 
@@ -194,6 +265,10 @@ def load():
         css.load_from_data(CSS.encode(), -1)
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css,
                                               Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    g = Gtk.CssProvider()
+    g.load_from_string(GLASS_CSS) if hasattr(g, "load_from_string") else g.load_from_data(GLASS_CSS.encode(), -1)
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), g,
+                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
     _LOADED = True
 
 

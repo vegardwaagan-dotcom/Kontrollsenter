@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.18.0", "Flytende glass og familiekontroll med kode", [
+        ("Nytt", [
+            "Flytende glass på Linux, Windows og i mobilappen: glassaktige kort og knapper med lysrefleks i kanten, "
+            "speilende skinn og farger som skinner gjennom. I appen glir en glasslinse mellom fanene. "
+            "Kan slås av (Verktøy → Bakgrunn og varsler, og Innstillinger → Utseende i appen)",
+            "Familiekontroll: velg en kode som trengs for å lukke Kontrollsenter. Lukkes vinduet, fortsetter "
+            "programmet i bakgrunnen. Koden beskytter også familieinnstillingene, ekstra spilletid og bakgrunn/oppstart",
+            "Slå familiekontroll av og på – og nullstill en glemt kode – fra telefonen (Spill → Familie)",
+        ]),
+    ]),
     ("0.17.1", "Elegante valglister og ryddige spillnavn", [
         ("Nytt", [
             "Alle nedtrekkslister i appen er byttet ut med en pen velger som glir opp nedenfra – med grupper, "
