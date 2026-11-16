@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="@drawable/widget_bg">
+    <TextView android:id="@+id/w_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Hurtigknapper" android:textAllCaps="true" android:letterSpacing="0.12" android:textColor="#99FFFFFF"
+        android:textSize="11sp" android:textStyle="bold" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:orientation="horizontal" android:layout_marginTop="8dp" android:minHeight="64dp">
+        <LinearLayout android:id="@+id/q1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center" android:background="@drawable/widget_btn"
+            android:layout_marginStart="0dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎮" android:textSize="22sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Spillmodus"
+                android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" android:maxLines="1" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/q2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center" android:background="@drawable/widget_btn"
+            android:layout_marginStart="6dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎬" android:textSize="22sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Klipp"
+                android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" android:maxLines="1" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/q3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center" android:background="@drawable/widget_btn"
+            android:layout_marginStart="6dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔒" android:textSize="22sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Lås"
+                android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" android:maxLines="1" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/q4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+            android:orientation="vertical" android:gravity="center" android:background="@drawable/widget_btn"
+            android:layout_marginStart="6dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔇" android:textSize="22sp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Demp"
+                android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" android:maxLines="1" />
+        </LinearLayout>
+    </LinearLayout>
+    <TextView android:id="@+id/w_name" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textColor="#80FFFFFF" android:textSize="11sp" android:layout_marginTop="6dp" />
+    <TextView android:id="@+id/w_err" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:visibility="gone" android:textColor="#B3FFFFFF" android:textSize="13sp" android:layout_marginTop="6dp" />
+</LinearLayout>

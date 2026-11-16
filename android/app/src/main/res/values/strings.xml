@@ -10,4 +10,10 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+    <string name="w_desc_status">Temperatur, strøm og spillet som kjører</string>
+    <string name="w_desc_temp">CPU, GPU og strøm i store tall</string>
+    <string name="w_desc_quick">Spillmodus, lagre klipp, lås og demp</string>
+    <string name="w_desc_family">Hva familien spiller – og «Middag!»</string>
+    <string name="w_desc_battery">Batteri i mus, tastatur og hodesett</string>
+    <string name="w_desc_playtime">Spilletid i dag og grensen</string>
 </resources>

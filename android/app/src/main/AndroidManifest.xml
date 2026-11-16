@@ -50,6 +50,36 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />
         </receiver>
+        <receiver android:name=".TempWidget" android:exported="false" android:label="Temperaturer">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_temp_info" />
+        </receiver>
+        <receiver android:name=".QuickWidget" android:exported="false" android:label="Hurtigknapper">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
+        </receiver>
+        <receiver android:name=".FamilyWidget" android:exported="false" android:label="Familien">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_family_info" />
+        </receiver>
+        <receiver android:name=".BatteryWidget" android:exported="false" android:label="Batterier">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_battery_info" />
+        </receiver>
+        <receiver android:name=".PlaytimeWidget" android:exported="false" android:label="Spilletid i dag">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_playtime_info" />
+        </receiver>
         <service android:name=".PowerTile" android:label="Strømmodus" android:exported="true"
             android:icon="@android:drawable/ic_lock_power_off"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">

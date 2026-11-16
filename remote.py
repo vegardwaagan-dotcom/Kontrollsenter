@@ -864,6 +864,13 @@ def _handler(remote):
                 raise ValueError("forventet et JSON-objekt")
             return v
 
+        def _local(self):
+            """Bare programmer på denne PC-en (ikke nettsider i nettleseren – de sender Origin og kan ikke
+            sende hodet X-KS-Local uten at nettleseren spør først, noe vi ikke svarer ja til)."""
+            ip = self.client_address[0]
+            return (ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") and self.headers.get("X-KS-Local") == "1"
+                    and not self.headers.get("Origin"))
+
         def _auth(self):
             h = self.headers.get("Authorization", "")
             tok = h[7:].strip() if h.startswith("Bearer ") else ""
@@ -936,10 +943,18 @@ def _handler(remote):
                                             "lan": local_ips(),
                                             "mac": __import__("remote_extra").lan_mac()[0],
                                             "ts": {"ip": ts["ip"], "name": ts["name"]} if ts["running"] else None})
+                if p == "/api/local/widgets":                # KDE-widgetene på denne PC-en
+                    if not self._local():
+                        return self._send(403, {"error": "bare fra denne PC-en"})
+                    import widgets
+                    return self._send(200, _call_main(lambda: widgets.data(remote.win)))
                 if not self._auth():
                     return
                 if p == "/api/status":
                     return self._send(200, _call_main(lambda: build_status(remote.win)))
+                if p == "/api/widgets":                      # widgetene i Android-appen
+                    import widgets
+                    return self._send(200, _call_main(lambda: widgets.data(remote.win)))
                 if p == "/api/extra":
                     out = {}
                     for k, fn in (("audio", lambda: audio_state(remote.win)), ("msi", msi_state)):
@@ -973,6 +988,12 @@ def _handler(remote):
             p = urlparse(self.path).path
             try:
                 body = self._body()
+                if p == "/api/local/action":                 # knapper i KDE-widgetene
+                    if not self._local():
+                        return self._send(403, {"error": "bare fra denne PC-en"})
+                    import widgets
+                    ok, msg = widgets.local_action(remote.win, body)
+                    return self._send(200, {"ok": bool(ok), "msg": str(msg)})
                 if p == "/api/pair":
                     token, msg = remote.pair(body.get("code", ""), body.get("device", ""))
                     if not token:

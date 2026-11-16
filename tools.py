@@ -574,6 +574,7 @@ class ToolsPage(Gtk.ScrolledWindow):
             self._health_card()
             self._restore_card()
             self._backup_card()
+        self._widgets_card()
         self._notify_card()
         self._app_card()
         self._diag_card()
@@ -875,6 +876,58 @@ class ToolsPage(Gtk.ScrolledWindow):
         dlg.open(self.get_root(), None, done)
 
     # --- Kontrollsenter --------------------------------------------------------
+    # --- widgets ------------------------------------------------------------------
+    def _widgets_card(self):
+        import desk_widgets
+        import widgets as W
+        c, i = card("Widgets",
+                    "Små vinduer med temperatur, hurtigknapper, familien, batterier og spilletid – på skrivebordet, "
+                    "i KDE-panelet og på hjemskjermen på telefonen.")
+        if W.plasma_available():
+            r = Gtk.Box(spacing=12)
+            tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            tb.append(Gtk.Label(label="KDE Plasma-widgets", xalign=0))
+            have = W.installed_plasmoids()
+            self._kde_status = dim(f"{len(have)} av {len(W.KINDS)} er installert. Etterpå: høyreklikk på skrivebordet → "
+                                   "«Legg til widgets» → søk «Kontrollsenter»." if have else
+                                   "Legg dem på skrivebordet eller i panelet som vanlige KDE-widgets.")
+            tb.append(self._kde_status)
+            r.append(tb)
+            b = Gtk.Button(label="Oppdater" if have else "Installer", valign=Gtk.Align.CENTER)
+            b.add_css_class("suggested-action")
+
+            def inst(_b):
+                try:
+                    self._kde_status.set_label(W.install_plasmoids())
+                except Exception as e:  # noqa: BLE001
+                    self._kde_status.set_label(str(e))
+            b.connect("clicked", inst)
+            r.append(b)
+            i.append(r)
+            i.append(Gtk.Separator())
+        i.append(Gtk.Label(label="Skrivebordswidgets fra Kontrollsenter" + ("" if sys.platform == "win32" else
+                                                                             " (for skrivebord uten KDE)"), xalign=0))
+        cfg = W.cfg()["desk"]
+        for kind, (name, desc, icon, _w, _h) in W.KINDS.items():
+            r = Gtk.Box(spacing=12)
+            r.append(Gtk.Label(label=icon))
+            tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            tb.append(Gtk.Label(label=name, xalign=0))
+            tb.append(dim(desc))
+            r.append(tb)
+            if sys.platform == "win32":
+                top = Gtk.CheckButton(label="Alltid øverst", active=bool(cfg.get(kind, {}).get("top")),
+                                      valign=Gtk.Align.CENTER)
+                top.connect("toggled", lambda w, k=kind: desk_widgets.set_top(k, w.get_active()))
+                r.append(top)
+            sw = Gtk.Switch(active=bool(cfg.get(kind, {}).get("on")), valign=Gtk.Align.CENTER)
+            sw.connect("notify::active", lambda w, _p, k=kind: desk_widgets.show(self.get_root(), k)
+                       if w.get_active() else desk_widgets.hide(k))
+            r.append(sw)
+            i.append(r)
+        i.append(dim("Android: hold fingeren på hjemskjermen → Widgets → Kontrollsenter. Seks widgets å velge mellom."))
+        self.box.append(c)
+
     # --- bakgrunn og varsler ------------------------------------------------------
     def _notify_card(self):
         import background

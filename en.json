@@ -1889,5 +1889,19 @@
  "Ingen spill nå": "No game right now",
  "Trenger Kontrollsenter 0.16 eller nyere – oppdater og start den på nytt": "Needs Kontrollsenter 0.16 or newer – update and restart it",
  "Deling er slått av på den PC-en (eller fjernstyring er av)": "Sharing is off on that PC (or remote control is off)",
- "Leggetid, deling og drift": "Bedtime, sharing and maintenance"
+ "Leggetid, deling og drift": "Bedtime, sharing and maintenance",
+ "Widgets": "Widgets",
+ "KDE Plasma-widgets": "KDE Plasma widgets",
+ "Skrivebordswidgets fra Kontrollsenter": "Desktop widgets from Kontrollsenter",
+ "Alltid øverst": "Always on top",
+ "Fjern widgeten": "Remove widget",
+ "Hurtigknapper": "Quick buttons",
+ "Familien": "The family",
+ "Spilletid i dag": "Playtime today",
+ "Lagre klipp": "Save clip",
+ "Lås": "Lock",
+ "Grense i dag:": "Limit today:",
+ "Mest:": "Most:",
+ "Ingen andre PC-er ennå": "No other PCs yet",
+ "Ingen trådløse enheter": "No wireless devices"
 }

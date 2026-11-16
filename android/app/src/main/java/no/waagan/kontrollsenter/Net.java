@@ -116,6 +116,20 @@ final class Net {
         return new JSONObject(request(base + "/api/status", token(c, name), null, 4000));
     }
 
+    /** Alt widgetene viser (én henting for alle widgetene). */
+    static JSONObject widgets(Context c) throws Exception {
+        JSONObject a = active(c);
+        String name = a.optString("name");
+        String base = a.optString("base");
+        JSONObject pc = findPc(c, name);
+        if (pc != null) {
+            String b = reach(pc);
+            if (b != null) base = b;
+        }
+        if (base.isEmpty()) throw new Exception("åpne appen og velg en PC først");
+        return new JSONObject(request(base + "/api/widgets", token(c, name), null, 4000));
+    }
+
     static JSONObject findPc(Context c, String name) {
         JSONArray a = pcs(c);
         for (int i = 0; i < a.length(); i++) {

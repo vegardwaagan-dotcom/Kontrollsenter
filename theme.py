@@ -232,6 +232,55 @@ window.ks-glass popover > contents, window.ks-glass dialog-host floating-sheet >
   box-shadow: inset 0 1px alpha(white, 0.25), 0 0 0 1px alpha(currentColor, 0.08), 0 24px 48px -16px alpha(black, 0.5);
 }
 """
+# Tøff glød når musa er over knapper, brytere og valg – på eller av. Egen kilde med høyere prioritet,
+# så den vinner over glass-stilen.
+GLOW_CSS = """
+button, switch, checkbutton check, radiobutton radio, .navigation-sidebar > row, .card.tile, dropdown > button {
+  transition: box-shadow 220ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+button:hover:not(:disabled), dropdown > button:hover {
+  box-shadow: inset 0 1px alpha(white, 0.28), 0 0 0 1px alpha(#9aa8ff, 0.85),
+              0 0 16px 3px alpha(#6a7bff, 0.75), 0 0 40px 10px alpha(#8a5cff, 0.40);
+}
+button.flat:hover:not(:disabled), button.circular:hover:not(:disabled), button.image-button:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px alpha(#8a9bff, 0.45), 0 0 14px alpha(#6a7bff, 0.45);
+}
+button.suggested-action:hover:not(:disabled), button:checked:hover, .linked > button:checked:hover {
+  box-shadow: inset 0 1px alpha(white, 0.6), 0 0 0 1px alpha(white, 0.45),
+              0 0 22px 5px alpha(#6a7bff, 0.95), 0 0 56px 14px alpha(#8a5cff, 0.55);
+}
+button:checked, .linked > button:checked {
+  box-shadow: inset 0 1px alpha(white, 0.45), 0 0 14px alpha(#6a7bff, 0.55);
+}
+switch:hover { box-shadow: 0 0 0 1px alpha(#8a9bff, 0.6), 0 0 16px 2px alpha(#6a7bff, 0.6); }
+switch:checked:hover { box-shadow: 0 0 0 1px alpha(white, 0.35), 0 0 22px 4px alpha(#8a5cff, 0.75); }
+checkbutton:hover check, radiobutton:hover radio { box-shadow: 0 0 12px 2px alpha(#6a7bff, 0.65); }
+.navigation-sidebar > row:hover { box-shadow: 0 0 0 1px alpha(#8a9bff, 0.35), 0 0 16px alpha(#6a7bff, 0.30); }
+scale:hover slider { box-shadow: 0 0 14px 2px alpha(#6a7bff, 0.7); }
+
+/* skrivebordswidgets */
+window.ks-desk { background: transparent; }
+window.ks-desk > windowhandle { border-radius: 22px; }
+.ks-desk-body {
+  padding: 16px 18px 18px 18px; border-radius: 22px; min-width: 220px;
+  background-color: alpha(#141626, 0.82);
+  background-image: linear-gradient(155deg, alpha(#5b8cff, 0.30), alpha(white, 0.03) 45%, alpha(#8a5cff, 0.22));
+  box-shadow: inset 0 1px alpha(white, 0.35), inset 0 0 0 1px alpha(white, 0.10), 0 18px 40px -16px alpha(black, 0.7);
+  color: white;
+}
+.ks-desk-title { font-size: 0.72em; font-weight: 800; letter-spacing: 0.12em; color: alpha(white, 0.6); }
+.ks-desk-name { font-weight: 800; font-size: 1.15em; color: white; }
+.ks-desk-big { font-size: 1.9em; font-weight: 800; color: white; letter-spacing: -0.02em; }
+.ks-desk-k { font-size: 0.7em; font-weight: 800; letter-spacing: 0.1em; color: alpha(white, 0.6); }
+.ks-desk-sub { color: alpha(white, 0.72); font-size: 0.9em; }
+.ks-desk-row { color: white; font-weight: 600; }
+.ks-desk-btn { min-height: 64px; border-radius: 16px; color: white; background-color: alpha(white, 0.08);
+  background-image: linear-gradient(180deg, alpha(white, 0.12), transparent); }
+.ks-desk-btn.slim { min-height: 40px; }
+.ks-desk-btn.on { background-image: linear-gradient(135deg, #5b8cff, #8a5cff); }
+.ks-desk-ic { font-size: 1.5em; } .ks-desk-bl { font-size: 0.8em; font-weight: 700; color: white; }
+.ks-desk-x { min-width: 26px; min-height: 26px; padding: 0; background-color: alpha(black, 0.4); color: white; }
+"""
 LOOK = os.path.expanduser("~/.config/systemmonitor/utseende.json")
 
 
@@ -269,6 +318,10 @@ def load():
     g.load_from_string(GLASS_CSS) if hasattr(g, "load_from_string") else g.load_from_data(GLASS_CSS.encode(), -1)
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), g,
                                               Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+    gl = Gtk.CssProvider()
+    gl.load_from_string(GLOW_CSS) if hasattr(gl, "load_from_string") else gl.load_from_data(GLOW_CSS.encode(), -1)
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), gl,
+                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
     _LOADED = True
 
 

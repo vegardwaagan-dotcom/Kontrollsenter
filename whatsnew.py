@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.19.0", "Widgets overalt og glød på knappene", [
+        ("Nytt", [
+            "Seks widgets: Kontrollsenter, Temperaturer, Hurtigknapper (spillmodus, klipp, lås, demp), Familien "
+            "(hva de andre spiller + «Middag!»), Batterier og Spilletid i dag",
+            "Android: hold fingeren på hjemskjermen → Widgets → Kontrollsenter",
+            "Linux (KDE): Verktøy → Widgets → Installer, så «Legg til widgets» og søk «Kontrollsenter» – virker på "
+            "skrivebordet og i panelet",
+            "Windows (og Linux uten KDE): glass-widgets på skrivebordet fra Verktøy → Widgets – dra dem dit du vil, "
+            "valgfritt «Alltid øverst»",
+            "Tøff glød når musa er over knapper, brytere og valg – på eller av – på PC-en og i appen på nettbrett med mus",
+        ]),
+    ]),
     ("0.18.1", "Familie-fanen og «Se på» på Hjem", [
         ("Nytt", [
             "Ny fane «Familie» i sidemenyen: familiekontroll med kode øverst, «Se på» skjermen til de andre PC-ene "

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="@drawable/widget_bg">
+    <TextView android:id="@+id/w_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Batterier" android:textAllCaps="true" android:letterSpacing="0.12" android:textColor="#99FFFFFF"
+        android:textSize="11sp" android:textStyle="bold" />
+    <LinearLayout android:id="@+id/b1" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="7dp" android:visibility="gone">
+        <TextView android:id="@+id/b1n" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+        <ProgressBar android:id="@+id/b1p" style="?android:attr/progressBarStyleHorizontal" android:layout_width="64dp" android:layout_height="8dp"
+            android:max="100" android:progressDrawable="@drawable/widget_progress" android:layout_marginStart="8dp" />
+        <TextView android:id="@+id/b1v" android:layout_width="46dp" android:layout_height="wrap_content" android:gravity="end"
+            android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/b2" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="7dp" android:visibility="gone">
+        <TextView android:id="@+id/b2n" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+        <ProgressBar android:id="@+id/b2p" style="?android:attr/progressBarStyleHorizontal" android:layout_width="64dp" android:layout_height="8dp"
+            android:max="100" android:progressDrawable="@drawable/widget_progress" android:layout_marginStart="8dp" />
+        <TextView android:id="@+id/b2v" android:layout_width="46dp" android:layout_height="wrap_content" android:gravity="end"
+            android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/b3" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="7dp" android:visibility="gone">
+        <TextView android:id="@+id/b3n" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+        <ProgressBar android:id="@+id/b3p" style="?android:attr/progressBarStyleHorizontal" android:layout_width="64dp" android:layout_height="8dp"
+            android:max="100" android:progressDrawable="@drawable/widget_progress" android:layout_marginStart="8dp" />
+        <TextView android:id="@+id/b3v" android:layout_width="46dp" android:layout_height="wrap_content" android:gravity="end"
+            android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <TextView android:id="@+id/w_none" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone"
+        android:text="Ingen trådløse enheter" android:textColor="#B3FFFFFF" android:textSize="13sp" android:layout_marginTop="6dp" />
+    <TextView android:id="@+id/w_err" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:visibility="gone" android:textColor="#B3FFFFFF" android:textSize="13sp" android:layout_marginTop="6dp" />
+</LinearLayout>

@@ -48,7 +48,7 @@ public class UpdateJob extends JobService {
             try {
                 checkPcs(this);
                 check(this);
-                StatusWidget.refresh(this);
+                KsWidget.refreshAll(this);
             } catch (Exception e) {
                 // prøv igjen neste gang
             }

@@ -568,6 +568,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.rgb_page = None
         self.set_content(self.split)
         # RGB: legg inn de lagrede fargene ved oppstart og etter hvilemodus – OpenRGB husker dem ikke selv
+        if not os.environ.get("SYSTEMMONITOR_APP_ID"):            # skrivebordswidgetene som var på sist
+            GLib.timeout_add_seconds(4, lambda: __import__("desk_widgets").restore(self))
         if self.hw.get("rgb") and not os.environ.get("SYSTEMMONITOR_APP_ID"):
             GLib.timeout_add_seconds(12, lambda: (self.rgb_restore("oppstart"), False)[1])
             self._watch_sleep()
