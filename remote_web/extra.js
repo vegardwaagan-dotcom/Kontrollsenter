@@ -118,8 +118,16 @@ $("#health-open").onclick = () => act({ a: "syscheck" });
 
 // ---------- spillmodus (14) og avslåing (20) ----------
 $("#gm-on").onchange = () => { holdFor("gm", 6000); act({ a: "gamemode", on: $("#gm-on").checked, color: $("#gm-color").value }); };
+let timerPick = null;
+function timerMark(t) {
+  if (!t.at && !t.when_idle) timerPick = null;
+  else if (t.when_idle) timerPick = "idle";
+  $$("[data-timer]").forEach((x) => x.classList.toggle("on", x.dataset.timer !== "off" && x.dataset.timer === timerPick));
+}
 $$("[data-timer]").forEach((b) => (b.onclick = () => {
   const v = b.dataset.timer;
+  timerPick = v === "off" ? null : v; holdFor("timer", 4000);
+  $$("[data-timer]").forEach((x) => x.classList.toggle("on", x.dataset.timer !== "off" && x.dataset.timer === timerPick));
   act({ a: "timer", minutes: /^\d+$/.test(v) ? +v : null, when_idle: v === "idle" });
 }));
 // ---------- hurtigknapper på Hjem ----------
@@ -145,6 +153,8 @@ function renderExtraStatus(s) {
   $("#temps-more").hidden = (s.temps || []).length <= 8;
   if (!held("gm")) $("#gm-on").checked = !!s.gamemode;
   const t = s.timer || {};
+  if (!held("timer")) timerMark(t);
+  if (typeof deckState === "function") deckState(s);
   $("#timer-state").textContent = t.at ? "PC-en slås av kl. " + new Date(t.at * 1000).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })
     : t.when_idle ? `Slås av når nettet har vært stille i 5 min (stille nå: ${Math.round((t.idle_for || 0) / 60)} min)` : "Ingen planlagt avslåing";
   // andreskjerm: start automatisk når et spill starter
@@ -352,7 +362,7 @@ async function loadClips() {
     $("#q-clip").textContent = c.os === "windows" ? "Game Bar" : "Siste " + lenName(c.length);
     const KEYS = ["F8", "F9", "F10", "F12", "Alt+F10", "Ctrl+Shift+S", "Print"];
     const cur = c.hotkey || "F8";
-    $("#clip-keys").innerHTML = [...new Set([cur, ...KEYS])].map((k) => `<button class="${k === cur ? "primary" : ""}" data-key="${esc(k)}">${esc(k)}</button>`).join("");
+    $("#clip-keys").innerHTML = [...new Set([cur, ...KEYS])].map((k) => `<button class="${k === cur ? "on" : ""}" data-key="${esc(k)}">${esc(k)}</button>`).join("");
     $$("[data-key]").forEach((b) => (b.onclick = () => act({ a: "clipkey", key: b.dataset.key }).then(() => setTimeout(loadClips, 700))));
     $("#clip-key-status").textContent = c.hotkey_testing ? "Trykk tasten på PC-en nå …"
       : c.hotkey_tested && Date.now() / 1000 - c.hotkey_tested < 60 ? "✅ Tasten virker!"

@@ -134,7 +134,7 @@ function renderControls(s) {
   const f = s.fans;
   $("#c-fans").hidden = !f;
   if (f && !held("fans")) {
-    $$("#fan-all button").forEach((b) => b.classList.toggle("on", (b.dataset.v === "curve" && f.curve) || (b.dataset.v === "auto" && !f.curve && f.rows.every((r) => r.value === "auto"))));
+    $$("#fan-all button").forEach((b) => b.classList.toggle("on", fanAllOn(f, b.dataset.v)));
     $("#fans").innerHTML = f.rows.map((r) => `<div class="fan" data-k="${esc(r.key)}"><div class="h"><span>${esc(r.name)}</span><span class="dim num">${esc(r.rpm)}</span></div>
       <div class="r"><label class="switch"><input type="checkbox" class="fa" ${r.value === "auto" ? "checked" : ""}><i></i></label><span class="small dim">Auto</span>
       <input type="range" min="${r.min}" max="100" value="${r.value === "auto" ? 50 : r.value}" ${r.value === "auto" ? "disabled" : ""}><span class="num">${r.value === "auto" ? "auto" : r.value + " %"}</span></div></div>`).join("");
@@ -150,7 +150,13 @@ function renderControls(s) {
   if (s.overlay != null && !held("ov")) $("#ov").checked = s.overlay;
   $("#c-msi").hidden = !s.msi;
 }
-$$("#fan-all button").forEach((b) => (b.onclick = () => { holdFor("fans", 1500); const v = b.dataset.v; act({ a: "fans", value: /^\d+$/.test(v) ? +v : v }); }));
+// én knapp for alle viftene er «på» når alle viftene står slik (Kurve når kurven styrer)
+function fanAllOn(f, v) {
+  if (v === "curve") return !!f.curve;
+  return !f.curve && f.rows.length > 0 && f.rows.every((r) => String(r.value) === v);
+}
+$$("#fan-all button").forEach((b) => (b.onclick = () => { holdFor("fans", 1500); const v = b.dataset.v;
+  $$("#fan-all button").forEach((x) => x.classList.toggle("on", x === b)); act({ a: "fans", value: /^\d+$/.test(v) ? +v : v }); }));
 $("#ov").onchange = () => { holdFor("ov"); act({ a: "overlay", on: $("#ov").checked }); };
 
 // lyd
@@ -169,6 +175,7 @@ $("#rgb-restore").onclick = () => act({ a: "rgb", mode: "restore" });
 
 // MSI
 $("#msi-boost").onchange = () => { holdFor("msi", 8000); act({ a: "msi", boost: $("#msi-boost").checked }); };
+let lastMute = false;
 function renderExtra(x) {
   const a = x.audio;
   $("#c-audio").hidden = !a || a.ok === false;
@@ -176,6 +183,7 @@ function renderExtra(x) {
     $("#vol").value = a.volume; $("#vol-v").textContent = a.volume + " %"; $("#audio-dev").textContent = a.device || "";
     $("#mute").classList.toggle("on", !!a.mute); $("#mute-x").style.display = a.mute ? "" : "none";
   }
+  if (a && a.ok !== false) { lastMute = !!a.mute; if (typeof deckState === "function" && last) deckState(last); }
   const m = x.msi;
   if (!m) return;
   if (m.ok === false) { $("#msi-msg").textContent = m.error || ""; return; }

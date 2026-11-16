@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.25.0", "Lilla betyr «på»", [
+        ("Endret", [
+            "Lilla betyr nå alltid at noe er slått på – på PC-en, i appen og på startsiden i Android-appen. "
+            "Vanlige knapper (Lagre, Åpne, Søk …) er ikke lenger lilla hele tiden, men lyser lilla mens du holder på dem",
+            "Vifter: 50 % og Maks blir lilla når viftene står slik (som Auto og Kurve)",
+            "«Slå av senere»: tiden du valgte er lilla til avslåingen er avbrutt",
+            "Snarveiene (Spillmodus, Demp av/på, Vifter maks og Vifter auto) blir lilla når de er på",
+            "Tasten for klipp: valgt tast er lilla",
+        ]),
+        ("Rettet", [
+            "Med glass-utseendet på PC-en ble knapper som var slått på ikke lilla",
+        ]),
+    ]),
     ("0.24.3", "Lilla også på hjemmeskjermen", [
         ("Endret", [
             "Android-widgeten «Hurtigknapper»: Demp blir lilla når lyden er dempet (som Spillmodus), "

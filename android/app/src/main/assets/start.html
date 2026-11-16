@@ -96,14 +96,19 @@ body::before { background:
 .pc::after { content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
   background: radial-gradient(120% 60% at 0% 0%, rgba(255,255,255,.14), transparent 42%); }
 .pc > * { position:relative; z-index:1; }
-button:not(.primary):not(.x), input, .stats > div { background-color:rgba(255,255,255,.07);
+button:not(.x), input, .stats > div { background-color:rgba(255,255,255,.07);
   background-image:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 60%); box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 1px rgba(255,255,255,.08); }
-button.primary, .logo { box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -3px 8px rgba(0,0,0,.14), 0 12px 26px -12px rgba(111,139,255,.95); }
+.logo { box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -3px 8px rgba(0,0,0,.14), 0 12px 26px -12px rgba(111,139,255,.95); }
 .pc .wake { background-color:rgba(61,220,151,.16); }
 @media (prefers-color-scheme: light) {
   .pc, .gi { background-color:rgba(255,255,255,.55); border-color:rgba(20,24,60,.09); box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 18px 40px -22px rgba(40,50,120,.35); }
-  button:not(.primary):not(.x), input, .stats > div { box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 0 0 1px rgba(20,24,60,.08); }
+  button:not(.x), input, .stats > div { box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 0 0 1px rgba(20,24,60,.08); }
 }
+
+/* knapper er vanlige i ro og lyser lilla bare mens fingeren holdes på dem */
+button.primary { color:var(--fg); }
+button:not(:disabled):not(.x):active { background:var(--grad) !important; color:#fff !important; box-shadow:0 0 0 1px rgba(255,255,255,.25), 0 0 18px 2px rgba(106,123,255,.6) !important; }
+button:not(:disabled):active svg { stroke:#fff; }
 </style>
 </head>
 <body>
@@ -348,5 +353,6 @@ if (KS && KS.version) $("#ver").textContent = "App-versjon " + KS.version();
   else if (!Object.values(online).some(Boolean)) $("#status").textContent = "Ingen av PC-ene svarer akkurat nå. Prøv «Søk etter PC-er».";
 })();
 </script>
+<script>document.addEventListener("touchstart", () => {}, { passive: true });</script>
 </body>
 </html>

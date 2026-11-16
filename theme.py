@@ -125,15 +125,21 @@ window.sysmon {
 /* ---------- knapper og brytere ---------- */
 button { border-radius: 10px; }
 button.pill, button.circular { border-radius: 99px; }
+/* knapper uten av/på er vanlige – lilla bare mens du holder musa/fingeren nede (som i appen).
+   Bare knapper som er slått på (:checked, brytere, avkrysning) er lilla hele tiden. */
 button.suggested-action {
-  background-color: transparent;
-  background-image: linear-gradient(135deg, #5b8cff, #8a5cff);
-  color: white;
-  box-shadow: 0 6px 16px -8px alpha(#6a7bff, 0.9);
+  background-color: color-mix(in srgb, var(--window-fg-color) 10%, transparent);
+  background-image: none;
+  color: var(--window-fg-color);
+  box-shadow: none;
 }
-button.suggested-action:hover { background-image: linear-gradient(135deg, #6b98ff, #9868ff); }
-button.suggested-action:active { background-image: linear-gradient(135deg, #4f7ef0, #7c50ef); }
-button.suggested-action:disabled { background-image: none; background-color: alpha(currentColor, 0.1); box-shadow: none; }
+button.suggested-action:hover { background-color: color-mix(in srgb, var(--window-fg-color) 15%, transparent); }
+button.suggested-action:disabled { background-color: alpha(currentColor, 0.1); }
+button:active:not(:disabled), button.suggested-action:active:not(:disabled), button.flat:active:not(:disabled) {
+  background-color: transparent;
+  background-image: linear-gradient(135deg, #4f7ef0, #7c50ef);
+  color: white;
+}
 
 /* alle knapper som er slått på blir lilla – samme som «Auto» på viftene */
 button:checked, togglebutton:checked, button.toggle:checked,
@@ -218,12 +224,12 @@ window.ks-glass .card {
 window.ks-glass .card.tile:hover {
   box-shadow: inset 0 1px alpha(white, 0.40), 0 0 0 1px alpha(#6a7bff, 0.35), 0 22px 40px -18px alpha(#6a7bff, 0.45);
 }
-window.ks-glass button:not(.flat):not(.suggested-action):not(.destructive-action):not(.circular):not(.image-button) {
+window.ks-glass button:not(.flat):not(.destructive-action):not(.circular):not(.image-button) {
   background-color: color-mix(in srgb, currentColor 7%, transparent);
   background-image: linear-gradient(180deg, alpha(white, 0.13), alpha(white, 0) 62%);
   box-shadow: inset 0 1px alpha(white, 0.26), 0 0 0 1px alpha(currentColor, 0.08);
 }
-window.ks-glass button.suggested-action, window.ks-glass togglebutton:checked, window.ks-glass button:checked,
+window.ks-glass togglebutton:checked, window.ks-glass button:checked,
 window.ks-glass .linked > togglebutton:checked,
 window.ks-glass .linked > button:checked {
   box-shadow: inset 0 1px alpha(white, 0.50), inset 0 -3px 8px alpha(black, 0.14), 0 10px 22px -10px alpha(#6a7bff, 0.95);
@@ -249,6 +255,15 @@ window.ks-glass .tile-icon, window.ks-glass .ks-brand-logo, window.ks-glass .ks-
 window.ks-glass popover > contents, window.ks-glass dialog-host floating-sheet > sheet, window.ks-glass .dialog-contents {
   box-shadow: inset 0 1px alpha(white, 0.25), 0 0 0 1px alpha(currentColor, 0.08), 0 24px 48px -16px alpha(black, 0.5);
 }
+/* glass: knapper som er på er lilla, og alle knapper lyser lilla mens de holdes nede */
+window.ks-glass button:not(.flat):not(.destructive-action):not(.circular):not(.image-button):checked, window.ks-glass button:not(.flat):not(.destructive-action):not(.circular):not(.image-button):active:not(:disabled) {
+  background-color: transparent; background-image: linear-gradient(135deg, #5b8cff, #8a5cff); color: white;
+}
+window.ks-glass menubutton > button:not(.flat):not(.destructive-action):not(.circular):not(.image-button):checked,
+window.ks-glass dropdown > button:not(.flat):not(.destructive-action):not(.circular):not(.image-button):checked {
+  background-color: color-mix(in srgb, currentColor 7%, transparent);
+  background-image: linear-gradient(180deg, alpha(white, 0.13), alpha(white, 0) 62%); color: inherit;
+}
 """
 # Tøff glød når musa er over knapper, brytere og valg – på eller av. Egen kilde med høyere prioritet,
 # så den vinner over glass-stilen.
@@ -263,7 +278,7 @@ button:hover:not(:disabled), dropdown > button:hover {
 button.flat:hover:not(:disabled), button.circular:hover:not(:disabled), button.image-button:hover:not(:disabled) {
   box-shadow: 0 0 0 1px alpha(#8a9bff, 0.45), 0 0 14px alpha(#6a7bff, 0.45);
 }
-button.suggested-action:hover:not(:disabled), button:checked:hover, .linked > button:checked:hover {
+button:checked:hover, .linked > button:checked:hover, button:active:not(:disabled) {
   box-shadow: inset 0 1px alpha(white, 0.6), 0 0 0 1px alpha(white, 0.45),
               0 0 22px 5px alpha(#6a7bff, 0.95), 0 0 56px 14px alpha(#8a5cff, 0.55);
 }

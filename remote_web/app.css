@@ -584,3 +584,23 @@ details.wp-q { padding: 6px 0; border-bottom: 1px solid var(--line); } details.w
 button.on:not(.tabs button) { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 3px 10px rgba(91,140,255,.3); }
 button.on:not(.tabs button) svg { stroke: #fff; }
 body.glass button.on:not(.tabs button) { box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -3px 8px rgba(0,0,0,.14), 0 12px 26px -12px rgba(111,139,255,.95); }
+
+/* knapper uten av/på er vanlige – de lyser lilla bare mens fingeren holdes på dem.
+   Bare knapper som er slått på (.on / brytere) er lilla hele tiden. */
+button.primary, .chips button.primary { background: var(--card2); color: var(--fg); box-shadow: none; }
+body.glass button.primary, body.glass .chips button.primary {
+  background-color: rgba(255,255,255,.07); background-image: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 60%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 1px var(--gl-edge);
+}
+button:not(:disabled):not(.tabs button):active {
+  background: var(--grad) !important; color: #fff !important; border-color: transparent !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.25), 0 0 18px 2px rgba(106,123,255,.6) !important;
+}
+button:not(:disabled):not(.tabs button):active svg { stroke: #fff; }
+@media (hover: hover) {
+  button.primary:not(.on):not(:disabled):hover { filter: none; }
+  button.on:not(.tabs button):hover {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 0 0 1px rgba(255,255,255,.4),
+                0 0 22px 3px rgba(106,123,255,.85), 0 0 52px 10px rgba(138,92,255,.45) !important;
+  }
+}

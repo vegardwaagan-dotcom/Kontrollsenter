@@ -229,9 +229,23 @@ const DECK = {
   fanauto: ["🍃", "Vifter auto", () => act({ a: "fans", value: "auto" })],
 };
 let deckKeys = pref("deck", ["gamemode", "clip", "shot", "mute", "play", "lock", "dinner", "fanauto"]);
+// av/på-snarveier: lilla når de er på
+const DECK_ON = {
+  gamemode: (s) => !!s.gamemode,
+  mute: () => lastMute,
+  fans: (s) => !!(s.fans && fanAllOn(s.fans, "100")),
+  fanauto: (s) => !!(s.fans && fanAllOn(s.fans, "auto")),
+};
+function deckState(s) {
+  if (held("deck")) return;
+  $$("#deck button").forEach((b) => { const f = DECK_ON[b.dataset.d]; b.classList.toggle("on", !!(f && s && f(s))); });
+}
 function renderDeck() {
   $("#deck").innerHTML = deckKeys.filter((k) => DECK[k]).map((k) => `<button data-d="${k}"><span class="qi">${DECK[k][0]}</span><span class="ql">${DECK[k][1]}</span></button>`).join("");
-  $$("#deck button").forEach((b) => (b.onclick = () => { if (KS && KS.vibrate) KS.vibrate(); DECK[b.dataset.d][2](); }));
+  $$("#deck button").forEach((b) => (b.onclick = () => { if (KS && KS.vibrate) KS.vibrate();
+    if (DECK_ON[b.dataset.d]) { holdFor("deck", 4000); b.classList.toggle("on", !b.classList.contains("on")); }
+    DECK[b.dataset.d][2](); }));
+  if (typeof last !== "undefined" && last) deckState(last);
   $("#deck-pick").innerHTML = Object.entries(DECK).map(([k, v]) => `<button data-k="${k}" class="${deckKeys.includes(k) ? "on" : ""}">${v[0]} ${v[1]}</button>`).join("");
   $$("#deck-pick button").forEach((b) => (b.onclick = () => {
     const k = b.dataset.k; deckKeys = deckKeys.includes(k) ? deckKeys.filter((x) => x !== k) : [...deckKeys, k];
