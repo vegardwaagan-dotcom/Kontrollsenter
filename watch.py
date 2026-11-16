@@ -155,48 +155,12 @@ class Capture:
 
     # --- Windows: GDI ---
     def _run_windows(self):
-        import ctypes
-        from ctypes import wintypes
-        import gi
-        gi.require_version("GdkPixbuf", "2.0")
-        from gi.repository import GdkPixbuf, GLib
-        u, g = ctypes.windll.user32, ctypes.windll.gdi32
-        u.SetProcessDPIAware()
-        sw, sh = u.GetSystemMetrics(0), u.GetSystemMetrics(1)
+        import wincapture
         c = cfg()
-        w = min(c["width"], sw)
-        h = int(sh * w / sw) // 2 * 2
-
-        class BMI(ctypes.Structure):
-            _fields_ = [("biSize", wintypes.DWORD), ("biWidth", ctypes.c_long), ("biHeight", ctypes.c_long),
-                        ("biPlanes", wintypes.WORD), ("biBitCount", wintypes.WORD), ("biCompression", wintypes.DWORD),
-                        ("biSizeImage", wintypes.DWORD), ("biXPelsPerMeter", ctypes.c_long),
-                        ("biYPelsPerMeter", ctypes.c_long), ("biClrUsed", wintypes.DWORD),
-                        ("biClrImportant", wintypes.DWORD)]
-        src = u.GetDC(0)
-        mem = g.CreateCompatibleDC(src)
-        bmp = g.CreateCompatibleBitmap(src, w, h)
-        g.SelectObject(mem, bmp)
-        g.SetStretchBltMode(mem, 4)                           # HALFTONE – pen nedskalering
-        bmi = BMI(ctypes.sizeof(BMI), w, -h, 1, 32, 0, 0, 0, 0, 0, 0)
-        buf = ctypes.create_string_buffer(w * h * 4)
-        try:
-            while not self._stop.is_set():
-                t0 = time.time()
-                g.StretchBlt(mem, 0, 0, w, h, src, 0, 0, sw, sh, 0x00CC0020)
-                g.GetDIBits(mem, bmp, 0, h, buf, ctypes.byref(bmi), 0)
-                px = bytearray(buf.raw)
-                px[0::4], px[2::4] = px[2::4], px[0::4]       # BGRA → RGBA
-                pb = GdkPixbuf.Pixbuf.new_from_bytes(GLib.Bytes.new(bytes(px)), GdkPixbuf.Colorspace.RGB, True,
-                                                     8, w, h, w * 4)
-                ok, data = pb.save_to_bufferv("jpeg", ["quality"], ["70"])
-                if ok:
-                    self._push(bytes(data))
-                time.sleep(max(0.0, 1 / c["fps"] - (time.time() - t0)))
-        finally:
-            g.DeleteObject(bmp)
-            g.DeleteDC(mem)
-            u.ReleaseDC(0, src)
+        while not self._stop.is_set():
+            t0 = time.time()
+            self._push(wincapture.jpeg(c["width"], 70))
+            time.sleep(max(0.0, 1 / c["fps"] - (time.time() - t0)))
 
     # --- Linux: skjermdelingsportalen + GStreamer ---
     def _run_linux(self):
@@ -274,6 +238,12 @@ TOKEN_FILE = os.path.expanduser("~/.config/systemmonitor/se-pa-portal")
 def _portal_screencast():
     from gi.repository import Gio, GLib
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    try:                                         # samme app-ID hver gang → «husk valget» gjelder Kontrollsenter
+        bus.call_sync("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+                      "org.freedesktop.host.portal.Registry", "Register",
+                      GLib.Variant("(sa{sv})", ("no.waagan.Systemmonitor", {})), None, 0, 3000, None)
+    except GLib.Error:
+        pass                                     # allerede registrert (f.eks. av hurtigtasten for klipp)
     sender = bus.get_unique_name()[1:].replace(".", "_")
     n = [0]
 

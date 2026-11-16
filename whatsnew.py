@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.20.3", "Windows-PC-ene og appen fungerer som de skal", [
+        ("Rettet", [
+            "Appen skalerte feil mot Windows-PC-er: lange Windows-stier og nettverksnavn gjorde siden bredere enn "
+            "skjermen, så telefonen zoomet ut. Lange tekster brytes nå, og siden er aldri bredere enn skjermen",
+            "Skjermbilder og klipp fra Windows-PC-er: Kontrollsenter finner nå Windows-mappen «Opptak» der den faktisk "
+            "ligger (også i OneDrive), og skjermbilder tas med Windows' egen skjermkopi – uten Xbox Game Bar og PowerShell",
+            "Skjermbilder får miniatyrbilde uten ffmpeg, og klipp uten miniatyrbilde vises med et pent ikon",
+            "«Se på» og skjermbildet på Windows bruker riktige 64-bits typer mot Windows (kunne feile før)",
+            "«Se på» på Linux husker tillatelsen til skjermdeling for Kontrollsenter",
+            "RGB etter omstart: venter til OpenRGB er klar i stedet for å vise «Mistet kontakt»",
+        ]),
+    ]),
     ("0.20.2", "Enda lettere, og «Se på» på Linux", [
         ("Forbedret", [
             "Trege sensorer (RAM, NVMe og hovedkortbrikken) leses sjeldnere – CPU og GPU fortsatt hvert sekund – og "

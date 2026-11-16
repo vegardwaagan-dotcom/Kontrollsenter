@@ -52,9 +52,19 @@ def save_cfg(c):
         json.dump(c, f, indent=1)
 
 
+_WIN_DIR = None
+
+
 def clip_dir():
     if IS_WIN:
-        return os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "Videos", "Captures")
+        global _WIN_DIR
+        if _WIN_DIR is None:                       # «Opptak»-mappen kan være flyttet (f.eks. til OneDrive)
+            try:
+                import wincapture
+                _WIN_DIR = wincapture.captures_dir()
+            except Exception:  # noqa: BLE001
+                _WIN_DIR = os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "Videos", "Captures")
+        return _WIN_DIR
     base = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_VIDEOS) or os.path.expanduser("~/Videos")
     return os.path.join(base, "Kontrollsenter")
 

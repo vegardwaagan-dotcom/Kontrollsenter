@@ -576,7 +576,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         if not os.environ.get("SYSTEMMONITOR_APP_ID"):            # skrivebordswidgetene som var på sist
             GLib.timeout_add_seconds(4, lambda: __import__("desk_widgets").restore(self))
         if self.hw.get("rgb") and not os.environ.get("SYSTEMMONITOR_APP_ID"):
-            GLib.timeout_add_seconds(12, lambda: (self.rgb_restore("oppstart"), False)[1])
+            GLib.timeout_add_seconds(12, lambda: (GLib.timeout_add_seconds(5, self._rgb_when_ready)
+                                                  if self._rgb_when_ready() else None, False)[1])
             self._watch_sleep()
 
         self.update()
@@ -687,6 +688,19 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.rgb_page.set_vexpand(True)
             self.rgb_holder.append(self.rgb_page)
             return True
+        return False
+
+    def _rgb_when_ready(self, tries=[0]):
+        """Ved oppstart: vent (høyst ~2 min) til OpenRGB-tjenesten svarer før fargene sendes."""
+        import socket
+        tries[0] += 1
+        try:
+            with socket.create_connection(("127.0.0.1", 6742), timeout=0.5):
+                pass
+        except OSError:
+            if tries[0] < 24 and not IS_WIN:
+                return True                              # prøv igjen om 5 s
+        GLib.timeout_add_seconds(2, lambda: (self.rgb_restore("oppstart"), False)[1])
         return False
 
     def rgb_restore(self, why=""):

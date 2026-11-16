@@ -384,6 +384,8 @@ $("#clip-save").onclick = async () => { await act({ a: "clip" }); setTimeout(() 
 let clipData = null, curClip = null, picked = new Set();
 const enc = encodeURIComponent;
 const fileUrl = (n, pc) => `/api/clipfile?name=${enc(n)}&k=${enc(token)}` + (pc ? `&pc=${enc(pc)}` : "");
+// reserve-bilde når PC-en ikke kan lage miniatyrbilde (f.eks. Windows uten ffmpeg)
+window.NOTHUMB = (icon) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a3570"/><stop offset="1" stop-color="#402a7a"/></linearGradient></defs><rect width="160" height="90" fill="url(#g)"/><text x="80" y="56" font-size="34" text-anchor="middle">${icon}</text></svg>`;
 const thumbUrl = (n) => `/api/clipthumb?name=${enc(n)}&k=${enc(token)}`;
 async function loadClips2() {
   try {
@@ -394,7 +396,7 @@ async function loadClips2() {
       + games.map((g) => `<option ${g === f ? "selected" : ""}>${esc(g)}</option>`).join("");
     if (f === "fav") $("#clip-filter").value = "fav";
     renderClipGrid();
-    $("#clip-images").innerHTML = c.images.map((x) => `<div class="ct"><img loading="lazy" src="${thumbUrl(x.name)}" data-img="${esc(x.name)}"><div class="cb"><b>${esc(x.name)}</b></div>
+    $("#clip-images").innerHTML = c.images.map((x) => `<div class="ct"><img loading="lazy" src="${thumbUrl(x.name)}" data-img="${esc(x.name)}" onerror="this.onerror=null;this.classList.add('nothumb');this.src='data:image/svg+xml,'+encodeURIComponent(NOTHUMB('🖼️'))"><div class="cb"><b>${esc(x.name)}</b></div>
       <div class="ca"><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`).join("") || '<p class="dim small">Ingen skjermbilder ennå.</p>';
     $$("[data-img]").forEach((im) => (im.onclick = () => window.open(fileUrl(im.dataset.img))));
     wireClipButtons();
@@ -414,7 +416,7 @@ function renderClipGrid() {
     const cs = (x.meta && x.meta.cs2) || {};
     const tag = x.kind === "highlight" ? "🏆 " + (x.meta && x.meta.label || "Høydepunkt") : x.kind === "boss" ? "🐉 Boss" : x.kind === "bookmark" ? "🔖" : "";
     return `<div class="ct ${picked.has(x.name) ? "picked" : ""}" data-n="${esc(x.name)}"><button class="sel-tick" data-pick="${esc(x.name)}">✓</button>
-      ${tag ? `<span class="badge2">${esc(tag)}</span>` : ""}<img loading="lazy" src="${thumbUrl(x.name)}" data-play="${esc(x.name)}">
+      ${tag ? `<span class="badge2">${esc(tag)}</span>` : ""}<img loading="lazy" src="${thumbUrl(x.name)}" data-play="${esc(x.name)}" onerror="this.onerror=null;this.classList.add('nothumb');this.src='data:image/svg+xml,'+encodeURIComponent(NOTHUMB('🎬'))">
       <div class="cb"><b>${esc(x.name)}</b><span class="dim">${fmtB(x.size)} · ${hhmm(x.t)}${cs.map ? ` · ${esc(cs.map)} ${cs.kills ?? ""}/${cs.deaths ?? ""}` : ""}</span></div>
       <div class="ca"><button data-fav="${esc(x.name)}" data-on="${x.fav ? 1 : 0}">${x.fav ? "★" : "☆"}</button><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`;
   }).join("") || '<p class="dim small">Ingen klipp ennå. Slå på opptak, spill litt og trykk hurtigtasten.</p>';

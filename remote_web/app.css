@@ -546,3 +546,12 @@ body.eco button.picker, body.eco .tabs .lens, body.eco .upd {
 }
 body.eco .card, body.eco .tile { background-color: var(--card-solid) !important; }
 body.eco .tabs, body.eco .top { background-color: var(--card-solid) !important; }
+
+/* ---------- aldri bredere enn skjermen (lange Windows-stier, GUID-er og sensornavn brøt oppsettet) ---------- */
+html, body { overflow-x: hidden; max-width: 100%; }
+main, .main-col, .card, .grid > *, .kvgrid > *, .kv > *, .row > *, .tile, .game, .pc { min-width: 0; }
+.card, .events, .chat, .kv, .kvgrid, .temps, .statsbody, #health-items, .sheet-row, .watch-top { overflow-wrap: anywhere; word-break: break-word; }
+.kvgrid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+.temps { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.kvgrid div { flex-wrap: wrap; } .kvgrid b { min-width: 0; } .kvgrid span { margin-left: auto; }
+img, video, canvas { max-width: 100%; }

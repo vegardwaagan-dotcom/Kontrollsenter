@@ -520,6 +520,9 @@ def screenshot():
     """JPEG (bytes) av skjermen, skalert til høyst 1920 piksler bredt."""
     import shutil
     import tempfile
+    if IS_WIN:                                       # Windows' egen skjermkopi (GDI) – raskt, uten PowerShell
+        import wincapture
+        return wincapture.jpeg(1920, 80)
     d = tempfile.mkdtemp()
     png = os.path.join(d, "skjerm.png")
     try:

@@ -91,7 +91,18 @@ def thumb(path):
         return t
     try:
         if path.lower().endswith(IMAGE):
-            run_ff(["-i", path, "-vf", "scale=360:-2", "-frames:v", "1", t], 60)
+            try:                                     # bilder: GdkPixbuf – trenger ikke ffmpeg (Windows har det sjelden)
+                import gi
+                gi.require_version("GdkPixbuf", "2.0")
+                from gi.repository import GdkPixbuf
+                pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, 360, -1, True)
+                if pb.get_has_alpha():
+                    pb = pb.composite_color_simple(pb.get_width(), pb.get_height(), GdkPixbuf.InterpType.BILINEAR,
+                                                   255, 64, 0, 0)
+                pb.savev(t, "jpeg", ["quality"], ["80"])
+                return t
+            except Exception:  # noqa: BLE001
+                run_ff(["-i", path, "-vf", "scale=360:-2", "-frames:v", "1", t], 60)
         else:
             run_ff(["-ss", "1", "-i", path, "-frames:v", "1", "-vf", "scale=360:-2", "-q:v", "5", t], 60)
         return t
@@ -533,15 +544,14 @@ def screenshot(game=None):
     os.makedirs(d, exist_ok=True)
     nice = re.sub(r'[\\/:*?"<>|]', "", game or "Skjermbilde").strip() or "Skjermbilde"
     out = os.path.join(d, f"{nice} {time.strftime('%Y-%m-%d %H.%M.%S')}.png")
-    if IS_WIN:
-        import ctypes
-        u = ctypes.windll.user32
-        for k in (0x5B, 0x12, 0x2C):                                      # Win+Alt+PrtScn (Game Bar)
-            u.keybd_event(k, 0, 0, 0)
-        for k in (0x2C, 0x12, 0x5B):
-            u.keybd_event(k, 0, 2, 0)
-        return True, "Skjermbildet lagres av Xbox Game Bar"
-    if shutil.which("spectacle"):
+    if IS_WIN:                                       # Windows' egen skjermkopi – virker uten Game Bar og på skrivebordet
+        try:
+            import wincapture
+            out = out[:-4] + ".jpg"
+            wincapture.grab().savev(out, "jpeg", ["quality"], ["90"])
+        except Exception as e:  # noqa: BLE001
+            return False, f"Skjermbildet feilet: {e}"
+    elif shutil.which("spectacle"):
         subprocess.run(["spectacle", "-b", "-n", "-f", "-o", out], capture_output=True, timeout=20)
     elif shutil.which("grim"):
         subprocess.run(["grim", out], capture_output=True, timeout=20)

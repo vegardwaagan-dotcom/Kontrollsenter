@@ -124,6 +124,12 @@ class WinTray:
         WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, W.HWND, W.UINT, W.WPARAM, W.LPARAM)
         u32.DefWindowProcW.argtypes = [W.HWND, W.UINT, W.WPARAM, W.LPARAM]
         u32.DefWindowProcW.restype = ctypes.c_ssize_t
+        k32.GetModuleHandleW.restype = ctypes.c_void_p          # 64-bits adresse – ellers kuttes den
+        u32.CreateWindowExW.restype = W.HWND
+        u32.CreateWindowExW.argtypes = [W.DWORD, W.LPCWSTR, W.LPCWSTR, W.DWORD, ctypes.c_int, ctypes.c_int,
+                                        ctypes.c_int, ctypes.c_int, W.HWND, W.HMENU, W.HINSTANCE, W.LPVOID]
+        u32.LoadImageW.restype = W.HANDLE
+        u32.LoadIconW.restype = W.HICON
 
         class WNDCLASS(ctypes.Structure):
             _fields_ = [("style", W.UINT), ("lpfnWndProc", WNDPROC), ("cbClsExtra", ctypes.c_int),

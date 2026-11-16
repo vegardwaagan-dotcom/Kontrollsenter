@@ -736,6 +736,10 @@ def _msi_action(a):
 # Nettjenesten
 # --------------------------------------------------------------------------
 INSTANCE = None          # settes av bakgrunnsdelen (background.py)
+WEB_TYPES = {".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js": "application/javascript",
+             ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
+             ".jpeg": "image/jpeg", ".webp": "image/webp", ".ico": "image/x-icon", ".woff2": "font/woff2",
+             ".apk": "application/vnd.android.package-archive"}
 
 
 LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat"}   # «begrenset» tilgang
@@ -1201,7 +1205,11 @@ def _handler(remote):
             path = os.path.join(WEB, rel)
             if not os.path.isfile(path):
                 return self._send(404, {"error": "finnes ikke"})
-            ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
+            # Faste filtyper: på Windows leser mimetypes Windows-registeret, der .css/.js kan stå feil
+            # (f.eks. text/plain). Med «nosniff» nekter nettleseren da å bruke stilark/skript – panelet
+            # mister oppsettet og skalerer ikke.
+            ctype = WEB_TYPES.get(os.path.splitext(path)[1].lower()) or mimetypes.guess_type(path)[0] \
+                or "application/octet-stream"
             if ctype.startswith("text/") or ctype in ("application/javascript", "application/json"):
                 ctype += "; charset=utf-8"
             with open(path, "rb") as f:

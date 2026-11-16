@@ -14,7 +14,7 @@ import sys
 import threading
 
 LOG_DIR = os.path.expanduser("~/.cache/systemmonitor")
-LOG_FILE = os.path.join(LOG_DIR, "logg.txt")
+LOG_FILE = os.path.join(LOG_DIR, "logg-test.txt" if os.environ.get("SYSTEMMONITOR_APP_ID") else "logg.txt")
 log = logging.getLogger("systemmonitor")
 _ERR_RX = re.compile(r"^\s*(⚠\s*)?(Feil|Kunne ikke|Feilet|Fikk ikke|Klarte ikke|Mistet kontakt|Noe kunne ikke|"
                      r"Error|Could not|Failed|Lost contact)", re.I)
