@@ -13,6 +13,21 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.20.1", "Raskere og lettere", [
+        ("Forbedret", [
+            "Bruker langt mindre CPU: rundt 60 % mindre med vinduet åpent og rundt 90 % mindre når det ligger i "
+            "bakgrunnen – vinduet oppdateres bare når det vises, mens varsler, viftekurve, historikk og mobilappen "
+            "fortsatt får ferske tall",
+            "Temperaturer, NVIDIA-data og prosessøk (spill, klipp, shadere) leses smartere og mellomlagres",
+            "Appen: bakgrunnen står stille (mindre GPU-bruk), og «Batterisparing» – eller under 20 % batteri – slår av "
+            "uskarpheten bak kortene",
+        ]),
+        ("Rettet", [
+            "«Skjermen live» i appen er nå én knapp som åpner «Se på» (den gamle bilde-for-bilde-visningen er fjernet)",
+            "Prestasjoner vises som merker i stedet for knapper som ikke gjorde noe",
+            "Ubrukt kode er ryddet bort, og alle knapper er sjekket – på PC-en og i appen",
+        ]),
+    ]),
     ("0.20.0", "GPU-innstillinger for NVIDIA, AMD og Intel", [
         ("Nytt", [
             "Ny fane «GPU-innstillinger» som bare viser skjermkortene PC-en faktisk har – kraftigste først",

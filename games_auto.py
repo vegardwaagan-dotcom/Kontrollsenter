@@ -43,6 +43,19 @@ OTHER_GAMES = {"wow.exe": "World of Warcraft", "wowclassic.exe": "World of Warcr
 
 
 def _other_game():
+    if __import__("sys").platform != "win32":
+        import procs
+        short = {exe[:15]: (exe, nice) for exe, nice in OTHER_GAMES.items() if nice}
+        for pid, comm in procs.comm_map().items():
+            hit = short.get(comm.lower())
+            if hit:
+                return "ext:" + hit[0], hit[1]
+            if comm.lower().endswith(".exe") or comm in ("wine64-preload", "wine-preloader", "wineserver"):
+                cmd = procs.cmdline(pid).replace(b"\0", b" ").decode(errors="replace").lower()
+                for exe, nice in OTHER_GAMES.items():
+                    if nice and (cmd.endswith("\\" + exe) or f"\\{exe} " in cmd + " " or cmd.endswith("/" + exe)):
+                        return "ext:" + exe, nice
+        return None
     try:
         import psutil
         for p in psutil.process_iter(["name", "cmdline"]):
@@ -69,12 +82,11 @@ def running_game():
         except OSError:
             pass
         return _other_game()
-    for p in glob.glob("/proc/[0-9]*/cmdline"):
-        try:
-            with open(p, "rb") as f:
-                cmd = f.read().replace(b"\0", b" ").decode(errors="replace")
-        except OSError:
+    import procs
+    for pid, comm in procs.comm_map().items():
+        if comm not in ("reaper", "steam-launch-wr", "SteamLaunch", "pressure-vessel", "steam-runtime-l"):
             continue
+        cmd = procs.cmdline(pid).replace(b"\0", b" ").decode(errors="replace")
         if "SteamLaunch" not in cmd:
             continue
         m = re.search(r"AppId=(\d+)", cmd)

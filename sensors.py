@@ -110,19 +110,36 @@ def meminfo():
     return info
 
 
-def hwmon_temps():
-    """Returnerer liste med (enhet, etikett, °C)."""
-    out = []
+_HW = {"t": 0.0, "list": []}
+
+
+def _hwmon_inputs():
+    """[(enhet, etikett, sti)] – sensorene endrer seg sjelden, så lista lages på nytt bare hvert minutt."""
+    import time as _time
+    now = _time.monotonic()
+    if now - _HW["t"] < 60 and _HW["list"]:
+        return _HW["list"]
+    lst = []
     for h in sorted(glob.glob("/sys/class/hwmon/hwmon*")):
         name = read(os.path.join(h, "name"), "?")
         for inp in sorted(glob.glob(os.path.join(h, "temp*_input"))):
-            v = read(inp)
-            if not v or not v.lstrip("-").isdigit():
-                continue
             label = read(inp.replace("_input", "_label"), os.path.basename(inp).split("_")[0])
-            t = int(v) / 1000
-            if not plausible(label, t):
+            if _NOT_TEMP.search(label or ""):
                 continue
+            lst.append((name, label, inp))
+    _HW.update(t=now, list=lst)
+    return lst
+
+
+def hwmon_temps():
+    """Returnerer liste med (enhet, etikett, °C)."""
+    out = []
+    for name, label, inp in _hwmon_inputs():
+        v = read(inp)
+        if not v or not v.lstrip("-").isdigit():
+            continue
+        t = int(v) / 1000
+        if plausible(label, t):
             out.append((name, label, t))
     return out
 
@@ -241,10 +258,25 @@ class _Nvml:
         v = self.C.c_uint()
         return v.value if getattr(self.lib, fn)(self.h, *extra, self.C.byref(v)) == 0 else None
 
-    def read(self):
+    def _static(self):
+        import time as _time
+        st = getattr(self, "_st", None)
+        if st and _time.monotonic() - st["t"] < 30:
+            return st
         C, lib, h = self.C, self.lib, self.h
         name = C.create_string_buffer(96)
         lib.nvmlDeviceGetName(h, name, 96)
+        lo, hi = C.c_uint(), C.c_uint()
+        ok_c = lib.nvmlDeviceGetPowerManagementLimitConstraints(h, C.byref(lo), C.byref(hi)) == 0
+        default = self._u("nvmlDeviceGetPowerManagementDefaultLimit")
+        self._st = {"t": _time.monotonic(), "name": name.value.decode(errors="replace"),
+                    "clock_max": self._u("nvmlDeviceGetMaxClockInfo", 0),
+                    "limits": (lo.value / 1000, default / 1000, hi.value / 1000) if ok_c and default else None}
+        return self._st
+
+    def read(self):
+        C, lib, h = self.C, self.lib, self.h
+        st = self._static()
 
         class Util(C.Structure):
             _fields_ = [("gpu", C.c_uint), ("memory", C.c_uint)]
@@ -261,20 +293,17 @@ class _Nvml:
         if not ok_m:
             mem = Mem()
             ok_m = lib.nvmlDeviceGetMemoryInfo(h, C.byref(mem)) == 0
-        lo, hi = C.c_uint(), C.c_uint()
-        ok_c = lib.nvmlDeviceGetPowerManagementLimitConstraints(h, C.byref(lo), C.byref(hi)) == 0
         mw = lambda v: v / 1000 if v is not None else None          # noqa: E731
-        default = self._u("nvmlDeviceGetPowerManagementDefaultLimit")
         return {
-            "name": name.value.decode(errors="replace"),
+            "name": st["name"],
             "util": util.gpu if ok_u else None,
             "mem_used": mem.used / 1048576 if ok_m else None, "mem_total": mem.total / 1048576 if ok_m else None,
             "temp": self._u("nvmlDeviceGetTemperature", 0),
             "power": mw(self._u("nvmlDeviceGetPowerUsage")),
             "fan": self._u("nvmlDeviceGetFanSpeed"),
             "limit": mw(self._u("nvmlDeviceGetEnforcedPowerLimit")),
-            "clock": self._u("nvmlDeviceGetClockInfo", 0), "clock_max": self._u("nvmlDeviceGetMaxClockInfo", 0),
-            "limits": (lo.value / 1000, mw(default), hi.value / 1000) if ok_c and default else None,
+            "clock": self._u("nvmlDeviceGetClockInfo", 0), "clock_max": st["clock_max"],
+            "limits": st["limits"],
         }
 
 

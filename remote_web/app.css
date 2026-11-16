@@ -235,7 +235,6 @@ body.simple .simple-only { display: block; }
 .chat .ev.warn { color: var(--warn, #e5a50a); }
 .user-hidden { display: none !important; }
 .card.flash { outline: 3px solid var(--acc); transition: outline .3s; }
-#live-img { width: 100%; border-radius: 12px; margin-top: 10px; }
 #fam-pcs .row { padding: 6px 0; border-bottom: 1px solid var(--line); }
 body.limited .full-only { display: none !important; }
 body.dash #tabs, body.dash .top, body.dash #quick, body.dash #simple-off { display: none !important; }
@@ -458,11 +457,8 @@ body.glass::before {
     radial-gradient(38% 30% at 92% 12%, rgba(154,107,255,.38), transparent 70%),
     radial-gradient(46% 30% at 30% 62%, rgba(0,200,180,.16), transparent 70%),
     radial-gradient(40% 28% at 85% 88%, rgba(255,120,170,.14), transparent 70%);
-  animation: ks-drift 38s ease-in-out infinite alternate;
 }
 :root[data-theme="amoled"] body.glass::before { opacity: .45; }
-@keyframes ks-drift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-3%, 2%, 0) scale(1.08); } }
-@media (prefers-reduced-motion: reduce) { body.glass::before { animation: none; } }
 body.glass .card, body.glass .tile, body.glass .quick button, body.glass .game, body.glass .big, body.glass .gi,
 body.glass button.picker, body.glass .upd {
   position: relative;
@@ -537,3 +533,16 @@ body.glass .sheet { background-color: rgba(20,21,36,.72); background-image: line
   button.danger:hover { box-shadow: 0 0 0 1px rgba(255,107,122,.7), 0 0 20px 3px rgba(255,107,122,.5) !important; }
   button.warn:hover { box-shadow: 0 0 0 1px rgba(255,190,85,.7), 0 0 20px 3px rgba(255,190,85,.45) !important; }
 }
+
+/* prestasjoner er merker, ikke knapper */
+.ach { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+  background: var(--card2); color: var(--dim); }
+.ach.on { background: var(--grad); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
+
+/* batterisparing: ingen uskarphet bak kortene (sparer GPU og batteri) */
+body.eco .card, body.eco .tile, body.eco .quick button, body.eco .game, body.eco .top, body.eco .tabs, body.eco .sheet,
+body.eco button.picker, body.eco .tabs .lens, body.eco .upd {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+body.eco .card, body.eco .tile { background-color: var(--card-solid) !important; }
+body.eco .tabs, body.eco .top { background-color: var(--card-solid) !important; }

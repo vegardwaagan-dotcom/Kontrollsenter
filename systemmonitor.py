@@ -960,6 +960,51 @@ class MonitorWindow(Adw.ApplicationWindow):
         return d.get("temp") if d else None
 
     def update(self):
+        if not self.get_mapped():                      # skjult: bare det bakgrunnen trenger, ingen tegning/tekst
+            try:
+                self._update_quiet()
+            except Exception:  # noqa: BLE001
+                import applog
+                applog.log.exception("oppdatering (skjult)")
+            return True
+        self._full_update()
+        return True
+
+    def _update_quiet(self):
+        """Når vinduet er skjult: samle data til varsler, historikk, viftekurve og mobilappen – uten å oppdatere
+        tekst og grafer i vinduet (det sparer CPU)."""
+        temps = hwmon_temps()
+        u = self.cpu.usage()
+        self._cpu_load = u.get("cpu", 0)
+        self.c_cpu.graph.push(self._cpu_load)
+        ct = cpu_temp(temps)
+        self._cpu_t = ct
+        m = meminfo()
+        mt, ma = m.get("MemTotal", 1), m.get("MemAvailable", 0)
+        self.c_mem.graph.push(100 * (mt - ma) / mt)
+        nv = None
+        if self.c_gpu:
+            self.nvidia.poll()
+            nv = self.nvidia.data
+            if nv:
+                self.c_gpu.graph.push(nv.get("util") or 0)
+        rr, wr = self.disk.rates()
+        self.c_disk.graph.push(rr, wr)
+        rx, tx = self.net.rates()
+        self.c_net.graph.push(rx, tx)
+        rows = [(NICE_DEVICE.get(dv, dv), lbl, tt) for dv, lbl, tt in temps if not dv.startswith("r8169")]
+        if nv and nv.get("temp") is not None:
+            rows.insert(0, ("NVIDIA GPU", "GPU", nv["temp"]))
+        self._remote = {"mem": [mt - ma, mt], "disk": [rr, wr], "net": [rx, tx], "temps": rows,
+                        "freq": CpuReader.freq_ghz()}
+        pw = self.meter.read(nv.get("power") if nv else None)
+        self._power = pw
+        self.energy.add(pw["total"])
+        self.fans.refresh(ct, (nv or {}).get("temp"), (nv or {}).get("fan"))
+        if getattr(self, "mini", None) is not None and self.mini.get_visible():
+            self.mini.refresh(ct, nv, self._power)
+
+    def _full_update(self):
         temps = hwmon_temps()
 
         # CPU

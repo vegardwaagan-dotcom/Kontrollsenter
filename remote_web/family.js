@@ -89,7 +89,7 @@ const deck = h(`<div class="card" id="c-deck"><div class="row between"><h2>Knapp
 $("#mer").insertBefore(deck, $("#mer").firstChild);
 
 const toolGrid = h(`<div class="grid" id="tool-grid">
-  <div class="card"><h2>Skjermen live</h2><div class="row"><span>Vis PC-skjermen (bare se)</span>${sw("live-on")}</div><img id="live-img" alt="" hidden></div>
+  <div class="card"><h2>Skjermen live</h2><p class="dim small">Se PC-skjermen som jevn video – bare visning.</p><button id="live-go" class="primary wide">📺 Se skjermen live</button></div>
   <div class="card"><h2>Hjemmenett</h2><div id="lan"></div><button id="lan-refresh" class="soft">Oppdater</button></div>
   <div class="card"><h2>Sikkerhetssjekk</h2><div id="sec"></div><button id="sec-go" class="soft">Sjekk</button></div>
   <div class="card full-only"><h2>Oppstartsprogrammer</h2><div id="startup"></div></div>
@@ -196,7 +196,7 @@ async function loadGameExtras() {
   } catch (e) {}
   try {
     const a = (await X("achievements")).items;
-    $("#ach").innerHTML = a.map((x) => `<button class="${x.done ? "on" : ""}" disabled title="${x.done ? hhmm(x.t) : "Ikke ennå"}">${x.done ? "" : "🔒 "}${esc(x.name)}</button>`).join("");
+    $("#ach").innerHTML = a.map((x) => `<span class="ach${x.done ? " on" : ""}" title="${x.done ? hhmm(x.t) : "Ikke ennå"}">${x.done ? "" : "🔒 "}${esc(x.name)}</span>`).join("");
   } catch (e) {}
   try {
     const w = await X("wrapped");
@@ -242,17 +242,6 @@ $("#deck-edit").onclick = () => { $("#deck-pick").hidden = !$("#deck-pick").hidd
 renderDeck();
 
 // ---------- skjermen live (bare visning, hvert 2. sekund) ----------
-let liveT = null;
-async function liveShot() {
-  if (!$("#live-on").checked || tab !== "mer" || document.hidden) { clearInterval(liveT); liveT = null; $("#live-on").checked = false; return; }
-  try {
-    const r = await fetch("/api/x/screenshot", { headers: { Authorization: "Bearer " + token } });
-    if (!r.ok) throw new Error(r.statusText);
-    const old = $("#live-img").src; $("#live-img").src = URL.createObjectURL(await r.blob()); $("#live-img").hidden = false;
-    if (old.startsWith("blob:")) URL.revokeObjectURL(old);
-  } catch (e) { toast("Skjermen: " + e.message); $("#live-on").checked = false; }
-}
-$("#live-on").onchange = () => { clearInterval(liveT); liveT = $("#live-on").checked ? setInterval(liveShot, pref("eco", false) ? 6000 : 2500) : null; if (liveT) liveShot(); };
 
 // ---------- hjemmenett, sikkerhet, oppstart, Hue, selvtest ----------
 async function loadLan() {
@@ -346,7 +335,9 @@ function applyDash() {
 }
 $("#dash").onchange = () => { setPref("dash", $("#dash").checked); applyDash(); if ($("#dash").checked) setTab("oversikt"); };
 $("#eco").checked = pref("eco", false);
-$("#eco").onchange = () => setPref("eco", $("#eco").checked);
+const applyEco = () => document.body.classList.toggle("eco", !!(pref("eco", false) || window.ksLowBattery));
+$("#eco").onchange = () => { setPref("eco", $("#eco").checked); applyEco(); };
+applyEco();
 document.addEventListener("dblclick", () => { if (document.body.classList.contains("dash")) { setPref("dash", false); applyDash(); } });
 
 let lastPoll = 0;
@@ -371,7 +362,7 @@ function showOffline() {
   $("#offline").textContent = "Frakoblet – viser sist kjente verdier fra " + new Date(c.t).toLocaleString("nb-NO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   if (!last) { try { renderOverview(c.s); } catch (e) {} }
 }
-if (navigator.getBattery) navigator.getBattery().then((b) => { const f = () => (window.ksLowBattery = !b.charging && b.level < 0.2); f(); b.onlevelchange = f; b.onchargingchange = f; }).catch(() => {});
+if (navigator.getBattery) navigator.getBattery().then((b) => { const f = () => { window.ksLowBattery = !b.charging && b.level < 0.2; applyEco(); }; f(); b.onlevelchange = f; b.onchargingchange = f; }).catch(() => {});
 
 // ---------- «Se på»: skjermen til en PC i huset, live (bare visning) ----------
 document.body.appendChild(h(`<div id="watchv" class="watchv" hidden><img id="watch-img" alt="">
@@ -421,7 +412,7 @@ qWatch.onclick = async () => {
 };
 
 // «Skjermen live» i Verktøy bruker samme strøm (jevn video i stedet for et bilde hvert par sekunder)
-$("#live-on").onchange = () => { if ($("#live-on").checked) { openWatch(pcName, last && last.game); $("#live-on").checked = false; } };
+$("#live-go").onclick = () => openWatch(pcName, last && last.game);
 
 // ---------- statistikken: foldet sammen til du vil se alt ----------
 (() => {
@@ -439,7 +430,6 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (t === "spill") { loadFamily(); loadGameExtras(); loadStream(); }
   if (t === "mer") { loadLan(); loadStartup(); loadHue(); loadStream(); }
   if (t === "system") { loadBackups(); renderWidgets(); loadFamily(); }
-  if (t !== "mer" && liveT) { clearInterval(liveT); liveT = null; $("#live-on").checked = false; }
   applyWidgets();
 };
 $$("#tabs button").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));

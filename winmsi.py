@@ -107,10 +107,6 @@ def state():
     return r
 
 
-def set_shift(mode):
-    return call([["set", A_SHIFT, SHIFT[mode]]])
-
-
 def set_fan(mode):
     return call([["set", A_FAN, FAN[mode]]])
 

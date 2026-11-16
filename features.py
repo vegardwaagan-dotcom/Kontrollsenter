@@ -425,14 +425,8 @@ def perf_per_game():
 def shader_tick():
     if IS_WIN:
         return
-    busy = False
-    for d in glob.glob("/proc/[0-9]*/comm"):
-        try:
-            if open(d).read().strip() == "fossilize_repla":
-                busy = True
-                break
-        except OSError:
-            continue
+    import procs
+    busy = bool(procs.pids_named("fossilize_repla"))
     was = shader_tick.__dict__.get("busy", False)
     if busy and not was:
         _ev("shader", "Steam lager shadere", "Spill kan hakke til det er ferdig", "info")

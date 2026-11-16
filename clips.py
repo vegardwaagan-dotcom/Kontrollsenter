@@ -246,18 +246,13 @@ class Recorder:
     @staticmethod
     def _gsr_pids():
         """Selve opptaksprogrammet (ikke sandkassen rundt, som ville blitt avsluttet av SIGUSR1)."""
+        import procs
         out = []
-        for d in glob.glob("/proc/[0-9]*"):
-            try:
-                with open(d + "/comm") as f:
-                    if f.read().strip() != "gpu-screen-reco":
-                        continue
-                with open(d + "/cmdline", "rb") as f:
-                    cmd = f.read()
-                if b"-r\x00" in cmd and b"-o\x00" + clip_dir().encode() + b"\x00" in cmd:
-                    out.append(int(os.path.basename(d)))
-            except OSError:
-                continue
+        target = b"-o\x00" + clip_dir().encode() + b"\x00"
+        for pid in procs.pids_named("gpu-screen-reco", max_age=1.0):
+            cmd = procs.cmdline(pid)
+            if b"-r\x00" in cmd and target in cmd:
+                out.append(pid)
         return out
 
     # ---- lagre de siste sekundene ----
