@@ -562,3 +562,7 @@ html, body { overflow-x: clip; }
 main, .main-col, .page { overflow-x: clip; max-width: 100%; }
 .card, .grid, .tiles, .deck, .chips, .row { max-width: 100%; }
 .row.between { flex-wrap: wrap; row-gap: 8px; }
+/* sveip mellom faner */
+.tabs { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.tabs button.hover { color: var(--fg); }
+.page { will-change: auto; }

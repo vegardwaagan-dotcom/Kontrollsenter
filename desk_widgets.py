@@ -35,6 +35,11 @@ class DeskWidget(Gtk.Window):
         self.app_win, self.kind = app_win, kind
         self.add_css_class("ks-desk")
         self.add_css_class("ks-glass")
+        try:
+            import spotlight
+            spotlight.attach(self)
+        except Exception:  # noqa: BLE001
+            pass
         handle = Gtk.WindowHandle()                          # dra hvor som helst for å flytte
         self.set_child(handle)
         ov = Gtk.Overlay()

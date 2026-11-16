@@ -159,6 +159,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         ks_theme.load()
         if ks_theme.glass_on():
             self.add_css_class("ks-glass")
+        try:                                             # lys som følger musa på knappene
+            import spotlight
+            spotlight.attach(self)
+        except Exception:  # noqa: BLE001
+            pass
         icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
         icon_theme.add_search_path(os.path.join(APP_DIR, "icons", "symbolic"))   # enhetlige ensfargede ikoner
         icon_theme.add_search_path(os.path.join(APP_DIR, "icons"))               # programikonet

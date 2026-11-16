@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.21.0", "Sveip mellom faner og lys som følger musa", [
+        ("Nytt", [
+            "Appen: dra fingeren bortover skjermen for å bytte fane – eller dra langs fanelinjen, så følger glasslinsen "
+            "fingeren. Trykk virker som før",
+            "Knappene i Kontrollsenter (Windows og Linux) lyser sterkest der musepekeren er, som knappene i Windows 11",
+        ]),
+    ]),
     ("0.20.5", "Verktøy i appen passer skjermen", [
         ("Rettet", [
             "Verktøy-fanen i appen kunne bli bredere enn skjermen mot Windows-PC-er, så fanelinjen ble for lang og "
