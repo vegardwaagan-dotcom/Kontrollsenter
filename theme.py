@@ -177,6 +177,15 @@ expander title > label { font-weight: 600; }
   background-color: alpha(black, 0.65); color: white; padding: 8px 16px; border-radius: 99px; font-weight: 600;
 }
 
+/* GPU-innstillinger */
+.ks-vendor { font-weight: 900; font-size: 0.75em; letter-spacing: 0.08em; padding: 4px 10px; border-radius: 99px; color: white; }
+.ks-vendor-nvidia { background-color: #76b900; }
+.ks-vendor-amd { background-color: #ed1c24; }
+.ks-vendor-intel { background-color: #0071c5; }
+.ks-gpu-stat { padding: 10px 12px; border-radius: 14px; background-color: alpha(currentColor, 0.05); }
+.ks-gpu-k { font-size: 0.68em; font-weight: 800; letter-spacing: 0.08em; opacity: 0.55; }
+.ks-gpu-v { font-weight: 700; }
+
 levelbar.disk-ok block.filled { background-color: var(--accent-bg-color); }
 levelbar.disk-warn block.filled { background-color: var(--warning-bg-color); }
 levelbar.disk-crit block.filled { background-color: var(--error-bg-color); }
@@ -328,7 +337,7 @@ def load():
 # Sidemenyens seksjoner: fane -> seksjon (rekkefølgen her er rekkefølgen i menyen)
 SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
-    ("Enheter", ["rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
+    ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
     ("Spill", ["spill", "stromming"]),
     ("Familie", ["familie"]),
     ("System", ["nettverk", "automatikk", "programmer", "hjemme", "verktoy"]),
@@ -341,6 +350,8 @@ SECTION_OF = {n: s for s, names in SECTIONS for n in names}
 PAGE_HELP = {
     "oversikt": "Temperaturer, strømforbruk, vifter og strømmodus – alt det viktigste på ett sted.",
     "historikk": "Temperatur, belastning og strømforbruk over tid. Finn ut når PC-en ble varm eller brukte mye strøm.",
+    "gpu": "Innstillinger for skjermkortene som finnes i PC-en: NVIDIA (strøm, klokker), AMD (OverDrive, "
+           "ytelsesnivå) og Intel – og spillinnstillinger.",
     "rgb": "Farger og effekter på alle lysene – hovedkort, vifter, CPU-kjøler, RAM, skjermkort, mus og tastatur.",
     "logitech": "Batteri, DPI, rapporteringsfrekvens, profiler og knapper på Logitech-musen og -tastaturet.",
     "cpuskjerm": "Hva skjermen på CPU-kjøleren viser: temperaturer, bilder, video eller et tema.",

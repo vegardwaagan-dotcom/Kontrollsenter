@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.20.0", "GPU-innstillinger for NVIDIA, AMD og Intel", [
+        ("Nytt", [
+            "Ny fane «GPU-innstillinger» som bare viser skjermkortene PC-en faktisk har – kraftigste først",
+            "NVIDIA: live-tall (temperatur, last, strøm, klokker, VRAM, vifte, PCIe), strømgrense, låst GPU- og "
+            "minneklokke og «persistence mode»",
+            "AMD: ytelsesnivå, strømprofil og strømgrense (der kortet har det), og OverDrive – GPU- og minneklokke "
+            "og spenningsavvik (undervolt), med «Tilbakestill» til fabrikk",
+            "Intel: laveste, høyeste og boost-klokke",
+            "Spillinnstillinger for Linux (DLSS i Proton, nyeste DLSS, stor shader-cache, raytracing på AMD, FSR, "
+            "MangoHud) og Windows-grafikk (GPU-planlegging, spill i vindu, VRR)",
+            "Valgfritt: bruk innstillingene dine igjen hver gang PC-en starter",
+        ]),
+    ]),
     ("0.19.0", "Widgets overalt og glød på knappene", [
         ("Nytt", [
             "Seks widgets: Kontrollsenter, Temperaturer, Hurtigknapper (spillmodus, klipp, lås, demp), Familien "

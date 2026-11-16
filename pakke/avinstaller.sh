@@ -20,11 +20,11 @@ if spør "Slette lagrede innstillinger også (~/.config/systemmonitor)?"; then
     echo "✓ Innstillinger slettet"
 fi
 
-if [ -e /etc/sudoers.d/systemmonitor-fan ] || [ -e /etc/sudoers.d/systemmonitor-gpu-power ]; then
+if [ -e /etc/sudoers.d/systemmonitor-fan ] || [ -e /etc/sudoers.d/systemmonitor-gpu-power ] || [ -e /etc/sudoers.d/systemmonitor-gpu ]; then
     echo
     echo "Viftestyring/GPU-styring ble satt opp med root. Fjern det med:"
-    echo "  sudo rm -f /etc/sudoers.d/systemmonitor-fan /etc/sudoers.d/systemmonitor-gpu-power /etc/sudoers.d/systemmonitor-msi \\"
-    echo "             /usr/local/bin/systemmonitor-fan /usr/local/bin/systemmonitor-gpu-power /usr/local/bin/systemmonitor-msi \\"
+    echo "  sudo rm -f /etc/sudoers.d/systemmonitor-fan /etc/sudoers.d/systemmonitor-gpu-power /etc/sudoers.d/systemmonitor-gpu /etc/sudoers.d/systemmonitor-msi \\"
+    echo "             /usr/local/bin/systemmonitor-fan /usr/local/bin/systemmonitor-gpu-power /usr/local/bin/systemmonitor-gpu /usr/local/bin/systemmonitor-msi \\"
     echo "             /etc/modules-load.d/systemmonitor-fans.conf /etc/modules-load.d/systemmonitor-msi.conf"
 fi
 echo "Ferdig."

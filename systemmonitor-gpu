@@ -1,0 +1,60 @@
+#!/bin/bash
+# systemmonitor-gpu – endrer skjermkortinnstillinger (NVIDIA, AMD OverDrive, Intel).
+# Kjøres som root (sudo uten passord, satt opp av install-gpu.sh). Godtar KUN faste kommandoer med kontrollerte tall:
+#   nv-pl IDX WATT          strømgrense (innenfor kortets min/maks)
+#   nv-lgc IDX MIN MAX      lås GPU-klokke (MHz)        nv-rgc IDX   frigi
+#   nv-lmc IDX MIN MAX      lås minneklokke (MHz)       nv-rmc IDX   frigi
+#   nv-pm IDX 0|1           persistence mode
+#   amd-level CARD NIVÅ     auto|low|high|manual|profile_standard|profile_min_sclk|profile_min_mclk|profile_peak
+#   amd-profile CARD N      strømprofil (pp_power_profile_mode)
+#   amd-od CARD s|m IDX MHZ OverDrive-klokke   amd-od CARD vo MV   spenningsavvik   amd-od CARD c|r   bruk / nullstill
+#   amd-cap CARD MIKROWATT  strømgrense (innenfor min/maks)
+#   intel-freq CARD min|max|boost MHZ
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+die() { echo "$*" >&2; exit 2; }
+int() { [[ "$1" =~ ^-?[0-9]+$ ]] || die "ugyldig tall: $1"; }
+card() { [[ "$1" =~ ^card[0-9]+$ ]] || die "ugyldig kort"; D="/sys/class/drm/$1/device"; [ -d "$D" ] || die "finnes ikke"; }
+drv() { basename "$(readlink -f "$D/driver")"; }
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  nv-pl)
+    int "$1"; [[ "$2" =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "ugyldig watt"
+    read -r lo hi < <(nvidia-smi -i "$1" --query-gpu=power.min_limit,power.max_limit --format=csv,noheader,nounits | tr -d ',')
+    awk -v w="$2" -v a="$lo" -v b="$hi" 'BEGIN{exit !(w>=a && w<=b)}' || die "utenfor $lo–$hi W"
+    nvidia-smi -i "$1" -pl "$2" ;;
+  nv-lgc) int "$1"; int "$2"; int "$3"; (( $2 >= 100 && $3 <= 5000 && $2 <= $3 )) || die "ugyldige klokker"; nvidia-smi -i "$1" -lgc "$2,$3" ;;
+  nv-rgc) int "$1"; nvidia-smi -i "$1" -rgc ;;
+  nv-lmc) int "$1"; int "$2"; int "$3"; (( $2 >= 100 && $3 <= 40000 && $2 <= $3 )) || die "ugyldige klokker"; nvidia-smi -i "$1" -lmc "$2,$3" ;;
+  nv-rmc) int "$1"; nvidia-smi -i "$1" -rmc ;;
+  nv-pm) int "$1"; [[ "$2" =~ ^[01]$ ]] || die "0 eller 1"; nvidia-smi -i "$1" -pm "$2" ;;
+  amd-level)
+    card "$1"; [ "$(drv)" = amdgpu ] || die "ikke amdgpu"
+    [[ "$2" =~ ^(auto|low|high|manual|profile_standard|profile_min_sclk|profile_min_mclk|profile_peak)$ ]] || die "ugyldig nivå"
+    echo "$2" > "$D/power_dpm_force_performance_level" ;;
+  amd-profile)
+    card "$1"; [ "$(drv)" = amdgpu ] || die "ikke amdgpu"; int "$2"; (( $2 >= 0 && $2 <= 9 )) || die "ugyldig profil"
+    echo "manual" > "$D/power_dpm_force_performance_level"; echo "$2" > "$D/pp_power_profile_mode" ;;
+  amd-od)
+    card "$1"; [ "$(drv)" = amdgpu ] || die "ikke amdgpu"; F="$D/pp_od_clk_voltage"; [ -w "$F" ] || die "OverDrive er ikke slått på"
+    case "${2:-}" in
+      s|m) int "$3"; int "$4"; (( $3 >= 0 && $3 <= 7 && $4 >= 100 && $4 <= 5000 )) || die "ugyldig verdi"
+           echo "manual" > "$D/power_dpm_force_performance_level" 2>/dev/null || true
+           echo "$2 $3 $4" > "$F" ;;
+      vo)  int "$3"; (( $3 >= -300 && $3 <= 100 )) || die "ugyldig spenning"; echo "vo $3" > "$F" ;;
+      c)   echo "c" > "$F" ;;
+      r)   echo "r" > "$F"; echo "c" > "$F"; echo "auto" > "$D/power_dpm_force_performance_level" ;;
+      *) die "ugyldig OverDrive-kommando" ;;
+    esac ;;
+  amd-cap)
+    card "$1"; [ "$(drv)" = amdgpu ] || die "ikke amdgpu"; int "$2"
+    H=$(ls -d "$D"/hwmon/hwmon* | head -1); [ -f "$H/power1_cap_max" ] || die "kortet har ingen strømgrense"; lo=$(cat "$H/power1_cap_min" 2>/dev/null || echo 1); hi=$(cat "$H/power1_cap_max")
+    (( $2 >= lo && $2 <= hi )) || die "utenfor grensene"; echo "$2" > "$H/power1_cap" ;;
+  intel-freq)
+    card "$1"; [[ "$(drv)" =~ ^(i915|xe)$ ]] || die "ikke Intel"; [[ "$2" =~ ^(min|max|boost)$ ]] || die "min|max|boost"; int "$3"
+    C="/sys/class/drm/$1"; lo=$(cat "$C/gt_RPn_freq_mhz"); hi=$(cat "$C/gt_RP0_freq_mhz")
+    (( $3 >= lo && $3 <= hi )) || die "utenfor $lo–$hi MHz"; echo "$3" > "$C/gt_${2}_freq_mhz" ;;
+  *) die "ukjent kommando" ;;
+esac
+echo OK

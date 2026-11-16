@@ -430,6 +430,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         self._lazy = {}
         for name, title, icon, mod, cls in (
                 ("historikk", "Historikk", "ks-history-symbolic", "history", "HistoryPage"),
+                ("gpu", "GPU-innstillinger", "ks-gpu-symbolic", "gpu_page", "GpuPage"),
                 ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),
                 ("nettverk", "Nettverk", "ks-network-symbolic", "netpage", "NetworkPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
@@ -568,6 +569,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.rgb_page = None
         self.set_content(self.split)
         # RGB: legg inn de lagrede fargene ved oppstart og etter hvilemodus – OpenRGB husker dem ikke selv
+        if not os.environ.get("SYSTEMMONITOR_APP_ID"):            # lagrede GPU-innstillinger (valgfritt)
+            import threading as _th
+            GLib.timeout_add_seconds(15, lambda: (_th.Thread(target=__import__("gpu").apply_saved, daemon=True).start(),
+                                                  False)[1])
         if not os.environ.get("SYSTEMMONITOR_APP_ID"):            # skrivebordswidgetene som var på sist
             GLib.timeout_add_seconds(4, lambda: __import__("desk_widgets").restore(self))
         if self.hw.get("rgb") and not os.environ.get("SYSTEMMONITOR_APP_ID"):

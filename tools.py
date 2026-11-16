@@ -403,7 +403,7 @@ def import_settings(src):
 # 6. Kontrollsenter: versjon, oppdatering, installasjonspakke
 # --------------------------------------------------------------------------
 UPDATE_CFG = CFG / "oppdatering.json"
-PACKAGE_FILES = ["*.py", "systemmonitor-fan", "systemmonitor-gpu-power", "systemmonitor-msi", "*.sh",
+PACKAGE_FILES = ["*.py", "systemmonitor-fan", "systemmonitor-gpu-power", "systemmonitor-gpu", "systemmonitor-msi", "*.sh",
                  "en.json", "VERSION", "*.ps1", "vendor", "icons", "remote_web", "wow_addon"]
 
 
