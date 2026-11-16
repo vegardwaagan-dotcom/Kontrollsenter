@@ -13,6 +13,21 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.17.1", "Elegante valglister og ryddige spillnavn", [
+        ("Nytt", [
+            "Alle nedtrekkslister i appen er byttet ut med en pen velger som glir opp nedenfra – med grupper, "
+            "bilder, undertekst, hake på det valgte og søk i lange lister",
+            "Statistikk: spillene er gruppert (World of Warcraft, Steam per konto) med Steam-bilde og timer spilt, "
+            "og WoW-figurene vises som «Arthur – Level 1 · Human Warrior · Realm 8 PvP» med klasseikon",
+            "Riktige spillnavn: «Counter-Strike 2» i stedet for «ValveTestApp260», «PUBG: Battlegrounds» osv.",
+            "Tilbakeknappen på telefonen lukker velgeren, «Se på» og søket før den går til PC-lista",
+        ]),
+        ("Rettet", [
+            "En feil i appen siden 0.15.0 stoppet mye av Verktøy- og Innstillinger-fanen (knappebord, hjemmenett, "
+            "sikkerhetssjekk, Hue, RustDesk, søk og mer) – alt er tilbake",
+            "Klipp-knappene står to og to, valgt hurtigtast vises tydelig, og lengdevalgene brytes ikke",
+        ]),
+    ]),
     ("0.17.0", "Ny drakt for mobilappen", [
         ("Nytt", [
             "Mobilappen har fått et helt nytt utseende: nattblå bakgrunn med nordlys, glasskort, flytende fanelinje "

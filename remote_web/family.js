@@ -47,7 +47,6 @@ const rustCard = h(`<div class="card" id="c-rust"><h2>RustDesk – fjernhjelp</h
   <p class="dim small">Styr PC-en med mus og tastatur fra telefonen – eller la noen hjelpe deg. Bruk ID-en og passordet som vises i RustDesk på PC-en.</p>
   <div class="row between"><div><div class="dim small">ID</div><b id="rd-id" class="num sel">–</b></div><button id="rd-copy" class="soft">Kopier</button></div>
   <div class="row wrap"><button id="rd-open" class="primary">Åpne RustDesk</button><button id="rd-pc" class="soft full-only">Start RustDesk på PC-en</button></div></div>`);
-$("#tool-grid").prepend(rustCard);
 async function loadStream() {
   try {
     const s = await X("stream");
@@ -62,11 +61,11 @@ async function loadStream() {
 }
 const MOON = "com.limelight", RUST = "com.carriez.flutter_hbb";
 $("#st-moon").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(MOON)) toast("Installer Moonlight fra Google Play"); } else location.href = "https://moonlight-stream.org"; };
-$("#rd-open").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(RUST)) toast("Installer RustDesk fra Google Play"); } else location.href = "https://rustdesk.com"; };
+rustCard.querySelector("#rd-open").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(RUST)) toast("Installer RustDesk fra Google Play"); } else location.href = "https://rustdesk.com"; };
 $("#st-start").onclick = async () => { await act({ a: "stream", do: "start" }); setTimeout(loadStream, 22000); };
 $("#st-pair").onclick = async () => { const p = $("#st-pin").value.trim(); if (p.length !== 4) return toast("Koden har 4 sifre"); $("#st-pin").value = ""; await act({ a: "streampin", pin: p }); };
-$("#rd-pc").onclick = () => act({ a: "rustdesk" });
-$("#rd-copy").onclick = () => { try { navigator.clipboard.writeText($("#rd-id").textContent); toast("Kopiert"); } catch (e) {} };
+rustCard.querySelector("#rd-pc").onclick = () => act({ a: "rustdesk" });
+rustCard.querySelector("#rd-copy").onclick = () => { try { navigator.clipboard.writeText($("#rd-id").textContent); toast("Kopiert"); } catch (e) {} };
 
 const batCard = h(`<div class="card" id="c-bat"><h2>Batterier</h2><div id="bats"></div>
   <div id="bat-hint" class="row" hidden><span class="dim small">Hodesett vises når HeadsetControl er installert på PC-en.</span><button id="bat-inst" class="soft full-only">Installer</button></div></div>`);
@@ -101,6 +100,7 @@ const toolGrid = h(`<div class="grid" id="tool-grid">
     <input id="rep-note" maxlength="2000" placeholder="Hva er galt? (valgfritt)"><button id="rep-go" class="soft">Send feilrapport til NAS-en</button></div>
 </div>`);
 $("#mer").appendChild(toolGrid);
+$("#tool-grid").prepend(rustCard);
 
 const setGrid = h(`<div class="grid" id="set-grid">
   <div class="card full-only"><h2>Sikkerhetskopi av innstillingene</h2>
@@ -381,6 +381,12 @@ function closeWatch() {
   if (KS && KS.keepAwake && !pref("dash", false)) KS.keepAwake(false);
 }
 $("#watch-x").onclick = closeWatch;
+window.ksBack = () => {
+  if (!$("#watchv").hidden) { closeWatch(); return true; }
+  if (!$("#search").hidden) { $("#search").hidden = true; return true; }
+  if (!$("#dlg").hidden) { $("#dlg").hidden = true; return true; }
+  return false;
+};
 $("#watchv").ondblclick = () => { try { document.fullscreenElement ? document.exitFullscreen() : $("#watchv").requestFullscreen(); } catch (e) {} };
 document.addEventListener("visibilitychange", () => { if (document.hidden && !$("#watchv").hidden) closeWatch(); });
 // «Skjermen live» i Verktøy bruker samme strøm (jevn video i stedet for et bilde hvert par sekunder)

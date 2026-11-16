@@ -128,6 +128,43 @@ def _names(steam):
     return out
 
 
+# Ryddige navn: Steam gir testnavn («ValveTestApp260») for spill som ikke er installert på denne PC-en
+KNOWN_NAMES = {"730": "Counter-Strike 2", "578080": "PUBG: Battlegrounds", "223850": "3DMark", "570": "Dota 2",
+               "440": "Team Fortress 2", "252490": "Rust", "271590": "Grand Theft Auto V", "1172470": "Apex Legends"}
+_NAME_CACHE = os.path.expanduser("~/.cache/systemmonitor/appnavn.json")
+
+
+def nice_name(appid, raw):
+    appid = str(appid)
+    if appid in KNOWN_NAMES:
+        return KNOWN_NAMES[appid]
+    name = str(raw or "").strip()
+    if not name or name.startswith("ValveTestApp") or name == appid:
+        try:
+            cache = json.load(open(_NAME_CACHE, encoding="utf-8"))
+        except (OSError, ValueError):
+            cache = {}
+        if appid in cache:
+            return cache[appid]
+        try:
+            import urllib.request
+            u = f"https://store.steampowered.com/api/appdetails?filters=basic&appids={appid}"
+            d = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Kontrollsenter"}),
+                                                  timeout=4).read())
+            got = d[appid]["data"]["name"]
+        except Exception:  # noqa: BLE001
+            got = None
+        if got:
+            cache[appid] = got
+            os.makedirs(os.path.dirname(_NAME_CACHE), exist_ok=True)
+            json.dump(cache, open(_NAME_CACHE, "w", encoding="utf-8"), ensure_ascii=False)
+            return got
+        return name or f"Spill {appid}"
+    if name.isupper() and len(name) > 4:                     # «PLAYERUNKNOWN'S BATTLEGROUNDS» → pen skrift
+        name = " ".join(w if len(w) <= 3 else w.capitalize() for w in name.split())
+    return name.replace("™", "").replace("®", "").strip()
+
+
 def steam_games_stats(user=None):
     """[{appid, name, playtime_min, last_played, stats: [(navn, verdi)], achievements: (har, av), highlights}]"""
     steam, active = _steam()
@@ -167,14 +204,14 @@ def steam_games_stats(user=None):
             if val:
                 stats.append((disp, val))
         pt, last = play.get(appid, (0, 0))
-        g = {"appid": appid, "name": names.get(appid) or root.get("gamename") or appid, "playtime_min": pt,
+        g = {"appid": appid, "name": nice_name(appid, names.get(appid) or root.get("gamename") or appid), "playtime_min": pt,
              "last_played": last, "stats": stats[:400], "achievements": [ach_have, ach_total],
              "highlights": highlights(appid, raw)}
         out.append(g)
     # spill uten statistikkfiler, men med spilletid
     for appid, (pt, last) in play.items():
         if pt and appid in names and not any(g["appid"] == appid for g in out):
-            out.append({"appid": appid, "name": names[appid], "playtime_min": pt, "last_played": last, "stats": [],
+            out.append({"appid": appid, "name": nice_name(appid, names[appid]), "playtime_min": pt, "last_played": last, "stats": [],
                         "achievements": [0, 0], "highlights": []})
     return sorted(out, key=lambda g: -(g["last_played"] or 0))
 
@@ -723,7 +760,9 @@ def wow_summary(c):
     title = f"{c.get('name')} – level {c.get('level')} {c.get('race') or ''} {c.get('class_name') or ''}".strip()
     return {"title": title, "sub": f"{c.get('realm')} · WoW {c.get('flavor')}", "rows": rows,
             "kills_by": top(c.get("kills_by")), "killers": top(c.get("killers")), "session": session,
-            "last_seen": c.get("last_seen"), "class": c.get("class")}
+            "last_seen": c.get("last_seen"), "class": c.get("class"),
+            "char": c.get("name"), "level": c.get("level"), "race": c.get("race"), "cls": c.get("class_name"),
+            "realm": c.get("realm"), "flavor": c.get("flavor")}
 
 
 # --------------------------------------------------------------------------

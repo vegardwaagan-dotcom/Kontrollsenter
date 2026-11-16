@@ -230,16 +230,34 @@ async function loadStats() {
     const d = await api("/api/gamestats");
     const multi = (d.accounts || []).length > 1;
     statItems = [];
-    (d.wow || []).forEach((c) => statItems.push({ name: "WoW · " + c.title, kind: "wow", o: c }));
-    if ((d.wow_hints || []).length) statItems.push({ name: "World of Warcraft – venter på tall", kind: "hint", o: d.wow_hints });
+    const CLS = { warrior: "⚔️", paladin: "🛡️", hunter: "🏹", rogue: "🗡️", priest: "✨", shaman: "⚡", mage: "🔮", warlock: "💀",
+      druid: "🌿", "death knight": "❄️", monk: "🥋", "demon hunter": "😈", evoker: "🐉" };
+    const realm = (r) => String(r || "").replace(/^CAMWOW\s+EU\d*\s*/i, "").trim();
+    const groups = [];
+    const wow = (d.wow || []).map((c) => {
+      const it = { name: c.char || c.title, kind: "wow", o: c, icon: CLS[String(c.cls || "").toLowerCase()] || "🗡️",
+        sub: [c.level ? "Level " + c.level : "", [c.race, c.cls].filter(Boolean).join(" "), realm(c.realm)].filter(Boolean).join(" · ") };
+      statItems.push(it); return it;
+    });
+    if ((d.wow_hints || []).length) { const it = { name: "Venter på tall fra WoW", kind: "hint", o: d.wow_hints, icon: "⏳", sub: "Logg ut eller skriv /reload i spillet" }; statItems.push(it); wow.push(it); }
+    if (wow.length) groups.push(["World of Warcraft", wow]);
     const rank = (g) => (g.highlights.length ? 0 : g.stats.length ? 1 : 2);   // mest statistikk først
-    (d.accounts || []).forEach((a) => a.games.slice().sort((x, y) => rank(x) - rank(y)).forEach((g) => {
-      if (g.stats.length || g.highlights.length || g.playtime_min) statItems.push({ name: g.name + (multi ? ` (${a.name})` : ""), kind: "steam", o: g });
-    }));
+    (d.accounts || []).forEach((a) => {
+      const items = a.games.filter((g) => g.stats.length || g.highlights.length || g.playtime_min)
+        .sort((x, y) => rank(x) - rank(y) || (y.playtime_min || 0) - (x.playtime_min || 0)).map((g) => {
+          const h = (g.playtime_min || 0) / 60;
+          const it = { name: g.name, kind: "steam", o: g, icon: g.appid === "730" ? "🎯" : "🎮",
+            img: /^\d+$/.test(g.appid) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/capsule_184x69.jpg` : "",
+            sub: [h >= 1 ? h.toFixed(h >= 10 ? 0 : 1) + " timer" : Math.round(h * 60) + " min", g.stats.length ? g.stats.length + " tall" : ""].filter(Boolean).join(" · ") };
+          statItems.push(it); return it;
+        });
+      if (items.length) groups.push([multi ? "Steam · " + a.name : "Steam", items]);
+    });
     const keep = $("#stats-sel").value;
-    $("#stats-sel").innerHTML = statItems.map((it, i) => `<option value="${i}">${esc(it.name)}</option>`).join("") || "<option>Ingen statistikk ennå</option>";
-    const idx = statItems.findIndex((it, i) => String(i) === keep);
-    if (idx >= 0) $("#stats-sel").value = keep;
+    const opt = (it) => `<option value="${statItems.indexOf(it)}" data-icon="${esc(it.icon)}" data-sub="${esc(it.sub || "")}"${it.img ? ` data-img="${esc(it.img)}"` : ""}>${esc(it.name)}</option>`;
+    $("#stats-sel").dataset.title = "Velg spill eller figur";
+    $("#stats-sel").innerHTML = groups.map(([g, items]) => `<optgroup label="${esc(g)}">${items.map(opt).join("")}</optgroup>`).join("") || "<option>Ingen statistikk ennå</option>";
+    if (keep !== "" && statItems[+keep]) $("#stats-sel").value = keep;
     renderStats();
   } catch (e) { $("#stats").innerHTML = `<p class="dim">${esc(e.message)}</p>`; }
 }
@@ -249,7 +267,7 @@ function renderStats() {
   const o = it.o;
   if (it.kind === "hint") { $("#stats").innerHTML = it.o.map((h) => `<p>• ${esc(h)}</p>`).join(""); return; }
   if (it.kind === "wow") {
-    $("#stats").innerHTML = `<p class="dim">${esc(o.sub)}</p>${kv(o.rows)}`
+    $("#stats").innerHTML = `<p class="dim">${esc([o.realm, o.flavor ? "WoW " + o.flavor : ""].filter(Boolean).join(" · ") || o.sub)}</p>${kv(o.rows)}`
       + (o.kills_by.length ? `<h3>Drept mest</h3>${kv(o.kills_by)}` : "")
       + (o.killers.length ? `<h3>Drept av</h3>${kv(o.killers)}` : "")
       + (o.session ? `<h3>Siste økt</h3>${kv(o.session)}` : "");

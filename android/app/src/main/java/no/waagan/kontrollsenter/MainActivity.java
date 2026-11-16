@@ -325,7 +325,10 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         String url = web.getUrl();
         if (url != null && url.startsWith("http")) {
-            web.loadUrl(START + "?hjem=1");          // fra en PC: tilbake til PC-listen
+            // lukk først det som ligger oppå (velger, «Se på», søk) – ellers tilbake til PC-listen
+            web.evaluateJavascript("(window.ksBack && window.ksBack()) ? 1 : 0", (r) -> {
+                if (!"1".equals(r)) web.loadUrl(START + "?hjem=1");
+            });
         } else if (web.canGoBack()) {
             web.goBack();
         } else {
