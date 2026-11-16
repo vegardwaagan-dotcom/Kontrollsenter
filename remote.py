@@ -654,6 +654,11 @@ def _feature_action(win, kind, a):
         import streaming as ST
         ST.rustdesk_open()
         return True, "RustDesk er startet på PC-en"
+    if kind == "wowplus":                        # slå WoW-ekstra av/på (alt, eller én funksjon)
+        import wowplus
+        feat = a.get("feature") or None
+        wowplus.set_option(feat, bool(a.get("on")))
+        return True, "Lagret – skriv /reload i WoW (eller logg inn på nytt) for at addonen skal bruke det"
     if kind == "wowhide":                        # fjern en slettet WoW-karakter fra statistikken
         import gamestats
         key = str(a.get("key") or "")

@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.23.0", "Mer World of Warcraft – i appen og på PC-en", [
+        ("Nytt", [
+            "Varsel på telefonen når noen hvisker til deg i WoW, inviterer deg til en gruppe eller nevner deg i guild-chatten",
+            "Oversikt over alle karakterene: level, gull, hvor de er og uthvilt XP (regnes ut fram til nå, også når du ikke spiller)",
+            "Søk i bagger og bank på alle karakterene («Hvor ligger Linen Cloth?»)",
+            "Questloggen, yrker med fremgang, raid- og dungeon-låser og gull over tid per karakter",
+            "Varsel når utstyret må repareres og når et yrke må læres videre hos treneren",
+            "WoW-skjermbildene kommer i skjermbildene i Kontrollsenter, klare til å deles",
+            "Alt kan slås av – én bryter for alt og én per funksjon (Spill → World of Warcraft). "
+            "Bare lesing av det WoW og addonen lagrer, ingen automatisering. Skriv /reload i WoW etter en endring",
+        ]),
+    ]),
     ("0.22.3", "WoW-statistikken oppdateres igjen", [
         ("Rettet", [
             "WoW-statistikken låste seg når en karakter gikk opp i level, så nye tall og karakterer kom aldri fram",

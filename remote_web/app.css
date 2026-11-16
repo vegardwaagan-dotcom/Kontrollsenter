@@ -567,3 +567,11 @@ main, .main-col, .page { overflow-x: clip; max-width: 100%; }
 .tabs button.hover { color: var(--fg); }
 .page { will-change: auto; }
 .tabs.dragging button.on:not(.hover) { color: var(--dim); }
+/* WoW-ekstra */
+.wp-alt { padding: 8px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+.wp-alt .r { text-align: right; flex: none; }
+.wp-prof { padding: 6px 0; } .wp-prof .bar { height: 6px; border-radius: 3px; background: var(--card2); overflow: hidden; margin-top: 4px; }
+.wp-prof .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--c1), var(--c2, #8a5cff)); }
+details.wp-q { padding: 6px 0; border-bottom: 1px solid var(--line); } details.wp-q div { padding: 2px 0 2px 18px; }
+.warn { color: var(--warn); }
+.nowrap { white-space: nowrap; }

@@ -259,6 +259,7 @@ async function loadStats() {
     $("#stats-sel").innerHTML = groups.map(([g, items]) => `<optgroup label="${esc(g)}">${items.map(opt).join("")}</optgroup>`).join("") || "<option>Ingen statistikk ennå</option>";
     if (keep !== "" && statItems[+keep]) $("#stats-sel").value = keep;
     renderStats();
+    if (window.renderWowPlus) window.renderWowPlus(d.wowplus);
   } catch (e) { $("#stats").innerHTML = `<p class="dim">${esc(e.message)}</p>`; }
 }
 function renderStats() {
@@ -271,8 +272,10 @@ function renderStats() {
       + (o.kills_by.length ? `<h3>Drept mest</h3>${kv(o.kills_by)}` : "")
       + (o.killers.length ? `<h3>Drept av</h3>${kv(o.killers)}` : "")
       + (o.session ? `<h3>Siste økt</h3>${kv(o.session)}` : "")
+      + (window.wowPlusHtml ? window.wowPlusHtml(o) : "")
       + `<p class="dim small">Nye karakterer dukker opp når du har logget inn med dem og logget ut eller skrevet /reload.</p>`
       + (o.key ? `<button class="link" id="wow-hide">Fjern ${esc(o.char || "karakteren")} fra listen (slettet i spillet)</button>` : "");
+    if (window.wowPlusAfter) window.wowPlusAfter(o);
     const hb = $("#wow-hide");
     if (hb) hb.onclick = async () => {
       if (!(await confirmDlg(`Fjerne ${o.char} fra WoW-statistikken? Den kommer tilbake hvis du spiller med den igjen.`))) return;

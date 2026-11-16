@@ -431,6 +431,62 @@ $("#pc-upd").onclick = async () => {
 };
 fetch("/api/hello").then((r) => r.json()).then((h) => ($("#pc-ver").textContent = h.version || "–")).catch(() => {});
 
+// ---------- World of Warcraft: oversikt, bagsøk, quests, yrker, gull, låser, utstyr (med av/på) ----------
+const wpGold = (c) => { c = Math.max(0, Math.round(c || 0)); const g = Math.floor(c / 10000), s = Math.floor(c % 10000 / 100);
+  return g ? `${g} g ${s} s` : `${s} s ${c % 100} k`; };
+const wpDur = (h) => (h >= 24 ? Math.round(h / 24) + " d" : Math.round(h) + " t");
+const wpLeft = (t) => { const s = t - Date.now() / 1000; return s <= 0 ? "nå" : s > 86400 ? `${Math.floor(s / 86400)} d ${Math.floor(s % 86400 / 3600)} t` : `${Math.floor(s / 3600)} t ${Math.floor(s % 3600 / 60)} min`; };
+let wpItems = [];
+window.renderWowPlus = (w) => {
+  const card = $("#wp-card");
+  if (!card) return;
+  card.hidden = !w;
+  if (!w) return;
+  $("#wp-on").checked = !!w.on;
+  $("#wp-body").hidden = !w.on;
+  $("#wp-feats").innerHTML = w.names.map((f) => `<div class="row"><span>${esc(f.name)}<br><small class="dim">${esc(f.desc)}</small></span>
+    <label class="switch"><input type="checkbox" data-wpf="${f.key}" ${w.features[f.key] ? "checked" : ""} ${w.on ? "" : "disabled"}><i></i></label></div>`).join("");
+  $$("[data-wpf]").forEach((x) => (x.onchange = async () => { await act({ a: "wowplus", feature: x.dataset.wpf, on: x.checked }); loadStats(); }));
+  const alts = w.features.alts ? (w.alts || []) : [];
+  $("#wp-alts").innerHTML = alts.length ? `<h3>Karakterene</h3>` + alts.map((c) => `<div class="row between wp-alt">
+      <span><b>${esc(c.name)}</b> <span class="dim">${c.level || ""} ${esc(c.cls || "")}</span><br>
+        <small class="dim">${esc(c.zone || "")}${c.gold != null ? " · " + wpGold(c.gold) : ""}${c.durability != null && c.durability <= 30 ? ` · <span class="warn nowrap">🔧 ${c.durability} %</span>` : ""}</small></span>
+      <span class="r">${c.rested != null ? `<b>${c.rested} %</b> <small class="dim">uthvilt</small><br><small class="dim">${c.full_h ? "fullt om " + wpDur(c.full_h) : "fullt uthvilt"}${c.resting ? " · 🛏️" : ""}</small>` : '<small class="dim">uthvilt: logg ut/reload</small>'}</span></div>`).join("") : "";
+  wpItems = w.items || [];
+  $("#wp-bagbox").hidden = !w.features.bags;
+  wpSearch();
+};
+function wpSearch() {
+  const q = ($("#wp-q").value || "").trim().toLowerCase();
+  if (!q) { $("#wp-res").innerHTML = `<p class="dim small">${wpItems.length ? wpItems.length + " ting registrert. Banken leses når du åpner den i spillet." : "Ingenting registrert ennå – logg ut eller skriv /reload i WoW."}</p>`; return; }
+  const hits = wpItems.filter((x) => x[2].toLowerCase().includes(q)).slice(0, 60);
+  $("#wp-res").innerHTML = hits.length ? kv(hits.map((x) => [`${x[2]}`, `${x[3]} · ${x[0]} (${x[1].toLowerCase()})`])) : '<p class="dim small">Fant ingenting.</p>';
+}
+$("#wp-q").oninput = wpSearch;
+$("#wp-on").onchange = async () => { await act({ a: "wowplus", on: $("#wp-on").checked }); loadStats(); };
+
+window.wowPlusHtml = (o) => {
+  const P = o.plus;
+  if (!P) return "";
+  let h = "";
+  if (P.rested) h += `<h3>Uthvilt</h3>${kv([["Uthvilt XP nå", P.rested.pct + " % av en level"], ["Fullt uthvilt", P.rested.full_h ? "om " + wpDur(P.rested.full_h) : "nå"], ["Logget ut", P.rested.resting ? "på vertshus / i by 🛏️" : "ute i verden (går tregere)"]])}`;
+  if (P.zone) h += kv([["Sist sett", P.zone]]);
+  if (P.durability != null) h += kv([["Utstyr (dårligste del)", P.durability + " %" + (P.durability <= 20 ? " – reparer!" : "")]]);
+  if (P.profs && P.profs.length) h += `<h3>Yrker</h3>` + P.profs.map((p) => `<div class="wp-prof"><div class="row between"><span>${esc(p.name)}</span><span>${p.rank} / ${p.max}${p.capped && p.max < 300 ? " – lær neste nivå" : ""}${p.per_day ? ` · ${p.per_day}/døgn` : ""}</span></div>
+      <div class="bar"><i style="width:${Math.min(100, p.rank / Math.max(1, p.max) * 100)}%"></i></div></div>`).join("");
+  if (P.quests && P.quests.length) h += `<h3>Questloggen (${P.quests.length})</h3>` + P.quests.map((q) => `<details class="wp-q"><summary>${q.done ? "✅" : "📜"} [${q.level || "?"}] ${esc(q.title)} <small class="dim">${esc(q.zone || "")}</small></summary>
+      ${q.obj.length ? q.obj.map((x) => `<div class="small ${x.startsWith("+") ? "dim" : ""}">${esc(x.replace(/^[+-] /, x.startsWith("+") ? "✓ " : "• "))}</div>`).join("") : '<div class="small dim">Ingen mål å telle</div>'}</details>`).join("");
+  if (P.locks) h += `<h3>Raid- og dungeon-låser</h3>` + (P.locks.length ? kv(P.locks.map((l) => [l.name, "nullstilles om " + wpLeft(l.reset_at)])) : '<p class="dim small">Ingen låser nå.</p>');
+  if (P.gold && P.gold.length > 1) h += `<h3>Gull over tid</h3><canvas id="wp-gold" style="height:160px"></canvas>`;
+  return h;
+};
+window.wowPlusAfter = (o) => {
+  const cv = $("#wp-gold");
+  if (!cv || !o.plus || !o.plus.gold) return;
+  const pts = o.plus.gold.slice(-14).map(([t, g]) => [new Date(t * 1000).toLocaleDateString("nb-NO", { day: "numeric", month: "numeric" }), g / 10000]);
+  bars(cv, pts, "g");
+};
+
 // ---------- vakt: noe er bredere enn skjermen → si fra til PC-en (feilloggen) så det kan rettes ----------
 let wideSent = {};
 function checkWide() {

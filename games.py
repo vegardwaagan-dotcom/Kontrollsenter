@@ -397,6 +397,8 @@ class GamesPage(Gtk.ScrolledWindow):
         try:
             import gamestats_ui
             box.append(gamestats_ui.StatsCard(card))
+            if gamestats_ui.gamestats.wow_flavors():     # bare når WoW er installert
+                box.append(gamestats_ui.WowPlusCard(card))
             import clips_ui
             box.append(clips_ui.ClipsCard(card))
         except Exception:  # noqa: BLE001

@@ -550,6 +550,11 @@ def install_wow_addon():
                     t.write_text(text, encoding="utf-8")
                     changed = True
             res.append((name, True, "oppdatert" if changed else "allerede installert"))
+            try:
+                import wowplus
+                wowplus.write_config()               # KontrollsenterConfig.lua (av/på for WoW-ekstra)
+            except Exception:  # noqa: BLE001
+                pass
         except OSError as e:
             res.append((name, False, str(e)))
     return res
@@ -697,6 +702,11 @@ def wow_stats(include_hidden=False):
         remote_extra.record_wow(chars)
     except Exception:  # noqa: BLE001
         pass
+    try:
+        import wowplus
+        wowplus.check(chars)                         # varsel: reparer utstyret, lær neste yrkesnivå
+    except Exception:  # noqa: BLE001
+        pass
     return sorted(chars, key=lambda c: -(c.get("last_seen") or 0))
 
 
@@ -787,7 +797,15 @@ def wow_summary(c):
             "kills_by": top(c.get("kills_by")), "killers": top(c.get("killers")), "session": session,
             "last_seen": c.get("last_seen"), "class": c.get("class"),
             "char": c.get("name"), "level": c.get("level"), "race": c.get("race"), "cls": c.get("class_name"),
-            "realm": c.get("realm"), "flavor": c.get("flavor"), "key": c.get("key")}
+            "realm": c.get("realm"), "flavor": c.get("flavor"), "key": c.get("key"), "plus": _plus(c)}
+
+
+def _plus(c):
+    try:
+        import wowplus
+        return wowplus.details(c)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 # --------------------------------------------------------------------------
@@ -796,7 +814,13 @@ def wow_summary(c):
 def snapshot():
     out = {"live": LIVE.state(), "wow": [], "steam": [], "accounts": []}
     try:
-        out["wow"] = [wow_summary(c) for c in wow_stats()]
+        chars = wow_stats()
+        out["wow"] = [wow_summary(c) for c in chars]
+        try:
+            import wowplus
+            out["wowplus"] = wowplus.overview(chars)
+        except Exception:  # noqa: BLE001
+            pass
         have = {c["sub"].split("WoW ")[-1] for c in out["wow"]}
         out["wow_hints"] = [f"WoW {fl}: WoW blokkerte {b.get('func')} i addonen – si fra, så rettes det"
                             for fl, b in BLOCKED.items()]
@@ -820,6 +844,8 @@ def setup_background():
             LIVE.start()
             install_cs2_gsi()
             install_wow_addon()
+            import wowplus
+            wowplus.start()                          # chatlogg-varsler og WoW-skjermbilder
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("spillstatistikk")

@@ -5,4 +5,6 @@
 ## Version: @VERSION@
 ## SavedVariables: KontrollsenterStatsDB
 
+KontrollsenterConfig.lua
 KontrollsenterStats.lua
+KontrollsenterPlus.lua

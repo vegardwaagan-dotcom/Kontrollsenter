@@ -166,6 +166,16 @@
           <button id="lim-save" class="soft">Lagre</button></details></div>
       <div class="card"><h2>CS2 kamp for kamp</h2><canvas id="cs-chart"></canvas>
         <div class="legend"><i class="c1"></i>K/D <i class="c2"></i>Headshot %</div><div id="cs-maps"></div></div>
+      <div class="card" id="wp-card" hidden><div class="row between"><h2>World of Warcraft</h2>
+          <label class="switch" title="Alle WoW-funksjonene"><input type="checkbox" id="wp-on"><i></i></label></div>
+        <div id="wp-body">
+          <div id="wp-alts"></div>
+          <div id="wp-bagbox"><h3>Bagger og bank</h3><input id="wp-q" class="search" placeholder="Søk etter en ting, f.eks. Linen Cloth …"><div id="wp-res"></div></div>
+        </div>
+        <details><summary>Velg WoW-funksjoner</summary><div id="wp-feats"></div>
+          <p class="dim small">Alt er bare lesing av det WoW og addonen «Kontrollsenter Stats» lagrer – ingen automatisering
+            og ingenting sendes inn i spillet. Endringer gjelder etter <b>/reload</b> i WoW. Tallene oppdateres når du logger ut eller skriver /reload.</p></details>
+      </div>
       <div class="card"><h2>WoW-mål</h2><div id="wow-goals"></div>
         <details><summary>Nytt mål</summary>
           <select id="goal-char" class="search"></select>
