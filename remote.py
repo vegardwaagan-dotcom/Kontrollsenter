@@ -654,6 +654,14 @@ def _feature_action(win, kind, a):
         import streaming as ST
         ST.rustdesk_open()
         return True, "RustDesk er startet på PC-en"
+    if kind == "wowhide":                        # fjern en slettet WoW-karakter fra statistikken
+        import gamestats
+        key = str(a.get("key") or "")
+        c = next((c for c in gamestats.wow_stats() if c.get("key") == key), None)
+        if not c:
+            return False, "Fant ikke karakteren"
+        gamestats.wow_hide(key, c.get("last_seen"))
+        return True, f"{c.get('name')} er fjernet fra listen – den kommer tilbake hvis du spiller med den igjen"
     if kind == "uilog":                          # appen melder at noe er bredere enn skjermen (for feilsøking)
         import applog
         items = [str(x)[:160] for x in (a.get("items") or [])][:8]

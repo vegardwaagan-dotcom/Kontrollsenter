@@ -650,9 +650,31 @@ def lua_parse(text):
 BLOCKED = {}          # utgave -> {"func", "event", "at"} hvis WoW blokkerte noe addonen gjorde
 
 
-def wow_stats():
+WOW_HIDDEN = os.path.expanduser("~/.config/systemmonitor/wow-skjult.json")
+
+
+def _wow_hidden():
+    try:
+        with open(WOW_HIDDEN, encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def wow_hide(key, last_seen):
+    """Skjul en karakter (slettet i spillet). Den kommer tilbake hvis den spilles igjen (nyere last_seen)."""
+    d = _wow_hidden()
+    d[str(key)[:120]] = float(last_seen or 0)
+    os.makedirs(os.path.dirname(WOW_HIDDEN), exist_ok=True)
+    with open(WOW_HIDDEN, "w", encoding="utf-8") as f:
+        json.dump(d, f)
+
+
+def wow_stats(include_hidden=False):
     """[karakter-ordbok + flavor/account/file] fra alle WoW-utgaver og kontoer, sist spilt først."""
     chars = []
+    hidden = {} if include_hidden else _wow_hidden()
     for _root, d, name, _iface in wow_flavors():
         for f in glob.glob(os.path.join(d, "WTF", "Account", "*", "SavedVariables", "KontrollsenterStats.lua")):
             try:
@@ -664,6 +686,9 @@ def wow_stats():
             for key, c in (db.get("chars") or {}).items():
                 if isinstance(c, dict):
                     c = dict(c)
+                    c["key"] = f"{name}|{key}"
+                    if c["key"] in hidden and (c.get("last_seen") or 0) <= hidden[c["key"]]:
+                        continue                     # skjult av brukeren (slettet i spillet)
                     c["flavor"], c["account"] = name, Path(f).parents[1].name
                     c["saved"] = os.path.getmtime(f)
                     chars.append(c)
@@ -762,7 +787,7 @@ def wow_summary(c):
             "kills_by": top(c.get("kills_by")), "killers": top(c.get("killers")), "session": session,
             "last_seen": c.get("last_seen"), "class": c.get("class"),
             "char": c.get("name"), "level": c.get("level"), "race": c.get("race"), "cls": c.get("class_name"),
-            "realm": c.get("realm"), "flavor": c.get("flavor")}
+            "realm": c.get("realm"), "flavor": c.get("flavor"), "key": c.get("key")}
 
 
 # --------------------------------------------------------------------------

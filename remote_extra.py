@@ -21,7 +21,7 @@ LIMITS = os.path.expanduser("~/.config/systemmonitor/spillgrenser.json")
 CS2_MATCHES = os.path.join(DATA, "cs2-kamper.json")
 WOW_HIST = os.path.join(DATA, "wow-historikk.json")
 WOW_GOALS = os.path.expanduser("~/.config/systemmonitor/wow-mal.json")
-_LOCK = threading.Lock()
+_LOCK = threading.RLock()                  # RLock: record_wow kaller event() mens låsen holdes
 
 
 def _jload(path, default):

@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.22.3", "WoW-statistikken oppdateres igjen", [
+        ("Rettet", [
+            "WoW-statistikken låste seg når en karakter gikk opp i level, så nye tall og karakterer kom aldri fram",
+            "En ny karakter med samme navn som en slettet arver ikke lenger den gamles statistikk (addonen kjenner "
+            "igjen karakteren på ID-en)",
+        ]),
+        ("Nytt", [
+            "Appen: «Fjern fra listen» på WoW-karakterer du har slettet. Spiller du med den igjen, kommer den tilbake",
+        ]),
+    ]),
     ("0.22.2", "Samme farge sendes på nytt", [
         ("Rettet", [
             "RGB: et trykk på fargen som allerede er valgt under «Alle enheter» gjorde ingenting. Nå sendes den på nytt "

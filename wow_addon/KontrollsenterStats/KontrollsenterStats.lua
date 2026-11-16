@@ -37,8 +37,20 @@ local function ensureChar()
   local db = KontrollsenterStatsDB
   db.chars = db.chars or {}
   local key = GetRealmName() .. "-" .. UnitName("player")
-  db.chars[key] = db.chars[key] or { first_seen = now() }
+  local guid = UnitGUID and UnitGUID("player") or nil
+  local old = db.chars[key]
+  if old then
+    -- en ny karakter med samme navn som en slettet: start på nytt i stedet for å arve den gamles tall
+    local cls = select(2, UnitClass("player"))
+    if (old.guid and guid and old.guid ~= guid)
+        or (not old.guid and ((old.class and old.class ~= cls) or (old.race and old.race ~= UnitRace("player"))
+                              or (old.level or 0) > (UnitLevel("player") or 0))) then
+      old = nil
+    end
+  end
+  db.chars[key] = old or { first_seen = now() }
   C = db.chars[key]
+  C.guid = guid or C.guid
   C.name, C.realm = UnitName("player"), GetRealmName()
   C.class = select(2, UnitClass("player"))
   C.class_name = UnitClass("player")

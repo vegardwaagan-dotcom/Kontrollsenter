@@ -270,7 +270,15 @@ function renderStats() {
     $("#stats").innerHTML = `<p class="dim">${esc([o.realm, o.flavor ? "WoW " + o.flavor : ""].filter(Boolean).join(" · ") || o.sub)}</p>${kv(o.rows)}`
       + (o.kills_by.length ? `<h3>Drept mest</h3>${kv(o.kills_by)}` : "")
       + (o.killers.length ? `<h3>Drept av</h3>${kv(o.killers)}` : "")
-      + (o.session ? `<h3>Siste økt</h3>${kv(o.session)}` : "");
+      + (o.session ? `<h3>Siste økt</h3>${kv(o.session)}` : "")
+      + `<p class="dim small">Nye karakterer dukker opp når du har logget inn med dem og logget ut eller skrevet /reload.</p>`
+      + (o.key ? `<button class="link" id="wow-hide">Fjern ${esc(o.char || "karakteren")} fra listen (slettet i spillet)</button>` : "");
+    const hb = $("#wow-hide");
+    if (hb) hb.onclick = async () => {
+      if (!(await confirmDlg(`Fjerne ${o.char} fra WoW-statistikken? Den kommer tilbake hvis du spiller med den igjen.`))) return;
+      await act({ a: "wowhide", key: o.key });
+      loadStats();
+    };
   } else {
     const sub = [(o.playtime_min / 60).toFixed(1) + " timer spilt"];
     if (o.achievements[1]) sub.push(`${o.achievements[0]} / ${o.achievements[1]} prestasjoner`);
