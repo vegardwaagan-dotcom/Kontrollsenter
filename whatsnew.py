@@ -13,6 +13,11 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.21.1", "Jevn dra-bevegelse på fanelinjen", [
+        ("Rettet", [
+            "Når du drar fingeren langs fanelinjen i appen, hopper ikke glasslinsen lenger tilbake til fanen du startet på",
+        ]),
+    ]),
     ("0.21.0", "Sveip mellom faner og lys som følger musa", [
         ("Nytt", [
             "Appen: dra fingeren bortover skjermen for å bytte fane – eller dra langs fanelinjen, så følger glasslinsen "

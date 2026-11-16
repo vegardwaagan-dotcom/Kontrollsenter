@@ -14,6 +14,7 @@
   tabs.prepend(lens);
   let last = null;
   function move() {
+    if (tabs.classList.contains("dragging")) return;    // fingeren styrer linsen (swipe.js)
     const on = tabs.querySelector("button.on");
     if (!on || !document.body.classList.contains("glass")) { lens.style.opacity = "0"; return; }
     const a = tabs.getBoundingClientRect(), b = on.getBoundingClientRect();

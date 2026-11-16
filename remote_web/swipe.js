@@ -78,7 +78,7 @@
   tabsEl.addEventListener("pointermove", (ev) => {
     if (!drag || ev.pointerId !== drag.id) return;
     if (!drag.moved && Math.abs(ev.clientX - drag.x) < 10) return;
-    if (!drag.moved) { drag.moved = true; try { tabsEl.setPointerCapture(ev.pointerId); } catch (e) {} }
+    if (!drag.moved) { drag.moved = true; tabsEl.classList.add("dragging"); try { tabsEl.setPointerCapture(ev.pointerId); } catch (e) {} }
     const L = lens(), a = tabsEl.getBoundingClientRect(), b = under(ev.clientX);
     if (L && b) {
       const r = b.getBoundingClientRect();
@@ -94,13 +94,13 @@
   const stop = (ev) => {
     if (!drag || ev.pointerId !== drag.id) return;
     const moved = drag.moved; drag = null;
+    if (!moved) return;                                   // vanlig trykk – håndteres av klikket
+    const b = under(ev.clientX);
+    if (b && b.dataset.tab !== tab) setTab(b.dataset.tab);   // fanen byttes før linsen slippes – ingen tilbakehopp
     order().forEach((o) => o.classList.remove("hover"));
     const L = lens();
     if (L) L.style.transition = "";
-    if (!moved) return;                                   // vanlig trykk – håndteres av klikket
-    const b = under(ev.clientX);
-    if (b && b.dataset.tab !== tab) setTab(b.dataset.tab);
-    else window.dispatchEvent(new Event("resize"));       // legg linsen tilbake på riktig fane
+    tabsEl.classList.remove("dragging");                  // glass.js legger linsen på den nye fanen
     const swallow = (e) => { e.stopPropagation(); e.preventDefault(); };
     tabsEl.addEventListener("click", swallow, { capture: true, once: true });
     setTimeout(() => tabsEl.removeEventListener("click", swallow, { capture: true }), 300);
