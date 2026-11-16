@@ -17,6 +17,7 @@ const famGrid = h(`<div class="grid" id="fam-grid">
     <details class="full-only"><summary>Belønning og leggetid</summary>
       <div class="label">Ekstra spilletid i dag</div>
       <div class="chips" id="bonus"><button data-m="15">+15 min</button><button data-m="30">+30 min</button><button data-m="60">+1 time</button></div>
+      <div class="row"><span>La andre i huset se skjermen til denne PC-en</span>${sw("wa-on")}</div>
       <div class="row"><span>Leggetid (PC-en slås av)</span>${sw("bt-on")}</div>
       <div class="row"><span>Søn–tor</span><input type="time" id="bt-wd" class="num-in"></div>
       <div class="row"><span>Fre–lør</span><input type="time" id="bt-we" class="num-in"></div>
@@ -128,10 +129,12 @@ async function loadFamily() {
     if (!gamesCache) { try { gamesCache = (await api("/api/games")).games; } catch (e) { gamesCache = []; } }
     const mine = new Map((gamesCache || []).map((g) => [g.name, g.appid]));
     $("#fam-pcs").innerHTML = f.pcs.map((p) => {
-      const join = p.game && mine.has(p.game) && p.name !== pcName ? `<button class="soft small" data-join="${esc(mine.get(p.game))}">Bli med</button>` : "";
+      const join = (p.game && mine.has(p.game) && p.name !== pcName ? `<button class="soft small" data-join="${esc(mine.get(p.game))}">Bli med</button>` : "")
+        + (p.watch && !p.off ? ` <button class="${p.game ? "primary" : "soft"} small full-only" data-watch="${esc(p.name)}" data-game="${esc(p.game || "")}">📺 Se på</button>` : "");
       return `<div class="row between"><div><b>${esc(p.name)}</b><div class="dim small">${p.off ? "Av" : p.game ? "🎮 " + esc(p.game) : "Ingen spill"} · i dag ${hours(p.today || 0)}</div></div>${join}</div>`;
     }).join("") || `<p class="dim">Ingen andre PC-er har delt status ennå.</p>`;
     $$("[data-join]").forEach((b) => (b.onclick = () => act({ a: "game", appid: b.dataset.join })));
+    $$("[data-watch]").forEach((b) => (b.onclick = () => openWatch(b.dataset.watch, b.dataset.game)));
     const cur = $("#chat-to").value;
     $("#chat-to").innerHTML = `<option value="">Til denne PC-en</option><option value="*">Til alle PC-ene</option>` +
       f.pcs.filter((p) => p.name && p.name !== pcName).map((p) => `<option>${esc(p.name)}</option>`).join("");
@@ -144,6 +147,7 @@ async function loadFamily() {
     const c = await X("features");
     $("#bt-on").checked = !!c.bedtime.enabled; $("#bt-wd").value = c.bedtime.weekday; $("#bt-we").value = c.bedtime.weekend;
     $("#wl-on").checked = !!c.wishlist; $("#au-on").checked = !!c.auto_update;
+    const me = f.pcs.find((p) => p.name === pcName); $("#wa-on").checked = !me || me.watch !== false;
   } catch (e) {}
 }
 async function loadChat() {
@@ -168,6 +172,7 @@ $("#chat-send").onclick = () => { const t = $("#chat-text").value.trim(); if (t)
 $("#chat-text").onkeydown = (e) => e.key === "Enter" && $("#chat-send").onclick();
 $("#dinner").onclick = () => sendChat({ a: "dinner", to: $("#chat-to").value || "*" });
 $$("#bonus button").forEach((b) => (b.onclick = () => act({ a: "bonus", minutes: +b.dataset.m })));
+$("#wa-on").onchange = () => act({ a: "watchallow", on: $("#wa-on").checked }, true);
 $("#bt-save").onclick = () => act({ a: "bedtime", enabled: $("#bt-on").checked, weekday: $("#bt-wd").value, weekend: $("#bt-we").value });
 $("#wl-on").onchange = () => act({ a: "feature", key: "wishlist", on: $("#wl-on").checked }, true);
 $("#au-on").onchange = () => act({ a: "feature", key: "auto_update", on: $("#au-on").checked }, true);
@@ -357,6 +362,29 @@ function showOffline() {
   if (!last) { try { renderOverview(c.s); } catch (e) {} }
 }
 if (navigator.getBattery) navigator.getBattery().then((b) => { const f = () => (window.ksLowBattery = !b.charging && b.level < 0.2); f(); b.onlevelchange = f; b.onchargingchange = f; }).catch(() => {});
+
+// ---------- «Se på»: skjermen til en PC i huset, live (bare visning) ----------
+document.body.appendChild(h(`<div id="watchv" class="watchv" hidden><img id="watch-img" alt="">
+  <div class="watch-top"><b id="watch-t"></b><span id="watch-s" class="dim small"></span><button id="watch-x" class="icon">✕</button></div></div>`));
+function openWatch(name, game) {
+  $("#watchv").hidden = false;
+  $("#watch-t").textContent = "📺 " + name + (game ? " – " + game : "");
+  $("#watch-s").textContent = "Kobler til … (første gang må delingen godkjennes på PC-en)";
+  const img = $("#watch-img");
+  img.onload = () => ($("#watch-s").textContent = "Bare visning · snu telefonen for stort bilde");
+  img.onerror = () => ($("#watch-s").textContent = "Fikk ikke vist skjermen – er deling slått på der?");
+  img.src = `/api/watch?k=${encodeURIComponent(token)}` + (name && name !== pcName ? `&pc=${encodeURIComponent(name)}` : "");
+  if (KS && KS.keepAwake) KS.keepAwake(true);
+}
+function closeWatch() {
+  $("#watch-img").src = ""; $("#watchv").hidden = true;
+  if (KS && KS.keepAwake && !pref("dash", false)) KS.keepAwake(false);
+}
+$("#watch-x").onclick = closeWatch;
+$("#watchv").ondblclick = () => { try { document.fullscreenElement ? document.exitFullscreen() : $("#watchv").requestFullscreen(); } catch (e) {} };
+document.addEventListener("visibilitychange", () => { if (document.hidden && !$("#watchv").hidden) closeWatch(); });
+// «Skjermen live» i Verktøy bruker samme strøm (jevn video i stedet for et bilde hvert par sekunder)
+$("#live-on").onchange = () => { if ($("#live-on").checked) { openWatch(pcName, last && last.game); $("#live-on").checked = false; } };
 
 // ---------- kobling til fanene ----------
 const famSetTab = setTab;

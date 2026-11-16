@@ -76,6 +76,10 @@ class FamilyCard(Gtk.Box):
             e = Gtk.Entry(text=c["bedtime"][key], width_chars=6, max_length=5)
             e.connect("activate", lambda en, k=key: self._bed(**{k: en.get_text().strip()}))
             box.append(_row(label + " " + i18n.tr("(tt:mm, Enter for å lagre)"), e))
+        import watch
+        ws = Gtk.Switch(active=bool(watch.cfg()["allow"]))
+        ws.connect("notify::active", lambda s, _p: self._watch_allow(s.get_active()))
+        box.append(_row("La andre i huset se skjermen min (bare visning – du får beskjed når noen ser på)", ws))
         for key, label in (("auto_update", "Oppdater av seg selv kl. 04 (rulles tilbake hvis den ikke starter)"),
                            ("wishlist", "Varsle om tilbud på Steam-ønskelisten")):
             s = Gtk.Switch(active=bool(c.get(key)))
@@ -133,6 +137,12 @@ class FamilyCard(Gtk.Box):
             c["bedtime"][k] = v
         F.save_cfg(c)
         self.msg.set_label(i18n.tr("Leggetiden er lagret ✓"))
+
+    def _watch_allow(self, on):
+        import watch
+        c = watch.cfg()
+        c["allow"] = on
+        watch.save_cfg(c)
 
     def _set(self, key, on):
         c = F.cfg()

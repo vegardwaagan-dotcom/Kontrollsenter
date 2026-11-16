@@ -654,6 +654,12 @@ def _feature_action(win, kind, a):
         import streaming as ST
         ST.rustdesk_open()
         return True, "RustDesk er startet på PC-en"
+    if kind == "watchallow":
+        import watch as W
+        c = W.cfg()
+        c["allow"] = bool(a.get("on"))
+        W.save_cfg(c)
+        return True, "Lagret"
     if kind == "headsetinstall":
         import batteries
         return batteries.install_headsetcontrol()
@@ -889,6 +895,8 @@ def _handler(remote):
                     with open(path, "rb") as f:
                         return self._send(200, f.read(), "application/vnd.android.package-archive",
                                           {"Content-Disposition": 'attachment; filename="Kontrollsenter.apk"'})
+                if p == "/api/watch":                    # «Se på»: MJPEG-strøm av skjermen (bare visning)
+                    return self._watch(parse_qs(u.query))
                 if p in ("/api/clipfile", "/api/clipthumb"):   # nøkkel i adressen – <video>/<img> kan ikke sende den
                     q = parse_qs(u.query)
                     import clipx
@@ -1061,6 +1069,63 @@ def _handler(remote):
             if what in simple:
                 return self._send(200, simple[what]())
             return self._send(404, {"error": "finnes ikke"})
+
+        def _watch(self, q):
+            import watch as W
+            arg = lambda k: (q.get(k) or [""])[0]  # noqa: E731
+            dev = remote.check(arg("k"))
+            if dev:
+                if dev.get("role", "full") != "full":
+                    return self._send(403, {"error": "denne enheten har begrenset tilgang"})
+                who = dev.get("name") or "Mobil"
+            elif W.check_house_key(arg("fk")):
+                who = re.sub(r"[^\w .-]", "", arg("by"))[:40] or "En annen PC"
+            else:
+                return self._send(401, {"error": "ikke paret"})
+            target = arg("pc")
+            import savegames
+            if target and target != savegames.pc_name():          # en annen PC: hent og send videre
+                ip = W.pc_address(target)
+                if not ip:
+                    return self._send(404, {"error": f"{target} er ikke på"})
+                url = (f"http://{ip}:{PORT}/api/watch?fk={W.house_key()}&by="
+                       + __import__("urllib.parse").parse.quote(who))
+                self._mjpeg_head()
+                try:
+                    W.relay(url, self.wfile)
+                except Exception:  # noqa: BLE001
+                    pass
+                return None
+            if not W.cfg()["allow"]:
+                return self._send(403, {"error": "Skjermdeling er slått av på denne PC-en"})
+
+            def notify(name):
+                bg = getattr(remote.win, "bg", None)
+                if bg:
+                    GLib.idle_add(lambda: (bg.notify("watch", "📺 " + name + " ser på skjermen din",
+                                                     "Bare visning – ingen kan styre PC-en. Slå av under "
+                                                     "PC-er hjemme → «La andre se skjermen min».", force=True), False)[1])
+                try:
+                    import remote_extra
+                    remote_extra.event("watch", f"{name} så på skjermen", "", "info")
+                except Exception:  # noqa: BLE001
+                    pass
+            self._mjpeg_head()
+            try:
+                W.stream_to(self.wfile, who, notify)
+            except Exception:  # noqa: BLE001
+                pass
+            return None
+
+        def _mjpeg_head(self):
+            import watch as W
+            self.send_response(200)
+            self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={W.BOUNDARY}")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.close_connection = True
 
         def _video(self, path):
             size = os.path.getsize(path)

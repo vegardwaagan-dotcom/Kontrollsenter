@@ -364,7 +364,8 @@ def family():
     for p in pcs:
         out.append({"name": p.get("name"), "today": p.get("play_today", 0), "week": p.get("play_week", {}),
                     "kd": p.get("cs2_kd"), "wow_levels": p.get("wow_levels"), "cpu_t": p.get("cpu_t"),
-                    "game": p.get("game"), "time": p.get("time"), "off": p.get("off")})
+                    "game": p.get("game"), "time": p.get("time"), "off": p.get("off"),
+                    "watch": bool(p.get("watch")) and time.time() - (p.get("time") or 0) < 900})
     rank = {"Mest spilt i dag": sorted(((x["name"], round(x["today"] / 60)) for x in out), key=lambda y: -y[1]),
             "Høyest CS2 K/D": sorted(((x["name"], x["kd"]) for x in out if x["kd"]), key=lambda y: -y[1]),
             "Flest WoW-levels": sorted(((x["name"], x["wow_levels"]) for x in out if x["wow_levels"]), key=lambda y: -y[1]),

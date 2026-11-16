@@ -104,11 +104,20 @@ def status(win):
 
 
 def _extra():
+    out = {}
     try:
         import features
-        return features.share_fields()
+        out.update(features.share_fields())
     except Exception:  # noqa: BLE001
-        return {}
+        pass
+    try:
+        import remote
+        import watch
+        out["ips"] = [ip for ip in remote.local_ips() if ip.startswith(("192.168.", "10.", "172."))][:2]
+        out["watch"] = bool(watch.cfg()["allow"]) and remote.load_cfg().get("enabled", False)
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def publish(win, off=False):
@@ -289,6 +298,13 @@ class HomePage(Gtk.ScrolledWindow):
                 if p.get("game"):
                     g = Gtk.Label(label="▶ " + p["game"], xalign=0, ellipsize=3)
                     inner.append(g)
+                if p.get("name") != me and p.get("watch") and p.get("ips"):
+                    wb = Gtk.Button(label="📺 " + i18n.tr("Se på"), halign=Gtk.Align.START)
+                    wb.set_tooltip_text(i18n.tr("Se skjermen live – bare visning, den andre får beskjed"))
+                    wb.add_css_class("suggested-action" if p.get("game") else "flat")
+                    wb.connect("clicked", lambda _b, pp=p: __import__("watch_ui").WatchWindow(
+                        self.get_root(), pp["name"], pp["ips"][0], pp.get("game")).present())
+                    inner.append(wb)
             ver = p.get("version", "?")
             from lanupdate import newer
             old = newer(applog.RUNNING, ver) if ver != "?" else False

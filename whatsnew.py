@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.16.0", "Se på hva de andre spiller", [
+        ("Nytt", [
+            "«📺 Se på»: se skjermen til en annen PC i huset live – som casting fra Meta Quest. Bare visning, ingen kan "
+            "styre PC-en, og den som blir sett på får beskjed",
+            "Fra telefonen: Spill → Familie → «📺 Se på» ved PC-en (fullskjerm, snu telefonen for stort bilde). "
+            "Telefonen trenger bare å være paret med én PC",
+            "Fra PC-ene: «Se på»-knapp på kortene under PC-er hjemme (dobbeltklikk for fullskjerm)",
+            "«Skjermen live» i appen viser nå jevn video i stedet for et bilde hvert par sekunder",
+            "Kan slås av per PC: «La andre i huset se skjermen min» (Familie-kortet). Første gang på Linux spør "
+            "PC-en om lov til å dele skjermen",
+        ]),
+    ]),
     ("0.15.0", "Strømming til telefonen, RustDesk og ryddigere skrift", [
         ("Nytt", [
             "Ny fane «Strømming»: spill og se PC-skjermen på telefonen med Sunshine og Moonlight – start/stopp, "

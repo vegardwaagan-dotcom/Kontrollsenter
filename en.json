@@ -1847,5 +1847,10 @@
  "Åpne porter automatisk (UPnP)": "Open ports automatically (UPnP)",
  "Trengs bare for strømming utenfor hjemmet uten Tailscale. Tailscale er tryggere.": "Only needed for streaming away from home without Tailscale. Tailscale is safer.",
  "Hvem kan åpne Sunshine-nettsiden": "Who can open the Sunshine web page",
- "Bare denne PC-en er tryggest.": "Only this PC is safest."
+ "Bare denne PC-en er tryggest.": "Only this PC is safest.",
+ "Se på": "Watch",
+ "Se skjermen live – bare visning, den andre får beskjed": "Watch the screen live – view only, the other person is notified",
+ "Bare visning · dobbeltklikk for fullskjerm · Esc lukker": "View only · double-click for full screen · Esc closes",
+ "Fikk ikke vist skjermen: ": "Could not show the screen: ",
+ "La andre i huset se skjermen min (bare visning – du får beskjed når noen ser på)": "Let others in the house watch my screen (view only – you are notified when someone watches)"
 }

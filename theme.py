@@ -168,6 +168,12 @@ box > label.caption:not(:first-child), box > label.dim-label:not(:first-child) {
 .ks-pagehelp { opacity: 0.68; line-height: 1.5; font-size: 0.95em; }
 expander title > label { font-weight: 600; }
 
+/* «Se på» */
+.ks-watch-bg { background-color: black; }
+.ks-watch-status {
+  background-color: alpha(black, 0.65); color: white; padding: 8px 16px; border-radius: 99px; font-weight: 600;
+}
+
 levelbar.disk-ok block.filled { background-color: var(--accent-bg-color); }
 levelbar.disk-warn block.filled { background-color: var(--warning-bg-color); }
 levelbar.disk-crit block.filled { background-color: var(--error-bg-color); }
