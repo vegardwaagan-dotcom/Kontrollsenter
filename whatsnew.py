@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.22.1", "CPU-kjøleren lyser i fast farge", [
+        ("Rettet", [
+            "RGB: med en fast farge (f.eks. grønn) ble lys på hovedkortets uttak – som CPU-kjøleren – slått av. "
+            "Fargene ble sendt før hovedkortet var ferdig med å bytte modus. Nå venter Kontrollsenter litt og sender "
+            "fargene to ganger",
+        ]),
+    ]),
     ("0.22.0", "Del skjermbilder og klipp", [
         ("Nytt", [
             "Appen: Del-knapp på skjermbilder og klipp – også klipp fra de andre PC-ene. Bildet eller klippet hentes "

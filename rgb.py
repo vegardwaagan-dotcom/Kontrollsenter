@@ -339,6 +339,7 @@ class RgbBackend:
                 mode.colors = [rgb] * min(n, mode.colors_max or n)
             self._send_mode(dev, mode)
             if mode.color_mode == ModeColors.PER_LED or mode.name.lower() == "direct":
+                time.sleep(0.3)                      # la enheten bytte til Direct før fargene kommer
                 if zone_colors and len(dev.zones) > 1:
                     for zi, zone in enumerate(dev.zones):
                         zc = zone_colors.get(str(zi)) or st["color"]
@@ -368,10 +369,14 @@ class RgbBackend:
         if direct is None:
             return
         self._send_mode(dev, direct)
-        for zi, zone in enumerate(dev.zones):
-            zc = (zone_colors or {}).get(str(zi))
-            zc = col if (off or not zc) else tuple(round(c * bright) for c in zc)
-            zone.set_color(RGBColor(*zc), fast=True)
+        # Hovedkortet må bli ferdig med å bytte til Direct før fargene kommer – ellers blir uttakene
+        # (f.eks. CPU-kjøleren) mørke. Send fargene to ganger for sikkerhets skyld.
+        for wait in (0.35, 0.6):
+            time.sleep(wait)
+            for zi, zone in enumerate(dev.zones):
+                zc = (zone_colors or {}).get(str(zi))
+                zc = col if (off or not zc) else tuple(round(c * bright) for c in zc)
+                zone.set_color(RGBColor(*zc), fast=True)
 
     @staticmethod
     def _send_mode(dev, mode):
