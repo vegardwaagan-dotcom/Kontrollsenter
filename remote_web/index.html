@@ -103,9 +103,27 @@
 
   <!-- Spill -->
   <section id="spill" class="page" hidden>
-    <div class="card" id="stats-card"><h2>Statistikk</h2>
+    <div class="card" id="stats-card"><div class="row between"><h2>Statistikk</h2>
+        <button class="icon" id="stats-ref" aria-label="Oppdater statistikken" title="Oppdater"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button></div>
       <select id="stats-sel" class="search"></select>
       <div id="stats" class="statsbody"><p class="dim">Henter …</p></div></div>
+      <div class="card" id="wp-card" hidden style="margin-top:var(--gap)"><div class="row between"><h2>World of Warcraft</h2>
+          <label class="switch" title="Alle WoW-funksjonene"><input type="checkbox" id="wp-on"><i></i></label></div>
+        <div id="wp-body">
+          <div id="wp-alts"></div>
+          <div id="wp-bagbox"><h3>Bagger og bank</h3><input id="wp-q" class="search" placeholder="Søk etter en ting, f.eks. Linen Cloth …"><div id="wp-res"></div></div>
+        </div>
+        <h3>Mål</h3><div id="wow-goals"></div>
+        <details><summary>Nytt mål</summary>
+          <select id="goal-char" class="search"></select>
+          <div class="row"><span>Level</span><input type="number" id="goal-level" min="2" max="200" class="num-in"></div>
+          <div class="row"><span>Innen</span><input type="date" id="goal-by" class="num-in"></div>
+          <button id="goal-save" class="soft">Lagre mål</button></details>
+        <details><summary>Innstillinger for WoW</summary><div id="wp-feats"></div>
+          <div class="row"><span>Klipp av boss-kills og dødsfall<br><small class="dim">Krever /combatlog i spillet og opptak i bakgrunnen</small></span><label class="switch"><input type="checkbox" id="o-wow_log"><i></i></label></div>
+          <p class="dim small">Alt er bare lesing av det WoW og addonen «Kontrollsenter Stats» lagrer – ingen automatisering
+            og ingenting sendes inn i spillet. Endringer gjelder etter <b>/reload</b> i WoW. Tallene oppdateres når du logger ut eller skriver /reload.</p></details>
+      </div>
     <div class="card" id="c-clips" style="margin-top:var(--gap)"><div class="row between"><h2>Klipp</h2><span id="clip-status" class="dim small"></span></div>
       <div class="row"><span>Opptak i bakgrunnen (F8 lagrer)</span><label class="switch"><input type="checkbox" id="clip-on"><i></i></label></div>
       <div id="clip-linux">
@@ -148,7 +166,6 @@
         <div class="row"><span>Webkamera i hjørnet</span><label class="switch"><input type="checkbox" id="o-webcam"><i></i></label></div>
         <div class="row"><span>CS2: klipp ved 3K/4K/ACE</span><label class="switch"><input type="checkbox" id="o-auto_cs2"><i></i></label></div>
         <div class="row"><span>CS2: hele kampen, behold seier/MVP</span><label class="switch"><input type="checkbox" id="o-cs2_match"><i></i></label></div>
-        <div class="row"><span>WoW: boss-kills og dødsfall</span><label class="switch"><input type="checkbox" id="o-wow_log"><i></i></label></div>
         <div class="row"><span>Pause når du er borte</span><label class="switch"><input type="checkbox" id="o-idle_pause"><i></i></label></div>
         <div class="row"><span>Kontroller (Select + Start)</span><label class="switch"><input type="checkbox" id="o-controller"><i></i></label></div>
         <div class="row"><span>Del nye klipp via NAS</span><label class="switch"><input type="checkbox" id="o-share_nas"><i></i></label></div>
@@ -166,22 +183,6 @@
           <button id="lim-save" class="soft">Lagre</button></details></div>
       <div class="card"><h2>CS2 kamp for kamp</h2><canvas id="cs-chart"></canvas>
         <div class="legend"><i class="c1"></i>K/D <i class="c2"></i>Headshot %</div><div id="cs-maps"></div></div>
-      <div class="card" id="wp-card" hidden><div class="row between"><h2>World of Warcraft</h2>
-          <label class="switch" title="Alle WoW-funksjonene"><input type="checkbox" id="wp-on"><i></i></label></div>
-        <div id="wp-body">
-          <div id="wp-alts"></div>
-          <div id="wp-bagbox"><h3>Bagger og bank</h3><input id="wp-q" class="search" placeholder="Søk etter en ting, f.eks. Linen Cloth …"><div id="wp-res"></div></div>
-        </div>
-        <details><summary>Velg WoW-funksjoner</summary><div id="wp-feats"></div>
-          <p class="dim small">Alt er bare lesing av det WoW og addonen «Kontrollsenter Stats» lagrer – ingen automatisering
-            og ingenting sendes inn i spillet. Endringer gjelder etter <b>/reload</b> i WoW. Tallene oppdateres når du logger ut eller skriver /reload.</p></details>
-      </div>
-      <div class="card"><h2>WoW-mål</h2><div id="wow-goals"></div>
-        <details><summary>Nytt mål</summary>
-          <select id="goal-char" class="search"></select>
-          <div class="row"><span>Level</span><input type="number" id="goal-level" min="2" max="200" class="num-in"></div>
-          <div class="row"><span>Innen</span><input type="date" id="goal-by" class="num-in"></div>
-          <button id="goal-save" class="soft">Lagre mål</button></details></div>
     </div>
     <h2 class="section-h">Start et spill</h2>
     <input id="game-q" class="search" placeholder="Søk i spillene …">

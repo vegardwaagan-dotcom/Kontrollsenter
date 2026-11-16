@@ -68,7 +68,7 @@ class WowPlusCard(Gtk.Box):
         i.append(self.search)
         self.res = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         i.append(self.res)
-        exp = Gtk.Expander(label=i18n.tr("Velg WoW-funksjoner"))
+        exp = Gtk.Expander(label=i18n.tr("Innstillinger for WoW"))
         fb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_top=6)
         self.sw = {}
         for key, name, desc in wowplus.FEATURES:
@@ -82,6 +82,20 @@ class WowPlusCard(Gtk.Box):
             row.append(s)
             self.sw[key] = s
             fb.append(row)
+        # klipp av boss-kills og dødsfall (lagres i klippinnstillingene)
+        row = Gtk.Box(spacing=10)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        col.append(_lab(i18n.tr("Klipp av boss-kills og dødsfall")))
+        col.append(_lab(i18n.tr("Krever /combatlog i spillet og opptak i bakgrunnen"), "dim-label caption", wrap=True))
+        row.append(col)
+        try:
+            import clips
+            boss = Gtk.Switch(active=bool(clips.load_cfg().get("wow_log")), valign=Gtk.Align.CENTER)
+            boss.connect("notify::active", lambda s, _p: clips.set_options(wow_log=s.get_active()))
+            row.append(boss)
+            fb.append(row)
+        except Exception:  # noqa: BLE001
+            pass
         exp.set_child(fb)
         i.append(exp)
         self.items = []
@@ -169,7 +183,8 @@ class StatsCard(Gtk.Box):
         top.append(self.dd)
         ref = Gtk.Button(icon_name="view-refresh-symbolic", tooltip_text=i18n.tr("Oppdater"))
         ref.add_css_class("flat")
-        ref.connect("clicked", lambda *_: self.load())
+        ref.connect("clicked", lambda *_: (self.load(), self.also and self.also()))
+        self.also = None                             # f.eks. WoW-kortet, som oppdateres samtidig
         top.append(ref)
         i.append(top)
         self.body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)

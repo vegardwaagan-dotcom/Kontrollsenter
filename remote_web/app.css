@@ -577,3 +577,5 @@ details.wp-q { padding: 6px 0; border-bottom: 1px solid var(--line); } details.w
 .nowrap { white-space: nowrap; }
 .wp-spec { padding: 6px 0; } .wp-tip { padding: 8px 10px; margin: 6px 0; border-radius: 12px; background: var(--card2); }
 .wp-prio { margin: 4px 0 0 22px; padding: 0; } .wp-prio li { padding: 3px 0; }
+#stats-ref.spin svg { animation: ks-spin .8s linear infinite; }
+@keyframes ks-spin { to { transform: rotate(360deg); } }

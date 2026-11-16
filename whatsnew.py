@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.24.1", "Alt om WoW på ett sted", [
+        ("Endret", [
+            "Spill: alt om World of Warcraft er samlet i ett kort rett under statistikken – karakterene, bagsøk, mål og "
+            "«Innstillinger for WoW» (alle brytere, også klipp av boss-kills og dødsfall)",
+        ]),
+        ("Nytt", [
+            "Oppdateringsknapp på statistikken i appen – henter ferske tall for alle spill (WoW, Steam og CS2). "
+            "På PC-en oppdaterer knappen også WoW-kortet",
+        ]),
+    ]),
     ("0.24.0", "WoW: egenskaper, talenter og råd", [
         ("Nytt", [
             "Ny fane «Egenskaper og talenter» under WoW-statistikken – i appen og på PC-en: Armor, Strength, Agility, "

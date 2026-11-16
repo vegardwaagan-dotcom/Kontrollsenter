@@ -1972,5 +1972,8 @@
  "poeng": "points",
  "Ubrukte poeng": "Unspent points",
  "Egenskapene leses av addonen når du logger inn, logger ut eller skriver /reload i WoW.": "The addon reads your attributes when you log in, log out or type /reload in WoW.",
- "Armor, Strength, Intellect …, talentfordeling og hva du bør ha mer av": "Armor, Strength, Intellect …, talent split and what you need more of"
+ "Armor, Strength, Intellect …, talentfordeling og hva du bør ha mer av": "Armor, Strength, Intellect …, talent split and what you need more of",
+ "Innstillinger for WoW": "WoW settings",
+ "Klipp av boss-kills og dødsfall": "Clips of boss kills and deaths",
+ "Krever /combatlog i spillet og opptak i bakgrunnen": "Requires /combatlog in the game and background recording"
 }

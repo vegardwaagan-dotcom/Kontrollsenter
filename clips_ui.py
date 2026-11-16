@@ -318,7 +318,12 @@ class ClipsCard(Gtk.Box):
         switch("CS2: kort ned høydepunkter rundt killene", "killzoom")
         switch("CS2: lengre buffer (3 min) i Competitive/Premier", "cs2_long")
         switch("CS2: ta opp hele kampen, behold bare seier/MVP", "cs2_match")
-        switch("WoW: klipp av boss-kills og dødsfall (/combatlog)", "wow_log")
+        try:                                         # med WoW installert ligger dette i WoW-kortet (Spill)
+            import gamestats
+            if not gamestats.wow_flavors():
+                switch("WoW: klipp av boss-kills og dødsfall (/combatlog)", "wow_log")
+        except Exception:  # noqa: BLE001
+            pass
         switch("Pause opptaket når du er borte (5 min)", "idle_pause")
         switch("Kontroller: Select + Start (eller Share) lagrer klipp", "controller")
         switch("Lyd når et klipp lagres", "sound")

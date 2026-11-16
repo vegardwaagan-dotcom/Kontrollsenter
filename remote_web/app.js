@@ -299,6 +299,17 @@ function renderStats() {
   }
 }
 $("#stats-sel").onchange = renderStats;
+// oppdater statistikken for alle spill (WoW, Steam, CS2) – henter ferske tall fra PC-en
+$("#stats-ref").onclick = async () => {
+  const b = $("#stats-ref");
+  if (b.classList.contains("spin")) return;
+  b.classList.add("spin");
+  try {
+    await loadStats();
+    if (typeof loadGoals === "function") await loadGoals();
+    toast("Statistikken er oppdatert");
+  } finally { setTimeout(() => b.classList.remove("spin"), 400); }
+};
 function renderLive(c) {
   $("#live").hidden = !c;
   if (!c) return;

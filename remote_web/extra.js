@@ -326,7 +326,7 @@ async function loadGoals() {
       const by = x.by ? new Date(x.by * 1000).toLocaleDateString("nb-NO") : "–";
       const est = x.est_play_s != null ? hours(x.est_play_s) : "ukjent (trenger noen leveler først)";
       const per = x.per_day_s != null ? hours(x.per_day_s) + " per dag" : "";
-      return `<div class="kvgrid"><div><b>${esc(x.key)}</b><span>level ${x.target} innen ${by}</span></div>
+      return `<div class="kvgrid"><div><b>${esc(String(x.key).split("-").pop())}</b><span>level ${x.target} innen ${by}</span></div>
         <div><b>Leveler igjen</b><span>${x.levels_left}</span></div><div><b>Anslått spilletid</b><span>${est}</span></div>
         ${per ? `<div><b>Trenger</b><span>${per}</span></div>` : ""}</div>`;
     }).join("") || '<p class="dim">Ingen mål ennå.</p>';

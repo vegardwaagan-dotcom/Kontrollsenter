@@ -396,9 +396,12 @@ class GamesPage(Gtk.ScrolledWindow):
         self.changes = {}
         try:
             import gamestats_ui
-            box.append(gamestats_ui.StatsCard(card))
-            if gamestats_ui.gamestats.wow_flavors():     # bare når WoW er installert
-                box.append(gamestats_ui.WowPlusCard(card))
+            stats = gamestats_ui.StatsCard(card)
+            box.append(stats)
+            if gamestats_ui.gamestats.wow_flavors():     # alt om WoW samlet i ett kort, rett under statistikken
+                wow = gamestats_ui.WowPlusCard(card)
+                stats.also = wow.load
+                box.append(wow)
             import clips_ui
             box.append(clips_ui.ClipsCard(card))
         except Exception:  # noqa: BLE001

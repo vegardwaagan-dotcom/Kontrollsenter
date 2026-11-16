@@ -817,8 +817,9 @@ def snapshot():
         chars = wow_stats()
         out["wow"] = [wow_summary(c) for c in chars]
         try:
-            import wowplus
-            out["wowplus"] = wowplus.overview(chars)
+            if wow_flavors():                        # WoW-kortet bare når WoW er installert
+                import wowplus
+                out["wowplus"] = wowplus.overview(chars)
         except Exception:  # noqa: BLE001
             pass
         have = {c["sub"].split("WoW ")[-1] for c in out["wow"]}
