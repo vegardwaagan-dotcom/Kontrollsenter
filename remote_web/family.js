@@ -423,6 +423,14 @@ $("#live-go").onclick = () => openWatch(pcName, last && last.game);
   more.onclick = () => { const c = st.classList.toggle("clip"); more.textContent = c ? "Vis all statistikk" : "Vis mindre"; };
 })();
 
+// ---------- oppdater Kontrollsenter på PC-en fra telefonen ----------
+$("#pc-upd").onclick = async () => {
+  if (!(await confirmDlg("Oppdatere Kontrollsenter på PC-en fra NAS-en? Det starter på nytt av seg selv."))) return;
+  toast("Oppdaterer PC-en …");
+  await act({ a: "pcupdate" });
+};
+fetch("/api/hello").then((r) => r.json()).then((h) => ($("#pc-ver").textContent = h.version || "–")).catch(() => {});
+
 // ---------- kobling til fanene ----------
 const famSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign

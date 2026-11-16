@@ -654,6 +654,17 @@ def _feature_action(win, kind, a):
         import streaming as ST
         ST.rustdesk_open()
         return True, "RustDesk er startet på PC-en"
+    if kind == "pcupdate":                       # oppdater Kontrollsenter på denne PC-en fra NAS-en
+        import lanupdate as L
+        import tools
+        st, new = L.check()
+        if not new:
+            return True, st
+        ok, msg = L.apply_update(tools.PACKAGE_FILES)
+        if ok:
+            GLib.timeout_add_seconds(3, lambda: (win.restart_app(), False)[1])
+            return True, f"Oppdatert til {new} – Kontrollsenter starter på nytt på PC-en"
+        return False, msg
     if kind == "familylock":
         import familylock
         if a.get("on"):

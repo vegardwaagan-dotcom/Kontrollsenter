@@ -555,3 +555,5 @@ main, .main-col, .card, .grid > *, .kvgrid > *, .kv > *, .row > *, .tile, .game,
 .temps { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
 .kvgrid div { flex-wrap: wrap; } .kvgrid b { min-width: 0; } .kvgrid span { margin-left: auto; }
 img, video, canvas { max-width: 100%; }
+.tabs { max-width: calc(100vw - 24px); }
+@media (min-width: 900px) { .tabs { max-width: none; } }

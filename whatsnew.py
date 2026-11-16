@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.20.4", "Oppdater PC-en fra telefonen", [
+        ("Nytt", [
+            "Appen: Innstillinger → «Oppdater PC-en» henter siste versjon fra NAS-en og starter Kontrollsenter på nytt "
+            "på PC-en – du slipper å gå bort til den",
+        ]),
+        ("Rettet", [
+            "Fanelinjen nederst i appen holder seg alltid innenfor skjermen",
+        ]),
+    ]),
     ("0.20.3", "Windows-PC-ene og appen fungerer som de skal", [
         ("Rettet", [
             "Appen skalerte feil mot Windows-PC-er: lange Windows-stier og nettverksnavn gjorde siden bredere enn "
