@@ -988,7 +988,12 @@ def _handler(remote):
                     return self._send(200, _call_main(lambda: build_status(remote.win)))
                 if p == "/api/widgets":                      # widgetene i Android-appen
                     import widgets
-                    return self._send(200, _call_main(lambda: widgets.data(remote.win)))
+                    d = _call_main(lambda: widgets.data(remote.win))
+                    try:                                     # «Demp» i hurtigknappene blir lilla når lyden er dempet
+                        d["mute"] = bool((audio_state(remote.win) or {}).get("mute"))
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return self._send(200, d)
                 if p == "/api/extra":
                     out = {}
                     for k, fn in (("audio", lambda: audio_state(remote.win)), ("msi", msi_state)):

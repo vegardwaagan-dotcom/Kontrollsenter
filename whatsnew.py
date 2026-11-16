@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.24.3", "Lilla også på hjemmeskjermen", [
+        ("Endret", [
+            "Android-widgeten «Hurtigknapper»: Demp blir lilla når lyden er dempet (som Spillmodus), "
+            "og et nytt trykk slår lyden på igjen",
+        ]),
+    ]),
     ("0.24.2", "Lilla når det er på", [
         ("Endret", [
             "Alle knapper som er slått på blir nå lilla – på PC-en og i appen på mobil og nettbrett, "
