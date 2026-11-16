@@ -224,7 +224,7 @@ async function loadHistory() {
 // ---------- spillstatistikk ----------
 const nfmt = (v) => (typeof v === "number" ? v.toLocaleString("nb-NO") : esc(v));
 const kv = (rows) => `<div class="kvgrid">${rows.map(([k, v]) => `<div><b>${esc(k)}</b><span>${nfmt(v)}</span></div>`).join("")}</div>`;
-let statItems = [];
+let statItems = [], wowTab = "s";
 async function loadStats() {
   try {
     const d = await api("/api/gamestats");
@@ -268,14 +268,22 @@ function renderStats() {
   const o = it.o;
   if (it.kind === "hint") { $("#stats").innerHTML = it.o.map((h) => `<p>• ${esc(h)}</p>`).join(""); return; }
   if (it.kind === "wow") {
-    $("#stats").innerHTML = `<p class="dim">${esc([o.realm, o.flavor ? "WoW " + o.flavor : ""].filter(Boolean).join(" · ") || o.sub)}</p>${kv(o.rows)}`
+    const sheet = o.plus && o.plus.sheet !== undefined;
+    const tabs = sheet ? `<div class="seg" id="wt-tabs"><button data-wt="s" class="${wowTab === "s" ? "on" : ""}">Statistikk</button><button data-wt="k" class="${wowTab === "k" ? "on" : ""}">Egenskaper og talenter</button></div>` : "";
+    $("#stats").innerHTML = tabs + `<div id="wt-s" ${sheet && wowTab === "k" ? "hidden" : ""}><p class="dim">${esc([o.realm, o.flavor ? "WoW " + o.flavor : ""].filter(Boolean).join(" · ") || o.sub)}</p>${kv(o.rows)}`
       + (o.kills_by.length ? `<h3>Drept mest</h3>${kv(o.kills_by)}` : "")
       + (o.killers.length ? `<h3>Drept av</h3>${kv(o.killers)}` : "")
       + (o.session ? `<h3>Siste økt</h3>${kv(o.session)}` : "")
-      + (window.wowPlusHtml ? window.wowPlusHtml(o) : "")
+      + (window.wowPlusHtml ? window.wowPlusHtml(o) : "") + "</div>"
+      + (sheet ? `<div id="wt-k" ${wowTab === "k" ? "" : "hidden"}>${window.wowSheetHtml ? window.wowSheetHtml(o.plus.sheet) : ""}</div>` : "")
       + `<p class="dim small">Nye karakterer dukker opp når du har logget inn med dem og logget ut eller skrevet /reload.</p>`
       + (o.key ? `<button class="link" id="wow-hide">Fjern ${esc(o.char || "karakteren")} fra listen (slettet i spillet)</button>` : "");
     if (window.wowPlusAfter) window.wowPlusAfter(o);
+    $$("#wt-tabs button").forEach((b) => (b.onclick = () => {
+      wowTab = b.dataset.wt;
+      $$("#wt-tabs button").forEach((x) => x.classList.toggle("on", x === b));
+      $("#wt-s").hidden = wowTab !== "s"; $("#wt-k").hidden = wowTab !== "k";
+    }));
     const hb = $("#wow-hide");
     if (hb) hb.onclick = async () => {
       if (!(await confirmDlg(`Fjerne ${o.char} fra WoW-statistikken? Den kommer tilbake hvis du spiller med den igjen.`))) return;

@@ -1961,5 +1961,16 @@
  "Fullt uthvilt": "Fully rested",
  "Gull over tid": "Gold over time",
  "uthvilt": "rested",
- "Varsel ved hvisking, oversikt over karakterene, bagsøk, questlogg, gull, raid-låser, yrker, reparasjonsvarsel og WoW-skjermbilder. Bare lesing av det WoW og addonen lagrer – ingen automatisering. Endringer gjelder etter /reload i spillet.": "Whisper alerts, character overview, bag search, quest log, gold, raid lockouts, professions, repair alerts and WoW screenshots. Only reads what WoW and the addon save – no automation. Changes apply after /reload in the game."
+ "Varsel ved hvisking, oversikt over karakterene, bagsøk, questlogg, gull, raid-låser, yrker, reparasjonsvarsel og WoW-skjermbilder. Bare lesing av det WoW og addonen lagrer – ingen automatisering. Endringer gjelder etter /reload i spillet.": "Whisper alerts, character overview, bag search, quest log, gold, raid lockouts, professions, repair alerts and WoW screenshots. Only reads what WoW and the addon save – no automation. Changes apply after /reload in the game.",
+ "Statistikk": "Statistics",
+ "Egenskaper og talenter": "Attributes and talents",
+ "Råd": "Advice",
+ "Prioriter i denne rekkefølgen": "Prioritize in this order",
+ "Egenskaper": "Attributes",
+ "Motstand": "Resistance",
+ "Talenter": "Talents",
+ "poeng": "points",
+ "Ubrukte poeng": "Unspent points",
+ "Egenskapene leses av addonen når du logger inn, logger ut eller skriver /reload i WoW.": "The addon reads your attributes when you log in, log out or type /reload in WoW.",
+ "Armor, Strength, Intellect …, talentfordeling og hva du bør ha mer av": "Armor, Strength, Intellect …, talent split and what you need more of"
 }

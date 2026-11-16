@@ -23,6 +23,7 @@ FEATURES = [
     ("profs", "Yrker", "Nivå per yrke, fremgang og varsel når du må lære neste nivå"),
     ("durability", "Reparasjonsvarsel", "Varsel når utstyret er nesten ødelagt"),
     ("shots", "WoW-skjermbilder", "Skjermbildene fra WoW kommer i skjermbildene i Kontrollsenter"),
+    ("sheet", "Egenskaper og talenter", "Armor, Strength, Intellect …, talentfordeling og hva du bør ha mer av"),
 ]
 KEYS = [k for k, _n, _d in FEATURES]
 STATE = os.path.expanduser("~/.local/share/systemmonitor/wowplus-tilstand.json")
@@ -185,6 +186,13 @@ def details(c):
         d["gold"] = _gold(c)
     if f["durability"] and isinstance(c.get("durability"), dict):
         d["durability"] = c["durability"].get("min")
+    if f.get("sheet", True):
+        try:
+            import wowsheet
+            d["sheet"] = wowsheet.analyse(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("wowsheet")
     return d
 
 

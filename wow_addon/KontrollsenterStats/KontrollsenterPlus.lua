@@ -146,6 +146,53 @@ end
 local function scanBags(C) C.bags = scanContainers(BAGS); C.bags_t = time() end
 local function scanBank(C) C.bank = scanContainers(bankList()); C.bank_t = time() end
 
+-- ---------- egenskaper (karakterarket) og talenter ----------
+local STAT = { "str", "agi", "sta", "int", "spi" }
+local function num(...) local v = ...; return type(v) == "number" and v or nil end
+local function scanSheet(C)
+  local s = {}
+  for i = 1, 5 do
+    local _, stat = UnitStat("player", i)
+    s[STAT[i]] = stat
+  end
+  local base, eff = UnitArmor("player"); s.armor = eff or base
+  if UnitAttackPower then local b, p, n = UnitAttackPower("player"); if b then s.ap = b + (p or 0) + (n or 0) end end
+  if UnitRangedAttackPower then local b, p, n = UnitRangedAttackPower("player"); if b then s.rap = b + (p or 0) + (n or 0) end end
+  if GetCritChance then s.crit = num(GetCritChance()) end
+  if GetRangedCritChance then s.rcrit = num(GetRangedCritChance()) end
+  if GetSpellCritChance then s.scrit = num(GetSpellCritChance(2)) end
+  if GetDodgeChance then s.dodge = num(GetDodgeChance()) end
+  if GetParryChance then s.parry = num(GetParryChance()) end
+  if GetBlockChance then s.block = num(GetBlockChance()) end
+  if GetHitModifier then s.hit = num(GetHitModifier()) end
+  if GetSpellHitModifier then s.shit = num(GetSpellHitModifier()) end
+  if GetSpellBonusDamage then
+    local m = 0
+    for school = 2, 7 do m = math.max(m, GetSpellBonusDamage(school) or 0) end
+    s.sp = m
+  end
+  if GetSpellBonusHealing then s.heal = num(GetSpellBonusHealing()) end
+  if UnitDefense then local b, m = UnitDefense("player"); if b then s.def = b + (m or 0) end end
+  s.hp = UnitHealthMax("player")
+  s.mana = UnitPowerMax and UnitPowerMax("player", 0) or (UnitManaMax and UnitManaMax("player")) or nil
+  s.res = {}
+  for i = 2, 6 do local _, total = UnitResistance("player", i); s.res[i] = total or 0 end
+  C.sheet, C.sheet_t = s, time()
+  -- talenter: navn og poeng per tre (Classic: navn, ikon, poeng – nyere: id, navn, …, poeng)
+  local t = {}
+  if GetNumTalentTabs and GetTalentTabInfo then
+    for i = 1, GetNumTalentTabs() do
+      local a, b, c, _, e = GetTalentTabInfo(i)
+      if type(a) == "string" then t[i] = { name = a, points = tonumber(c) or 0 }
+      else t[i] = { name = b, points = tonumber(e) or 0 } end
+    end
+  end
+  C.talents = t
+  local unspent = UnitCharacterPoints and UnitCharacterPoints("player")
+  if unspent == nil and GetUnspentTalentPoints then unspent = GetUnspentTalentPoints() end
+  C.unspent = tonumber(unspent) or 0
+end
+
 -- ---------- chatlogg (for varsel på telefonen ved hvisking) ----------
 -- WoW skriver chatten til Logs/WoWChatLog.txt når logging er på (/chatlog). Kontrollsenter leser fila.
 local function chatLog()
@@ -168,6 +215,7 @@ local function scanAll(C)
   if on("locks") then safe(scanLocks, C) end
   if on("durability") then safe(scanDurability, C) end
   if on("bags") then safe(scanBags, C) end
+  if on("sheet") then safe(scanSheet, C) end
 end
 
 local bankOpen = false
@@ -178,6 +226,8 @@ f:SetScript("OnEvent", function(_, event)
     pcall(chatLog)
     if on("locks") and RequestRaidInfo then pcall(RequestRaidInfo) end
     scanAll(C)
+  elseif event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_LEVEL_UP" then
+    if C and on("sheet") then safe(scanSheet, C) end
   elseif event == "UPDATE_INSTANCE_INFO" then
     if C and on("locks") then safe(scanLocks, C) end
   elseif event == "BANKFRAME_OPENED" then
@@ -192,6 +242,7 @@ f:SetScript("OnEvent", function(_, event)
   end
 end)
 for _, e in ipairs({ "PLAYER_LOGIN", "UPDATE_INSTANCE_INFO", "BANKFRAME_OPENED", "BANKFRAME_CLOSED",
-                     "BAG_UPDATE_DELAYED", "PLAYERBANKSLOTS_CHANGED", "PLAYER_LOGOUT" }) do
+                     "BAG_UPDATE_DELAYED", "PLAYERBANKSLOTS_CHANGED", "PLAYER_LOGOUT",
+                     "CHARACTER_POINTS_CHANGED", "PLAYER_LEVEL_UP" }) do
   pcall(f.RegisterEvent, f, e)
 end

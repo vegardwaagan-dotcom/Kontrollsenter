@@ -215,14 +215,34 @@ class StatsCard(Gtk.Box):
             return
         kind, obj = self.items[n][1]
         if kind == "wow":
-            self.body.append(_lab(obj["sub"], "dim-label"))
-            self.body.append(_grid(obj["rows"]))
-            for title, rows in ((i18n.tr("Drept mest"), obj["kills_by"]), (i18n.tr("Drept av"), obj["killers"]),
-                                (i18n.tr("Siste økt"), obj["session"] or [])):
-                if rows:
-                    self.body.append(_lab(title, "heading"))
-                    self.body.append(_grid(rows))
-            self._wow_plus(obj.get("plus"))
+            outer, P = self.body, obj.get("plus") or {}
+            stack = None
+            if "sheet" in P:                         # to faner: statistikk og egenskaper/talenter
+                stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vhomogeneous=False)
+                outer.append(Gtk.StackSwitcher(stack=stack, halign=Gtk.Align.START))
+                outer.append(stack)
+                page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+                stack.add_titled(page, "s", i18n.tr("Statistikk"))
+                self.body = page
+            try:
+                self.body.append(_lab(obj["sub"], "dim-label"))
+                self.body.append(_grid(obj["rows"]))
+                for title, rows in ((i18n.tr("Drept mest"), obj["kills_by"]), (i18n.tr("Drept av"), obj["killers"]),
+                                    (i18n.tr("Siste økt"), obj["session"] or [])):
+                    if rows:
+                        self.body.append(_lab(title, "heading"))
+                        self.body.append(_grid(rows))
+                self._wow_plus(P)
+            finally:
+                self.body = outer
+            if stack is not None:
+                kp = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+                self._wow_sheet(kp, P.get("sheet"))
+                stack.add_titled(kp, "k", i18n.tr("Egenskaper og talenter"))
+                if getattr(self, "_wow_tab", "s") == "k":
+                    stack.set_visible_child_name("k")
+                stack.connect("notify::visible-child-name",
+                              lambda st, _p: setattr(self, "_wow_tab", st.get_visible_child_name()))
         elif kind == "steam":
             sub = [f"{obj['playtime_min'] / 60:.1f} " + i18n.tr("timer spilt")]
             have, tot = obj["achievements"]
@@ -244,6 +264,34 @@ class StatsCard(Gtk.Box):
             self.body.append(_lab(i18n.tr("Spill litt, så dukker statistikken opp her. WoW: logg ut eller skriv "
                                           "/reload etter at addonen «Kontrollsenter Stats» er lastet."), "dim-label",
                                   wrap=True))
+
+    @staticmethod
+    def _wow_sheet(box, S):
+        """Karakterarket: spec, råd, prioritet, egenskaper, motstand og talenter."""
+        if not S:
+            box.append(_lab(i18n.tr("Egenskapene leses av addonen når du logger inn, logger ut eller skriver /reload i WoW."),
+                            "dim-label", wrap=True))
+            return
+        if S.get("spec"):
+            box.append(_lab(S["spec"] + (f"  ·  {' / '.join(str(t['points']) for t in S['talents'])}" if S["talents"] else ""),
+                            "title-4"))
+            if S.get("why"):
+                box.append(_lab(S["why"], "dim-label", wrap=True))
+        box.append(_lab(i18n.tr("Råd"), "heading"))
+        for t in S["tips"]:
+            box.append(_lab("💡 " + t, wrap=True))
+        if S["prio"]:
+            box.append(_lab(i18n.tr("Prioriter i denne rekkefølgen"), "heading"))
+            box.append(_lab("  ›  ".join(S["prio"]), wrap=True))
+        box.append(_lab(i18n.tr("Egenskaper"), "heading"))
+        box.append(_grid(S["rows"]))
+        if S["res"]:
+            box.append(_lab(i18n.tr("Motstand"), "heading"))
+            box.append(_grid(S["res"]))
+        if S["talents"]:
+            box.append(_lab(i18n.tr("Talenter"), "heading"))
+            box.append(_grid([(t["name"] or "?", f"{t['points']} " + i18n.tr("poeng")) for t in S["talents"]]
+                             + ([(i18n.tr("Ubrukte poeng"), S["unspent"])] if S["unspent"] else [])))
 
     def _wow_plus(self, P):
         """Uthvilt, utstyr, yrker, questlogg, låser og gull for én WoW-karakter (det som er slått på)."""

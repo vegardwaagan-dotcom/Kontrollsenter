@@ -480,6 +480,18 @@ window.wowPlusHtml = (o) => {
   if (P.gold && P.gold.length > 1) h += `<h3>Gull over tid</h3><canvas id="wp-gold" style="height:160px"></canvas>`;
   return h;
 };
+window.wowSheetHtml = (S) => {
+  if (!S) return `<p class="dim">Egenskapene leses av addonen når du logger inn, logger ut eller skriver /reload i WoW.</p>`;
+  let h = "";
+  if (S.spec) h += `<div class="wp-spec"><b>${esc(S.spec)}</b>${S.talents.length ? ` <span class="dim">· ${S.talents.map((t) => t.points).join(" / ")}</span>` : ""}${S.why ? `<p class="dim small">${esc(S.why)}</p>` : ""}</div>`;
+  h += `<h3>Råd</h3>` + S.tips.map((t) => `<div class="wp-tip">💡 ${esc(t)}</div>`).join("");
+  if (S.prio.length) h += `<h3>Prioriter i denne rekkefølgen</h3><ol class="wp-prio">${S.prio.map((p) => `<li>${esc(p)}</li>`).join("")}</ol>`;
+  h += `<h3>Egenskaper</h3>${kv(S.rows)}`;
+  if (S.res.length) h += `<h3>Motstand</h3>${kv(S.res)}`;
+  if (S.talents.length) h += `<h3>Talenter</h3>${kv(S.talents.map((t) => [t.name || "?", t.points + " poeng"]).concat(S.unspent ? [["Ubrukte poeng", S.unspent]] : []))}`;
+  if (S.updated) h += `<p class="dim small">Lest ${new Date(S.updated * 1000).toLocaleString("nb-NO")}</p>`;
+  return h;
+};
 window.wowPlusAfter = (o) => {
   const cv = $("#wp-gold");
   if (!cv || !o.plus || !o.plus.gold) return;

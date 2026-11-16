@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.24.0", "WoW: egenskaper, talenter og råd", [
+        ("Nytt", [
+            "Ny fane «Egenskaper og talenter» under WoW-statistikken – i appen og på PC-en: Armor, Strength, Agility, "
+            "Stamina, Intellect, Spirit, Attack/Spell Power, Crit, Hit, Defense, motstand og talentfordelingen",
+            "Råd ut fra klasse og spec: hva du bør prioritere, ubrukte talentpoeng, for lite Hit/Spell hit/Defense på "
+            "level 60 og om du har mer av en egenskap som gir lite for spec-en din",
+            "Kan slås av under Spill → World of Warcraft → «Egenskaper og talenter». Skriv /reload i WoW etter oppdateringen",
+        ]),
+    ]),
     ("0.23.0", "Mer World of Warcraft – i appen og på PC-en", [
         ("Nytt", [
             "Varsel på telefonen når noen hvisker til deg i WoW, inviterer deg til en gruppe eller nevner deg i guild-chatten",
