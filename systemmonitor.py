@@ -434,6 +434,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("nettverk", "Nettverk", "ks-network-symbolic", "netpage", "NetworkPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
                 ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
+                ("familie", "Familie", "ks-family-symbolic", "family_page", "FamilyPage"),
                 ("automatikk", "Automatikk", "ks-auto-symbolic", "automation", "AutomationPage"),
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
                 ("verktoy", "Verktøy", "ks-tools-symbolic", "tools", "ToolsPage")):
@@ -639,6 +640,20 @@ class MonitorWindow(Adw.ApplicationWindow):
         """Kalles hvert minutt: er en nyere versjon installert mens programmet har kjørt?"""
         import applog
         new = applog.needs_restart()
+        bg = getattr(self, "bg", None)
+        if new and not self.get_visible() and not getattr(bg, "game_name", None) \
+                and not os.environ.get("SYSTEMMONITOR_APP_ID"):
+            self._idle_new = getattr(self, "_idle_new", 0) + 1
+            if self._idle_new >= 2:                          # skjult i minst to minutter
+                applog.log.info("Ny versjon %s er installert – starter på nytt i bakgrunnen", new)
+                try:
+                    import remote_extra
+                    remote_extra.event("update", f"Kontrollsenter {new} er tatt i bruk", "Startet på nytt av seg selv",
+                                       "info")
+                except Exception:  # noqa: BLE001
+                    pass
+                self.restart_app()
+                return True
         if new and not self.restart_banner.get_revealed():
             self.restart_banner.set_title(i18n.tr("Versjon {} er installert – start på nytt for å ta den i bruk")
                                           .replace("{}", new) if i18n.LANG != "no" else

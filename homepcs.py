@@ -220,12 +220,9 @@ class HomePage(Gtk.ScrolledWindow):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("fjernstyring-kort")
-        try:
-            import family_ui
-            box.append(family_ui.FamilyCard())
-        except Exception:  # noqa: BLE001
-            import applog
-            applog.log.exception("familie-kort")
+        hint = Gtk.Label(label=i18n.tr("Familie-chat, familiekontroll og «Se på» ligger i fanen Familie."), xalign=0)
+        hint.add_css_class("ks-sub")
+        box.append(hint)
         self.flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=3,
                                 min_children_per_line=1, column_spacing=12, row_spacing=12)
         box.append(self.flow)

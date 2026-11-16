@@ -14,12 +14,10 @@ const famGrid = h(`<div class="grid" id="fam-grid">
     <select id="chat-to" class="search"><option value="">Til denne PC-en</option><option value="*">Til alle PC-ene</option></select>
     <div class="row"><input id="chat-text" maxlength="500" placeholder="Skriv en melding …"><button id="chat-send" class="primary">Send</button></div>
     <div class="row wrap"><button id="dinner" class="warn">🍽️ Middag!</button></div>
+    <div class="row full-only"><span><b>Familiekontroll</b><br><span class="dim small">Kode for å lukke Kontrollsenter på PC-en</span></span>${sw("fl-on")}</div>
     <details class="full-only"><summary>Belønning og leggetid</summary>
       <div class="label">Ekstra spilletid i dag</div>
       <div class="chips" id="bonus"><button data-m="15">+15 min</button><button data-m="30">+30 min</button><button data-m="60">+1 time</button></div>
-      <div class="label">Familiekontroll</div>
-      <div class="row"><span>Kode for å lukke Kontrollsenter på PC-en</span>${sw("fl-on")}</div>
-      <p class="dim small">Når den er på, må koden tastes for å lukke Kontrollsenter, endre familieinnstillingene på PC-en eller gi ekstra spilletid der. Glemt koden? Slå den av her.</p>
       <div class="row"><span>La andre i huset se skjermen til denne PC-en</span>${sw("wa-on")}</div>
       <div class="row"><span>Leggetid (PC-en slås av)</span>${sw("bt-on")}</div>
       <div class="row"><span>Søn–tor</span><input type="time" id="bt-wd" class="num-in"></div>
@@ -401,6 +399,27 @@ window.ksBack = () => {
 };
 $("#watchv").ondblclick = () => { try { document.fullscreenElement ? document.exitFullscreen() : $("#watchv").requestFullscreen(); } catch (e) {} };
 document.addEventListener("visibilitychange", () => { if (document.hidden && !$("#watchv").hidden) closeWatch(); });
+// hurtigknapp på Hjem: velg PC å se på (velgeren fra picker.js)
+const watchSel = document.createElement("select");
+watchSel.id = "watch-sel"; watchSel.dataset.title = "Se på skjermen til …"; watchSel.style.display = "none";
+document.body.appendChild(watchSel);
+const qWatch = h(`<button data-q="watch"><span class="qi">📺</span><span class="ql">Se på</span><span class="qs" id="q-watch">Andre PC-er</span></button>`);
+$("#quick").prepend(qWatch);
+qWatch.onclick = async () => {
+  try {
+    const f = await X("family");
+    const now = Date.now() / 1000;
+    watchSel.innerHTML = '<option value="" disabled selected hidden>Velg PC</option>' + f.pcs.map((p) => {
+      const on = !p.off && now - (p.time || 0) < 900;
+      const why = !on ? "Av" : p.watch ? (p.game ? "🎮 " + p.game : "Ingen spill nå") : "Trenger Kontrollsenter 0.16+ (start den på nytt)";
+      return `<option value="${esc(p.name)}" data-icon="${p.name === pcName ? "🖥️" : on ? "💻" : "⚫"}" data-sub="${esc(why)}"${on && p.watch ? "" : " disabled"}>${esc(p.name)}${p.name === pcName ? " (denne)" : ""}</option>`;
+    }).join("");
+    watchSel.onchange = () => { const p = f.pcs.find((x) => x.name === watchSel.value); if (p) openWatch(p.name, p.game); };
+    const btn = watchSel.nextElementSibling;               // vent til velgeren har sett de nye valgene
+    if (btn && btn.classList.contains("picker")) setTimeout(() => { btn.disabled = false; btn.click(); }, 0);
+  } catch (e) { toast("Se på: " + e.message); }
+};
+
 // «Skjermen live» i Verktøy bruker samme strøm (jevn video i stedet for et bilde hvert par sekunder)
 $("#live-on").onchange = () => { if ($("#live-on").checked) { openWatch(pcName, last && last.game); $("#live-on").checked = false; } };
 

@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.18.1", "Familie-fanen og «Se på» på Hjem", [
+        ("Nytt", [
+            "Ny fane «Familie» i sidemenyen: familiekontroll med kode øverst, «Se på» skjermen til de andre PC-ene "
+            "(med forklaring hvis en PC trenger nyere versjon), og familie-chat, «Middag!», ekstra spilletid og leggetid",
+            "I appen: «📺 Se på» først blant hurtigknappene på Hjem, og familiekontroll rett i Familie-kortet",
+            "Kontrollsenter starter seg selv på nytt etter en oppdatering når vinduet er skjult og ingen spill kjører – "
+            "så nye funksjoner faktisk blir tatt i bruk",
+        ]),
+    ]),
     ("0.18.0", "Flytende glass og familiekontroll med kode", [
         ("Nytt", [
             "Flytende glass på Linux, Windows og i mobilappen: glassaktige kort og knapper med lysrefleks i kanten, "

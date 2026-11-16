@@ -1878,5 +1878,16 @@
  "Familiekontroll er på ✓": "Parental control is on ✓",
  "Skriv koden for å slå av familiekontroll.": "Enter the code to turn off parental control.",
  "Familiekontroll er av": "Parental control is off",
- "Flytende glass": "Liquid glass"
+ "Flytende glass": "Liquid glass",
+ "Familie-chat, familiekontroll og «Se på» ligger i fanen Familie.": "Family chat, parental control and «Watch» are in the Family tab.",
+ "Se på skjermen til de andre PC-ene": "Watch the screens of the other PCs",
+ "Kode for å lukke Kontrollsenter": "Code to close Kontrollsenter",
+ "Kontrollsenter kan bare lukkes med koden.": "Kontrollsenter can only be closed with the code.",
+ "Av – alle kan lukke Kontrollsenter.": "Off – anyone can close Kontrollsenter.",
+ "Skriv den nåværende koden.": "Enter the current code.",
+ "Fant ingen andre PC-er på hjemmenettet ennå.": "No other PCs found on the home network yet.",
+ "Ingen spill nå": "No game right now",
+ "Trenger Kontrollsenter 0.16 eller nyere – oppdater og start den på nytt": "Needs Kontrollsenter 0.16 or newer – update and restart it",
+ "Deling er slått av på den PC-en (eller fjernstyring er av)": "Sharing is off on that PC (or remote control is off)",
+ "Leggetid, deling og drift": "Bedtime, sharing and maintenance"
 }

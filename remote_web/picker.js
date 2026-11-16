@@ -57,8 +57,8 @@
   }
   function row(o) {
     if (o.disabled && !o.value) return "";
-    const on = o.selected;
-    return `<button class="sheet-row${on ? " on" : ""}" data-v="${ESC(o.value)}" data-q="${ESC((o.textContent + " " + (o.dataset.sub || "")).toLowerCase())}">
+    const on = o.selected && !o.hidden;
+    return `<button class="sheet-row${on ? " on" : ""}"${o.disabled ? " disabled" : ""} data-v="${ESC(o.value)}" data-q="${ESC((o.textContent + " " + (o.dataset.sub || "")).toLowerCase())}">
       ${media(o)}<span class="pk-t"><b>${ESC(o.textContent)}</b>${o.dataset.sub ? `<small>${ESC(o.dataset.sub)}</small>` : ""}</span>${on ? TICK : ""}</button>`;
   }
   q.oninput = () => {

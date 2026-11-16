@@ -277,6 +277,7 @@ SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
     ("Enheter", ["rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
     ("Spill", ["spill", "stromming"]),
+    ("Familie", ["familie"]),
     ("System", ["nettverk", "automatikk", "programmer", "hjemme", "verktoy"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
@@ -296,6 +297,8 @@ PAGE_HELP = {
     "msi": "Ytelsesmodus, viftene, Cooler Boost og ladegrense på MSI-laptopen.",
     "spill": "Spillstatistikk, klipp av de beste øyeblikkene, spilløkter og oppsett av spill.",
     "stromming": "Spill og se PC-skjermen på telefonen (Sunshine + Moonlight), og fjernhjelp med RustDesk.",
+    "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "
+               "ekstra spilletid og leggetid.",
     "nettverk": "Hastighet, ping, hvilke programmer som bruker nettet, og enhetene på hjemmenettet.",
     "automatikk": "Ting som skjer av seg selv: spillmodus når et spill starter, nattmodus, profiler per spill.",
     "programmer": "Installer, oppdater og velg hvilke programmer som starter med PC-en.",

@@ -65,7 +65,7 @@ class FamilyCard(Gtk.Box):
             r2.append(bb)
         i.append(r2)
 
-        exp = Gtk.Expander(label=i18n.tr("Familiekontroll, leggetid og drift"))
+        exp = Gtk.Expander(label=i18n.tr("Leggetid, deling og drift"))
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         box.set_margin_top(8)
         exp.set_child(box)
@@ -82,15 +82,7 @@ class FamilyCard(Gtk.Box):
                     GLib.timeout_add_seconds(300, lambda: (setattr(self, "_unlocked", False), False)[1])
                 familylock.ask(self.get_root(), "Skriv koden for å endre familieinnstillingene.", ok)
         exp.connect("notify::expanded", on_expand)
-        import familylock
-        self.lock_sw = Gtk.Switch(active=familylock.locked())
-        self.lock_sw.connect("notify::active", self._lock_toggle)
-        box.append(_row("Kode for å lukke Kontrollsenter (familiekontroll) – gjelder også disse innstillingene og "
-                        "ekstra spilletid", self.lock_sw))
-        chg = Gtk.Button(label=i18n.tr("Bytt kode"), halign=Gtk.Align.START)
-        chg.connect("clicked", lambda *_: familylock.ask_new_pin(self.get_root(), lambda ok: self.msg.set_label(
-            i18n.tr("Ny kode er lagret ✓") if ok else "")))
-        box.append(chg)
+
         c = F.cfg()
         bt = Gtk.Switch(active=bool(c["bedtime"].get("enabled")))
         bt.connect("notify::active", lambda s, _p: self._bed(enabled=s.get_active()))
