@@ -386,6 +386,15 @@ document.addEventListener("visibilitychange", () => { if (document.hidden && !$(
 // «Skjermen live» i Verktøy bruker samme strøm (jevn video i stedet for et bilde hvert par sekunder)
 $("#live-on").onchange = () => { if ($("#live-on").checked) { openWatch(pcName, last && last.game); $("#live-on").checked = false; } };
 
+// ---------- statistikken: foldet sammen til du vil se alt ----------
+(() => {
+  const st = $("#stats"); if (!st) return;
+  st.classList.add("clip");
+  const more = h(`<button id="stats-more" class="link">Vis all statistikk</button>`);
+  st.after(more);
+  more.onclick = () => { const c = st.classList.toggle("clip"); more.textContent = c ? "Vis all statistikk" : "Vis mindre"; };
+})();
+
 // ---------- kobling til fanene ----------
 const famSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign

@@ -4,63 +4,99 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kontrollsenter</title>
-<style>:root { --bg:#0f1016; --card:#191a23; --card2:#23242f; --fg:#f3f3f7; --dim:#9a9bab; --line:rgba(255,255,255,.07);
-  --acc:#5b8cff; --grad:linear-gradient(135deg,#5b8cff,#8a5cff); --ok:#3ccf7e; --bad:#ff5a5f; --shadow:0 6px 24px rgba(0,0,0,.25); }
-@media (prefers-color-scheme: light) { :root { --bg:#f3f4f8; --card:#fff; --card2:#eef0f5; --fg:#17181f; --dim:#646678;
-  --line:rgba(0,0,0,.07); --shadow:0 4px 18px rgba(20,25,60,.07); } }
+<style>
+:root { --bg:#090a12; --card:rgba(255,255,255,.045); --card-solid:#151626; --card2:rgba(255,255,255,.07); --fg:#f4f5fb; --dim:#9ea2bd;
+  --line:rgba(255,255,255,.075); --hi:rgba(255,255,255,.06); --acc:#6f8bff; --grad:linear-gradient(135deg,#5b8cff,#8a5cff);
+  --ok:#3ddc97; --bad:#ff6b7a; --shadow:0 1px 0 var(--hi) inset, 0 18px 40px -22px rgba(0,0,0,.65);
+  --aurora: radial-gradient(60% 45% at 8% -5%, rgba(91,140,255,.32), transparent 70%),
+            radial-gradient(50% 40% at 100% 0%, rgba(154,107,255,.28), transparent 70%),
+            radial-gradient(70% 50% at 50% 115%, rgba(0,200,180,.10), transparent 70%); }
+@media (prefers-color-scheme: light) { :root { --bg:#f4f5fb; --card:rgba(255,255,255,.8); --card-solid:#fff; --card2:rgba(20,24,60,.055);
+  --fg:#141625; --dim:#626784; --line:rgba(20,24,60,.08); --hi:rgba(255,255,255,.9); --shadow:0 1px 0 var(--hi) inset, 0 14px 34px -20px rgba(40,50,120,.28);
+  --aurora: radial-gradient(60% 45% at 8% -5%, rgba(91,140,255,.2), transparent 70%), radial-gradient(50% 40% at 100% 0%, rgba(154,107,255,.16), transparent 70%); } }
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.45 system-ui, Roboto, sans-serif; -webkit-font-smoothing:antialiased; }
-main { max-width:1100px; margin:0 auto; padding:26px 16px 40px; }
+html,body { margin:0; background:var(--bg); color:var(--fg); font:15.5px/1.45 system-ui, Roboto, sans-serif; -webkit-font-smoothing:antialiased; }
+body::before { content:""; position:fixed; inset:0; background:var(--aurora); pointer-events:none; }
+main { position:relative; max-width:1100px; margin:0 auto; padding:calc(28px + env(safe-area-inset-top)) 16px 40px; }
 .head { display:flex; align-items:center; gap:14px; }
-.logo { width:46px; height:46px; border-radius:15px; background:var(--grad); box-shadow:0 6px 18px rgba(91,140,255,.4); flex:none; }
-h1 { font-size:26px; margin:0; letter-spacing:-.3px; } .dim { color:var(--dim); } .small { font-size:13px; }
-.bar { display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
-button { font:inherit; color:var(--fg); background:var(--card2); border:0; border-radius:14px; padding:12px 18px; min-height:48px; transition:transform .08s; }
+.logo { width:48px; height:48px; border-radius:16px; background:var(--grad); box-shadow:0 12px 26px -10px rgba(111,139,255,.9); flex:none;
+  display:flex; align-items:center; justify-content:center; }
+.logo svg { width:26px; height:26px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+h1 { font-size:27px; margin:0; letter-spacing:-.03em; font-weight:800; }
+.dim { color:var(--dim); } .small { font-size:13px; }
+.sum { margin-top:2px; }
+.bar { display:flex; gap:10px; margin:22px 0 6px; }
+.bar .grow { flex:1; }
+button { font:inherit; font-weight:600; color:var(--fg); background:var(--card2); border:0; border-radius:16px; padding:12px 18px; min-height:50px;
+  transition:transform .08s, filter .15s; cursor:pointer; }
 button:active { transform:scale(.97); }
-button.primary, .pc .go { background:var(--grad); color:#fff; font-weight:600; box-shadow:0 4px 14px rgba(91,140,255,.3); }
-input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid transparent; border-radius:14px; padding:12px 14px; flex:1; min-width:180px; outline:none; }
+button.primary { background:var(--grad); color:#fff; box-shadow:0 12px 24px -12px rgba(111,139,255,.95); }
+button.ic-btn { width:50px; padding:0; display:flex; align-items:center; justify-content:center; flex:none; }
+button.ic-btn svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+input { font:inherit; color:var(--fg); background:var(--card2); border:1px solid var(--line); border-radius:16px; padding:12px 14px; flex:1; min-width:0; outline:none; min-height:50px; }
 input:focus { border-color:var(--acc); }
-h2 { font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; margin:26px 2px 10px; }
-.list { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(min(100%,320px), 1fr)); }
-.pc { background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow); border-radius:20px; padding:16px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-.pc .ic { width:52px; height:52px; border-radius:16px; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:26px; flex:none; }
-.pc .t { flex:1; min-width:0; } .pc b { display:block; font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.pc .x { background:transparent; color:var(--dim); padding:8px 10px; min-height:40px; }
-.pc .wake { background:rgba(60,207,126,.15); color:var(--ok); font-weight:600; }
-.pc .live { width:100%; font-size:14px; color:var(--dim); padding-top:10px; border-top:1px solid var(--line); }
-.pc .live:empty { display:none; } .pc .live b { display:inline; font-size:14px; color:var(--fg); font-weight:600; }
-.dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--dim); margin-right:6px; }
-.dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
-#scan-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; margin-top:8px; }
+details.add { margin:6px 0 0; } details.add summary { list-style:none; color:var(--acc); font-weight:650; padding:8px 2px; cursor:pointer; }
+details.add summary::-webkit-details-marker { display:none; }
+details.add .row { display:flex; gap:10px; margin-top:6px; }
+h2 { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.1em; margin:26px 4px 12px; font-weight:700; }
+.list { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(min(100%,330px), 1fr)); }
+.pc { background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow); border-radius:24px; padding:16px;
+  -webkit-backdrop-filter:blur(22px) saturate(140%); backdrop-filter:blur(22px) saturate(140%); display:flex; flex-direction:column; gap:14px; }
+.pc.off { opacity:.9; } .pc.off .go { background:var(--card2); color:var(--fg); box-shadow:none; }
+.pc-head { display:flex; align-items:center; gap:14px; min-width:0; }
+.pc .ic { width:52px; height:52px; border-radius:17px; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:26px; flex:none; }
+.pc.on .ic { background:linear-gradient(135deg, rgba(91,140,255,.25), rgba(138,92,255,.2)); }
+.pc .t { flex:1; min-width:0; }
+.pc .t b { display:block; font-size:18px; font-weight:750; letter-spacing:-.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pc .t .meta { display:block; font-size:13px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+.pc .x { background:transparent; color:var(--dim); width:40px; min-height:40px; padding:0; flex:none; border-radius:12px; font-size:18px; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.stats:empty { display:none; }
+.stats > div { background:var(--card2); border-radius:14px; padding:9px 12px; }
+.stats .n { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+.stats .v { font-size:17px; font-weight:750; font-variant-numeric:tabular-nums; }
+.game-now { font-size:14px; padding:9px 12px; border-radius:14px; background:linear-gradient(135deg, rgba(61,220,151,.16), rgba(61,220,151,.05)); color:var(--fg); }
+.game-now:empty { display:none; }
+.hint { font-size:13px; color:var(--dim); } .hint:empty { display:none; }
+.pc-actions { display:flex; gap:10px; }
+.pc-actions button { flex:1; }
+.pc .wake { background:rgba(61,220,151,.15); color:var(--ok); }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--dim); margin-right:6px; vertical-align:1px; }
+.dot.ok { background:var(--ok); box-shadow:0 0 0 3px rgba(61,220,151,.18); } .dot.bad { background:var(--bad); }
+#status { margin-top:10px; min-height:1em; line-height:1.5; }
+#scan-bar { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; margin-top:10px; }
 #scan-bar i { display:block; height:100%; width:0; background:var(--grad); transition:width .2s; }
-.upd { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--grad); color:#fff; border-radius:18px; margin:14px 0; }
-.upd span { flex:1; } .upd button { background:#fff; color:var(--acc); font-weight:600; }
-.gl { display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(min(100%,320px),1fr)); margin-top:12px; }
-.gi { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:12px 14px; }
-.gi b { display:block; margin-bottom:8px; } .gi .btns { display:flex; gap:8px; flex-wrap:wrap; }
-.gi button { padding:8px 12px; min-height:40px; }
+.upd { display:flex; align-items:center; gap:12px; padding:12px 14px 12px 16px; background:var(--grad); color:#fff; border-radius:20px; margin:18px 0 0;
+  box-shadow:0 14px 30px -16px rgba(111,139,255,.95); }
+.upd span { flex:1; font-weight:600; } .upd button { background:#fff; color:#5b6cff; min-height:42px; }
+.games-btn { width:100%; margin-top:16px; }
+.gl { display:grid; gap:12px; grid-template-columns:repeat(auto-fill, minmax(min(100%,320px),1fr)); margin-top:12px; }
+.gi { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:14px 16px; box-shadow:var(--shadow);
+  -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px); }
+.gi b { display:block; margin-bottom:10px; font-weight:700; } .gi .btns { display:flex; gap:8px; flex-wrap:wrap; }
+.gi button { min-height:42px; padding:8px 14px; flex:1 1 auto; }
+.foot { margin-top:28px; text-align:center; line-height:1.6; }
 [hidden] { display:none !important; }
 </style>
 </head>
 <body>
 <main>
-  <div class="head"><span class="logo"></span><div><h1>Kontrollsenter</h1>
-    <div class="dim small">Velg PC-en du vil styre</div></div></div>
-  <div id="upd" class="upd" hidden><span id="upd-t"></span><button id="upd-go">Oppdater nå</button></div>
+  <div class="head"><span class="logo"><svg viewBox="0 0 24 24"><path d="M5 18a8 8 0 1 1 14 0"/><path d="M12 14l4-5"/></svg></span>
+    <div><h1>Kontrollsenter</h1><div class="dim small sum" id="sum">Velg PC-en du vil styre</div></div></div>
+  <div id="upd" class="upd" hidden><span id="upd-t"></span><button id="upd-go">Oppdater</button></div>
   <div class="bar">
-    <button id="scan" class="primary">Søk etter PC-er</button>
-    <button id="upd-check">Se etter oppdatering</button>
-    <input id="manual" placeholder="Eller skriv adressen, f.eks. 192.168.1.20" inputmode="url">
-    <button id="add">Legg til</button>
+    <button id="scan" class="primary grow">Søk etter PC-er</button>
+    <button id="upd-check" class="ic-btn" title="Se etter oppdatering"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
   </div>
+  <details class="add"><summary>+ Legg til med adresse</summary>
+    <div class="row"><input id="manual" placeholder="F.eks. 192.168.1.20" inputmode="url"><button id="add">Legg til</button></div></details>
   <div id="status" class="dim small"></div>
   <div id="scan-bar" hidden><i></i></div>
   <h2>PC-er</h2>
   <div id="pcs" class="list"></div>
-  <div class="bar"><button id="all-games">Spill på alle PC-er</button></div>
+  <button id="all-games" class="games-btn">🎮 Spill på alle PC-er</button>
   <div id="games" class="gl"></div>
-  <p class="dim small">PC-en må ha Kontrollsenter med <b>Tillat fjernstyring</b> på (PC-er hjemme → Mobil og nettbrett).</p>
-  <p class="dim small" id="ver"></p>
+  <p class="dim small foot">PC-en må ha Kontrollsenter med <b>Tillat fjernstyring</b> på<br>(PC-er hjemme → Mobil og nettbrett).<br><span id="ver"></span></p>
 </main>
 <script>
 "use strict";
@@ -107,17 +143,28 @@ async function open(p) {
 function render(online) {
   online = online || {};
   pcs.sort((a, b) => (b.last || 0) - (a.last || 0));
-  $("#pcs").innerHTML = pcs.map((p, i) => `<div class="pc" data-i="${i}"><div class="ic">${p.os === "windows" ? "🪟" : "🐧"}</div>
-    <div class="t"><b>${esc(p.name || p.host)}</b><span class="dim small"><span class="dot ${online[p.host] ? "ok" : online[p.host] === false ? "bad" : ""}"></span>${esc(online[p.host] === "ts" ? "via Tailscale" : p.host)} · ${esc(p.version || "")}${p.ts ? " · 🌐" : ""}</span></div>
-    ${online[p.host] === false && p.mac ? '<button class="wake">Slå på</button>' : ""}
-    <button class="primary go">Åpne</button><button class="x" title="Fjern">✕</button><div class="live" id="live-${i}"></div></div>`).join("")
-    || '<p class="dim">Ingen PC-er ennå – trykk «Søk etter PC-er».</p>';
+  const st = (p) => online[p.host];
+  const n = pcs.filter((p) => st(p)).length;
+  if (pcs.length && Object.keys(online).length) $("#sum").textContent = `${n} av ${pcs.length} PC-er er på`;
+  $("#pcs").innerHTML = pcs.map((p, i) => {
+    const on = !!st(p), off = st(p) === false;
+    const where = st(p) === "ts" ? "via Tailscale" : p.host;
+    return `<div class="pc ${on ? "on" : off ? "off" : ""}" data-i="${i}">
+      <div class="pc-head"><div class="ic">${p.os === "windows" ? "🪟" : "🐧"}</div>
+        <div class="t"><b>${esc(p.name || p.host)}</b><span class="meta"><span class="dot ${on ? "ok" : off ? "bad" : ""}"></span>${on ? "På" : off ? "Av" : "Sjekker"} · ${esc(where)}${p.version ? " · " + esc(p.version) : ""}${p.ts ? " · 🌐" : ""}</span></div>
+        <button class="x" title="Fjern fra lista">✕</button></div>
+      <div class="stats" id="stats-${i}"></div>
+      <div class="game-now" id="game-${i}"></div>
+      <div class="hint" id="hint-${i}"></div>
+      <div class="pc-actions">${off && p.mac ? '<button class="wake">⏻ Slå på</button>' : ""}<button class="primary go">${on || !off ? "Åpne" : "Prøv å åpne"}</button></div>
+    </div>`;
+  }).join("") || '<p class="dim">Ingen PC-er ennå – trykk «Søk etter PC-er».</p>';
   document.querySelectorAll(".pc").forEach((el) => {
     const p = pcs[+el.dataset.i];
     el.querySelector(".go").onclick = () => open(p);
     const w = el.querySelector(".wake");
     if (w) w.onclick = () => wake(p);
-    el.querySelector(".x").onclick = () => { pcs.splice(pcs.indexOf(p), 1); save(); render(online); };
+    el.querySelector(".x").onclick = () => { if (confirm(`Fjerne ${p.name || p.host} fra lista?`)) { pcs.splice(pcs.indexOf(p), 1); save(); render(online); } };
   });
 }
 async function check() {
@@ -151,14 +198,20 @@ let lastOnline = {};
 async function liveAll(online) {
   lastOnline = online;
   pcs.forEach(async (p, i) => {
-    const el = document.getElementById("live-" + i);
+    const el = document.getElementById("stats-" + i);
     if (!el || !online[p.host]) return;
     try {
       const s = await authed(p, online, "/api/status");
       const t = (v) => (v == null ? "–" : Math.round(v) + "°");
-      el.innerHTML = `CPU <b>${t(s.cpu && s.cpu.temp)}</b> · GPU <b>${t(s.gpu && s.gpu.temp)}</b> · <b>${s.watts || 0} W</b>`
-        + (s.game ? ` · 🎮 <b>${esc(s.game)}</b>` : "") + (s.gamemode ? " · spillmodus" : "");
-    } catch (e) { el.textContent = e.message === "ikke paret" ? "Åpne og par for å se status" : ""; }
+      el.innerHTML = `<div><div class="n">CPU</div><div class="v">${t(s.cpu && s.cpu.temp)}</div></div>`
+        + `<div><div class="n">GPU</div><div class="v">${t(s.gpu && s.gpu.temp)}</div></div>`
+        + `<div><div class="n">Strøm</div><div class="v">${s.watts || 0} W</div></div>`;
+      const g = document.getElementById("game-" + i);
+      if (g) g.textContent = s.game ? "🎮 Spiller " + s.game + (s.gamemode ? " · spillmodus" : "") : "";
+    } catch (e) {
+      const h = document.getElementById("hint-" + i);
+      if (h) h.textContent = e.message === "ikke paret" ? "Trykk «Åpne» og par telefonen for å se status her." : "";
+    }
   });
 }
 // ---- Wake-on-LAN: fra telefonen (hjemme) og via en annen PC som er på (borte, via Tailscale) ----

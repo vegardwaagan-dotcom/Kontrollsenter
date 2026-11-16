@@ -259,3 +259,149 @@ ol.steps { margin: 8px 0 10px 0; padding-left: 22px; line-height: 1.5; } ol.step
   padding: 12px 14px; background: linear-gradient(rgba(0,0,0,.7), transparent); color: #fff; }
 .watch-top b { flex: 0 1 auto; } .watch-top span { flex: 1; color: rgba(255,255,255,.75); }
 .watch-top .icon { background: rgba(255,255,255,.15); color: #fff; }
+
+/* =====================================================================================
+   AURORA – designet fra 0.17: nattblå bakgrunn med nordlys, glasskort, rolig typografi,
+   faste avstander (4/8/12/16/24) og knapper som alltid står på rad.
+   ===================================================================================== */
+:root {
+  --bg: #090a12; --bg2: rgba(14, 15, 26, .72); --card: rgba(255,255,255,.045); --card-solid: #151626; --card2: rgba(255,255,255,.07);
+  --fg: #f4f5fb; --dim: #9ea2bd; --line: rgba(255,255,255,.075); --hi: rgba(255,255,255,.06);
+  --acc: #6f8bff; --acc2: #9a6bff; --grad: linear-gradient(135deg, #5b8cff 0%, #8a5cff 100%);
+  --ok: #3ddc97; --warn: #ffbe55; --bad: #ff6b7a;
+  --r: 24px; --r-sm: 16px; --gap: 14px;
+  --shadow: 0 1px 0 var(--hi) inset, 0 18px 40px -22px rgba(0,0,0,.65);
+  --aurora: radial-gradient(60% 45% at 8% -5%, rgba(91,140,255,.30), transparent 70%),
+            radial-gradient(50% 40% at 100% 0%, rgba(154,107,255,.26), transparent 70%),
+            radial-gradient(70% 50% at 50% 115%, rgba(0,200,180,.10), transparent 70%);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) { --bg: #f4f5fb; --bg2: rgba(255,255,255,.72); --card: rgba(255,255,255,.78); --card-solid: #fff;
+    --card2: rgba(20,24,60,.055); --fg: #141625; --dim: #626784; --line: rgba(20,24,60,.08); --hi: rgba(255,255,255,.9);
+    --shadow: 0 1px 0 var(--hi) inset, 0 14px 34px -20px rgba(40,50,120,.28);
+    --aurora: radial-gradient(60% 45% at 8% -5%, rgba(91,140,255,.20), transparent 70%),
+              radial-gradient(50% 40% at 100% 0%, rgba(154,107,255,.16), transparent 70%); }
+}
+:root[data-theme="light"] { --bg: #f4f5fb; --bg2: rgba(255,255,255,.72); --card: rgba(255,255,255,.78); --card-solid: #fff;
+  --card2: rgba(20,24,60,.055); --fg: #141625; --dim: #626784; --line: rgba(20,24,60,.08); --hi: rgba(255,255,255,.9);
+  --shadow: 0 1px 0 var(--hi) inset, 0 14px 34px -20px rgba(40,50,120,.28);
+  --aurora: radial-gradient(60% 45% at 8% -5%, rgba(91,140,255,.20), transparent 70%),
+            radial-gradient(50% 40% at 100% 0%, rgba(154,107,255,.16), transparent 70%); }
+:root[data-theme="amoled"] { --bg: #000; --bg2: rgba(0,0,0,.8); --card: rgba(255,255,255,.035); --card-solid: #0a0a0f; --aurora: none; }
+
+html, body { background: var(--bg); font-size: 15.5px; letter-spacing: -.005em; }
+body::before { content: ""; position: fixed; inset: 0; background: var(--aurora); pointer-events: none; z-index: 0; }
+.shell, .main-col, main { position: relative; z-index: 1; }
+
+/* typografi */
+h1 { font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+h2 { font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--dim); margin: 0 0 14px; }
+.card p { margin: 0 0 12px; line-height: 1.5; }
+.dim.small, p.dim.small { line-height: 1.5; }
+.small { font-size: 13px; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 18px 0 8px; }
+
+/* glasskort */
+.card, .tile, .quick button, .game, .big, .gi, .pc {
+  background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
+}
+.card { border-radius: var(--r); padding: 20px; }
+.card.accent { background: linear-gradient(155deg, rgba(91,140,255,.16), rgba(138,92,255,.06) 55%, var(--card)); }
+.grid { gap: var(--gap); margin-top: var(--gap); }
+
+/* toppfelt og fanelinje som glass */
+.top { background: var(--bg2); -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%);
+  border-bottom: 1px solid var(--line); padding: 14px 18px 12px; }
+.top .sub { font-size: 12.5px; margin-top: 1px; }
+.tabs { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); padding: 6px; border-radius: 26px;
+  background: var(--bg2); border: 1px solid var(--line); box-shadow: 0 18px 40px -16px rgba(0,0,0,.6);
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); }
+.tabs button { min-height: 54px; border-radius: 20px; font-size: 10.5px; gap: 3px; }
+.tabs button.on { background: var(--card2); color: var(--fg); }
+.tabs button.on::after { display: none; }
+.tabs button.on svg { stroke: var(--acc); }
+.main-col { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) {
+  .tabs { left: 0; top: 0; bottom: 0; right: auto; border-radius: 0; border-width: 0 1px 0 0; box-shadow: none; padding: 22px 14px; }
+  .tabs button { font-size: 15px; border-radius: 14px; }
+  .tabs button.on { background: var(--card2); box-shadow: none; }
+}
+
+/* knapper: like høye, myke, og rader som fordeler plassen jevnt */
+button { border-radius: 14px; min-height: 46px; padding: 11px 16px; font-weight: 600; font-size: 15px; }
+button.soft { background: var(--card2); }
+button.primary { background: var(--grad); box-shadow: 0 10px 22px -10px rgba(111,139,255,.85); }
+button.link { font-weight: 650; }
+button.icon { min-height: 40px; }
+.row { gap: 12px; margin: 12px 0; }
+.row > button, .row > .switch, .row > select, .row > input[type=color], .row > .num-in { flex: none; }
+.row.wrap { gap: 10px; }
+.row.wrap > button { flex: 1 1 calc(50% - 10px); min-width: 0; }
+.actions { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.actions button { min-height: 50px; }
+.chips { gap: 8px; }
+.chips button { min-height: 38px; padding: 8px 14px; font-weight: 600; background: var(--card2); }
+.seg { background: var(--card2); border-radius: 18px; padding: 4px; }
+.seg button { border-radius: 14px; min-height: 42px; font-size: 14px; }
+.switch i { background: var(--card2); }
+input:not([type]), input[type=text], input[type=number], input[type=date], .search, select, #pair-code, #pair-name {
+  background: var(--card2); border-radius: 14px; border: 1px solid var(--line); min-height: 46px; }
+details summary { margin-top: 14px; padding: 4px 0; }
+
+/* hurtigknapper: én rad med fem på mobil */
+.quick { grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 4px 0 var(--gap); }
+.quick button { min-height: 84px; border-radius: 20px; padding: 10px 4px; gap: 4px; }
+.quick .qi { font-size: 22px; } .quick .ql { font-size: 11.5px; line-height: 1.2; text-align: center; }
+.quick .qs { font-size: 10.5px; line-height: 1.2; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.quick button.on { background: var(--grad); }
+@media (max-width: 600px) { .quick { grid-template-columns: repeat(5, 1fr); } }
+
+/* målere: tre store, så fire små – ingen som står alene */
+.tiles { grid-template-columns: repeat(12, 1fr); gap: 10px; }
+.tiles .tile { grid-column: span 4; border-radius: 22px; padding: 14px 6px 12px; }
+.tiles .tile:nth-child(n+4) { grid-column: span 3; padding: 12px 4px 10px; }
+.tiles .tile:nth-child(n+4) .gauge { width: 70px; height: 70px; } .tiles .tile:nth-child(n+4) .gauge .v { font-size: 15px; }
+.tile .name { font-size: 10.5px; letter-spacing: .1em; margin-bottom: 4px; }
+.tile .sub { font-size: 11px; line-height: 1.3; margin-top: 4px; }
+@media (min-width: 900px) {
+  .tiles .tile, .tiles .tile:nth-child(n+4) { grid-column: span 3; }
+  .tiles .tile:nth-child(n+4) .gauge { width: 112px; height: 112px; } .tiles .tile:nth-child(n+4) .gauge .v { font-size: 24px; }
+}
+
+/* lister og nøkkeltall */
+.kv div, .kvgrid div, .temps div, .proc, .fan, .clip, .events .ev, #fam-pcs .row { border-bottom: 1px solid var(--line); padding: 10px 0; }
+.kv div:last-child, .kvgrid div:last-child, .temps div:last-child { border-bottom: 0; }
+.kv b, .kvgrid b { color: var(--dim); font-weight: 500; }
+.game { border-radius: 20px; padding: 14px 16px; }
+.live { border-color: rgba(255,107,122,.35); background: linear-gradient(155deg, rgba(255,107,122,.16), var(--card) 60%); }
+.grade { border-radius: 20px; }
+.upd { border-radius: 20px; margin: 10px 14px 4px; padding: 12px 14px; box-shadow: 0 14px 30px -16px rgba(111,139,255,.9); }
+.toast { background: var(--card-solid); color: var(--fg); border: 1px solid var(--line); border-radius: 18px;
+  bottom: calc(100px + env(safe-area-inset-bottom)); font-weight: 600; }
+.dlg { background: rgba(0,0,0,.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dlg .card { background: var(--card-solid); }
+.deck button { background: var(--card2); border-radius: 20px; }
+.badge { border-radius: 999px; }
+
+/* små skjermer */
+@media (max-width: 600px) {
+  main { padding: 6px 12px 24px; }
+  .card { padding: 18px 16px; border-radius: 22px; }
+  .tiles .tile .gauge { width: 86px; height: 86px; } .tiles .tile .gauge .v { font-size: 19px; }
+}
+
+/* Aurora – finpuss */
+@media (max-width: 600px) {
+  .quick { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; margin: 4px 0 var(--gap); padding: 2px 0 6px;
+    scrollbar-width: none; }
+  .quick::-webkit-scrollbar { display: none; }
+  .quick button { flex: 0 0 auto; min-width: 112px; min-height: 78px; scroll-snap-align: start; padding: 10px 14px; align-items: flex-start; }
+  .quick .ql { font-size: 13px; text-align: left; white-space: nowrap; } .quick .qs { font-size: 11.5px; text-align: left; }
+}
+.tiles .tile:nth-child(n+4) .sub, .tiles .tile:nth-child(n+4) .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 600px) { .tiles .tile:nth-child(n+4) .sub { font-size: 10px; } }
+.row.wrap > button { flex: 1 1 0; min-width: 76px; }
+.chips button.on { background: var(--grad); color: #fff; box-shadow: 0 8px 18px -10px rgba(111,139,255,.9); }
+.statsbody.clip { max-height: 360px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+#stats-more { margin-top: 6px; }

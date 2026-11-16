@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.17.0", "Ny drakt for mobilappen", [
+        ("Nytt", [
+            "Mobilappen har fått et helt nytt utseende: nattblå bakgrunn med nordlys, glasskort, flytende fanelinje "
+            "og rolig, ryddig tekst – i mørkt og lyst tema",
+            "PC-lista er bygget om: navn og status øverst, temperatur og strøm i egne bokser, og knappene "
+            "(Åpne, Slå på) på en egen rad – de står aldri over teksten lenger",
+            "Hurtigknappene på Hjem kan skyves sidelengs og viser hele teksten; målerne står i et jevnt rutenett",
+            "Knapper på rad deler plassen likt, og lange statistikklister foldes sammen («Vis all statistikk»)",
+        ]),
+    ]),
     ("0.16.0", "Se på hva de andre spiller", [
         ("Nytt", [
             "«📺 Se på»: se skjermen til en annen PC i huset live – som casting fra Meta Quest. Bare visning, ingen kan "
