@@ -105,31 +105,128 @@ button:not(.x), input, .stats > div { background-color:rgba(255,255,255,.07);
   button:not(.x), input, .stats > div { box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 0 0 1px rgba(20,24,60,.08); }
 }
 
+
+/* ---------- ryddig startside: topp, verktøylinje og faner nederst ---------- */
+main { padding-bottom:calc(110px + env(safe-area-inset-bottom)); }
+.head { gap:14px; }
+.head .ht { flex:1; min-width:0; }
+.head .ic-btn { min-height:44px; width:44px; border-radius:14px; }
+.tools { display:flex; gap:8px; margin:20px 0 4px; align-items:center; overflow-x:auto; scrollbar-width:none; }
+.tools::-webkit-scrollbar { display:none; }
+.tool { display:flex; align-items:center; gap:8px; min-height:42px; padding:8px 14px; border-radius:99px; font-size:14px; white-space:nowrap; flex:none; }
+.tool svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.tools .grow { flex:1; text-align:right; padding-right:4px; }
+.add-row { display:flex; gap:10px; margin-top:10px; }
+#status:empty, #smart-status:empty { display:none; }
+#status, #smart-status { margin:10px 4px 0; }
+.list { margin-top:14px; }
+.foot { margin-top:22px; opacity:.8; }
+.ver { text-align:center; margin-top:14px; opacity:.6; }
+.tabs { position:fixed; z-index:10; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom));
+  width:min(360px, calc(100vw - 32px)); display:flex; gap:4px; padding:6px; border-radius:26px;
+  background:rgba(18,19,32,.62); border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(30px) saturate(200%); backdrop-filter:blur(30px) saturate(200%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 24px 50px -18px rgba(0,0,0,.7); }
+.tabs button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-height:54px; padding:6px 2px;
+  border-radius:20px; background:transparent !important; box-shadow:none !important; color:var(--dim); font-size:11px; font-weight:650; }
+.tabs button svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.tabs button.on { background:rgba(255,255,255,.10) !important; color:var(--fg); }
+.tabs button.on svg { stroke:var(--acc); }
+@media (prefers-color-scheme: light) { .tabs { background:rgba(255,255,255,.7); border-color:rgba(20,24,60,.1); } .tabs button.on { background:rgba(20,24,60,.07) !important; } }
+
+/* ---------- Smart Hjem ---------- */
+.sh-sec { font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.1em; margin:24px 4px 10px; font-weight:700; }
+.sh-grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(min(100%,330px), 1fr)); }
+.sh-card { position:relative; border-radius:24px; padding:16px; display:flex; flex-direction:column; gap:12px;
+  background-color:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.13);
+  background-image:linear-gradient(150deg, rgba(255,255,255,.14), rgba(255,255,255,.02) 36%, rgba(255,255,255,0) 60%, rgba(255,255,255,.05));
+  -webkit-backdrop-filter:blur(28px) saturate(190%); backdrop-filter:blur(28px) saturate(190%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30), 0 24px 48px -24px rgba(0,0,0,.65); }
+.sh-head { display:flex; align-items:center; gap:14px; min-width:0; }
+.sh-ic { width:48px; height:48px; border-radius:16px; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:24px; flex:none; }
+.sh-card.live .sh-ic { background:linear-gradient(135deg, rgba(91,140,255,.28), rgba(138,92,255,.22)); }
+.sh-t { flex:1; min-width:0; }
+.sh-t b { display:block; font-size:17px; font-weight:750; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sh-t span { display:block; font-size:13px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
+.sh-now { font-size:14px; padding:9px 12px; border-radius:14px; background:linear-gradient(135deg, rgba(91,140,255,.18), rgba(138,92,255,.07)); }
+.sh-btns { display:flex; gap:8px; flex-wrap:wrap; }
+.sh-btns button { flex:1 1 0; min-width:56px; min-height:46px; padding:8px 10px; font-size:15px; }
+.sh-vol { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--dim); }
+.sh-vol input[type=range] { flex:1; padding:0; border:0; background:none; min-height:34px; accent-color:#8a5cff; }
+.sh-vol .num { min-width:42px; text-align:right; font-variant-numeric:tabular-nums; color:var(--fg); }
+.sh-lights { display:flex; flex-direction:column; gap:2px; }
+.sh-light { display:grid; grid-template-columns:auto 1fr auto; align-items:center; column-gap:12px; row-gap:2px; padding:10px 2px; border-top:1px solid var(--line); }
+.sh-light .l-bri { grid-column:2 / 4; width:100% !important; }
+.sh-light:first-child { border-top:0; }
+.sh-light .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+.sh-light .nm small { display:block; color:var(--dim); font-weight:500; }
+.sh-light input[type=range] { width:100%; padding:0; border:0; background:none; min-height:30px; accent-color:#8a5cff; flex:none; }
+.sh-light input[type=color] { width:34px; height:34px; min-height:0; padding:0; border:0; border-radius:50%; background:none; flex:none; }
+.sh-light input[type=color]::-webkit-color-swatch-wrapper { padding:0; } .sh-light input[type=color]::-webkit-color-swatch { border:2px solid rgba(255,255,255,.3); border-radius:50%; }
+.sh-light.off .nm { color:var(--dim); }
+.sh-rooms { display:flex; gap:8px; flex-wrap:wrap; }
+.sh-rooms button { min-height:42px; padding:8px 14px; border-radius:99px; font-size:14px; }
+.switch { position:relative; width:52px; height:30px; flex:none; display:inline-block; }
+.switch input { opacity:0; width:0; height:0; position:absolute; }
+.switch i { position:absolute; inset:0; background:var(--card2); border-radius:999px; transition:.2s; border:1px solid var(--line); }
+.switch i::after { content:""; position:absolute; left:3px; top:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+.switch input:checked + i { background:var(--grad); border-color:transparent; }
+.switch input:checked + i::after { transform:translateX(22px); }
+.sh-list { border-radius:22px; overflow:hidden; background-color:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.1);
+  -webkit-backdrop-filter:blur(22px); backdrop-filter:blur(22px); }
+.sh-row { display:flex; align-items:center; gap:12px; padding:11px 14px; border-top:1px solid var(--line); }
+.sh-row:first-child { border-top:0; }
+.sh-row .e { font-size:20px; width:30px; text-align:center; flex:none; }
+.sh-row .sh-t b { font-size:15px; font-weight:650; } .sh-row .sh-t span { font-size:12.5px; }
+.sh-row .ip { font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums; }
+.sh-more { width:100%; margin-top:10px; }
+.sh-empty { text-align:center; padding:40px 16px; color:var(--dim); line-height:1.6; }
+.sh-empty .big { font-size:42px; display:block; margin-bottom:8px; }
+button.on:not(.tabs button) { background:var(--grad) !important; color:#fff !important; box-shadow:0 3px 10px rgba(91,140,255,.3) !important; }
+
 /* knapper er vanlige i ro og lyser lilla bare mens fingeren holdes på dem */
 button.primary { color:var(--fg); }
-button:not(:disabled):not(.x):active { background:var(--grad) !important; color:#fff !important; box-shadow:0 0 0 1px rgba(255,255,255,.25), 0 0 18px 2px rgba(106,123,255,.6) !important; }
+button:not(:disabled):not(.x):not(.tabs button):active { background:var(--grad) !important; color:#fff !important; box-shadow:0 0 0 1px rgba(255,255,255,.25), 0 0 18px 2px rgba(106,123,255,.6) !important; }
 button:not(:disabled):active svg { stroke:#fff; }
 </style>
 </head>
 <body>
 <main>
-  <div class="head"><span class="logo"><svg viewBox="0 0 24 24"><path d="M5 18a8 8 0 1 1 14 0"/><path d="M12 14l4-5"/></svg></span>
-    <div><h1>Kontrollsenter</h1><div class="dim small sum" id="sum">Velg PC-en du vil styre</div></div></div>
+  <header class="head">
+    <span class="logo"><svg viewBox="0 0 24 24"><path d="M5 18a8 8 0 1 1 14 0"/><path d="M12 14l4-5"/></svg></span>
+    <div class="ht"><h1 id="title">Kontrollsenter</h1><div class="dim small sum" id="sum">Velg PC-en du vil styre</div></div>
+    <button id="upd-check" class="ic-btn" title="Se etter oppdatering" aria-label="Se etter oppdatering"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+  </header>
   <div id="upd" class="upd" hidden><span id="upd-t"></span><button id="upd-go">Oppdater</button></div>
-  <div class="bar">
-    <button id="scan" class="primary grow">Søk etter PC-er</button>
-    <button id="upd-check" class="ic-btn" title="Se etter oppdatering"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
-  </div>
-  <details class="add"><summary>+ Legg til med adresse</summary>
-    <div class="row"><input id="manual" placeholder="F.eks. 192.168.1.20" inputmode="url"><button id="add">Legg til</button></div></details>
-  <div id="status" class="dim small"></div>
-  <div id="scan-bar" hidden><i></i></div>
-  <h2>PC-er</h2>
-  <div id="pcs" class="list"></div>
-  <button id="all-games" class="games-btn">🎮 Spill på alle PC-er</button>
-  <div id="games" class="gl"></div>
-  <p class="dim small foot">PC-en må ha Kontrollsenter med <b>Tillat fjernstyring</b> på<br>(PC-er hjemme → Mobil og nettbrett).<br><span id="ver"></span></p>
+
+  <section id="p-pcs" class="page">
+    <div class="tools">
+      <button id="scan" class="tool"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>Søk</button>
+      <button id="add-open" class="tool"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Legg til</button>
+      <button id="all-games" class="tool"><svg viewBox="0 0 24 24"><path d="M6 9h12a4 4 0 0 1 4 4v1a3 3 0 0 1-5.2 2L15 14H9l-1.8 2A3 3 0 0 1 2 14v-1a4 4 0 0 1 4-4z"/></svg>Spill</button>
+    </div>
+    <div id="add-row" class="row add-row" hidden><input id="manual" placeholder="Adresse, f.eks. 192.168.1.20" inputmode="url"><button id="add" class="primary">Legg til</button></div>
+    <div id="scan-bar" hidden><i></i></div>
+    <div id="status" class="dim small"></div>
+    <div id="pcs" class="list"></div>
+    <div id="games" class="gl"></div>
+    <p class="dim small foot">Ser du ikke en PC? Slå på <b>Tillat fjernstyring</b> i Kontrollsenter på PC-en<br>(PC-er hjemme → Mobil og nettbrett).</p>
+  </section>
+
+  <section id="p-smart" class="page" hidden>
+    <div class="tools">
+      <button id="smart-scan" class="tool"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>Søk på nytt</button>
+      <span id="smart-from" class="dim small grow"></span>
+    </div>
+    <div id="smart-status" class="dim small"></div>
+    <div id="smart"></div>
+  </section>
+  <p class="dim small ver"><span id="ver"></span></p>
 </main>
+<nav class="tabs" id="tabs">
+  <button data-tab="pcs" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg><span>PC-er</span></button>
+  <button data-tab="smart"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Smart Hjem</span></button>
+</nav>
 <script>
 "use strict";
 const PORT = 27100, $ = (s) => document.querySelector(s);
@@ -275,6 +372,173 @@ $("#all-games").onclick = async () => {
   }));
 };
 
+
+// ---------- faner nederst: PC-er og Smart Hjem ----------
+let curTab = "pcs";
+try { curTab = localStorage.getItem("startTab") || "pcs"; } catch (e) {}
+function setTab(t) {
+  curTab = t;
+  try { localStorage.setItem("startTab", t); } catch (e) {}
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
+  $("#p-pcs").hidden = t !== "pcs"; $("#p-smart").hidden = t !== "smart";
+  $("#title").textContent = t === "smart" ? "Smart Hjem" : "Kontrollsenter";
+  $("#sum").hidden = t === "smart";
+  if (t === "smart") loadSmart(false);
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => { if (KS && KS.vibrate) KS.vibrate(); setTab(b.dataset.tab); }));
+$("#add-open").onclick = () => { const r = $("#add-row"); r.hidden = !r.hidden; $("#add-open").classList.toggle("on", !r.hidden); if (!r.hidden) $("#manual").focus(); };
+
+// ---------- Smart Hjem: en PC som er på finner og styrer enhetene på hjemmenettet ----------
+let smartPc = null, smartData = null, smartTimer = 0, smartHold = 0, showAll = false;
+function smartPcPick() {
+  const cands = pcs.filter((p) => lastOnline[p.host] && tokenFor(p));
+  return cands.find((p) => lastOnline[p.host] === true) || cands[0] || null;
+}
+async function smartAct(body, quiet) {
+  if (!smartPc) return;
+  smartHold = Date.now() + 2500;
+  try {
+    const r = await authed(smartPc, lastOnline, "/api/action", Object.assign({ a: "smart" }, body));
+    if (!quiet) $("#smart-status").textContent = r.ok ? (r.msg && r.msg !== "OK" ? r.msg : "") : "Feil: " + (r.msg || r.error || "");
+    setTimeout(() => loadSmart(false, true), 900);
+  } catch (e) { $("#smart-status").textContent = "Feil: " + e.message; }
+}
+async function loadSmart(rescan, silent) {
+  clearTimeout(smartTimer);
+  if (curTab !== "smart") return;
+  if (!Object.keys(lastOnline).length) await check();
+  smartPc = smartPcPick();
+  if (!smartPc) {
+    $("#smart-from").textContent = "";
+    $("#smart").innerHTML = `<div class="sh-empty"><span class="big">🏠</span><b>Ingen PC er på akkurat nå</b><br>Smart Hjem hentes fra en av PC-ene med Kontrollsenter.
+      Slå på en PC (og par telefonen med den under «PC-er»), så dukker lysene, TV-ene og de andre enhetene opp her.</div>`;
+    return;
+  }
+  if (!silent && !smartData) $("#smart").innerHTML = '<div class="sh-empty"><span class="big">📡</span>Leter etter enheter på hjemmenettet …</div>';
+  if (rescan) $("#smart-status").textContent = "Søker etter enheter … (tar 5–10 sekunder)";
+  try {
+    const d = await authed(smartPc, lastOnline, "/api/x/smart" + (rescan ? "?scan=1" : ""));
+    if (Date.now() < smartHold && !rescan) { smartTimer = setTimeout(() => loadSmart(false, true), 1500); return; }
+    smartData = d;
+    if (rescan) $("#smart-status").textContent = "";
+    renderSmart(d);
+  } catch (e) {
+    $("#smart-status").textContent = "Fikk ikke hentet fra " + smartPc.name + ": " + e.message;
+  }
+  smartTimer = setTimeout(() => loadSmart(false, true), 8000);
+}
+$("#smart-scan").onclick = () => loadSmart(true);
+
+const KIND_ORDER = { hub: "Lys", light: "Lys", tv: "Andre TV-er og høyttalere", cast: "Andre TV-er og høyttalere", speaker: "Andre TV-er og høyttalere",
+  plug: "Smartenheter", camera: "Smartenheter", pc: "PC-er og konsoller", console: "PC-er og konsoller", nas: "Nettverk", router: "Nettverk",
+  printer: "Nettverk", phone: "Mobiler og nettbrett", other: "Andre enheter" };
+function devMeta(d) { return [d.kind_name, d.model || d.maker, d.ip].filter(Boolean).join(" · "); }
+
+function hueCard(h, hub) {
+  if (!h.paired) {
+    return `<div class="sh-card"><div class="sh-head"><div class="sh-ic">💡</div><div class="sh-t"><b>Philips Hue</b><span>${esc(hub ? hub.ip : "")}</span></div></div>
+      <div class="hint">Trykk på den runde knappen på Hue-broen, og trykk «Koble til» innen 30 sekunder.</div>
+      <div class="sh-btns"><button data-sh="huepair">🔗 Koble til Hue</button></div></div>`;
+  }
+  if (h.error) return `<div class="sh-card"><div class="sh-head"><div class="sh-ic">💡</div><div class="sh-t"><b>Philips Hue</b><span>${esc(h.error)}</span></div></div></div>`;
+  const anyOn = h.lights.some((l) => l.on);
+  const rooms = h.rooms.map((r) => `<button class="${r.any_on ? "on" : ""}" data-room="${esc(r.id)}" data-on="${r.any_on ? 0 : 1}">${esc(r.name)}</button>`).join("");
+  const lights = h.lights.map((l) => `<div class="sh-light ${l.on ? "" : "off"}" data-light="${esc(l.id)}">
+      <label class="switch"><input type="checkbox" class="l-on" ${l.on ? "checked" : ""} ${l.reachable ? "" : "disabled"}><i></i></label>
+      <div class="nm">${esc(l.name)}${l.reachable ? "" : "<small>Svarer ikke (strømmen av?)</small>"}</div>
+      ${l.can_color ? `<input type="color" class="l-col" value="${esc(l.color || "#ffd9a0")}" ${l.reachable ? "" : "disabled"}>` : "<span></span>"}
+      ${l.can_dim && l.reachable ? `<input type="range" class="l-bri" min="1" max="254" value="${l.bri || 1}">` : ""}</div>`).join("");
+  return `<div class="sh-card ${anyOn ? "live" : ""}"><div class="sh-head"><div class="sh-ic">💡</div>
+      <div class="sh-t"><b>Lys</b><span>${h.lights.filter((l) => l.on).length} av ${h.lights.length} er på · Philips Hue</span></div>
+      <label class="switch"><input type="checkbox" id="hue-all" ${anyOn ? "checked" : ""}><i></i></label></div>
+    ${rooms ? `<div class="sh-rooms">${rooms}</div>` : ""}
+    <div class="sh-lights">${lights || '<div class="dim small">Ingen lys funnet på broen.</div>'}</div></div>`;
+}
+function tvCard(d) {
+  const L = d.live || {}, on = L.power === "on";
+  return `<div class="sh-card ${on ? "live" : ""}" data-ip="${esc(d.ip)}" data-ctl="tv"><div class="sh-head"><div class="sh-ic">📺</div>
+      <div class="sh-t"><b>${esc(d.name || "TV")}</b><span>${on ? "På" : L.power === "standby" ? "Hvilemodus" : "Av"} · ${esc(d.model || d.maker)}</span></div>
+      <button class="${on ? "on" : ""}" data-key="${on ? "power" : "on"}" title="Av/på" style="min-width:52px">⏻</button></div>
+    ${on ? `<div class="sh-btns"><button data-key="voldown">🔉</button><button data-key="mute">🔇</button><button data-key="volup">🔊</button></div>
+    <div class="sh-btns"><button data-key="home">⌂ Hjem</button><button data-key="source">⇄ Kilde</button><button data-key="play">⏵</button><button data-key="pause">⏸</button></div>` : ""}
+    ${L.paired ? "" : '<div class="hint">Første gang du trykker: velg «Tillat» på TV-en.</div>'}</div>`;
+}
+function castCard(d) {
+  const L = d.live;
+  if (!L) return `<div class="sh-card" data-ip="${esc(d.ip)}"><div class="sh-head"><div class="sh-ic">${d.icon}</div><div class="sh-t"><b>${esc(d.name)}</b><span>${esc(devMeta(d))} · svarer ikke</span></div></div></div>`;
+  const playing = L.playing === true;
+  return `<div class="sh-card ${L.app ? "live" : ""}" data-ip="${esc(d.ip)}" data-ctl="cast"><div class="sh-head"><div class="sh-ic">${d.icon}</div>
+      <div class="sh-t"><b>${esc(d.name)}</b><span>${esc(d.model || d.kind_name)}</span></div>
+      <button class="${L.muted ? "on" : ""}" data-cast="mute" data-v="${L.muted ? 0 : 1}" title="Demp" style="min-width:52px">🔇</button></div>
+    ${L.app ? `<div class="sh-now">▶ ${esc(L.app)}${L.title && L.title !== L.app ? " – " + esc(L.title) : ""}</div>
+      <div class="sh-btns"><button class="${playing ? "on" : ""}" data-cast="${playing ? "pause" : "play"}">${playing ? "⏸ Pause" : "⏵ Spill"}</button><button data-cast="stop">⏹ Stopp</button></div>`
+      : '<div class="dim small">Ingenting spilles nå</div>'}
+    <div class="sh-vol">🔈<input type="range" class="c-vol" min="0" max="100" value="${L.volume}"><span class="num">${L.volume} %</span></div></div>`;
+}
+function renderSmart(d) {
+  const devs = d.devices || [];
+  const when = d.scanned ? new Date(d.scanned * 1000).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" }) : "";
+  $("#smart-from").textContent = `Via ${smartPc.name}${when ? " · " + when : ""}${d.scanning ? " · søker …" : ""}`;
+  const hub = devs.find((x) => (x.control || []).includes("hue"));
+  const tvs = devs.filter((x) => (x.control || []).includes("samsung"));
+  const casts = devs.filter((x) => (x.control || []).includes("cast"));
+  const ctl = new Set([hub, ...tvs, ...casts].filter(Boolean));
+  const rest = devs.filter((x) => !ctl.has(x));
+  let html = "";
+  if (hub || (d.hue && d.hue.paired)) html += `<div class="sh-sec">Lys</div><div class="sh-grid">${hueCard(d.hue || {}, hub)}</div>`;
+  if (tvs.length || casts.length) html += `<div class="sh-sec">TV, strømming og høyttalere</div><div class="sh-grid">${tvs.map(tvCard).join("")}${casts.map(castCard).join("")}</div>`;
+  const named = rest.filter((x) => x.name || !["phone", "other"].includes(x.kind));
+  const anon = rest.filter((x) => !named.includes(x));
+  const groups = {};
+  named.forEach((x) => { const g = KIND_ORDER[x.kind] || "Andre enheter"; (groups[g] = groups[g] || []).push(x); });
+  const row = (x) => `<div class="sh-row" data-id="${esc(x.id)}" data-name="${esc(x.name)}"><span class="e">${x.icon}</span>
+      <div class="sh-t"><b>${esc(x.name || x.kind_name)}</b><span>${esc([x.name ? x.kind_name : "", x.model || x.maker].filter(Boolean).join(" · "))}</span></div><span class="ip">${esc(x.ip)}</span></div>`;
+  Object.entries(groups).forEach(([g, list]) => { html += `<div class="sh-sec">${esc(g)}</div><div class="sh-list">${list.map(row).join("")}</div>`; });
+  if (anon.length) {
+    html += `<div class="sh-sec">Uten navn (${anon.length})</div>`;
+    html += showAll ? `<div class="sh-list">${anon.map(row).join("")}</div><div class="dim small" style="margin:8px 4px">Trykk på en enhet for å gi den et navn.</div>`
+      : `<button class="sh-more" id="sh-more">Vis ${anon.length} enheter uten navn (mobiler, nettbrett …)</button>`;
+  }
+  if (!devs.length) html = `<div class="sh-empty"><span class="big">📡</span>Leter etter enheter … trykk «Søk på nytt» om litt.</div>`;
+  // ikke tegn på nytt mens du drar i en glidebryter
+  const a = document.activeElement;
+  if (a && a.type === "range" && $("#smart").contains(a)) return;
+  $("#smart").innerHTML = html;
+  wireSmart();
+}
+function wireSmart() {
+  const S = $("#smart");
+  const m = S.querySelector("#sh-more"); if (m) m.onclick = () => { showAll = true; renderSmart(smartData); };
+  S.querySelectorAll("[data-sh=huepair]").forEach((b) => (b.onclick = () => smartAct({ do: "huepair" })));
+  const all = S.querySelector("#hue-all"); if (all) all.onchange = () => smartAct({ do: "hue", on: all.checked }, true);
+  S.querySelectorAll("[data-room]").forEach((b) => (b.onclick = () => { b.classList.toggle("on", b.dataset.on === "1"); smartAct({ do: "hue", room: b.dataset.room, on: b.dataset.on === "1" }, true); }));
+  S.querySelectorAll("[data-light]").forEach((el) => {
+    const id = el.dataset.light, on = el.querySelector(".l-on"), bri = el.querySelector(".l-bri"), col = el.querySelector(".l-col");
+    if (on) on.onchange = () => { el.classList.toggle("off", !on.checked); smartAct({ do: "hue", light: id, on: on.checked }, true); };
+    if (bri) bri.onchange = () => { on.checked = true; el.classList.remove("off"); smartAct({ do: "hue", light: id, bri: +bri.value }, true); };
+    if (col) col.onchange = () => { on.checked = true; el.classList.remove("off"); smartAct({ do: "hue", light: id, color: col.value }, true); };
+  });
+  S.querySelectorAll("[data-ctl=tv] [data-key]").forEach((b) => (b.onclick = () => {
+    if (KS && KS.vibrate) KS.vibrate();
+    smartAct({ do: "tv", ip: b.closest("[data-ip]").dataset.ip, key: b.dataset.key }, b.dataset.key !== "on" && b.dataset.key !== "power");
+  }));
+  S.querySelectorAll("[data-ctl=cast] [data-cast]").forEach((b) => (b.onclick = () => {
+    const ip = b.closest("[data-ip]").dataset.ip, w = b.dataset.cast;
+    if (w === "mute") b.classList.toggle("on", b.dataset.v === "1");
+    smartAct({ do: "cast", ip, what: w, value: w === "mute" ? b.dataset.v === "1" : null }, true);
+  }));
+  S.querySelectorAll("[data-ctl=cast] .c-vol").forEach((r) => {
+    const lab = r.parentNode.querySelector(".num");
+    r.oninput = () => { lab.textContent = r.value + " %"; };
+    r.onchange = () => smartAct({ do: "cast", ip: r.closest("[data-ip]").dataset.ip, what: "volume", value: +r.value }, true);
+  });
+  S.querySelectorAll(".sh-row").forEach((el) => (el.onclick = () => {
+    const n = prompt("Navn på enheten:", el.dataset.name || "");
+    if (n != null && n.trim()) smartAct({ do: "rename", id: el.dataset.id, name: n.trim() });
+  }));
+}
+
 // ---- oppdatering av appen: PC-ene leser NAS-en (Kontrollsenter/Android) ----
 window.ksUpdateStatus = (m) => { $("#upd").hidden = false; $("#upd-t").textContent = m; };
 async function checkUpdate(force, online) {
@@ -334,6 +598,7 @@ if (KS && KS.version) $("#ver").textContent = "App-versjon " + KS.version();
 
 (async () => {
   render();
+  if (curTab === "smart") { const online = await check(); setTab("smart"); checkUpdate(false, online); return; }
   const home = /[?&](hjem|oppdater)=1/.test(location.search);
   const last = localStorage.getItem("lastHost");
   if (/[?&]oppdater=1/.test(location.search)) { await check(); await checkUpdate(true); return; }

@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.26.0", "Smart Hjem", [
+        ("Nytt", [
+            "Ny side «Smart Hjem» på PC-en: finner alle enhetene på hjemmenettet – lys, TV-er, Chromecast/Nest, "
+            "høyttalere, konsoller, NAS, ruter og resten – og sorterer dem etter type. Gi dem navn ved å trykke på dem",
+            "Styr Philips Hue (alle lys, rom, hvert lys med lysstyrke og farge), Samsung-TV (av/på, volum, demp, hjem, "
+            "kilde, pause/spill) og Chromecast/Google Nest (hva som spilles, volum, demp, pause, stopp)",
+            "Android-appen: ny fane «Smart Hjem» nederst på startskjermen ved siden av «PC-er» – hentes fra en PC som er på",
+        ]),
+        ("Endret", [
+            "Startskjermen i Android-appen er ryddet: fanelinje nederst, små verktøyknapper (Søk, Legg til, Spill) "
+            "og mindre tekst",
+        ]),
+    ]),
     ("0.25.0", "Lilla betyr «på»", [
         ("Endret", [
             "Lilla betyr nå alltid at noe er slått på – på PC-en, i appen og på startsiden i Android-appen. "

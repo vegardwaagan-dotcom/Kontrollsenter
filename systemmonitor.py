@@ -441,6 +441,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
                 ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
                 ("familie", "Familie", "ks-family-symbolic", "family_page", "FamilyPage"),
+                ("smarthjem", "Smart Hjem", "ks-smarthome-symbolic", "smarthome_ui", "SmartHomePage"),
                 ("automatikk", "Automatikk", "ks-auto-symbolic", "automation", "AutomationPage"),
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
                 ("verktoy", "Verktøy", "ks-tools-symbolic", "tools", "ToolsPage")):

@@ -700,6 +700,9 @@ def _feature_action(win, kind, a):
     if kind == "headsetinstall":
         import batteries
         return batteries.install_headsetcontrol()
+    if kind == "smart":
+        import smarthome
+        return True, smarthome.action(a)
     if kind == "huepair":
         F.hue_pair()
         return True, "Hue er koblet til"
@@ -1114,6 +1117,9 @@ def _handler(remote):
             if what == "music":
                 import clipx
                 return self._send(200, {"music": clipx.music_files()[0]})
+            if what == "smart":                          # Smart Hjem: enheter på hjemmenettet
+                import smarthome
+                return self._send(200, smarthome.state(rescan=arg("scan") == "1"))
             if what == "homepcs":
                 import homepcs
                 return self._send(200, {"pcs": homepcs.fetch() or []})

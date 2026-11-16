@@ -164,6 +164,10 @@ progressbar > trough > progress { background-image: linear-gradient(90deg, #5b8c
 entry, spinbutton, dropdown > button, combobox > box > button { border-radius: 10px; }
 popover > contents { border-radius: 14px; }
 
+/* kort i rutenett (Smart Hjem): ingen markering bak kortene */
+flowbox.ks-cards > flowboxchild { padding: 0; background: none; box-shadow: none; outline: none; }
+flowbox.ks-cards > flowboxchild:hover, flowbox.ks-cards > flowboxchild:selected { background: none; }
+
 /* tynn rullefelt */
 scrollbar slider { min-width: 6px; min-height: 6px; border-radius: 99px; }
 
@@ -364,6 +368,7 @@ SECTIONS = [
     ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
     ("Spill", ["spill", "stromming"]),
     ("Familie", ["familie"]),
+    ("Smart Hjem", ["smarthjem"]),
     ("System", ["nettverk", "automatikk", "programmer", "hjemme", "verktoy"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
@@ -390,6 +395,7 @@ PAGE_HELP = {
     "nettverk": "Hastighet, ping, hvilke programmer som bruker nettet, og enhetene på hjemmenettet.",
     "automatikk": "Ting som skjer av seg selv: spillmodus når et spill starter, nattmodus, profiler per spill.",
     "programmer": "Installer, oppdater og velg hvilke programmer som starter med PC-en.",
+    "smarthjem": "Alle smartenhetene på hjemmenettet: styr Hue-lys, Samsung-TV og Chromecast/Nest, og se alt annet som er koblet til.",
     "hjemme": "De andre PC-ene i huset, mobilappen, familie-chat og fjernstyring.",
     "verktoy": "Rydding, oppdateringer, varsler, feilsøking og innstillinger for Kontrollsenter.",
 }
