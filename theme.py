@@ -135,10 +135,18 @@ button.suggested-action:hover { background-image: linear-gradient(135deg, #6b98f
 button.suggested-action:active { background-image: linear-gradient(135deg, #4f7ef0, #7c50ef); }
 button.suggested-action:disabled { background-image: none; background-color: alpha(currentColor, 0.1); box-shadow: none; }
 
+/* alle knapper som er slått på blir lilla – samme som «Auto» på viftene */
+button:checked, togglebutton:checked, button.toggle:checked,
 .linked > button:checked, .linked > togglebutton:checked, .linked > button.toggle:checked {
   background-color: transparent;
   background-image: linear-gradient(135deg, #5b8cff, #8a5cff);
   color: white;
+}
+button:checked:hover, togglebutton:checked:hover { background-image: linear-gradient(135deg, #6b98ff, #9868ff); }
+/* menyknapper og sidemeny-knapper er «checked» bare mens menyen er åpen – de skal ikke bli lilla */
+menubutton > button:checked, dropdown > button:checked, combobox > box > button:checked,
+headerbar menubutton > button:checked, splitbutton > menubutton > button:checked {
+  background-image: none; color: inherit;
 }
 switch:checked { background-color: transparent; background-image: linear-gradient(135deg, #5b8cff, #8a5cff); }
 scale highlight { background-color: transparent; background-image: linear-gradient(90deg, #5b8cff, #8a5cff); }
@@ -215,7 +223,8 @@ window.ks-glass button:not(.flat):not(.suggested-action):not(.destructive-action
   background-image: linear-gradient(180deg, alpha(white, 0.13), alpha(white, 0) 62%);
   box-shadow: inset 0 1px alpha(white, 0.26), 0 0 0 1px alpha(currentColor, 0.08);
 }
-window.ks-glass button.suggested-action, window.ks-glass .linked > togglebutton:checked,
+window.ks-glass button.suggested-action, window.ks-glass togglebutton:checked, window.ks-glass button:checked,
+window.ks-glass .linked > togglebutton:checked,
 window.ks-glass .linked > button:checked {
   box-shadow: inset 0 1px alpha(white, 0.50), inset 0 -3px 8px alpha(black, 0.14), 0 10px 22px -10px alpha(#6a7bff, 0.95);
 }

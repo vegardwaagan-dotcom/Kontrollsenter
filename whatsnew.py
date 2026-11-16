@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.24.2", "Lilla når det er på", [
+        ("Endret", [
+            "Alle knapper som er slått på blir nå lilla – på PC-en og i appen på mobil og nettbrett, "
+            "akkurat som «Auto» på viftene (f.eks. dempeknappen, profiler, tidsrom i grafene og stjerner)",
+        ]),
+    ]),
     ("0.24.1", "Alt om WoW på ett sted", [
         ("Endret", [
             "Spill: alt om World of Warcraft er samlet i ett kort rett under statistikken – karakterene, bagsøk, mål og "
