@@ -10,7 +10,8 @@ import i18n  # noqa: E402
 
 ICONS = {"cpu": "ks-overview-symbolic", "gpu": "ks-gpu-symbolic", "mem": "ks-programs-symbolic",
          "disk": "ks-disk-symbolic", "net": "ks-network-symbolic", "temps": "ks-power-symbolic",
-         "watt": "ks-power-symbolic", "mode": "ks-auto-symbolic", "bat": "ks-power-symbolic"}
+         "watt": "ks-power-symbolic", "mode": "ks-auto-symbolic", "bat": "ks-power-symbolic",
+         "fans": "ks-auto-symbolic", "health": "ks-tools-symbolic", "info": "ks-laptop-symbolic"}
 
 
 def _hex(c):
@@ -240,8 +241,14 @@ class DetailsDialog(Adw.Dialog):
                     r = g["rows"][key] = (row, v)
                 if r[0].get_title() != GLib.markup_escape_text(i18n.tr(name)):
                     r[0].set_title(GLib.markup_escape_text(i18n.tr(name)))
-                r[1].set_label(str(val))
-                r[1].set_width_chars(min(len(str(val)), 30))
+                val = str(val)
+                long = len(val) > 42                       # lange forklaringer under tittelen, ikke ved siden av
+                r[0].set_subtitle(GLib.markup_escape_text(val) if long else "")
+                r[0].set_subtitle_lines(0)
+                r[0].set_title_lines(0 if long else 1)
+                r[1].set_visible(not long)
+                r[1].set_label("" if long else val)
+                r[1].set_width_chars(min(len(val), 30))
         for key, r in g["rows"].items():
             r[0].set_visible(key in names)
 

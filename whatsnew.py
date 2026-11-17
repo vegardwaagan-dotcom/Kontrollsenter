@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.28.1", "Alle flisene", [
+        ("Nytt", [
+            "Alle flisene og kortene i Oversikt kan nå trykkes på for detaljer – også Strømmodus, Vifter (hver vifte, "
+            "turtall over tid og styring), Helse (hele systemsjekken) og Maskin (system, hovedkort, BIOS, grafikk, disker)",
+        ]),
+        ("Rettet", [
+            "Lange forklaringer i detaljene vises under tittelen i stedet for å klemme den",
+            "Detaljarket i appen er ikke lenger gjennomsiktig med flytende glass i lyst tema",
+        ]),
+    ]),
     ("0.28.0", "Din egen oversikt", [
         ("Nytt", [
             "Oversikt kan ordnes som du vil – på PC-en og i mobilappen: dra flisene og kortene til nye plasser. "

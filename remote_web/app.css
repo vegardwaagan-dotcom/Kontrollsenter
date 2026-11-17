@@ -662,4 +662,5 @@ body.eco .tiles.editing > [data-k], body.eco .tiles > [data-k].dglow { animation
 .nf-row span { flex: 1; min-width: 0; } .nf-row small { display: block; font-size: 12px; margin-top: 2px; }
 .nf-row.nf-master b { font-size: 15px; }
 .nf-kinds.off { opacity: .45; pointer-events: none; }
-body.glass .det-sheet { background-color: var(--card-solid); }
+body.glass .det-sheet { background-color: var(--card-solid) !important; }
+.det-kv div.long { flex-direction: column; gap: 2px; } .det-kv div.long b { color: var(--fg); font-weight: 600; } .det-kv div.long span { text-align: left; color: var(--dim); font-size: 13px; }

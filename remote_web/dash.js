@@ -8,7 +8,7 @@
 const DASH_KEY = "ks_dash_v1";
 const SIZES = { tile: ["s", "m", "l", "xl"], card: ["m", "xl"] };
 const SZ_TXT = { s: "S", m: "M", l: "L", xl: "XL" };
-const DETAIL = { cpu: "cpu", gpu: "gpu", mem: "mem", hot: "temps", watt: "watt", disk: "disk", net: "net", bat: "bat", temps: "temps" };
+const DETAIL = { cpu: "cpu", gpu: "gpu", mem: "mem", hot: "temps", watt: "watt", disk: "disk", net: "net", bat: "bat", temps: "temps", health: "health", info: "info" };
 let dashEditing = false, dashDrag = null, dashJustPressed = 0;
 
 const dashBox = () => $("#tiles");
@@ -215,7 +215,7 @@ function dashWire() {
   box.addEventListener("contextmenu", (ev) => ev.preventDefault());
   box.addEventListener("click", (ev) => {
     if (dashEditing || Date.now() - dashJustPressed < 600) return;
-    if (ev.target.closest("button, a, input, select")) return;
+    if (ev.target.closest("button, a, input, select, summary, label")) return;
     const el = ev.target.closest("#tiles > [data-k]");
     if (el && DETAIL[el.dataset.k]) openDetail(DETAIL[el.dataset.k]);
   });
@@ -248,7 +248,7 @@ detBack.querySelector("#det-x").onclick = () => closeDetail();
 function openDetail(k) {
   detOpen = k;
   $("#det-t").textContent = { cpu: "Prosessor", gpu: "Skjermkort", mem: "Minne", temps: "Temperaturer", watt: "Strømforbruk",
-    disk: "Disk", net: "Nettverk", bat: "Batteri" }[k] || "";
+    disk: "Disk", net: "Nettverk", bat: "Batteri", health: "Helse", info: "Maskin", fans: "Vifter", mode: "Strømmodus" }[k] || "";
   $("#det-body").innerHTML = '<p class="dim" style="padding:20px 6px">Henter …</p>';
   detBack.hidden = false;
   requestAnimationFrame(() => detBack.classList.add("open"));
@@ -290,7 +290,7 @@ function renderDetail(d) {
       h += `<div class="det-bars">${s.bars.map(([n, p, t]) => `<div class="det-bar"><div class="row between"><span>${esc(n)}</span><span class="dim num">${esc(t)}</span></div>
         <div class="det-track"><i class="${pctCls(p)}" style="width:${Math.max(0, Math.min(100, p))}%"></i></div></div>`).join("")}</div>`;
     } else {
-      h += `<div class="kv det-kv">${(s.rows || []).map(([a, b]) => `<div><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join("")}</div>`;
+      h += `<div class="kv det-kv">${(s.rows || []).map(([a, b]) => `<div class="${String(b).length > 34 ? "long" : ""}"><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join("")}</div>`;
     }
   });
   body.innerHTML = h;

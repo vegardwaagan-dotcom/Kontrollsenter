@@ -14,12 +14,34 @@ import time
 from collections import deque
 
 IS_WIN = sys.platform == "win32"
-KINDS = ("cpu", "gpu", "mem", "disk", "net", "temps", "watt", "mode", "bat")
+KINDS = ("cpu", "gpu", "mem", "disk", "net", "temps", "watt", "mode", "bat", "fans", "health", "info")
 TITLES = {"cpu": "Prosessor", "gpu": "Skjermkort", "mem": "Minne (RAM)", "disk": "Disk", "net": "Nettverk",
-          "temps": "Temperaturer", "watt": "Strømforbruk", "mode": "Strømmodus", "bat": "Batteri"}
+          "temps": "Temperaturer", "watt": "Strømforbruk", "mode": "Strømmodus", "bat": "Batteri",
+          "fans": "Vifter", "health": "Helse", "info": "Maskin"}
 
 # historikk for det som ikke har egen graf i vinduet (legges til hvert sekund av vinduet)
-HIST = {"temp": deque(maxlen=3600), "watt": deque(maxlen=3600)}
+HIST = {"temp": deque(maxlen=3600), "watt": deque(maxlen=3600), "rpm": deque(maxlen=3600)}
+_BG = {}
+
+
+def _cached(name, fn, max_age):
+    """Treg data (systemsjekk, maskininfo) hentes i bakgrunnen; vinduet får siste kjente svar med en gang."""
+    import threading
+    c = _BG.setdefault(name, {"t": 0, "v": None, "busy": False})
+    if time.time() - c["t"] > max_age and not c["busy"]:
+        c["busy"] = True
+
+        def work():
+            try:
+                c["v"] = fn()
+                c["t"] = time.time()
+            except Exception:  # noqa: BLE001
+                import applog
+                applog.log.exception("detaljer: %s", name)
+            finally:
+                c["busy"] = False
+        threading.Thread(target=work, daemon=True).start()
+    return c["v"]
 
 
 def record(win):
@@ -29,6 +51,17 @@ def record(win):
     w = (getattr(win, "_power", None) or {}).get("total")
     if w:
         HIST["watt"].append(w)
+    fc = getattr(win, "fans", None)
+    rpms = []
+    for row in (getattr(fc, "rows", None) or {}).values():
+        try:
+            v = float(row.rpm.get_label().split()[0])
+            if v > 0 and row.rpm.get_label().strip().endswith("RPM"):
+                rpms.append(v)
+        except (ValueError, IndexError, AttributeError):
+            pass
+    if rpms:
+        HIST["rpm"].append(sum(rpms) / len(rpms))
 
 
 def _fb(n):
@@ -356,3 +389,78 @@ def _bat(win, d):
         d["sections"].append({"title": "Trådløse enheter", "bars": bars})
     if not d["sections"]:
         d["sections"].append({"title": "Batteri", "rows": [["Status", "Fant ingen batterier"]]})
+
+
+def _fans(win, d):
+    fc = getattr(win, "fans", None)
+    rows = getattr(fc, "rows", None) or {}
+    if not rows:
+        d["sections"].append({"title": "Vifter", "rows": [["Status", "Fant ingen vifter som kan styres"]]})
+        return
+    d["value"] = "Kurve" if getattr(fc, "curve_on", False) else (
+        "Auto" if all(r.auto.get_active() for r in rows.values()) else "Manuell")
+    d["sub"] = f"{len(rows)} vifter"
+    if HIST["rpm"]:
+        d["series"].append({"name": "Snitt", "color": "#21a8b3", "unit": "RPM", "pts": _pts(HIST["rpm"])})
+    bars, info = [], []
+    for row in rows.values():
+        name = row.widgets[0].get_label()
+        auto = row.auto.get_active()
+        pct = row.scale.get_value()
+        bars.append([name, round(pct), f"{row.rpm.get_label()} · " + ("auto" if auto else f"{pct:.0f} %")])
+        info.append([name, f"minst {row.min_pct} %"])
+    d["sections"].append({"title": "Hver vifte", "bars": bars})
+    t = getattr(win, "_cpu_t", None)
+    nv = getattr(getattr(win, "nvidia", None), "data", None) or {}
+    d["sections"].append({"title": "Nå", "rows": [
+        ["Styring", d["value"]], ["CPU-temperatur", _t(t, "°C")], ["GPU-temperatur", _t(nv.get("temp"), "°C")],
+        ["Skjermkortvifte", _t(nv.get("fan"), "%")]]})
+    d["sections"].append({"title": "Sikkerhet", "rows": info + [
+        ["Nødstopp", "Alle vifter går til auto hvis CPU når 90 °C eller GPU 85 °C"]]})
+
+
+def _health(win, d):
+    import remote_extra
+    h = _cached("health", lambda: remote_extra.health(False), 600)
+    if not h:
+        d["value"] = "…"
+        d["sections"].append({"title": "Systemsjekk", "rows": [["Status", "Sjekker PC-en … (tar noen sekunder)"]]})
+        return
+    d["value"] = h["grade"]
+    items = h.get("items") or []
+    bad = [i for i in items if i["level"] in ("warn", "error")]
+    d["sub"] = f"{len(bad)} ting bør sjekkes" if bad else "Alt ser bra ut"
+    icon = {"error": "❌ ", "warn": "⚠️ ", "ok": "✓ ", "info": "ℹ️ "}
+    for title, lv in (("Bør fikses", ("error", "warn")), ("Til info", ("info",)), ("I orden", ("ok",))):
+        rows = [[icon.get(i["level"], "") + i["title"], str(i.get("detail") or "")[:160]] for i in items if i["level"] in lv]
+        if rows:
+            d["sections"].append({"title": title, "rows": rows})
+    d["sections"].append({"title": "Sjekket", "rows": [["Sist", time.strftime("%H:%M", time.localtime(h.get("t", 0)))]]})
+
+
+def _info(win, d):
+    import psutil
+    if IS_WIN:
+        import wintools
+        fn = wintools.system_info
+    else:
+        import tools
+        fn = tools.system_info
+    rows = _cached("info", fn, 3600)
+    d["value"] = ""
+    d["title"] = platform.node() or "Maskin"
+    d["sub"] = f"oppe {_uptime()}"
+    if rows:
+        d["sections"].append({"title": "Maskinen", "rows": [[k, v] for k, v in rows]})
+    else:
+        d["sections"].append({"title": "Maskinen", "rows": [["Status", "Henter info …"]]})
+    try:
+        import whatsnew
+        ver = whatsnew.current_version()
+    except Exception:  # noqa: BLE001
+        ver = "?"
+    vm = psutil.virtual_memory()
+    d["sections"].append({"title": "Nå", "rows": [
+        ["Oppetid", _uptime()], ["Startet", time.strftime("%d.%m %H:%M", time.localtime(psutil.boot_time()))],
+        ["Prosesser", str(len(psutil.pids()))], ["Minne i bruk", f"{vm.percent:.0f} %"],
+        ["Python", platform.python_version()], ["Kontrollsenter", ver]]})

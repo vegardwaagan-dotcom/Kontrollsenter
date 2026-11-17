@@ -377,9 +377,9 @@ class MonitorWindow(Adw.ApplicationWindow):
             flow.add("batterier", battery_ui.BatteryCard(), 9, on_click=lambda: self.open_details("bat"))
         except Exception:  # noqa: BLE001
             pass
-        flow.add("strommodus", self.power, 9)
+        flow.add("strommodus", self.power, 9, on_click=lambda: self.open_details("mode"))
         self.fans = FanCard(self.nvidia.available)
-        flow.add("vifter", self.fans, 9)
+        flow.add("vifter", self.fans, 9, on_click=lambda: self.open_details("fans"))
         # (Windows: viftene styres via LibreHardwareMonitor)
         self.connect("close-request", lambda *_: self.fans.all_auto_now() or False)
         # Tidsrom for grafene: 1 min, 10 min eller 1 time (hold musa over en graf for verdi og tid)
