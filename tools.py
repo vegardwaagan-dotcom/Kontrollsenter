@@ -979,9 +979,172 @@ class _Cards:
             ds.add_css_class("dim-label")
             col.append(ds)
             b.set_child(col)
-            b.connect("toggled", lambda w, k=key: w.get_active() and ks_theme.set_theme(k))
+            b.connect("toggled", lambda w, k=key: w.get_active() and self._pick_theme(k))
             flow.append(b)
+            self._swatches = getattr(self, "_swatches", {})
+            self._swatches[key] = b
         i.append(flow)
+        self.box.append(c)
+        self._try(self._custom_card)
+        self._try(self._time_card)
+        self._try(self._game_theme_card)
+
+    def _pick_theme(self, key):
+        import theme as ks_theme
+        import looks
+        ks_theme.set_theme(key)
+        if ks_theme.look().get("auto") == "time" and getattr(self, "_time_sw", None):
+            self._time_sw.set_active(False)                 # du valgte selv – tidsplanen slås av
+        looks.refresh(force=True)
+
+    # ---- eget tema ----
+    def _custom_card(self):
+        import theme as ks_theme
+        import looks
+        c, i = card("Eget tema", "Velg to farger selv – eller la Kontrollsenter hente dem fra skrivebordsbakgrunnen din.")
+        cu = ks_theme.look().get("custom") or {"a": "#ff5e9c", "b": "#5b8cff", "dark": True}
+
+        def cbtn(h):
+            b = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog(with_alpha=False), valign=Gtk.Align.CENTER)
+            col = Gdk.RGBA()
+            col.parse(h)
+            b.set_rgba(col)
+            return b
+        hexof = lambda b: "#%02x%02x%02x" % tuple(round(v * 255) for v in (b.get_rgba().red, b.get_rgba().green,  # noqa: E731
+                                                                          b.get_rgba().blue))
+        row = Gtk.Box(spacing=10)
+        a, b = cbtn(cu["a"]), cbtn(cu["b"])
+        row.append(Gtk.Label(label="Farge 1"))
+        row.append(a)
+        row.append(Gtk.Label(label="Farge 2"))
+        row.append(b)
+        dark = Gtk.Switch(active=cu.get("dark", True), valign=Gtk.Align.CENTER)
+        row.append(Gtk.Label(label="Mørkt", margin_start=10))
+        row.append(dark)
+        i.append(row)
+        bb = Gtk.Box(spacing=8)
+        use = Gtk.Button(label="Bruk mine farger")
+        use.add_css_class("suggested-action")
+        use.connect("clicked", lambda *_: (looks.set_custom(hexof(a), hexof(b), dark.get_active()), self._mark("eget")))
+        bb.append(use)
+        wp = Gtk.Button(label="Hent fra skrivebordsbakgrunnen")
+        st = dim("")
+
+        def from_wall(*_):
+            path = looks.wallpaper_path()
+            if not path:
+                __import__("ui").status(st, "Fant ikke skrivebordsbakgrunnen")
+                return
+            try:
+                ca, cb_ = looks.colors_from_image(path)
+            except Exception as e:  # noqa: BLE001
+                __import__("ui").status(st, f"Kunne ikke lese bildet ({e})")
+                return
+            for btn, h in ((a, ca), (b, cb_)):
+                col = Gdk.RGBA()
+                col.parse(h)
+                btn.set_rgba(col)
+            looks.set_custom(ca, cb_, dark.get_active())
+            self._mark("eget")
+            __import__("ui").status(st, "Fargene er hentet fra " + os.path.basename(path) + " ✓")
+        wp.connect("clicked", from_wall)
+        bb.append(wp)
+        i.append(bb)
+        i.append(st)
+        self.box.append(c)
+
+    def _mark(self, key):
+        b = getattr(self, "_swatches", {}).get(key)
+        if b is not None and not b.get_active():
+            b.set_active(True)
+
+    # ---- tid på døgnet ----
+    def _time_card(self):
+        import theme as ks_theme
+        import looks
+        c, i = card("Tema etter tid på døgnet", "Byttes av seg selv – og glir sakte over i det neste temaet de siste "
+                                                "20 minuttene, som en solnedgang.")
+        lk = ks_theme.look()
+        times = lk.get("times") or looks.DEFAULT_TIMES
+        keys = [k for k in ks_theme.THEMES if k != "standard"]
+
+        def save():
+            out = {}
+            for per, (ent, dd) in self._time_rows.items():
+                out[per] = [ent.get_text().strip() or looks.DEFAULT_TIMES[per][0], keys[dd.get_selected()]]
+            ks_theme._save_look(times=out)
+            looks.refresh(force=True)
+
+        def on(w, _p):
+            ks_theme._save_look(auto="time" if w.get_active() else "off")
+            box.set_sensitive(w.get_active())
+            looks.refresh(force=True)
+        self._time_sw = self._switch_row(i, "Slå på", None, lk.get("auto") == "time", on)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, sensitive=lk.get("auto") == "time")
+        self._time_rows = {}
+        for per, label in (("day", "Morgen fra"), ("evening", "Kveld fra"), ("night", "Natt fra")):
+            hhmm, th = times.get(per, looks.DEFAULT_TIMES[per])
+            r = Gtk.Box(spacing=10)
+            r.append(Gtk.Label(label=label, xalign=0, width_chars=11))
+            ent = Gtk.Entry(text=hhmm, width_chars=6, max_width_chars=6)
+            ent.connect("changed", lambda *_: save())
+            r.append(ent)
+            dd = Gtk.DropDown.new_from_strings([ks_theme.THEMES[k]["name"] for k in keys])
+            dd.set_selected(keys.index(th) if th in keys else 0)
+            dd.connect("notify::selected", lambda *_: save())
+            r.append(dd)
+            box.append(r)
+            self._time_rows[per] = (ent, dd)
+        i.append(box)
+        self.box.append(c)
+
+    # ---- tema per spill ----
+    def _game_theme_card(self):
+        import theme as ks_theme
+        c, i = card("Tema som følger spillet", "Når spillet starter, bytter hele Kontrollsenter tema – og "
+                                               "RGB-lysene i PC-en får samme farge. Alt går tilbake når du avslutter.")
+        lk = ks_theme.look()
+        self._switch_row(i, "RGB-lysene i samme farge", None, lk.get("game_rgb", True),
+                         lambda w, _p: ks_theme._save_look(game_rgb=w.get_active()))
+        self._switch_row(i, "Levende bakgrunn", "Gløden i bakgrunnen beveger seg sakte og lyser sterkere når PC-en "
+                         "jobber hardt.", bool(lk.get("live")), lambda w, _p: ks_theme._save_look(live=w.get_active()))
+        try:
+            import games_auto
+            names = []
+            for x in reversed(games_auto.load_sessions()):
+                n = x.get("name")
+                if n and n not in names:
+                    names.append(n)
+            g = getattr(games_auto, "running_game", lambda: None)()
+            if g and g[1] not in names:
+                names.insert(0, g[1])
+        except Exception:  # noqa: BLE001
+            names = []
+        games = dict(lk.get("games") or {})
+        for n in games:
+            if n not in names:
+                names.append(n)
+        if not names:
+            i.append(dim("Spill du har spilt dukker opp her – start et spill én gang, så kan du velge tema for det."))
+        keys = [None] + [k for k in ks_theme.THEMES if k != "standard"]
+        labels = ["Ikke bytt"] + [ks_theme.THEMES[k]["name"] for k in keys[1:]]
+        for n in names[:14]:
+            r = Gtk.Box(spacing=10)
+            r.append(Gtk.Label(label=n, xalign=0, hexpand=True, ellipsize=3))
+            dd = Gtk.DropDown.new_from_strings(labels)
+            dd.set_selected(keys.index(games.get(n)) if games.get(n) in keys else 0)
+
+            def ch(w, _p, n=n):
+                cur = dict(ks_theme.look().get("games") or {})
+                k = keys[w.get_selected()]
+                if k:
+                    cur[n] = k
+                else:
+                    cur.pop(n, None)
+                ks_theme._save_look(games=cur)
+            dd.connect("notify::selected", ch)
+            r.append(dd)
+            i.append(r)
         self.box.append(c)
 
     @staticmethod

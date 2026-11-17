@@ -159,6 +159,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         ks_theme.load()
         if ks_theme.glass_on():
             self.add_css_class("ks-glass")
+        try:                                             # tid på døgnet, spilltema, levende bakgrunn
+            import looks
+            GLib.idle_add(lambda: looks.start(self) and False)
+        except Exception:  # noqa: BLE001
+            applog.log.exception("temaer")
         try:                                             # lys som følger musa på knappene
             import spotlight
             spotlight.attach(self)

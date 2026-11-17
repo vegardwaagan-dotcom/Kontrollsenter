@@ -37,7 +37,8 @@ function applyLook() {
   const th = pref("theme", "auto");
   const lk = typeof curLook === "function" ? curLook() : "standard";
   const lt = (window.KS_THEMES || []).find((t) => t.k === lk);
-  if (lt && lt.k !== "standard") document.documentElement.dataset.theme = lt.dark === false ? "light" : "dark";   // fargetema bestemmer
+  if (lk === "eget") document.documentElement.dataset.theme = "dark";
+  else if (lt && lt.k !== "standard") document.documentElement.dataset.theme = lt.dark === false ? "light" : "dark";   // fargetema bestemmer
   else if (th === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = th;
   $$("#theme button").forEach((b) => b.classList.toggle("on", b.dataset.v === th));
   document.body.classList.toggle("simple", !!pref("simple", false));
@@ -60,6 +61,7 @@ function setLook(k) {
   root.classList.add("ks-fade");
   if (k === "standard") root.removeAttribute("data-ks"); else root.setAttribute("data-ks", k);
   setTimeout(() => root.classList.remove("ks-fade"), 700);
+  if (typeof applyOwn === "function") applyOwn();
   applyLook();
   drawLooks();
 }
@@ -76,6 +78,53 @@ function drawLooks() {
   $("#theme").hidden = !std; $("#theme-label").hidden = !std;
 }
 drawLooks();
+
+// eget tema: to farger -> variablene settes rett på siden
+function hexRgb(h) { h = h.replace("#", ""); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); }
+function shade(h, f) { const c = hexRgb(h); return "#" + c.map((v) => Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f).toString(16).padStart(2, "0")).join(""); }
+function mixHex(a, b) { const x = hexRgb(a), y = hexRgb(b); return "#" + x.map((v, i) => Math.round((v + y[i]) / 2).toString(16).padStart(2, "0")).join(""); }
+function applyOwn() {
+  const r = document.documentElement.style;
+  const vars = ["--bg", "--bg2", "--card", "--card-solid", "--ga", "--gb", "--gc", "--acc", "--acc2", "--c1", "--grad", "--aurora"];
+  if (curLook() !== "eget") { vars.forEach((v) => r.removeProperty(v)); return; }
+  let c = {}; try { c = JSON.parse(localStorage.getItem("ks_own") || (KS && KS.getLookColors && KS.getLookColors()) || "{}"); } catch (e) {}
+  const a = c.a || "#ff5e9c", b = c.b || "#5b8cff", m = mixHex(a, b), ra = hexRgb(a), rb = hexRgb(b);
+  const set = { "--bg": shade(m, -0.9), "--bg2": shade(m, -0.86) + "e0", "--card-solid": shade(m, -0.8), "--card": `rgba(${hexRgb(shade(m, -0.8)).join(",")},.62)`,
+    "--ga": a, "--gb": b, "--gc": shade(m, 0.35), "--acc": a, "--acc2": b, "--c1": a, "--grad": `linear-gradient(135deg, ${a} 0%, ${b} 100%)`,
+    "--aurora": `radial-gradient(60% 45% at 8% -5%, rgba(${ra.join(",")},.34), transparent 70%), radial-gradient(50% 40% at 100% 0%, rgba(${rb.join(",")},.30), transparent 70%)` };
+  Object.entries(set).forEach(([k, v]) => r.setProperty(k, v));
+  document.documentElement.dataset.theme = "dark";
+}
+$("#look-own").onclick = () => {
+  const c = JSON.stringify({ a: $("#look-a").value, b: $("#look-b").value });
+  try { localStorage.setItem("ks_own", c); } catch (e) {}
+  try { if (KS && KS.setLookColors) KS.setLookColors(c); } catch (e) {}
+  setPref("look_time", false); $("#look-time").checked = false;
+  setLook("eget");
+};
+applyOwn();
+// tema etter tid på døgnet (myk overgang med fade)
+const LOOK_TIMES = [[7 * 60, "arktis"], [18 * 60, "solnedgang"], [22 * 60 + 30, "nordlys"]];
+function timeLook() {
+  const d = new Date(), m = d.getHours() * 60 + d.getMinutes();
+  let cur = LOOK_TIMES[LOOK_TIMES.length - 1][1];
+  LOOK_TIMES.forEach(([t, k]) => { if (m >= t) cur = k; });
+  return cur;
+}
+function lookTick() {
+  if (!pref("look_time", false)) return;
+  const k = timeLook();
+  if (k !== curLook()) setLook(k);
+}
+$("#look-time").checked = !!pref("look_time", false);
+$("#look-time").onchange = () => { setPref("look_time", $("#look-time").checked); lookTick(); };
+setInterval(lookTick, 60000); lookTick();
+// levende bakgrunn: aurora beveger seg; styrken følger CPU-belastningen
+$("#look-live").checked = !!pref("look_live", false);
+function applyLive() { document.body.classList.toggle("live-bg", !!pref("look_live", false)); }
+$("#look-live").onchange = () => { setPref("look_live", $("#look-live").checked); applyLive(); };
+applyLive();
+setInterval(() => { if (last && last.cpu) document.documentElement.style.setProperty("--live", String(0.55 + Math.min(1, (last.cpu.load || 0) / 80) * 0.45)); }, 2000);
 $("#simple").onchange = () => { setPref("simple", $("#simple").checked); applyLook(); };
 $("#simple-off").onclick = () => { setPref("simple", false); applyLook(); toast("Enkel visning er av"); };
 $("#auto-second").onchange = () => setPref("auto_second", $("#auto-second").checked);

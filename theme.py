@@ -373,6 +373,61 @@ def _mix(x, y):
     return "#%02x%02x%02x" % tuple((i + j) // 2 for i, j in zip(a, b))
 
 
+def _t(x):
+    """Navn eller ferdig tema-dict -> dict."""
+    if isinstance(x, dict):
+        return x
+    return THEMES.get(x or current_theme(), THEMES["standard"])
+
+
+DARK_DEFAULT = {"bg": "#0f1016", "side": "#14151d", "card": "#191a23", "fg": "#f3f3f7", "dim": "#9a9bab"}
+
+
+def blend(x, y, f):
+    """Tema midt mellom x og y (f = 0 … 1) – til myke overganger."""
+    ta, tb = dict(DARK_DEFAULT, **_t(x)), dict(DARK_DEFAULT, **_t(y))
+    out = {"name": "", "desc": "", "dark": tb["dark"] if f >= 0.5 else ta["dark"]}
+    if out["dark"] is None:
+        out["dark"] = True
+    for k in ("a", "b", "c", "bg", "side", "card", "fg", "dim"):
+        a, b = _rgb(ta[k]), _rgb(tb[k])
+        out[k] = "#%02x%02x%02x" % tuple(round(i + (j - i) * f) for i, j in zip(a, b))
+    return out
+
+
+def _lum(h):
+    r, g, b = (v / 255 for v in _rgb(h))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _shade(h, f):
+    """Mørkere (f<0) eller lysere (f>0) variant av en farge."""
+    r = _rgb(h)
+    if f < 0:
+        return "#%02x%02x%02x" % tuple(round(v * (1 + f)) for v in r)
+    return "#%02x%02x%02x" % tuple(round(v + (255 - v) * f) for v in r)
+
+
+def make_custom(a, b, dark=True):
+    """Eget tema av to farger: flatene blandes av fargene, mørkt eller lyst."""
+    m = _mix(a, b)
+    if dark:
+        bg = _shade(m, -0.90)
+        return {"name": "Eget", "desc": "Dine egne farger", "dark": True, "a": a, "b": b, "c": _shade(m, 0.35),
+                "bg": bg, "side": _shade(m, -0.86), "card": _shade(m, -0.80), "fg": "#f4f4f8", "dim": "#a3a3b5"}
+    return {"name": "Eget", "desc": "Dine egne farger", "dark": False, "a": a, "b": b, "c": _shade(m, 0.4),
+            "bg": _shade(m, 0.94), "side": _shade(m, 0.90), "card": "#ffffff", "fg": "#17181f", "dim": "#666878"}
+
+
+def _load_custom():
+    try:
+        c = json.load(open(LOOK)).get("custom")
+    except (OSError, ValueError):
+        c = None
+    if c and c.get("a") and c.get("b"):
+        THEMES["eget"] = make_custom(c["a"], c["b"], c.get("dark", True))
+
+
 def current_theme():
     try:
         t = json.load(open(LOOK)).get("theme", "standard")
@@ -383,7 +438,7 @@ def current_theme():
 
 def recolor(css, name=None):
     """Bytt standardfargene i et stilark med temaets farger."""
-    t = THEMES.get(name or current_theme(), THEMES["standard"])
+    t = _t(name)
     if t is THEMES["standard"]:
         return css
     for hx, k in _BASE.items():
@@ -393,7 +448,7 @@ def recolor(css, name=None):
 
 def theme_css(name=None):
     """Ekstra stilark for temaet: flater, tekst og en bakgrunn med glød i temaets farger."""
-    t = THEMES.get(name or current_theme(), THEMES["standard"])
+    t = _t(name)
     if "bg" not in t:
         return ""
     mid = _mix(t["a"], t["b"])
@@ -520,6 +575,7 @@ def load():
     if _LOADED:
         return
     _LOADED = True
+    _load_custom()
     add_css(CSS)
     add_css(GLASS_CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
     add_css(GLOW_CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
@@ -533,26 +589,55 @@ def load():
 _THEME = [None]
 
 
+_SHOWN = [None]
+
+
+def show(t):
+    """Vis et tema (navn eller dict) uten å lagre det – brukt av spill, tid på døgnet og overganger."""
+    disp = Gdk.Display.get_default()
+    for sh in _SHEETS:
+        Gtk.StyleContext.remove_provider_for_display(disp, sh[2])
+        sh[2] = _provider(recolor(sh[0], t))
+        Gtk.StyleContext.add_provider_for_display(disp, sh[2], sh[1])
+    if _THEME[0] is not None:
+        Gtk.StyleContext.remove_provider_for_display(disp, _THEME[0])
+    _THEME[0] = _provider(theme_css(t))
+    Gtk.StyleContext.add_provider_for_display(disp, _THEME[0], Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 4)
+    td = _t(t)
+    try:
+        from gi.repository import Adw
+        dark = td.get("dark")
+        Adw.StyleManager.get_default().set_color_scheme(
+            Adw.ColorScheme.DEFAULT if dark is None else
+            Adw.ColorScheme.FORCE_DARK if dark else Adw.ColorScheme.FORCE_LIGHT)
+    except Exception:  # noqa: BLE001
+        pass
+    _SHOWN[0] = t
+
+
 def set_theme(name):
     """Bytt tema med en gang i hele programmet, og husk valget."""
     if name not in THEMES:
         return
     _save_look(theme=name)
-    disp = Gdk.Display.get_default()
-    for sh in _SHEETS:
-        Gtk.StyleContext.remove_provider_for_display(disp, sh[2])
-        sh[2] = _provider(recolor(sh[0], name))
-        Gtk.StyleContext.add_provider_for_display(disp, sh[2], sh[1])
-    if _THEME[0] is not None:
-        Gtk.StyleContext.remove_provider_for_display(disp, _THEME[0])
-    _THEME[0] = _provider(theme_css(name))
-    Gtk.StyleContext.add_provider_for_display(disp, _THEME[0], Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 4)
-    _scheme(name)
+    show(name)
+    try:
+        import looks
+        looks._STATE["last"] = name
+    except Exception:  # noqa: BLE001
+        pass
     for cb in list(_LISTENERS):
         try:
             cb(name)
         except Exception:  # noqa: BLE001
             pass
+
+
+def look():
+    try:
+        return json.load(open(LOOK))
+    except (OSError, ValueError):
+        return {}
 
 
 _LISTENERS = []

@@ -240,6 +240,8 @@ def tick(auto):
         try:
             import scenes
             scenes.on_event(win, "game_start", g[1])
+            import looks
+            looks.on_game(g[1])
         except Exception:  # noqa: BLE001
             pass
         enabled, p = profile_for(g[0])
@@ -268,6 +270,8 @@ def tick(auto):
         try:
             import scenes
             scenes.on_event(win, "game_end", name)
+            import looks
+            looks.on_game(None)
         except Exception:  # noqa: BLE001
             pass
         if auto.session:

@@ -641,6 +641,17 @@ public class MainActivity extends Activity {
             getSharedPreferences("ks", 0).edit().putString("look", name).apply();
         }
 
+        @JavascriptInterface
+        public String getLookColors() {
+            return getSharedPreferences("ks", 0).getString("look_colors", "");
+        }
+
+        @JavascriptInterface
+        public void setLookColors(String json) {
+            if (json == null || json.length() > 200) return;
+            getSharedPreferences("ks", 0).edit().putString("look_colors", json).apply();
+        }
+
         /** Varselvalg på denne telefonen: JSON {"all":true,"temp":false,...} (mangler = på). */
         @JavascriptInterface
         public String getNotify() {

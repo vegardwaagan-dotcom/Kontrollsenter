@@ -78,7 +78,7 @@ class _Item(Gtk.Overlay):
         self.dash, self.key, self.size, self.sizes = dash, key, size, sizes
         self.add_css_class("ks-dash-item")
         widget.set_hexpand(True)
-        widget.set_vexpand(True)
+        widget.set_valign(Gtk.Align.FILL)
         self.set_child(widget)
         self.widget = widget
         # verktøylinje (vises når du tilpasser): størrelser

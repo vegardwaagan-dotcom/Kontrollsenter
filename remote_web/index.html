@@ -7,7 +7,7 @@
 <title>Kontrollsenter</title>
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="themes.css">
-<script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sakura|arktis)$/.test(k)?"light":"dark");}}catch(e){}</script>
+<script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sakura|arktis)$/.test(k)?"light":"dark");if(k==="eget"){var c=JSON.parse(localStorage.getItem("ks_own")||(window.KS&&KS.getLookColors&&KS.getLookColors())||"{}");if(c.a&&c.b){["--ga","--acc","--c1"].forEach(function(v){r.style.setProperty(v,c.a)});["--gb","--acc2"].forEach(function(v){r.style.setProperty(v,c.b)});r.style.setProperty("--grad","linear-gradient(135deg,"+c.a+","+c.b+")");}}}}catch(e){}</script>
 </head>
 <body>
 <div class="shell">
@@ -231,6 +231,9 @@
           <button data-timer="120">2 timer</button><button data-timer="idle">Etter nedlasting</button><button data-timer="off">Avbryt</button></div></div>
       <div class="card"><h2>Utseende</h2>
         <div class="label">Tema</div><div class="themes" id="ks-themes"></div>
+        <div class="row"><span>Tema etter tid på døgnet<br><small class="dim">Arktis fra 07, Solnedgang fra 18, Nordlys fra 22:30</small></span><label class="switch"><input type="checkbox" id="look-time"><i></i></label></div>
+        <div class="row"><span>Levende bakgrunn<br><small class="dim">Gløden beveger seg og lyser sterkere når PC-en jobber</small></span><label class="switch"><input type="checkbox" id="look-live"><i></i></label></div>
+        <div class="row"><span>Eget tema</span><input type="color" id="look-a" value="#ff5e9c"><input type="color" id="look-b" value="#5b8cff"><button class="soft" id="look-own">Bruk</button></div>
         <div class="label" id="theme-label">Lyst eller mørkt</div>
         <div class="seg" id="theme"><button data-v="auto">Auto</button><button data-v="light">Lyst</button><button data-v="dark">Mørkt</button><button data-v="amoled">AMOLED</button></div>
         <div class="row"><span>Flytende glass</span><label class="switch"><input type="checkbox" id="glass"><i></i></label></div>

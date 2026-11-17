@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.33.0", "Levende temaer", [
+        ("Nytt", [
+            "Tema etter tid på døgnet: Arktis om morgenen, Solnedgang om kvelden og Nordlys om natten (du velger tider og "
+            "temaer). På PC-en glir fargene sakte over i det neste temaet de siste 20 minuttene",
+            "Tema som følger spillet: velg et tema per spill – når spillet starter, bytter Kontrollsenter tema og RGB-lysene "
+            "i PC-en får samme farge. Alt går tilbake når du avslutter",
+            "Eget tema: velg to farger selv, eller la Kontrollsenter hente fargene fra skrivebordsbakgrunnen din",
+            "Levende bakgrunn: gløden beveger seg sakte og lyser sterkere når PC-en jobber hardt (PC og app)",
+        ]),
+        ("Rettet", [
+            "Kortene på sidene fikk tom luft nederst etter at de ble flyttbare",
+        ]),
+    ]),
     ("0.32.0", "Scener", [
         ("Nytt", [
             "Scener: én knapp som setter hele rommet og PC-en på én gang – strømmodus, vifter, RGB, Hue-lysene, "
