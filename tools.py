@@ -951,6 +951,57 @@ class _Cards:
             i.append(dim("Start Kontrollsenter skjult ved innlogging: Programmer → Oppstart → Kontrollsenter."))
         self.box.append(c)
 
+    def _infotiles_card(self):
+        import infotiles as I
+        import dashboard as D
+        c, i = card("Fliser i Oversikt", "Vær, strømpris og kalender. Bare stedsnavnet du skriver sendes til "
+                                         "værtjenesten (open-meteo.com); strømprisen kommer fra hvakosterstrommen.no.")
+        cf = I.cfg()
+        st = dim("")
+        r = Gtk.Box(spacing=8)
+        r.append(Gtk.Label(label="Sted for været", width_chars=16, xalign=0))
+        place = Gtk.Entry(text=cf.get("place", ""), placeholder_text="f.eks. Trondheim", hexpand=True)
+        r.append(place)
+        find = Gtk.Button(label="Lagre")
+
+        def do_find(*_):
+            name = place.get_text().strip()
+            if not name:
+                return
+
+            def work():
+                try:
+                    nm, lat, lon = I.find_place(name)
+                    I.save_cfg(place=nm, lat=lat, lon=lon)
+                    return "Været hentes for " + nm + " ✓"
+                except Exception as e:  # noqa: BLE001
+                    return str(e)
+            self._bg(work, lambda t: __import__("ui").status(st, t))
+        find.connect("clicked", do_find)
+        place.connect("activate", do_find)
+        r.append(find)
+        i.append(r)
+        r = Gtk.Box(spacing=8)
+        r.append(Gtk.Label(label="Strømprisområde", width_chars=16, xalign=0))
+        dd = Gtk.DropDown.new_from_strings([f"{a} – {n}" for a, n in I.AREAS])
+        codes = [a for a, _n in I.AREAS]
+        dd.set_selected(codes.index(cf.get("area", "NO1")) if cf.get("area", "NO1") in codes else 0)
+        dd.connect("notify::selected", lambda w, _p: I.save_cfg(area=codes[w.get_selected()]))
+        r.append(dd)
+        i.append(r)
+        r = Gtk.Box(spacing=8)
+        r.append(Gtk.Label(label="Kalender (iCal)", width_chars=16, xalign=0))
+        ics = Gtk.Entry(text=cf.get("ics", ""), hexpand=True,
+                        placeholder_text="Hemmelig adresse i iCal-format (Google Kalender → Innstillinger)")
+        ics.connect("changed", lambda w: I.save_cfg(ics=w.get_text().strip()))
+        r.append(ics)
+        i.append(r)
+        self._switch_row(i, "Oppsettet «Spill» når et spill starter", "Oversikt bytter til oppsettet Spill mens du "
+                         "spiller, og tilbake etterpå.", D._load().get("_auto_game_layout", True),
+                         lambda w, _p: D._save_group("_auto_game_layout", w.get_active()))
+        i.append(st)
+        self.box.append(c)
+
     def _theme_card(self):
         import i18n
         import theme as ks_theme
@@ -1463,6 +1514,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)
+        self._try(self._infotiles_card)
         self.tab("varsler", "Varsler")
         self._try(self._notify_card)
         self.tab("automatikk", "Automatikk")

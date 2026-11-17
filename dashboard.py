@@ -97,6 +97,11 @@ class _Item(Gtk.Overlay):
             b.connect("toggled", lambda w, s=s: w.get_active() and self.dash.set_size(self, s))
             self.tools.append(b)
             self.size_btns[s] = b
+        hb = Gtk.Button(label="✕")
+        hb.set_tooltip_text(i18n.tr("Skjul flisen"))
+        hb.add_css_class("flat")
+        hb.connect("clicked", lambda *_: self.dash.hide(self.key))
+        self.tools.append(hb)
         self.add_overlay(self.tools)
         # dra for å flytte
         src = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
@@ -139,6 +144,10 @@ class _Item(Gtk.Overlay):
             b.connect("clicked", lambda _b, s=s: (pop.popdown(), self.dash.set_size(self, s)))
             box.append(b)
         box.append(Gtk.Separator())
+        hb = Gtk.Button(label="     " + i18n.tr("Skjul flisen"))
+        hb.add_css_class("flat")
+        hb.connect("clicked", lambda *_: (pop.popdown(), self.dash.hide(self.key)))
+        box.append(hb)
         b = Gtk.Button(label=i18n.tr("Skjul S / M / L" if self.dash.editing else "Vis S / M / L i hjørnet"))
         b.add_css_class("flat")
         b.connect("clicked", lambda *_: (pop.popdown(), self.dash.on_edit_request and self.dash.on_edit_request()))
@@ -199,10 +208,22 @@ class Dash(Gtk.Widget):
         self.dragging = False
         self.on_edit_request = None
         self._defaults = []
+        self._def_hidden = set()
+        self.preset = _load().get("_preset:" + name, "standard")
+        self.hidden = set(_load().get(self.ckey(), {}).get("hidden") or [])
+        self.on_change = None
         self.set_hexpand(True)
 
-    def add(self, key, widget, size=1, on_click=None):
-        saved = _load().get(self.name, {})
+    def ckey(self, preset=None):
+        p = preset or self.preset
+        return self.name if p == "standard" else f"{self.name}@{p}"
+
+    def add(self, key, widget, size=1, on_click=None, hidden=False):
+        saved = _load().get(self.ckey(), {})
+        if hidden:
+            self._def_hidden.add(key)
+            if "hidden" not in saved:
+                self.hidden.add(key)
         sz = int((saved.get("size") or {}).get(key, size))
         if sz not in self.sizes:
             sz = size
@@ -216,7 +237,7 @@ class Dash(Gtk.Widget):
         return it
 
     def finish(self):
-        saved = _load().get(self.name, {}).get("order") or []
+        saved = _load().get(self.ckey(), {}).get("order") or []
         keys = list(dict.fromkeys(k for k, _s in self._defaults))
         self.order = [k for k in saved if k in self.items] + [k for k in keys if k not in saved]
         self._layout()
@@ -251,7 +272,7 @@ class Dash(Gtk.Widget):
         r = c = 0
         for k in self.order:
             it = self.items[k]
-            if not it.widget.get_visible():
+            if not it.widget.get_visible() or k in self.hidden:
                 continue
             span = min(cols, it.size if it.size != 9 else cols)
             if c + span > cols:
@@ -290,7 +311,48 @@ class Dash(Gtk.Widget):
         GLib.timeout_add(ms, lambda: w.remove_css_class(cls) or False)
 
     def _save(self):
-        _save_group(self.name, {"order": self.order, "size": {k: it.size for k, it in self.items.items()}})
+        _save_group(self.ckey(), {"order": self.order, "size": {k: it.size for k, it in self.items.items()},
+                                  "hidden": sorted(self.hidden)})
+        if self.on_change:
+            self.on_change()
+
+    def hide(self, key):
+        self.hidden.add(key)
+        self._save()
+        self._layout(animate=True)
+
+    def unhide(self, key):
+        self.hidden.discard(key)
+        self._save()
+        self._layout(animate=True, dropped=key)
+
+    def set_preset(self, preset):
+        """Bytt oppsett (Standard / Spill / Jobb / Natt). Et nytt oppsett starter som en kopi av det du har nå."""
+        if preset == self.preset:
+            return
+        self._save()
+        d = _load().get(self.ckey(preset))
+        self.preset = preset
+        _save_group("_preset:" + self.name, None)
+        dd = _load()
+        dd["_preset:" + self.name] = preset
+        try:
+            with open(CFG, "w") as f:
+                json.dump(dd, f, indent=1)
+        except OSError:
+            pass
+        if d:
+            self.order = [k for k in d.get("order", []) if k in self.items] + \
+                [k for k in self.items if k not in d.get("order", [])]
+            for k, it in self.items.items():
+                sz = int((d.get("size") or {}).get(k, it.size))
+                it.size = sz if sz in self.sizes else it.size
+                b = it.size_btns.get(it.size)
+                if b and not b.get_active():
+                    b.set_active(True)
+            self.hidden = set(d.get("hidden") or [])
+        self._save()
+        self._layout(animate=True)
 
     def move(self, key, target, after):
         if key not in self.order or target not in self.order:
@@ -324,5 +386,6 @@ class Dash(Gtk.Widget):
             b = self.items[k].size_btns.get(s)
             if b:
                 b.set_active(True)
-        _save_group(self.name, {})
+        self.hidden = set(self._def_hidden)
+        _save_group(self.ckey(), {})
         self._layout(animate=True)

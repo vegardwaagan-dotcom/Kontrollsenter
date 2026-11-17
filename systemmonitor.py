@@ -338,6 +338,38 @@ class MonitorWindow(Adw.ApplicationWindow):
         for key, t in (("cpu", self.t_cpu), ("gpu", self.t_gpu), ("watt", self.t_pow), ("mode", self.t_mode)):
             if t:
                 tiles.add("flis-" + key, t, 1, on_click=lambda k=key: self.open_details(k))
+        # nye fliser: ping, nedlasting, spilletid i dag, strømpris nå, vær og neste avtale
+        self.t_ping = Tile("Ping", icon="ks-network-symbolic")
+        self.t_down = Tile("Nedlasting", icon="ks-network-symbolic")
+        self.t_play = Tile("Spilletid i dag", icon="ks-games-symbolic")
+        self.t_price = Tile("Strømpris nå", icon="ks-power-symbolic")
+        self.t_weather = Tile("Været", icon="ks-overview-symbolic")
+        self.t_cal = Tile("Neste avtale", icon="ks-history-symbolic")
+        for key, t, click, hid in (
+                ("ping", self.t_ping, lambda: self.open_details("net"), False),
+                ("down", self.t_down, lambda: self.open_details("net"), True),
+                ("play", self.t_play, lambda: self.stack.set_visible_child_name("spill"), False),
+                ("price", self.t_price, lambda: self.open_details("watt"), False),
+                ("weather", self.t_weather, self._open_info_settings, False),
+                ("cal", self.t_cal, self._show_calendar, True)):
+            tiles.add("flis-" + key, t, 1, on_click=click, hidden=hid)
+        try:
+            import details as _det
+            import infotiles as _it
+            self.t_cpu.add_spark(self.c_cpu.graph.series[0], top=100)
+            if self.t_gpu and self.c_gpu:
+                self.t_gpu.add_spark(self.c_gpu.graph.series[0], top=100)
+            self.t_pow.add_spark(_det.HIST["watt"], top=None)
+            self.t_ping.add_spark(_it._PINGS, top=None)
+            self.t_down.add_spark(self.c_net.graph.series[0], top=None)
+        except Exception:  # noqa: BLE001
+            applog.log.exception("minigrafer")
+        tiles.titles = {"flis-cpu": "Prosessor", "flis-gpu": "Skjermkort", "flis-watt": "Strømforbruk",
+                        "flis-mode": "Strømmodus", "flis-ping": "Ping", "flis-down": "Nedlasting",
+                        "flis-play": "Spilletid i dag", "flis-price": "Strømpris nå", "flis-weather": "Været",
+                        "flis-cal": "Neste avtale", "batterier": "Batterier", "strommodus": "Strømmodus (kort)",
+                        "vifter": "Vifter", "cpu": "CPU-graf", "mem": "Minne", "gpu": "GPU-graf", "disk": "Disk",
+                        "net": "Nettverk", "space": "Diskplass", "temps": "Temperaturer", "bat": "Batteri"}
         hero = Gtk.Box(spacing=16)
         hero.set_margin_top(6)
         hero.set_margin_bottom(4)
@@ -352,6 +384,16 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.hello_chip = Gtk.Label(valign=Gtk.Align.CENTER)
         self.hello_chip.add_css_class("ks-chip")
         hero.append(self.hello_chip)
+        import dashboard as _db
+        self.presets = ["standard", "spill", "jobb", "natt"]
+        self.preset_dd = Gtk.DropDown.new_from_strings([i18n.tr(x) for x in ("Standard", "Spill", "Jobb", "Natt")])
+        self.preset_dd.set_valign(Gtk.Align.CENTER)
+        self.preset_dd.set_tooltip_text(i18n.tr("Oppsett av Oversikt – hvert oppsett husker sine egne fliser, "
+                                                "rekkefølge og størrelser. «Spill» velges av seg selv når et spill starter."))
+        cur_p = _db._load().get("_preset:oversikt", "standard")
+        self.preset_dd.set_selected(self.presets.index(cur_p) if cur_p in self.presets else 0)
+        self.preset_dd.connect("notify::selected", lambda d, _p: self.dash.set_preset(self.presets[d.get_selected()]))
+        hero.append(self.preset_dd)
         self.edit_btn = Gtk.ToggleButton(icon_name="view-grid-symbolic", valign=Gtk.Align.CENTER)
         self.edit_btn.set_tooltip_text(i18n.tr("Tilpass oversikten: dra flisene til nye plasser og velg størrelse"))
         self.edit_btn.add_css_class("circular")
@@ -367,6 +409,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         for side in ("top", "bottom", "start"):
             getattr(ebl, f"set_margin_{side}")(10)
         eb.append(ebl)
+        self.hidden_btn = Gtk.MenuButton(label=i18n.tr("Vis skjulte"), valign=Gtk.Align.CENTER)
+        self.hidden_btn.set_popover(Gtk.Popover())
+        self.hidden_btn.get_popover().connect("show", lambda p: self._fill_hidden(p))
+        eb.append(self.hidden_btn)
         rb = Gtk.Button(label=i18n.tr("Tilbakestill"), valign=Gtk.Align.CENTER)
         rb.connect("clicked", lambda *_: self.dash.reset())
         eb.append(rb)
@@ -889,6 +935,10 @@ class MonitorWindow(Adw.ApplicationWindow):
             img.set_from_icon_name(icons.get(mode, "ks-overview-symbolic"))
         game = getattr(getattr(self, "bg", None), "game_name", None)
         self.t_mode.sub.set_label(i18n.tr("Spillprofil: ") + game if game else "")
+        try:
+            self._update_info_tiles()
+        except Exception:  # noqa: BLE001
+            applog.log.exception("infofliser")
 
     def set_badge(self, name, text):
         """Lite tall/merke til høyre i sidemenyen (f.eks. CPU-temperatur ved Oversikt)."""
@@ -925,6 +975,89 @@ class MonitorWindow(Adw.ApplicationWindow):
         on = btn.get_active()
         self.edit_bar.set_reveal_child(on)
         self.dash.set_editing(on)
+
+    def _fill_hidden(self, pop):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        hid = [k for k in self.dash.order if k in self.dash.hidden]
+        if not hid:
+            box.append(Gtk.Label(label=i18n.tr("Ingen skjulte fliser"), margin_top=6, margin_bottom=6))
+        for k in hid:
+            b = Gtk.Button(label="＋  " + i18n.tr(getattr(self.dash, "titles", {}).get(k, k)))
+            b.add_css_class("flat")
+            b.connect("clicked", lambda _b, k=k: (pop.popdown(), self.dash.unhide(k)))
+            box.append(b)
+        pop.set_child(box)
+
+    def layout_for_game(self, playing):
+        """Oppsettet «Spill» mens du spiller (hvis du har valgt automatikk), og tilbake etterpå."""
+        import dashboard as _db
+        if not _db._load().get("_auto_game_layout", True):
+            return
+        if playing and self.dash.preset != "spill":
+            self._preset_before = self.dash.preset
+            GLib.idle_add(lambda: self.preset_dd.set_selected(self.presets.index("spill")) or False)
+        elif not playing and getattr(self, "_preset_before", None) is not None:
+            p, self._preset_before = self._preset_before, None
+            GLib.idle_add(lambda: self.preset_dd.set_selected(self.presets.index(p)) or False)
+
+    def _open_info_settings(self):
+        self._on_sidebar(None, self._rows["innstillinger"])
+        page = self._lazy.get("innstillinger", [None, None, None, None])[3]
+        if page is not None:
+            page.show_tab("generelt")
+
+    def _show_calendar(self):
+        import infotiles
+        c = infotiles.calendar() or {}
+        if c.get("error"):
+            self._open_info_settings()
+            return
+        ev = c.get("events") or []
+        body = "\n".join(f"{e['when']} – {e['title']}" + (f" ({e['where']})" if e.get("where") else "") for e in ev)
+        d = Adw.AlertDialog(heading=i18n.tr("Kalenderen"), body=body or i18n.tr("Ingen kommende avtaler"))
+        d.add_response("ok", "OK")
+        d.present(self)
+
+    def _update_info_tiles(self):
+        import infotiles as I
+        p = I.ping() or {}
+        self.t_ping.value.set_label(f"{p['ms']} ms" if p.get("ms") is not None else "–")
+        self.t_ping.sub.set_label(i18n.tr("til internett") if p.get("ms") is not None else i18n.tr("ingen kontakt"))
+        rx = self.c_net.graph.series[0][-1] if self.c_net.graph.series[0] else 0
+        self.t_down.value.set_label(fmt_rate(rx))
+        tx = self.c_net.graph.series[1][-1] if self.c_net.graph.series[1] else 0
+        self.t_down.sub.set_label("↑ " + fmt_rate(tx))
+        ps = I.playtime_today()
+        if ps is not None:
+            self.t_play.value.set_label(f"{ps // 3600} t {ps % 3600 // 60} min")
+            game = getattr(getattr(self, "bg", None), "game_name", None)
+            self.t_play.sub.set_label(("▶ " + game) if game else i18n.tr("ingen spill nå"))
+        pr = I.price() or {}
+        if pr.get("now") is not None:
+            self.t_price.value.set_label(f"{pr['now']:.2f} kr")
+            self.t_price.sub.set_label(i18n.tr("per kWh · billigst kl. ") + str(pr.get("cheapest_at") or "–"))
+        elif pr.get("error"):
+            self.t_price.value.set_label("–")
+            self.t_price.sub.set_label(i18n.tr("får ikke hentet prisen"))
+        w = I.weather() or {}
+        if w.get("temp") is not None:
+            self.t_weather.value.set_label(f"{w['icon']} {w['temp']}°")
+            self.t_weather.sub.set_label(f"{w.get('place', '').split(',')[0]} · {w.get('text', '')}")
+        else:
+            self.t_weather.value.set_label("–")
+            self.t_weather.sub.set_label(i18n.tr("Trykk for å velge sted"))
+        c = I.calendar() or {}
+        ev = (c.get("events") or [None])[0]
+        if ev:
+            self.t_cal.value.set_label(ev["title"])
+            self.t_cal.sub.set_label(ev["when"])
+        else:
+            self.t_cal.value.set_label("–")
+            self.t_cal.sub.set_label(i18n.tr("Trykk for å legge inn kalender") if c.get("error") else
+                                     i18n.tr("ingen avtaler"))
+        for t in (self.t_cpu, self.t_gpu, self.t_pow, self.t_ping, self.t_down):
+            if t is not None and t.spark is not None:
+                t.spark.queue_draw()
 
     def open_details(self, kind):
         import details_ui

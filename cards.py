@@ -235,6 +235,41 @@ class Tile(Gtk.Box):
         self.sub.add_css_class("dim-label")
         col.append(self.sub)
         inner.append(col)
+        self.spark = None
+
+    def add_spark(self, series, color=None, top=100.0):
+        """Liten graf for siste minutt rett i flisen (series = deque med verdier, nyeste sist)."""
+        da = Gtk.DrawingArea(content_height=22, hexpand=True)
+        da.add_css_class("tile-spark")
+        self._spark_src, self._spark_top = series, top
+        self._spark_col = color
+
+        def draw(_a, cr, w, h):
+            vals = list(self._spark_src)[-60:]
+            if len(vals) < 2:
+                return
+            mx = self._spark_top or max(max(vals), 1e-6) * 1.2
+            if callable(mx):
+                mx = mx(vals)
+            fg = self.get_color()
+            col = self._spark_col or (fg.red, fg.green, fg.blue)
+            n = len(vals) - 1
+            pts = [(w * i / n, h - 2 - (h - 4) * min(1, (v or 0) / mx)) for i, v in enumerate(vals)]
+            cr.move_to(*pts[0])
+            for x, y in pts[1:]:
+                cr.line_to(x, y)
+            cr.set_source_rgba(*col, 0.95)
+            cr.set_line_width(1.6)
+            cr.stroke_preserve()
+            cr.line_to(w, h)
+            cr.line_to(0, h)
+            cr.close_path()
+            cr.set_source_rgba(*col, 0.18)
+            cr.fill()
+        da.set_draw_func(draw)
+        self.get_first_child().get_last_child().append(da)
+        self.spark = da
+        return da
 
 
 BLUE = (0.36, 0.55, 1.00)     # merkevarens blå

@@ -176,7 +176,7 @@ def build_status(win):
                 "model": getattr(win, "cpu_name", None)},
         "mem": r.get("mem"), "disk": r.get("disk"), "home": du, "net": r.get("net"),
         "temps": [[a, b, round(c, 1)] for a, b, c in r.get("temps", [])],
-        "gpu": gpu, "power": power, "fans": fans,
+        "gpu": gpu, "power": power, "fans": fans, "info": _info(),
         "overlay": ov.get_active() if ov and ov.get_visible() else None,
         "msi": _is_msi(),
         "cs2": _cs2_live(),
@@ -737,6 +737,14 @@ def _feature_action(win, kind, a):
         F.hue_set(a.get("on"), col, a.get("ids"))
         return True, "OK"
     raise ValueError("ukjent kommando")
+
+
+def _info():
+    try:
+        import infotiles
+        return infotiles.snapshot()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _batteries():

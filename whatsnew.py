@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.34.0", "Flere fliser", [
+        ("Nytt", [
+            "Nye fliser i Oversikt: ping, nedlasting, spilletid i dag, strømpris nå (med billigste time), været og neste "
+            "kalenderavtale. Sted, strømprisområde og kalender velger du i Innstillinger → Generelt",
+            "Minigraf for siste minutt rett i CPU-, GPU-, strøm-, ping- og nedlastingsflisen",
+            "Oppsett: Standard, Spill, Jobb og Natt – hvert oppsett husker sine egne fliser, rekkefølge og størrelser. "
+            "«Spill» velges av seg selv mens du spiller, og byttes tilbake etterpå",
+            "Skjul fliser du ikke trenger (✕ i tilpass-modus eller høyreklikk) – og hent dem fram igjen med «Vis skjulte»",
+        ]),
+    ]),
     ("0.33.0", "Levende temaer", [
         ("Nytt", [
             "Tema etter tid på døgnet: Arktis om morgenen, Solnedgang om kvelden og Nordlys om natten (du velger tider og "

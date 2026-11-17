@@ -17,11 +17,33 @@ const dashItems = () => Array.from(dashBox().children).filter((e) => e.dataset &
 const vibe = (ms) => { try { if (KS && KS.vibrate) KS.vibrate(); else if (navigator.vibrate) navigator.vibrate(ms || 10); } catch (e) {} };
 const calm = () => document.body.classList.contains("eco") || matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function dashLoad() { try { return JSON.parse(localStorage.getItem(DASH_KEY)) || {}; } catch (e) { return {}; } }
+let dashPreset = (() => { try { return localStorage.getItem("ks_dash_preset") || "standard"; } catch (e) { return "standard"; } })();
+const dashKey = () => DASH_KEY + (dashPreset === "standard" ? "" : "@" + dashPreset);
+const DEF_HIDDEN = ["down", "cal"];
+function dashLoad() { try { return JSON.parse(localStorage.getItem(dashKey())) || {}; } catch (e) { return {}; } }
+function dashHidden() { const d = dashLoad(); return new Set(d.hidden || DEF_HIDDEN); }
 function dashSave() {
-  const d = { order: dashItems().map((e) => e.dataset.k), size: {} };
+  const d = { order: dashItems().map((e) => e.dataset.k), size: {}, hidden: dashItems().filter((e) => e.classList.contains("dhid")).map((e) => e.dataset.k) };
   dashItems().forEach((e) => (d.size[e.dataset.k] = e.dataset.sz));
-  try { localStorage.setItem(DASH_KEY, JSON.stringify(d)); } catch (e) {}
+  try { localStorage.setItem(dashKey(), JSON.stringify(d)); } catch (e) {}
+}
+function dashApplyHidden() { const h = dashHidden(); dashItems().forEach((e) => e.classList.toggle("dhid", h.has(e.dataset.k))); }
+let presetBefore = null;
+function dashGame(playing) {
+  if (!pref("auto_layout", true)) return;
+  if (playing && dashPreset !== "spill") { presetBefore = dashPreset; dashSetPreset("spill"); }
+  else if (!playing && presetBefore) { const p = presetBefore; presetBefore = null; dashSetPreset(p); }
+}
+function dashSetPreset(p) {
+  if (p === dashPreset) return;
+  dashSave();
+  const had = (() => { try { return !!localStorage.getItem(DASH_KEY + (p === "standard" ? "" : "@" + p)); } catch (e) { return false; } })();
+  dashPreset = p;
+  try { localStorage.setItem("ks_dash_preset", p); } catch (e) {}
+  if (!had) dashSave();                               // nytt oppsett starter som en kopi
+  const C = dashBox().ksC, L = dashLoad();
+  flip(C, () => { dashItems().forEach((e) => { if (L.size && L.size[e.dataset.k]) dashSetSize(e, L.size[e.dataset.k]); }); C.apply(); dashApplyHidden(); });
+  $$("#dash-presets button").forEach((b) => b.classList.toggle("on", b.dataset.p === p));
 }
 const kindOf = (el) => (el.classList.contains("tile") ? "tile" : "card");
 
@@ -67,6 +89,12 @@ function dashPrep(el, def) {
     dashSave(); vibe(8);
   };
   el.appendChild(b);
+  const x = document.createElement("button");
+  x.type = "button"; x.className = "dhide"; x.textContent = "✕"; x.setAttribute("aria-label", "Skjul");
+  x.addEventListener("pointerdown", (e) => e.stopPropagation());
+  x.onclick = (e) => { e.stopPropagation(); flip(dashBox().ksC, () => el.classList.toggle("dhid")); dashSave(); vibe(8); };
+  el.appendChild(x);
+  if (dashHidden().has(el.dataset.k)) el.classList.add("dhid");
 }
 
 // ---------- alt som kan flyttes: flisene, snarveiene og kortene i alle fanene ----------
@@ -336,10 +364,18 @@ function dashWire() {
   const bar = document.createElement("div");
   bar.id = "dash-bar"; bar.className = "dash-bar"; bar.hidden = true;
   bar.innerHTML = `<span></span>
+    <button type="button" class="soft" id="dash-unhide">Vis skjulte</button>
     <button type="button" class="soft" id="dash-reset">Tilbakestill</button><button type="button" id="dash-done">Ferdig</button>`;
   document.body.appendChild(bar);
   $("#dash-done").onclick = () => dashEdit(false);
   $("#dash-reset").onclick = () => { dashReset(); vibe(10); };
+  $("#dash-unhide").onclick = () => { const C = dashBox().ksC; flip(C, () => dashItems().forEach((e) => e.classList.remove("dhid"))); dashSave(); vibe(8); };
+  const pr = document.createElement("div");
+  pr.id = "dash-presets"; pr.className = "seg dash-presets";
+  pr.innerHTML = [["standard", "Standard"], ["spill", "Spill"], ["jobb", "Jobb"], ["natt", "Natt"]]
+    .map(([k, n]) => `<button type="button" data-p="${k}" class="${k === dashPreset ? "on" : ""}">${n}</button>`).join("");
+  box.parentElement.insertBefore(pr, box);
+  pr.querySelectorAll("button").forEach((b) => (b.onclick = () => { dashSetPreset(b.dataset.p); vibe(6); }));
   const prevBack = window.ksBack;
   window.ksBack = () => {
     if (dashEditing) { dashEdit(false); return true; }

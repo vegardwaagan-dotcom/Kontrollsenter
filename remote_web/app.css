@@ -736,3 +736,15 @@ body.live-bg::before { background-size: 160% 160%; animation: ks-aurora 22s ease
   100% { background-position: 100% 10%; transform: scale(1); } }
 body.eco.live-bg::before { animation: none; }
 #look-a, #look-b { width: 40px; height: 34px; border: 0; padding: 0; background: none; flex: none; }
+/* infofliser, minigraf, skjulte fliser og oppsett */
+.tile .iv { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; } .tile .iv .ii { font-size: 24px; }
+.tile .iv b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tiles .tile.sz-s .iv b { font-size: 16px; } .tiles .tile.sz-s .iv .ii { font-size: 18px; }
+.tile .spark { width: 86%; height: 22px; margin-top: 4px; display: block; }
+.tiles > .dhid { display: none; }
+.tiles.editing > .tile.dhid { display: flex; opacity: .35; } .tiles.editing > .card.dhid { display: block; opacity: .35; }
+.dhide { display: none; position: absolute; top: 6px; left: 6px; z-index: 3; min-width: 26px; min-height: 26px; padding: 0; border-radius: 99px;
+  font-size: 12px; font-weight: 800; background: rgba(0,0,0,.55); color: #fff; border: 0; }
+.tiles.editing .dhide { display: block; }
+.dash-presets { margin: 0 0 10px; }
+@media (max-width: 460px) { .dash-bar span { display: none; } .dash-bar { padding-left: 8px; } }

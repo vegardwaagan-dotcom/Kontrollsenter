@@ -99,6 +99,15 @@ const colFor = (p, warn = 70, bad = 85) => (p >= bad ? "var(--bad)" : p >= warn 
 function tile(name, pct, val, sub, color, k) {
   return { k, html: `<div class="name">${esc(name)}</div><div class="gauge">${gauge(pct, color)}<div class="v">${esc(val)}</div></div><div class="sub">${esc(sub)}</div>` };
 }
+const ksHist = { cpu: [], gpu: [] };
+function spark(arr, color) {
+  if (arr.length < 2) return "";
+  const n = arr.length - 1, pts = arr.map((v, i) => `${(100 * i / n).toFixed(1)},${(22 - 20 * Math.min(1, (v || 0) / 100)).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none"><polyline points="0,24 ${pts} 100,24" fill="${color}" opacity=".18"/><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function itile(name, icon, val, sub, k) {
+  return { k, html: `<div class="name">${esc(name)}</div><div class="iv"><span class="ii">${icon}</span><b>${esc(val)}</b></div><div class="sub">${esc(sub)}</div>` };
+}
 function renderOverview(s) {
   const t = [];
   const c = s.cpu || {};
@@ -114,7 +123,19 @@ function renderOverview(s) {
   if (s.net) { const short = fmtB(s.net[0]).replace(/(\d+)\.\d (MB|GB|KB)/, (m, a, u) => (+a >= 10 ? a : m.split(" ")[0]) + " " + u);
     t.push(tile("Nett", Math.min(100, (s.net[0] / 12.5e6) * 100), short, "↓ " + fmtR(s.net[0]) + " · ↑ " + fmtR(s.net[1]), "var(--c1)", "net")); }
   if (s.battery && s.battery.length) t.push(tile("Batteri", s.battery[0], Math.round(s.battery[0]) + " %", s.battery[1] || "", colFor(100 - s.battery[0], 70, 85), "bat"));
+  const c0 = s.cpu || {};
+  ksHist.cpu.push(c0.load || 0); ksHist.cpu.splice(0, ksHist.cpu.length - 60);
+  if (s.gpu) { ksHist.gpu.push(s.gpu.util || 0); ksHist.gpu.splice(0, ksHist.gpu.length - 60); }
+  t.forEach((x) => { if (x.k === "cpu") x.html += spark(ksHist.cpu, "var(--c1)"); if (x.k === "gpu") x.html += spark(ksHist.gpu, "var(--c2)"); });
+  const I = s.info || {};
+  if (I.ping) t.push(itile("Ping", "📶", I.ping.ms != null ? I.ping.ms + " ms" : "–", I.ping.ms != null ? "til internett" : "ingen kontakt", "ping"));
+  if (s.net) t.push(itile("Nedlasting", "⬇️", fmtR(s.net[0]), "↑ " + fmtR(s.net[1]), "down"));
+  if (I.play_s != null) t.push(itile("Spilt i dag", "🎮", Math.floor(I.play_s / 3600) + " t " + Math.floor(I.play_s % 3600 / 60) + " min", s.game ? "▶ " + s.game : "ingen spill nå", "play"));
+  if (I.price) t.push(itile("Strømpris", "⚡", I.price.now != null ? I.price.now.toFixed(2) + " kr" : "–", I.price.now != null ? "per kWh · billigst kl. " + (I.price.cheapest_at || "–") : "får ikke hentet", "price"));
+  if (I.weather) t.push(itile("Været", I.weather.icon || "🌡️", I.weather.temp != null ? I.weather.temp + "°" : "–", I.weather.temp != null ? (I.weather.place || "").split(",")[0] + " · " + (I.weather.text || "") : "velg sted på PC-en", "weather"));
+  if (I.cal) { const e = (I.cal.events || [])[0]; t.push(itile("Neste avtale", "📅", e ? e.title : "–", e ? e.when : (I.cal.error ? "legg inn kalender på PC-en" : "ingen avtaler"), "cal")); }
   if (window.dashTiles) dashTiles(t);
+  if (window.dashGame) dashGame(!!s.game);
   const rows = (s.temps || []).slice();          // PC-en tar allerede med NVIDIA-temperaturen
   $("#temps").innerHTML = rows.map(([d, l, v]) => `<div><span class="d">${esc(d)}</span><span class="l">${esc(l)}</span><span class="num ${tcls(v)}">${Math.round(v)} °C</span></div>`).join("") || '<span class="dim">Ingen temperaturer</span>';
   const info = [["PC", s.name], ["Maskin", s.model], ["System", s.distro], ["Kontrollsenter", s.version], ["Oppetid", fmtUp(s.uptime || 0)],
