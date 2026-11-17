@@ -37,6 +37,7 @@ def _upower():
             st = pr.get("State")                  # 1 = lader, 4 = fulladet, 5 = venter på lading
             out.append({"id": p, "name": name, "pct": round(float(pr.get("Percentage", 0))), "kind": kind,
                         "charging": st == 1, "full": st == 4, "plugged": st in (1, 4, 5), "source": "upower",
+                        "native": os.path.basename(str(pr.get("NativePath") or "")),
                         "logitech": "logitech" in (name + vendor).lower()})
     except Exception:  # noqa: BLE001
         pass
@@ -165,30 +166,60 @@ def _solaar_battery(max_age=6):
     return _SOL["list"]
 
 
-def _wired_devices():
-    w = _wired()
-    if not w:
+def _sysfs_devices():
+    """Trådløse enheter rett fra kjernen (/sys/class/power_supply, scope=Device). UPower mister av og til en mus
+    når laderen settes inn eller tas ut, men kjernen har den fortsatt – med «Charging»/«Full»."""
+    if IS_WIN:
         return []
-    sol = _solaar_battery()
+    prods = _usb_products()
     out = []
-    for model, cap, st in w:
-        s = next((x for x in sol if x.get("name") == model), None) or {}
-        pct = s.get("pct") if s.get("pct") is not None else cap
-        sst = (s.get("status") or st or "").lower()
-        full = "full" in sst or (pct == 100 and "recharg" not in sst and "charging" not in sst)
-        kind = s.get("kind") or ("keyboard" if "keyboard" in model.lower() else "mouse")
-        out.append({"id": "wired:" + model, "name": model, "pct": pct, "kind": kind if kind in ICON else "mouse",
-                    "charging": not full, "full": full, "plugged": True, "source": "wired", "logitech": True})
+    sol = None
+    for p in sorted(glob.glob("/sys/class/power_supply/*")):
+        ue = _uevent(p)
+        if ue.get("POWER_SUPPLY_TYPE") != "Battery" or ue.get("POWER_SUPPLY_SCOPE") != "Device":
+            continue
+        model = ue.get("POWER_SUPPLY_MODEL_NAME") or os.path.basename(p)
+        try:
+            pct = int(ue.get("POWER_SUPPLY_CAPACITY"))
+        except (TypeError, ValueError):
+            pct = None
+        st = (ue.get("POWER_SUPPLY_STATUS") or "").lower()
+        wired = model in prods                      # i ladekabelen: koblet direkte med USB
+        if wired:
+            if sol is None:
+                sol = _solaar_battery()
+            x = next((x for x in sol if x.get("name") == model), None) or {}
+            if x.get("pct") is not None:
+                pct = x["pct"]
+            st = (x.get("status") or st).lower()
+        full = "full" in st
+        charging = "charg" in st and "discharg" not in st or (wired and not full)
+        low = model.lower()
+        kind = "keyboard" if "keyboard" in low or low.startswith(("g9", "g7", "g8", "k")) else \
+            "headset" if "headset" in low else "mouse"
+        out.append({"id": "sys:" + os.path.basename(p), "native": os.path.basename(p), "name": model, "pct": pct,
+                    "kind": kind,
+                    "charging": bool(charging), "full": full, "plugged": bool(charging or full),
+                    "source": "sysfs", "logitech": "logitech" in (ue.get("POWER_SUPPLY_MANUFACTURER") or "").lower()
+                    or os.path.basename(p).startswith("hidpp")})
     return out
 
 
-def _merge(up, wired):
-    names = {d["name"] for d in up}
-    return up + [d for d in wired if d["name"] not in names]
+def _merge(up, sysfs):
+    """UPower først; kjernens oppføring fyller inn det UPower mangler. Lading fra kjernen vinner (den er raskest)."""
+    by = {d["native"]: d for d in sysfs}
+    out = []
+    for d in up:
+        k = by.pop(d.get("native"), None)
+        if k and (k["charging"] or k["full"]) and not (d.get("charging") or d.get("full")):
+            d = {**d, "charging": k["charging"], "full": k["full"], "plugged": True,
+                 "pct": k["pct"] if k["pct"] is not None else d["pct"]}
+        out.append(d)
+    return out + list(by.values())
 
 
 def devices():
-    out = ([] if IS_WIN else _merge(_upower(), _wired_devices())) + _headsets()
+    out = ([] if IS_WIN else _merge(_upower(), _sysfs_devices())) + _headsets()
     with _LOCK:
         _CACHE.update(t=time.time(), list=out)
     return out
@@ -221,7 +252,7 @@ def _refresh_now():
         try:
             while True:
                 _REF["again"] = False
-                up = [] if IS_WIN else _merge(_upower(), _wired_devices())
+                up = [] if IS_WIN else _merge(_upower(), _sysfs_devices())
                 with _LOCK:
                     old = _CACHE["list"]
                     new = up + [d for d in old if d.get("source") == "headsetcontrol"]
@@ -271,8 +302,8 @@ def start_watch():
         while True:
             time.sleep(4)
             n += 1
-            if n % 2 == 0 and (_wired() or any(d.get("source") == "wired" for d in _CACHE["list"])):
-                _refresh_now()                       # mus i ladekabelen: nytt nivå hvert 8. sekund
+            if not IS_WIN:
+                _refresh_now()                       # kjernen/UPower: lader satt inn eller tatt ut
             if not headsetcontrol_bin():
                 continue
             try:

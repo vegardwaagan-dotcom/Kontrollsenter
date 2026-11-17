@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.30.5", "Musa blir værende", [
+        ("Rettet", [
+            "Musa kunne fortsatt forsvinne når ladekabelen ble tatt ut og satt i igjen, fordi UPower mistet den. Nå leses "
+            "batteriet også rett fra Linux-kjernen, så musa vises alltid – med «⚡ Lader · 70 %» mens den lader, enten "
+            "den lader trådløst via mottakeren eller står koblet med kabelen",
+        ]),
+    ]),
     ("0.30.4", "Mus i ladekabelen", [
         ("Rettet", [
             "En Logitech-mus (f.eks. PRO X2 SUPERSTRIKE) forsvant fra batterilisten når ladekabelen ble satt i – den "
