@@ -102,9 +102,12 @@ function makeContainer(el, key, sel, opts) {
   C.prep = () => C.all().forEach((e) => {
     if (e.dataset.ord == null) e.dataset.ord = String(ordSeq++);
     e.classList.add("s-item");
+    if (C.sizes && !e.querySelector(":scope > .dsz")) cardSizePrep(C, e);
   });
+  if (C.sizes) el.classList.add("sgrid");
   C.reset = C.reset || (() => {
-    const d = orderLoad(); delete d[key];
+    const d = orderLoad(); delete d[key]; delete d[key + "#sz"];
+    if (C.sizes) C.all().forEach((e) => cardSetSize(e, C.defSize || "m"));
     try { localStorage.setItem(ORDER_KEY, JSON.stringify(d)); } catch (e) {}
     flip(C, () => C.apply());
   });
@@ -115,6 +118,30 @@ function makeContainer(el, key, sel, opts) {
     .observe(el, { childList: true });
   CONTAINERS.push(C);
   return C;
+}
+
+// størrelse på kortene i fanene: S (halv på mobil, en tredel på brett/PC), M (hel / halv), L (alltid hel)
+const CSZ = ["s", "m", "l"];
+function cardSetSize(e, sz) {
+  CSZ.forEach((x) => e.classList.remove("csz-" + x));
+  e.classList.add("csz-" + sz); e.dataset.csz = sz;
+  const b = e.querySelector(":scope > .dsz"); if (b) b.textContent = sz.toUpperCase();
+}
+function cardSizePrep(C, e) {
+  cardSetSize(e, ((orderLoad()[C.key + "#sz"]) || {})[itemKey(e)] || C.defSize || "m");
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "dsz"; b.textContent = e.dataset.csz.toUpperCase();
+  b.setAttribute("aria-label", "Endre størrelse");
+  b.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+  b.onclick = (ev) => {
+    ev.stopPropagation();
+    const nx = CSZ[(CSZ.indexOf(e.dataset.csz) + 1) % CSZ.length];
+    flip(C, () => cardSetSize(e, nx), e);
+    const d = orderLoad(); d[C.key + "#sz"] = Object.assign(d[C.key + "#sz"] || {}, { [itemKey(e)]: nx });
+    try { localStorage.setItem(ORDER_KEY, JSON.stringify(d)); } catch (er) {}
+    vibe(8);
+  };
+  applying = true; e.appendChild(b); applying = false;
 }
 
 // FLIP: mål før, endre, mål etter – og la alle gli myk fra gammel til ny plass
@@ -171,7 +198,7 @@ function dashEdit(on) {
   if (pg) pg.toggleAttribute("data-noswipe", on);
   if (!on) $$(".page[data-noswipe]").forEach((p) => p.removeAttribute("data-noswipe"));
   $("#dash-bar").hidden = !on;
-  $("#dash-bar span").innerHTML = tab === "oversikt" ? "Dra for å flytte<br><b>S M L</b> = størrelse" : "Hold og dra kortene<br>dit du vil ha dem";
+  $("#dash-bar span").innerHTML = "Dra for å flytte<br><b>S M L</b> = størrelse";
   if (on) vibe(15);
 }
 
@@ -263,8 +290,8 @@ function dashWire() {
   makeContainer($("#quick"), "quick", "button[data-q]", { horiz: true });
   $$("main .page").forEach((pg) => {
     if (pg.id === "pair") return;
-    makeContainer(pg, "p:" + pg.id, ".card");
-    Array.from(pg.children).filter((e) => e.classList.contains("grid")).forEach((g, i) => makeContainer(g, `g:${pg.id}:${i}`, ".card"));
+    makeContainer(pg, "p:" + pg.id, ".card", { sizes: pg.id !== "oversikt", defSize: "l" });
+    Array.from(pg.children).filter((e) => e.classList.contains("grid")).forEach((g, i) => makeContainer(g, `g:${pg.id}:${i}`, ".card", { sizes: true }));
   });
 
   let lp = null;
@@ -280,8 +307,8 @@ function dashWire() {
       dragStart(C, el, ev);
       return;
     }
-    const btn = ev.target.closest("button");
-    if (ev.target.closest("input, select, textarea, a, .switch, label, canvas") || (btn && btn !== el)) return;
+    // glidebrytere og tekstfelt reagerer med en gang – der kan du ikke starte et langt trykk. Knapper går fint.
+    if (ev.target.closest('input[type=range], input[type=text], input[type=search], input[type=number], input:not([type]), textarea, select, [contenteditable]')) return;
     const sx = ev.clientX, sy = ev.clientY;
     lp = { sx, sy, t: setTimeout(() => { lp = null; dashJustPressed = Date.now(); dashEdit(true); dragStart(C, el, ev); }, 480) };
   });

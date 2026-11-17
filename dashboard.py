@@ -144,7 +144,7 @@ class _Item(Gtk.Overlay):
             b.connect("clicked", lambda _b, s=s: (pop.popdown(), self.dash.set_size(self, s)))
             box.append(b)
         box.append(Gtk.Separator())
-        b = Gtk.Button(label=i18n.tr("Tilpass oversikten …"))
+        b = Gtk.Button(label=i18n.tr("Skjul S / M / L" if self.dash.editing else "Vis S / M / L i hjørnet"))
         b.add_css_class("flat")
         b.connect("clicked", lambda *_: (pop.popdown(), self.dash.on_edit_request and self.dash.on_edit_request()))
         box.append(b)
@@ -212,13 +212,17 @@ class Dash(Gtk.Widget):
         if sz not in self.sizes:
             sz = size
         it = _Item(self, key, widget, sz, self.sizes, on_click)
+        if self.editing:
+            it.tools.set_visible(True)
+            it.add_css_class("ks-dash-edit")
+        widget.connect("notify::visible", lambda *_: GLib.idle_add(self._layout))
         self.items[key] = it
         self._defaults.append((key, size))
         return it
 
     def finish(self):
         saved = _load().get(self.name, {}).get("order") or []
-        keys = [k for k, _s in self._defaults]
+        keys = list(dict.fromkeys(k for k, _s in self._defaults))
         self.order = [k for k in saved if k in self.items] + [k for k in keys if k not in saved]
         self._layout()
 

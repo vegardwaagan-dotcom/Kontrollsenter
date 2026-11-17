@@ -677,3 +677,19 @@ body.glass .det-sheet { background-color: var(--card-solid) !important; }
 .sortable > .s-item.dglow { animation: ks-glow .9s ease-out !important; }
 body.eco .sortable.editing > .s-item { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .sortable.editing > .s-item { animation: none; } }
+/* kortene i alle fanene: 12 kolonner, S/M/L */
+.sgrid:not([hidden]) { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); align-items: start; }
+.sgrid > * { grid-column: 1 / -1; min-width: 0; }
+.sgrid > .s-item { position: relative; margin: 0 !important; }
+.sgrid > .s-item.csz-s { grid-column: span 6; }
+.sgrid > .s-item.csz-m, .sgrid > .s-item.csz-l { grid-column: span 12; }
+@media (min-width: 700px) {
+  .sgrid > .s-item.csz-s { grid-column: span 4; }
+  .sgrid > .s-item.csz-m { grid-column: span 6; }
+}
+.sgrid > .s-item > .dsz { display: none; }
+.sgrid.editing > .s-item > .dsz { display: block; }
+.sgrid > .grid { margin-top: 0; }
+.sgrid > .s-item.csz-s { overflow: hidden; }
+.sgrid > .s-item.csz-s .seg, .sgrid > .s-item.csz-s .row, .sgrid > .s-item.csz-s .actions, .sgrid > .s-item.csz-s .chips { flex-wrap: wrap; }
+.sgrid > .s-item.csz-s .seg button { flex: 1 1 100%; }

@@ -126,14 +126,73 @@ def scan(root, name):
     n = [0]
 
     def walk(w):
+        if getattr(w, "_ks_dash", None) is not None:                       # allerede gjort om
+            _to_dash(w, f"{name}:{n[0]}")
+            n[0] += 1
+            return
         if ((isinstance(w, Gtk.Box) and w.get_orientation() == Gtk.Orientation.VERTICAL) or isinstance(w, Gtk.FlowBox)) \
                 and len(_cards(w)) >= 2:
-            _enable(w, f"{name}:{n[0]}")
+            if name in DYNAMIC and isinstance(w, Gtk.FlowBox):            # bygges på nytt hele tiden: bare flytting
+                _enable(w, f"{name}:{n[0]}")
+            else:
+                _to_dash(w, f"{name}:{n[0]}")
             n[0] += 1
+            return
         for c in _children(w):
             walk(c)
     walk(root)
     return False
+
+
+DYNAMIC = ("hjemme", "smarthjem")
+
+
+def _to_dash(box, key):
+    """Gjør kortene i boksen om til et rutenett som i Oversikt: dra for å flytte, S/M/L for størrelse."""
+    import dashboard
+    dash = getattr(box, "_ks_dash", None)
+    flow = isinstance(box, Gtk.FlowBox)
+    if dash is not None and not flow and dash.get_parent() is not box:     # siden bygde kortene på nytt
+        dash = None
+    fresh = dash is None
+    if fresh:
+        dash = dashboard.Dash("side:" + key, max_cols=3, min_col=300, sizes=(1, 2, 9))
+        dash.on_edit_request = lambda: dash.set_editing(not dash.editing)
+        box._ks_dash = dash
+    cards = _cards(box)
+    if not cards and not fresh:
+        return
+    used = set(dash.items)
+    for c in cards:
+        t = _title(c) or "kort"
+        k, i = t, 2
+        while k in used:
+            k, i = f"{t} #{i}", i + 1
+        used.add(k)
+        if flow:
+            fc = c.get_parent()
+            fc.set_child(None)
+            box.remove(fc)
+        else:
+            if fresh and c is cards[0]:
+                box.insert_child_after(dash, c.get_prev_sibling())
+            box.remove(c)
+        c.set_margin_top(0)
+        c.set_margin_bottom(0)
+        dash.add(k, c, 1 if flow else 9)
+    if fresh and flow:
+        parent = box.get_parent()
+        box.set_visible(False)
+        if isinstance(parent, Gtk.Box):
+            parent.insert_child_after(dash, box)
+        elif parent is not None and hasattr(parent, "set_child"):
+            holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            parent.set_child(holder)
+            holder.append(box)
+            holder.append(dash)
+    dash.finish()
+    if dash.editing:
+        dash.set_editing(True)
 
 
 def _enable(box, key):

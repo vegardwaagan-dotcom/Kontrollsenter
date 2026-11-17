@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.30.0", "Flytt og endre alt", [
+        ("Nytt", [
+            "Alle kort i alle fanene kan nå få ny størrelse, ikke bare på Hjem: S, M og L. I appen: hold fingeren på et "
+            "kort (Styr, Spill, Verktøy, Innstillinger) og trykk S/M/L i hjørnet. På PC-en: høyreklikk på et kort, eller "
+            "velg «Vis S / M / L i hjørnet»",
+            "PC-en: kortene på alle sidene ligger nå i samme rutenett som Oversikt – dra for å flytte, og små kort "
+            "legger seg ved siden av hverandre",
+        ]),
+        ("Rettet", [
+            "Appen: langt trykk virket bare på overskriften i kort som er fulle av knapper (Styr, Spill, Verktøy, "
+            "Innstillinger). Nå virker det også på knappene – trykket på knappen blir ikke utført",
+        ]),
+    ]),
     ("0.29.0", "Flytt på alt", [
         ("Nytt", [
             "PC-en: dra et hvilket som helst kort på alle sidene til en ny plass med musa – Spill, Vedlikehold, "

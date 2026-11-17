@@ -739,6 +739,7 @@ class SolaarPage:
         self.settings = s
         self.locked = next((c for c in onboard.get("choices") or [] if c != "Disabled"), None)
         self.status(f"{self.name}: innstillinger lest")
+        GLib.idle_add(lambda: getattr(self.get_root(), "rescan_cards", lambda: False)() or False)
         return False
 
     def factory_reset(self):

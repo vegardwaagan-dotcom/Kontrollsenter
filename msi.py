@@ -355,8 +355,10 @@ class MsiPage(Gtk.ScrolledWindow):
         if not getattr(self, "_ticking", False):          # bare én oppdateringsløkke
             self._ticking = True
             GLib.timeout_add_seconds(2, self._tick)
+        GLib.idle_add(lambda: getattr(self.get_root(), "rescan_cards", lambda: False)() or False)
 
     # --- les verdier ------------------------------------------------------------
+
     def _tick(self):
         ct, gt = ec("cpu/realtime_temperature"), ec("gpu/realtime_temperature")
         cf, gf = ec("cpu/realtime_fan_speed"), ec("gpu/realtime_fan_speed")

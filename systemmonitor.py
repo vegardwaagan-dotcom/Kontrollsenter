@@ -404,7 +404,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         flow.add("space", self.diskspace, 9, on_click=lambda: self.open_details("disk"))
         flow.add("temps", self.c_temp, 9, on_click=lambda: self.open_details("temps"))
         flow.finish()
-        flow.on_edit_request = lambda: self.edit_btn.set_active(True)
+        flow.on_edit_request = lambda: self.edit_btn.set_active(not self.edit_btn.get_active())
         page.append(topbar)                   # Tilbakestill nederst – sjelden brukt
 
         css = Gtk.CssProvider()
@@ -836,10 +836,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 self._clamp(page)
             except Exception:  # noqa: BLE001 – utseende, aldri viktig nok til å stoppe fanen
                 pass
-        name = stack.get_visible_child_name()
-        if page is not None and name != "oversikt":       # alle kortene på sidene kan dras til ny plass
-            import sortbox
-            GLib.timeout_add(400, lambda: sortbox.scan(page, name))
+        GLib.timeout_add(400, self.rescan_cards)        # alle kortene på sidene kan dras og få ny størrelse
 
     def _on_overlay_toggled(self, btn):
         on = btn.get_active()
@@ -909,6 +906,19 @@ class MonitorWindow(Adw.ApplicationWindow):
     def _open_welcome(self, *_):
         import welcome
         welcome.WelcomeDialog(self).present(self)
+
+    def rescan_cards(self, *_):
+        """Gjør kortene på siden som vises flyttbare (kalles også når en side har bygd kortene på nytt)."""
+        name = self.stack.get_visible_child_name()
+        holder = self.stack.get_visible_child()
+        page = holder.get_first_child() if holder else None
+        if page is not None and name != "oversikt":
+            try:
+                import sortbox
+                sortbox.scan(page, name)
+            except Exception:  # noqa: BLE001
+                applog.log.exception("flyttbare kort")
+        return False
 
     def _on_edit_dash(self, btn):
         on = btn.get_active()
