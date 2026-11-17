@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.29.0", "Flytt på alt", [
+        ("Nytt", [
+            "PC-en: dra et hvilket som helst kort på alle sidene til en ny plass med musa – Spill, Vedlikehold, "
+            "Innstillinger, Nettverk, Lyd, GPU, RGB, Logitech, CPU-skjerm, Familie, PC-er hjemme, Smart Hjem, Historikk og "
+            "resten. Målet lyser lilla, kortet spretter på plass, og rekkefølgen huskes",
+            "Appen: hold fingeren på et kort i hvilken som helst fane (Hjem, Styr, Spill, Verktøy, Innstillinger) og dra "
+            "det dit du vil – også snarveiene øverst på Hjem. «Tilbakestill» setter fanen tilbake",
+            "Startskjermen i appen: hold fingeren på en PC, en TV/høyttaler eller en enhet i Smart Hjem for å flytte den",
+        ]),
+    ]),
     ("0.28.1", "Alle flisene", [
         ("Nytt", [
             "Alle flisene og kortene i Oversikt kan nå trykkes på for detaljer – også Strømmodus, Vifter (hver vifte, "

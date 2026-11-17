@@ -836,6 +836,10 @@ class MonitorWindow(Adw.ApplicationWindow):
                 self._clamp(page)
             except Exception:  # noqa: BLE001 – utseende, aldri viktig nok til å stoppe fanen
                 pass
+        name = stack.get_visible_child_name()
+        if page is not None and name != "oversikt":       # alle kortene på sidene kan dras til ny plass
+            import sortbox
+            GLib.timeout_add(400, lambda: sortbox.scan(page, name))
 
     def _on_overlay_toggled(self, btn):
         on = btn.get_active()

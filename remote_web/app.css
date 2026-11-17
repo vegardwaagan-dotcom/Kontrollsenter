@@ -664,3 +664,16 @@ body.eco .tiles.editing > [data-k], body.eco .tiles > [data-k].dglow { animation
 .nf-kinds.off { opacity: .45; pointer-events: none; }
 body.glass .det-sheet { background-color: var(--card-solid) !important; }
 .det-kv div.long { flex-direction: column; gap: 2px; } .det-kv div.long b { color: var(--fg); font-weight: 600; } .det-kv div.long span { text-align: left; color: var(--dim); font-size: 13px; }
+/* alle kort og snarveier kan flyttes (hold fingeren) */
+.s-item { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.sortable.editing > .s-item { touch-action: none; cursor: grab; position: relative;
+  box-shadow: 0 0 0 2px rgba(138,92,255,.55), var(--shadow); animation: ks-wiggle-sm .34s ease-in-out infinite alternate; }
+.sortable.editing > .s-item:nth-child(2n) { animation-delay: -.17s; animation-direction: alternate-reverse; }
+.quick.sortable.editing > .s-item, .tiles.editing > .tile { animation-name: ks-wiggle; }
+.sortable.editing > .s-item * { pointer-events: none !important; }
+.sortable.editing > .s-item .dsz { pointer-events: auto !important; }
+.sortable > .s-item.dragging { z-index: 30; position: relative; animation: none !important; cursor: grabbing; transition: none;
+  box-shadow: 0 0 0 2px rgba(138,92,255,.9), 0 26px 50px -14px rgba(0,0,0,.55), 0 0 40px -6px rgba(111,139,255,.8) !important; }
+.sortable > .s-item.dglow { animation: ks-glow .9s ease-out !important; }
+body.eco .sortable.editing > .s-item { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .sortable.editing > .s-item { animation: none; } }

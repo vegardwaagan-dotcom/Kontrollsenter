@@ -1,5 +1,6 @@
-// Kontrollsenter – Oversikt som du kan ordne selv (25):
-//  • hold fingeren på en flis → tilpass-modus; dra flisene til nye plasser (de andre glir unna)
+// Kontrollsenter – alt kan ordnes selv (25):
+//  • hold fingeren på en flis, en snarvei eller et kort i hvilken som helst fane → tilpass-modus;
+//    dra til ny plass (de andre glir unna). Rekkefølgen huskes per fane.
 //  • S / M / L / XL i hjørnet endrer størrelsen
 //  • trykk på en flis → ark med mye info om kategorien (graf, nøkkeltall, hva som bruker mest)
 // Pluss varselvalg under Innstillinger (på telefonen og på PC-en).
@@ -24,6 +25,22 @@ function dashSave() {
 }
 const kindOf = (el) => (el.classList.contains("tile") ? "tile" : "card");
 
+function dashReset0() {
+  try { localStorage.removeItem(DASH_KEY); } catch (e) {}
+  const box = dashBox(), C = box.ksC;
+  flip(C, () => {
+    const items = dashItems();
+    const tiles = items.filter((e) => e.classList.contains("tile")), cards = items.filter((e) => !e.classList.contains("tile"));
+    const KEYS = ["cpu", "gpu", "mem", "hot", "watt", "disk", "net", "bat"], CK = ["temps", "health", "info"];
+    tiles.sort((a, b) => KEYS.indexOf(a.dataset.k) - KEYS.indexOf(b.dataset.k));
+    cards.sort((a, b) => CK.indexOf(a.dataset.k) - CK.indexOf(b.dataset.k));
+    applying = true;
+    tiles.forEach((e, i) => { box.appendChild(e); dashSetSize(e, i < 3 ? "m" : "s"); });
+    cards.forEach((e) => { box.appendChild(e); dashSetSize(e, "xl"); });
+    applying = false;
+  });
+}
+
 function dashSetSize(el, sz) {
   const list = SIZES[kindOf(el)];
   if (!list.includes(sz)) sz = list[list.length - 1];
@@ -46,15 +63,63 @@ function dashPrep(el, def) {
   b.onclick = (e) => {
     e.stopPropagation();
     const list = SIZES[kindOf(el)], i = list.indexOf(el.dataset.sz);
-    flip(() => dashSetSize(el, list[(i + 1) % list.length]), el);
+    flip(dashBox().ksC, () => dashSetSize(el, list[(i + 1) % list.length]), el);
     dashSave(); vibe(8);
   };
   el.appendChild(b);
 }
 
+// ---------- alt som kan flyttes: flisene, snarveiene og kortene i alle fanene ----------
+const ORDER_KEY = "ks_order_v1";
+const CONTAINERS = [];
+let ordSeq = 0, applying = false;
+function orderLoad() { try { return JSON.parse(localStorage.getItem(ORDER_KEY)) || {}; } catch (e) { return {}; } }
+const itemKey = (e) => e.dataset.k || e.dataset.q || e.id
+  || ((e.querySelector("h2") || {}).textContent || "").trim() || "i" + e.dataset.ord;
+
+function makeContainer(el, key, sel, opts) {
+  const C = Object.assign({ el, key, sel, horiz: false }, opts || {});
+  C.items = () => Array.from(el.children).filter((e) => e.matches(sel) && e.offsetParent !== null);
+  C.all = () => Array.from(el.children).filter((e) => e.matches(sel));
+  C.save = C.save || (() => {
+    const d = orderLoad(); d[key] = C.all().map(itemKey);
+    try { localStorage.setItem(ORDER_KEY, JSON.stringify(d)); } catch (e) {}
+  });
+  C.apply = C.apply || (() => {
+    const order = orderLoad()[key] || [];
+    const all = C.all();
+    const rank = (e) => { const i = order.indexOf(itemKey(e)); return i >= 0 ? i : 1000 + Number(e.dataset.ord || 0); };
+    const want = all.slice().sort((x, y) => rank(x) - rank(y));
+    if (want.every((e, i) => e === all[i])) return;
+    applying = true;
+    // flytt bare elementene som er med (andre barn – overskrifter, lister – blir stående)
+    const anchor = document.createComment("ks");
+    el.insertBefore(anchor, all[0]);
+    want.forEach((e) => el.insertBefore(e, anchor));
+    anchor.remove();
+    applying = false;
+  });
+  C.prep = () => C.all().forEach((e) => {
+    if (e.dataset.ord == null) e.dataset.ord = String(ordSeq++);
+    e.classList.add("s-item");
+  });
+  C.reset = C.reset || (() => {
+    const d = orderLoad(); delete d[key];
+    try { localStorage.setItem(ORDER_KEY, JSON.stringify(d)); } catch (e) {}
+    flip(C, () => C.apply());
+  });
+  el.classList.add("sortable");
+  el.ksC = C;
+  C.prep(); C.apply();
+  new MutationObserver(() => { if (applying || dashDrag) return; C.prep(); C.apply(); if (dashEditing) el.classList.add("editing"); })
+    .observe(el, { childList: true });
+  CONTAINERS.push(C);
+  return C;
+}
+
 // FLIP: mål før, endre, mål etter – og la alle gli myk fra gammel til ny plass
-function flip(change, popped) {
-  const items = dashItems(), before = new Map(items.map((e) => [e, e.getBoundingClientRect()]));
+function flip(C, change, popped) {
+  const items = C.items(), before = new Map(items.map((e) => [e, e.getBoundingClientRect()]));
   change();
   if (calm()) return;
   items.forEach((e) => {
@@ -75,62 +140,50 @@ function glow(e) {
   setTimeout(() => e.classList.remove("dglow"), 900);
 }
 
-function dashOrder() {
-  const L = dashLoad(), order = L.order || [];
-  const items = dashItems(), def = new Map(items.map((e, i) => [e, i]));
-  const rank = (e) => { const i = order.indexOf(e.dataset.k); return i >= 0 ? i : 1000 + def.get(e); };
-  items.slice().sort((a, b) => rank(a) - rank(b)).forEach((e) => dashBox().appendChild(e));
-}
+function dashOrder() { const C = dashBox().ksC; if (C) C.apply(); }
 
 // app.js → renderOverview → hit med flisene (k, html)
 function dashTiles(list) {
   const box = dashBox();
-  let added = false;
   const keep = new Set(list.map((t) => t.k));
   list.forEach((t, i) => {
     let el = box.querySelector(`:scope > .tile[data-k="${t.k}"]`);
     if (!el) {
       el = document.createElement("div");
       el.className = "tile"; el.dataset.k = t.k;
+      el.dataset.ord = String(i - 100);               // standard: flisene før kortene
       el.innerHTML = '<div class="tc"></div>';
-      const firstCard = box.querySelector(":scope > .card");
-      box.insertBefore(el, firstCard);
       dashPrep(el, i < 3 ? "m" : "s");
-      added = true;
+      box.insertBefore(el, box.querySelector(":scope > .card"));
     }
     el.querySelector(".tc").innerHTML = t.html;
   });
   dashItems().forEach((e) => { if (e.classList.contains("tile") && !keep.has(e.dataset.k)) e.remove(); });
-  if (added) dashOrder();
 }
 
+const pageEl = () => document.getElementById(tab);
 function dashEdit(on) {
   if (dashEditing === on) return;
   dashEditing = on;
   document.body.classList.toggle("dash-edit", on);
-  dashBox().classList.toggle("editing", on);
-  $("#oversikt").toggleAttribute("data-noswipe", on);
+  CONTAINERS.forEach((C) => C.el.classList.toggle("editing", on));
+  const pg = pageEl();
+  if (pg) pg.toggleAttribute("data-noswipe", on);
+  if (!on) $$(".page[data-noswipe]").forEach((p) => p.removeAttribute("data-noswipe"));
   $("#dash-bar").hidden = !on;
+  $("#dash-bar span").innerHTML = tab === "oversikt" ? "Dra for å flytte<br><b>S M L</b> = størrelse" : "Hold og dra kortene<br>dit du vil ha dem";
   if (on) vibe(15);
 }
 
 function dashReset() {
-  try { localStorage.removeItem(DASH_KEY); } catch (e) {}
-  flip(() => {
-    const items = dashItems();
-    const tiles = items.filter((e) => e.classList.contains("tile")), cards = items.filter((e) => !e.classList.contains("tile"));
-    const KEYS = ["cpu", "gpu", "mem", "hot", "watt", "disk", "net", "bat"], CK = ["temps", "health", "info"];
-    tiles.sort((a, b) => KEYS.indexOf(a.dataset.k) - KEYS.indexOf(b.dataset.k));
-    cards.sort((a, b) => CK.indexOf(a.dataset.k) - CK.indexOf(b.dataset.k));
-    tiles.forEach((e, i) => { dashBox().appendChild(e); dashSetSize(e, i < 3 ? "m" : "s"); });
-    cards.forEach((e) => { dashBox().appendChild(e); dashSetSize(e, "xl"); });
-  });
+  const pg = pageEl();
+  CONTAINERS.filter((C) => pg && pg.contains(C.el)).forEach((C) => C.reset());
 }
 
 // ---------- dra ----------
-function dragStart(el, ev) {
+function dragStart(C, el, ev) {
   const r = el.getBoundingClientRect();
-  dashDrag = { el, id: ev.pointerId, gx: ev.clientX - r.left, gy: ev.clientY - r.top, x: ev.clientX, y: ev.clientY, last: 0, raf: 0 };
+  dashDrag = { C, el, id: ev.pointerId, gx: ev.clientX - r.left, gy: ev.clientY - r.top, x: ev.clientX, y: ev.clientY, last: 0, raf: 0 };
   el.classList.add("dragging");
   try { el.setPointerCapture(ev.pointerId); } catch (e) {}
   dragPlace();
@@ -140,6 +193,11 @@ function dragStart(el, ev) {
     const y = dashDrag.y, h = innerHeight, edge = 90;
     const v = y < edge ? -(edge - y) / 5 : y > h - edge - 80 ? (y - (h - edge - 80)) / 5 : 0;
     if (v) { (document.scrollingElement || document.documentElement).scrollBy(0, v); dragPlace(); }
+    if (C.horiz) {
+      const cr = C.el.getBoundingClientRect(), x = dashDrag.x;
+      const hv = x < cr.left + 40 ? -8 : x > cr.right - 40 ? 8 : 0;
+      if (hv) { C.el.scrollLeft += hv; dragPlace(); }
+    }
     dashDrag.raf = requestAnimationFrame(loop);
   };
   dashDrag.raf = requestAnimationFrame(loop);
@@ -148,25 +206,26 @@ function dragPlace() {
   const d = dashDrag; if (!d) return;
   d.el.style.transform = "";
   const r = d.el.getBoundingClientRect();
-  d.el.style.transform = `translate(${d.x - d.gx - r.left}px, ${d.y - d.gy - r.top}px) scale(1.06) rotate(-1deg)`;
+  const big = r.height > 260;
+  d.el.style.transform = `translate(${d.x - d.gx - r.left}px, ${d.y - d.gy - r.top}px) scale(${big ? 1.02 : 1.06}) rotate(${big ? -0.4 : -1}deg)`;
 }
 function dragMove(ev) {
   const d = dashDrag; if (!d || ev.pointerId !== d.id) return;
   d.x = ev.clientX; d.y = ev.clientY;
   dragPlace();
   if (Date.now() - d.last < 140) return;
-  const over = dashItems().find((e) => {
+  const over = d.C.items().find((e) => {
     if (e === d.el) return false;
     const r = e.getBoundingClientRect();
     return d.x >= r.left && d.x <= r.right && d.y >= r.top && d.y <= r.bottom;
   });
   if (!over) return;
   const r = over.getBoundingClientRect();
-  const after = r.width > r.height * 2.2 ? d.y > r.top + r.height / 2 : d.x > r.left + r.width / 2;
+  const after = !d.C.horiz && r.width > r.height * 2.2 ? d.y > r.top + r.height / 2 : d.x > r.left + r.width / 2;
   const ref = after ? over.nextSibling : over;
   if (ref === d.el || (after ? over.nextSibling === d.el : over.previousSibling === d.el)) return;
   d.last = Date.now();
-  flip(() => dashBox().insertBefore(d.el, ref));
+  flip(d.C, () => d.C.el.insertBefore(d.el, ref));
   dragPlace();
   vibe(5);
 }
@@ -180,7 +239,7 @@ function dragEnd(ev) {
   if (!calm()) d.el.animate([{ transform: from }, { transform: "scale(.97)", offset: 0.7 }, { transform: "none" }],
     { duration: 520, easing: "cubic-bezier(.2,1.3,.4,1)" });
   glow(d.el);
-  dashSave();
+  d.C.save();
   vibe(10);
 }
 
@@ -189,39 +248,67 @@ function dashWire() {
   if (!box || box.dataset.wired) return;
   box.dataset.wired = "1";
   dashItems().forEach((e) => dashPrep(e, "xl"));
-  dashOrder();
+  // flisene har egen lagring (rekkefølge + størrelse)
+  makeContainer(box, "tiles", "[data-k]", {
+    save: dashSave,
+    apply() {
+      const order = dashLoad().order || [], all = Array.from(box.children).filter((e) => e.dataset.k);
+      const rank = (e) => { const i = order.indexOf(e.dataset.k); return i >= 0 ? i : 1000 + Number(e.dataset.ord || 0); };
+      const want = all.slice().sort((x, y) => rank(x) - rank(y));
+      if (want.every((e, i) => e === all[i])) return;
+      applying = true; want.forEach((e) => box.appendChild(e)); applying = false;
+    },
+    reset() { dashReset0(); },
+  });
+  makeContainer($("#quick"), "quick", "button[data-q]", { horiz: true });
+  $$("main .page").forEach((pg) => {
+    if (pg.id === "pair") return;
+    makeContainer(pg, "p:" + pg.id, ".card");
+    Array.from(pg.children).filter((e) => e.classList.contains("grid")).forEach((g, i) => makeContainer(g, `g:${pg.id}:${i}`, ".card"));
+  });
+
   let lp = null;
-  box.addEventListener("pointerdown", (ev) => {
-    const el = ev.target.closest("#tiles > [data-k]");
-    if (!el || ev.button > 0) return;
+  const itemAt = (t) => { const it = t.closest(".s-item"); return it && it.parentElement && it.parentElement.ksC ? it : null; };
+  document.addEventListener("pointerdown", (ev) => {
+    if (ev.button > 0) return;
+    const el = itemAt(ev.target);
+    if (!el) return;
+    const C = el.parentElement.ksC;
     if (dashEditing) {
-      if (ev.target.closest("button, input, select, a")) return;
+      if (ev.target.closest(".dsz")) return;
       ev.preventDefault();
-      dragStart(el, ev);
+      dragStart(C, el, ev);
       return;
     }
+    const btn = ev.target.closest("button");
+    if (ev.target.closest("input, select, textarea, a, .switch, label, canvas") || (btn && btn !== el)) return;
     const sx = ev.clientX, sy = ev.clientY;
-    lp = { el, sx, sy, t: setTimeout(() => { dashEdit(true); dashJustPressed = Date.now(); dragStart(el, ev); lp = null; }, 480) };
+    lp = { sx, sy, t: setTimeout(() => { lp = null; dashJustPressed = Date.now(); dashEdit(true); dragStart(C, el, ev); }, 480) };
   });
-  box.addEventListener("pointermove", (ev) => {
+  document.addEventListener("pointermove", (ev) => {
     if (lp && Math.hypot(ev.clientX - lp.sx, ev.clientY - lp.sy) > 9) { clearTimeout(lp.t); lp = null; }
     dragMove(ev);
   });
   const up = (ev) => { if (lp) { clearTimeout(lp.t); lp = null; } dragEnd(ev); };
-  box.addEventListener("pointerup", up);
-  box.addEventListener("pointercancel", up);
+  document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", up);
   // når du drar, skal ikke siden rulle eller bytte fane
-  box.addEventListener("touchmove", (ev) => { if (dashDrag) ev.preventDefault(); }, { passive: false });
-  box.addEventListener("contextmenu", (ev) => ev.preventDefault());
+  document.addEventListener("touchmove", (ev) => { if (dashDrag) ev.preventDefault(); }, { passive: false });
+  document.addEventListener("contextmenu", (ev) => { if (itemAt(ev.target)) ev.preventDefault(); });
+  // etter et langt trykk (og mens du tilpasser) skal ikke knapper inne i kortene trykkes
+  document.addEventListener("click", (ev) => {
+    if (!itemAt(ev.target) || ev.target.closest(".dsz")) return;
+    if (dashEditing || Date.now() - dashJustPressed < 700) { ev.preventDefault(); ev.stopPropagation(); }
+  }, true);
   box.addEventListener("click", (ev) => {
-    if (dashEditing || Date.now() - dashJustPressed < 600) return;
+    if (dashEditing || Date.now() - dashJustPressed < 700) return;
     if (ev.target.closest("button, a, input, select, summary, label")) return;
     const el = ev.target.closest("#tiles > [data-k]");
     if (el && DETAIL[el.dataset.k]) openDetail(DETAIL[el.dataset.k]);
   });
   const bar = document.createElement("div");
   bar.id = "dash-bar"; bar.className = "dash-bar"; bar.hidden = true;
-  bar.innerHTML = `<span>Dra for å flytte<br><b>S M L</b> = størrelse</span>
+  bar.innerHTML = `<span></span>
     <button type="button" class="soft" id="dash-reset">Tilbakestill</button><button type="button" id="dash-done">Ferdig</button>`;
   document.body.appendChild(bar);
   $("#dash-done").onclick = () => dashEdit(false);

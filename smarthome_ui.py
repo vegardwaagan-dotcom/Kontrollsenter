@@ -181,6 +181,11 @@ class SmartHomePage(Gtk.ScrolledWindow):
             import ui
             self.body.append(ui.empty("ks-smarthome-symbolic", "Fant ingen enheter ennå",
                                       "Trykk «Søk på nytt» om litt.", compact=False))
+        try:                                      # TV-/høyttalerkortene kan dras til ny plass
+            import sortbox
+            sortbox.scan(self, "smarthjem")
+        except Exception:  # noqa: BLE001
+            pass
 
     def _card(self):
         c = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)

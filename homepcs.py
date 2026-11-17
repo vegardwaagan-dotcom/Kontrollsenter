@@ -297,4 +297,9 @@ class HomePage(Gtk.ScrolledWindow):
             foot.add_css_class("warning" if old else "dim-label")
             inner.append(foot)
             self.flow.append(c)
+        try:                                     # kortene kan dras til ny plass – behold rekkefølgen etter oppdatering
+            import sortbox
+            sortbox.scan(self, "hjemme")
+        except Exception:  # noqa: BLE001
+            pass
         return False
