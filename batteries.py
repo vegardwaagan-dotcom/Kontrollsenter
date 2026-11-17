@@ -45,6 +45,7 @@ def _upower():
 def headsetcontrol_bin():
     for c in (shutil.which("headsetcontrol"), "/home/linuxbrew/.linuxbrew/bin/headsetcontrol",
               os.path.expanduser("~/.local/bin/headsetcontrol"), "/usr/local/bin/headsetcontrol",
+              os.path.expandvars(r"%LOCALAPPDATA%\Kontrollsenter\headsetcontrol.exe"),
               *glob.glob(os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\*HeadsetControl*\headsetcontrol.exe"))):
         if c and os.path.isfile(c):
             return c
@@ -119,19 +120,65 @@ def label(d):
     return f"{d['pct']} %" + (" ⚡" if d.get("charging") else "")
 
 
-def install_headsetcontrol():
-    """Installer HeadsetControl (Homebrew) og regelen som gir tilgang til hodesettet uten root. Returnerer (ok, tekst)."""
+RELEASES = "https://api.github.com/repos/Sapd/HeadsetControl/releases/latest"
+
+
+def _download_headsetcontrol():
+    """Hent ferdigbygd HeadsetControl fra prosjektets GitHub-side: ~/.local/bin/headsetcontrol (Linux) eller
+    %LOCALAPPDATA%\\Kontrollsenter\\headsetcontrol.exe (Windows). Returnerer stien."""
+    import io
+    import urllib.request
+    import zipfile
+    req = urllib.request.Request(RELEASES, headers={"User-Agent": "Kontrollsenter",
+                                                    "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        rel = json.load(r)
+    want = "headsetcontrol-windows-x86_64.exe" if IS_WIN else "headsetcontrol-linux-x86_64.zip"
+    url = next((a["browser_download_url"] for a in rel.get("assets", []) if a.get("name") == want), None)
+    if not url:
+        raise RuntimeError(f"fant ikke {want} i siste versjon ({rel.get('tag_name')})")
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Kontrollsenter"}),
+                                timeout=120) as r:
+        data = r.read()
     if IS_WIN:
-        return False, "Last ned HeadsetControl for Windows fra github.com/Sapd/HeadsetControl/releases"
+        dest = os.path.expandvars(r"%LOCALAPPDATA%\Kontrollsenter\headsetcontrol.exe")
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        with open(dest, "wb") as f:
+            f.write(data)
+        return dest
+    dest = os.path.expanduser("~/.local/bin/headsetcontrol")
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        name = next((n for n in z.namelist() if os.path.basename(n) == "headsetcontrol"), None)
+        if not name:
+            raise RuntimeError("zip-fila mangler headsetcontrol")
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        with open(dest + ".ny", "wb") as f:
+            f.write(z.read(name))
+    os.chmod(dest + ".ny", 0o755)
+    os.replace(dest + ".ny", dest)
+    return dest
+
+
+def install_headsetcontrol():
+    """Installer HeadsetControl (ferdigbygd fra GitHub, ellers Homebrew) og regelen som gir tilgang til hodesettet uten root. Returnerer (ok, tekst)."""
     hc = headsetcontrol_bin()
     if not hc:
-        brew = shutil.which("brew") or "/home/linuxbrew/.linuxbrew/bin/brew"
-        if not os.path.exists(brew):
-            return False, "Fant ikke Homebrew – kjør «ujust install-brew» eller installer HeadsetControl selv"
-        r = subprocess.run([brew, "install", "headsetcontrol"], capture_output=True, text=True, timeout=900)
-        hc = headsetcontrol_bin()
+        err = ""
+        try:
+            hc = _download_headsetcontrol()
+        except Exception as e:  # noqa: BLE001
+            err = str(e)
+        if not hc and not IS_WIN:                     # reserve: Homebrew (har ikke alltid pakken)
+            brew = shutil.which("brew") or "/home/linuxbrew/.linuxbrew/bin/brew"
+            if os.path.exists(brew):
+                r = subprocess.run([brew, "install", "headsetcontrol"], capture_output=True, text=True, timeout=900)
+                hc = headsetcontrol_bin()
+                err = err or (r.stderr or r.stdout).strip()[-200:]
         if not hc:
-            return False, "Installasjonen feilet: " + (r.stderr or r.stdout).strip()[-300:]
+            return False, "Installasjonen feilet: " + (err or "ukjent feil")
+    if IS_WIN:
+        devices()
+        return True, "HeadsetControl er installert ✓ – slå hodesettet av og på hvis batteriet ikke vises"
     rules = subprocess.run([hc, "-u"], capture_output=True, text=True, timeout=20).stdout
     if "SUBSYSTEM" not in rules:
         return True, "HeadsetControl er installert"

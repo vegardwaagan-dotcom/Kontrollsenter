@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.30.1", "Batteri i hodesettet", [
+        ("Rettet", [
+            "«Installer» i Batterier-kortet feilet fordi Homebrew ikke lenger har HeadsetControl. Nå hentes ferdig "
+            "versjon rett fra HeadsetControl på GitHub – på både Linux og Windows. Da vises batteriet i hodesett som "
+            "Logitech G PRO X 2 LIGHTSPEED",
+        ]),
+    ]),
     ("0.30.0", "Flytt og endre alt", [
         ("Nytt", [
             "Alle kort i alle fanene kan nå få ny størrelse, ikke bare på Hjem: S, M og L. I appen: hold fingeren på et "
