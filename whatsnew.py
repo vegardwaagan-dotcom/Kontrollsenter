@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.30.4", "Mus i ladekabelen", [
+        ("Rettet", [
+            "En Logitech-mus (f.eks. PRO X2 SUPERSTRIKE) forsvant fra batterilisten når ladekabelen ble satt i – den "
+            "snakker da direkte over USB i stedet for via mottakeren. Nå vises den som «⚡ Lader · 68 %», og nivået "
+            "oppdateres hvert 8. sekund mens den lader (via Solaar)",
+        ]),
+    ]),
     ("0.30.3", "Lading med en gang", [
         ("Rettet", [
             "Når du setter inn eller tar ut laderen, endres batteriet med en gang: mus og tastatur (UPower sier fra "

@@ -94,8 +94,101 @@ def _headsets():
              "charging": v == -1, "source": "headsetcontrol", "logitech": True}]
 
 
+# --- Logitech-mus/-tastatur i ladekabelen ------------------------------------------------------------
+# Med kabel snakker musa direkte over USB i stedet for via mottakeren. Da forsvinner den fra UPower, mens kjernen
+# beholder siste kjente nivå (status «Unknown»). Solaar kan lese den over kabelen (nivå + «recharging»).
+SOLAAR_CMD = ["flatpak", "run", "--command=python3", "io.github.pwr_solaar.solaar", "-"]
+_SOL = {"t": 0, "list": []}
+
+
+def _uevent(path):
+    out = {}
+    try:
+        with open(os.path.join(path, "uevent")) as f:
+            for ln in f:
+                k, _, v = ln.strip().partition("=")
+                out[k] = v
+    except OSError:
+        pass
+    return out
+
+
+def _usb_products():
+    names = set()
+    for d in glob.glob("/sys/bus/usb/devices/*"):
+        try:
+            with open(os.path.join(d, "idVendor")) as f:
+                if f.read().strip() != "046d":
+                    continue
+            with open(os.path.join(d, "product")) as f:
+                names.add(f.read().strip())
+        except OSError:
+            continue
+    return names
+
+
+def _wired():
+    """[(navn, siste nivå, status)] for Logitech-enheter som står i kabel (koblet direkte med USB)."""
+    if IS_WIN:
+        return []
+    prods = _usb_products()
+    out = []
+    for p in glob.glob("/sys/class/power_supply/hidpp_battery_*"):
+        ue = _uevent(p)
+        model = ue.get("POWER_SUPPLY_MODEL_NAME")
+        if model and model in prods:
+            try:
+                cap = int(ue.get("POWER_SUPPLY_CAPACITY"))
+            except (TypeError, ValueError):
+                cap = None
+            out.append((model, cap, ue.get("POWER_SUPPLY_STATUS", "")))
+    return out
+
+
+def _solaar_installed():
+    return any(os.path.isdir(os.path.join(b, "app", "io.github.pwr_solaar.solaar"))
+               for b in ("/var/lib/flatpak", os.path.expanduser("~/.local/share/flatpak")))
+
+
+def _solaar_battery(max_age=6):
+    if time.time() - _SOL["t"] < max_age or not _solaar_installed():
+        return _SOL["list"]
+    try:
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logi_solaar.py")) as f:
+            script = f.read()
+        r = subprocess.run(SOLAAR_CMD + ["battery"], input=script, capture_output=True, text=True, timeout=30)
+        lines = [ln for ln in r.stdout.splitlines() if ln.startswith("[")]
+        _SOL["list"] = json.loads(lines[-1]) if lines else []
+    except (OSError, subprocess.SubprocessError, ValueError):
+        _SOL["list"] = []
+    _SOL["t"] = time.time()
+    return _SOL["list"]
+
+
+def _wired_devices():
+    w = _wired()
+    if not w:
+        return []
+    sol = _solaar_battery()
+    out = []
+    for model, cap, st in w:
+        s = next((x for x in sol if x.get("name") == model), None) or {}
+        pct = s.get("pct") if s.get("pct") is not None else cap
+        sst = (s.get("status") or st or "").lower()
+        full = "full" in sst or (pct == 100 and "recharg" not in sst and "charging" not in sst)
+        kind = s.get("kind") or ("keyboard" if "keyboard" in model.lower() else "mouse")
+        out.append({"id": "wired:" + model, "name": model, "pct": pct, "kind": kind if kind in ICON else "mouse",
+                    "charging": not full, "full": full, "plugged": True, "source": "wired", "logitech": True})
+    return out
+
+
+def _merge(up, wired):
+    names = {d["name"] for d in up}
+    return up + [d for d in wired if d["name"] not in names]
+
+
 def devices():
-    out = ([] if IS_WIN else _upower()) + _headsets()
+    out = ([] if IS_WIN else _merge(_upower(), _wired_devices())) + _headsets()
     with _LOCK:
         _CACHE.update(t=time.time(), list=out)
     return out
@@ -128,7 +221,7 @@ def _refresh_now():
         try:
             while True:
                 _REF["again"] = False
-                up = [] if IS_WIN else _upower()
+                up = [] if IS_WIN else _merge(_upower(), _wired_devices())
                 with _LOCK:
                     old = _CACHE["list"]
                     new = up + [d for d in old if d.get("source") == "headsetcontrol"]
@@ -174,8 +267,12 @@ def start_watch():
             pass
 
     def headset_loop():
+        n = 0
         while True:
             time.sleep(4)
+            n += 1
+            if n % 2 == 0 and (_wired() or any(d.get("source") == "wired" for d in _CACHE["list"])):
+                _refresh_now()                       # mus i ladekabelen: nytt nivå hvert 8. sekund
             if not headsetcontrol_bin():
                 continue
             try:

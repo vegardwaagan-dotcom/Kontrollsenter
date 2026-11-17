@@ -63,9 +63,39 @@ def list_devices():
     print(json.dumps(out))
 
 
+def batteries():
+    """Batteri for alle Logitech-enheter Solaar ser – også når musa står i ladekabelen (koblet direkte med USB)."""
+    out = []
+    for r in _receivers_and_devices():
+        try:
+            devs = [r] if r.isDevice else [d for d in r if d]
+            for d in devs:
+                try:
+                    if r.isDevice:
+                        d.ping()
+                    b = d.battery()
+                except Exception:  # noqa: BLE001
+                    continue
+                if b is None:
+                    continue
+                st = str(getattr(b, "status", "") or "").lower()
+                lvl = getattr(b, "level", None)
+                try:
+                    lvl = int(lvl) if lvl is not None else None
+                except (TypeError, ValueError):
+                    lvl = None
+                out.append({"name": d.name, "kind": str(d.kind).lower(), "pct": lvl, "status": st,
+                            "wired": bool(r.isDevice)})
+        except Exception:  # noqa: BLE001
+            continue
+    print(json.dumps(out))
+
+
 def main():
     if sys.argv[1] == "list":
         return list_devices()
+    if sys.argv[1] == "battery":
+        return batteries()
     op, name = sys.argv[1], sys.argv[2]
     dev = find(name)
     sets = {s.name: s for s in (dev.settings or [])}
