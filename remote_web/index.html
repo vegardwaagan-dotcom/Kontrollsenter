@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#121218">
 <title>Kontrollsenter</title>
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="themes.css">
+<script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sakura|arktis)$/.test(k)?"light":"dark");}}catch(e){}</script>
 </head>
 <body>
 <div class="shell">
@@ -228,6 +230,8 @@
         <div class="chips"><button data-timer="30">30 min</button><button data-timer="60">1 time</button>
           <button data-timer="120">2 timer</button><button data-timer="idle">Etter nedlasting</button><button data-timer="off">Avbryt</button></div></div>
       <div class="card"><h2>Utseende</h2>
+        <div class="label">Tema</div><div class="themes" id="ks-themes"></div>
+        <div class="label" id="theme-label">Lyst eller mørkt</div>
         <div class="seg" id="theme"><button data-v="auto">Auto</button><button data-v="light">Lyst</button><button data-v="dark">Mørkt</button><button data-v="amoled">AMOLED</button></div>
         <div class="row"><span>Flytende glass</span><label class="switch"><input type="checkbox" id="glass"><i></i></label></div>
         <div class="row"><span>Enkel visning</span><label class="switch"><input type="checkbox" id="simple"><i></i></label></div>
@@ -261,6 +265,7 @@
   <div class="row end"><button id="dlg-no" class="soft">Avbryt</button><button id="dlg-yes" class="danger">OK</button></div></div></div>
 <div id="second" class="second" hidden><button id="second-close" class="icon"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <div id="second-game" class="second-game"></div><div id="second-grid" class="second-grid"></div></div>
+<script src="themes.js"></script>
 <script src="app.js"></script>
 <script src="extra.js"></script>
 <script src="family.js"></script>

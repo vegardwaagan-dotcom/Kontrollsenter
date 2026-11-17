@@ -325,6 +325,140 @@ window.ks-desk > windowhandle { border-radius: 22px; }
 """
 LOOK = os.path.expanduser("~/.config/systemmonitor/utseende.json")
 
+# ---------------------------------------------------------------------------------------------------------------
+# Temaer – samme sett på PC (Linux/Windows) og i appen (Android). a/b = gradienten, c = tredje glød,
+# bg/side/card = flatene, fg/dim = tekst. dark=None betyr «følg systemet».
+# ---------------------------------------------------------------------------------------------------------------
+THEMES = {
+    "standard":   {"name": "Kontrollsenter", "desc": "Blått og lilla – som før", "dark": None,
+                   "a": "#5b8cff", "b": "#8a5cff", "c": "#00c8b4"},
+    "nordlys":    {"name": "Nordlys", "desc": "Grønt og fiolett lys over en polarnatt", "dark": True,
+                   "a": "#2ef2b3", "b": "#7c5cff", "c": "#22d3ee",
+                   "bg": "#06111a", "side": "#091822", "card": "#0e1f2b", "fg": "#e8fbf6", "dim": "#8fb3ad"},
+    "synthwave":  {"name": "Synthwave", "desc": "Neonrosa og cyan – rett fra 1986", "dark": True,
+                   "a": "#ff2bd6", "b": "#22e4ff", "c": "#ffb02e",
+                   "bg": "#110621", "side": "#16092a", "card": "#1e0f35", "fg": "#fbe9ff", "dim": "#b49ac9"},
+    "solnedgang": {"name": "Solnedgang", "desc": "Glødende oransje mot rosa", "dark": True,
+                   "a": "#ff8a3d", "b": "#ff3d7f", "c": "#ffd166",
+                   "bg": "#170b10", "side": "#1d0e15", "card": "#27131b", "fg": "#fff1ea", "dim": "#c8a59a"},
+    "dyphav":     {"name": "Dyphav", "desc": "Turkis lys i dypblått vann", "dark": True,
+                   "a": "#00c2ff", "b": "#3a5bff", "c": "#00e0b8",
+                   "bg": "#03111b", "side": "#051826", "card": "#0a2234", "fg": "#e6f6ff", "dim": "#8fb0c4"},
+    "skog":       {"name": "Skog", "desc": "Mose, lime og kveldslys", "dark": True,
+                   "a": "#5bd68a", "b": "#c3e35a", "c": "#3fb6a8",
+                   "bg": "#0a130d", "side": "#0d1a11", "card": "#142219", "fg": "#ecf7ee", "dim": "#9db7a3"},
+    "gull":       {"name": "Midnatt og gull", "desc": "Svart, børstet gull – luksus", "dark": True,
+                   "a": "#f5c76b", "b": "#c9862b", "c": "#fff1c1",
+                   "bg": "#08080a", "side": "#0e0e11", "card": "#161618", "fg": "#f7f2e7", "dim": "#a59e8f"},
+    "lava":       {"name": "Lava", "desc": "Glødende rødt og gult på svart stein", "dark": True,
+                   "a": "#ff4d1a", "b": "#ffb21a", "c": "#ff2e63",
+                   "bg": "#130706", "side": "#190a08", "card": "#23100c", "fg": "#fff0ea", "dim": "#c39a8e"},
+    "sakura":     {"name": "Kirsebærblomst", "desc": "Lyst, rosa og lavendel", "dark": False,
+                   "a": "#ff6fa3", "b": "#a97bff", "c": "#ffb3c7",
+                   "bg": "#fff5f8", "side": "#ffecf3", "card": "#ffffff", "fg": "#2a1a22", "dim": "#8a6a78"},
+    "arktis":     {"name": "Arktis", "desc": "Lyst og iskaldt blått", "dark": False,
+                   "a": "#2f9bff", "b": "#29d3e8", "c": "#8fb8ff",
+                   "bg": "#f0f6fb", "side": "#e6f0f8", "card": "#ffffff", "fg": "#102330", "dim": "#5d7486"},
+}
+_BASE = {"#5b8cff": "a", "#8a5cff": "b", "#9a6bff": "b", "#00c8b4": "c"}
+
+
+def _rgb(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _mix(x, y):
+    a, b = _rgb(x), _rgb(y)
+    return "#%02x%02x%02x" % tuple((i + j) // 2 for i, j in zip(a, b))
+
+
+def current_theme():
+    try:
+        t = json.load(open(LOOK)).get("theme", "standard")
+    except (OSError, ValueError):
+        t = "standard"
+    return t if t in THEMES else "standard"
+
+
+def recolor(css, name=None):
+    """Bytt standardfargene i et stilark med temaets farger."""
+    t = THEMES.get(name or current_theme(), THEMES["standard"])
+    if t is THEMES["standard"]:
+        return css
+    for hx, k in _BASE.items():
+        css = css.replace(hx, t[k])
+    return css.replace("#6a7bff", _mix(t["a"], t["b"]))
+
+
+def theme_css(name=None):
+    """Ekstra stilark for temaet: flater, tekst og en bakgrunn med glød i temaets farger."""
+    t = THEMES.get(name or current_theme(), THEMES["standard"])
+    if "bg" not in t:
+        return ""
+    mid = _mix(t["a"], t["b"])
+    dark = t["dark"]
+    return f"""
+:root {{
+  --window-bg-color: {t['bg']}; --window-fg-color: {t['fg']};
+  --view-bg-color: {t['bg']}; --view-fg-color: {t['fg']};
+  --headerbar-bg-color: {t['side']}; --headerbar-fg-color: {t['fg']};
+  --sidebar-bg-color: {t['side']}; --sidebar-fg-color: {t['fg']};
+  --secondary-sidebar-bg-color: {t['side']};
+  --card-bg-color: {t['card']}; --card-fg-color: {t['fg']};
+  --popover-bg-color: {t['card']}; --popover-fg-color: {t['fg']};
+  --dialog-bg-color: {t['card']}; --dialog-fg-color: {t['fg']};
+  --accent-bg-color: {mid}; --accent-color: {t['a']}; --accent-fg-color: {'#111' if not dark else 'white'};
+}}
+window.sysmon, window.background {{ background-color: {t['bg']}; color: {t['fg']}; }}
+.dim-label, .ks-sub, .ks-hello-sub {{ color: alpha({t['dim']}, 1); opacity: 1; }}
+.ks-content {{
+  background-image: radial-gradient(ellipse 60% 42% at 8% 0%, alpha({t['a']}, {0.20 if dark else 0.14}), transparent),
+                    radial-gradient(ellipse 50% 40% at 100% 8%, alpha({t['b']}, {0.18 if dark else 0.12}), transparent),
+                    radial-gradient(ellipse 70% 40% at 50% 100%, alpha({t['c']}, 0.10), transparent);
+}}
+.ks-side {{ background-color: {t['side']};
+  background-image: radial-gradient(circle farthest-side at 0% 0%, alpha({t['a']}, 0.16), transparent); }}
+.ks-brand-logo {{ background-image: linear-gradient(135deg, {t['a']}, {t['b']}); }}
+"""
+
+
+def web_css():
+    """Samme temaer for appen (remote_web/themes.css og startskjermen i APK-en)."""
+    out = ["/* Laget av theme.web_css() – ikke rediger for hånd. */",
+           ":root { --ga: #5b8cff; --gb: #8a5cff; --gc: #00c8b4; }"]
+    for key, t in THEMES.items():
+        if key == "standard":
+            continue
+        ra, rb, rc = _rgb(t["a"]), _rgb(t["b"]), _rgb(t["c"])
+        dark = t["dark"]
+        line = "rgba(255,255,255,.075)" if dark else "rgba(20,24,60,.08)"
+        hi = "rgba(255,255,255,.06)" if dark else "rgba(255,255,255,.9)"
+        card = (f"rgba({','.join(map(str, _rgb(t['card'])))},.62)" if dark
+                else "rgba(255,255,255,.80)")
+        out.append(
+            f':root[data-ks="{key}"][data-ks] {{ --bg: {t["bg"]}; --bg2: {t["side"]}e0; --card: {card}; '
+            f'--card-solid: {t["card"]}; --card2: {"rgba(255,255,255,.07)" if dark else "rgba(20,24,60,.055)"}; '
+            f'--fg: {t["fg"]}; --dim: {t["dim"]}; --line: {line}; --hi: {hi}; '
+            f'--ga: {t["a"]}; --gb: {t["b"]}; --gc: {t["c"]}; --acc: {t["a"]}; --acc2: {t["b"]}; --c1: {t["a"]}; '
+            f'--grad: linear-gradient(135deg, {t["a"]} 0%, {t["b"]} 100%); '
+            f'--aurora: radial-gradient(60% 45% at 8% -5%, rgba({ra[0]},{ra[1]},{ra[2]},{.34 if dark else .22}), transparent 70%), '
+            f'radial-gradient(50% 40% at 100% 0%, rgba({rb[0]},{rb[1]},{rb[2]},{.30 if dark else .18}), transparent 70%), '
+            f'radial-gradient(70% 50% at 50% 115%, rgba({rc[0]},{rc[1]},{rc[2]},.16), transparent 70%); '
+            f'color-scheme: {"dark" if dark else "light"}; }}')
+    return "\n".join(out) + "\n"
+
+
+
+def _save_look(**kw):
+    try:
+        d = json.load(open(LOOK))
+    except (OSError, ValueError):
+        d = {}
+    d.update(kw)
+    os.makedirs(os.path.dirname(LOOK), exist_ok=True)
+    json.dump(d, open(LOOK, "w"))
+
 
 def glass_on():
     try:
@@ -334,8 +468,7 @@ def glass_on():
 
 
 def set_glass(on, window=None):
-    os.makedirs(os.path.dirname(LOOK), exist_ok=True)
-    json.dump({"glass": bool(on)}, open(LOOK, "w"))
+    _save_look(glass=bool(on))
     for w in ([window] if window else Gtk.Window.list_toplevels()):
         if w is not None:
             (w.add_css_class if on else w.remove_css_class)("ks-glass")
@@ -344,27 +477,85 @@ def set_glass(on, window=None):
 _LOADED = False
 
 
+SWATCH_CSS = """
+togglebutton.ks-swatch, window.ks-glass togglebutton.ks-swatch { padding: 8px; border-radius: 18px;
+  background-image: none; background-color: transparent; box-shadow: none; }
+togglebutton.ks-swatch:hover, window.ks-glass togglebutton.ks-swatch:hover { background-color: alpha(currentColor, 0.06); }
+togglebutton.ks-swatch:checked, window.ks-glass togglebutton.ks-swatch:checked,
+window.ks-glass .linked > togglebutton.ks-swatch:checked {
+  background-image: none; background-color: alpha(#8a5cff, 0.16); color: inherit;
+  box-shadow: inset 0 0 0 2px #8a5cff, 0 10px 24px -12px alpha(#8a5cff, 0.9); }
+"""
+_SHEETS = []          # [(css, prioritet, provider)] – lastes på nytt når temaet byttes
+
+
+def _provider(css):
+    p = Gtk.CssProvider()
+    p.load_from_string(css) if hasattr(p, "load_from_string") else p.load_from_data(css.encode(), -1)
+    return p
+
+
+def add_css(css, priority=Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION):
+    """Legg inn et stilark som følger temaet (fargene byttes når du velger et annet tema)."""
+    p = _provider(recolor(css))
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), p, priority)
+    _SHEETS.append([css, priority, p])
+    return p
+
+
+def _scheme(name):
+    try:
+        from gi.repository import Adw
+        dark = THEMES.get(name, {}).get("dark")
+        Adw.StyleManager.get_default().set_color_scheme(
+            Adw.ColorScheme.DEFAULT if dark is None else
+            Adw.ColorScheme.FORCE_DARK if dark else Adw.ColorScheme.FORCE_LIGHT)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def load():
     """Legg inn designet for hele programmet (én gang)."""
     global _LOADED
     if _LOADED:
         return
-    css = Gtk.CssProvider()
-    if hasattr(css, "load_from_string"):
-        css.load_from_string(CSS)
-    else:
-        css.load_from_data(CSS.encode(), -1)
-    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css,
-                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-    g = Gtk.CssProvider()
-    g.load_from_string(GLASS_CSS) if hasattr(g, "load_from_string") else g.load_from_data(GLASS_CSS.encode(), -1)
-    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), g,
-                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
-    gl = Gtk.CssProvider()
-    gl.load_from_string(GLOW_CSS) if hasattr(gl, "load_from_string") else gl.load_from_data(GLOW_CSS.encode(), -1)
-    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), gl,
-                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
     _LOADED = True
+    add_css(CSS)
+    add_css(GLASS_CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+    add_css(GLOW_CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
+    _THEME[0] = _provider(theme_css())
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), _THEME[0],
+                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 4)
+    add_css(SWATCH_CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 5)
+    _scheme(current_theme())
+
+
+_THEME = [None]
+
+
+def set_theme(name):
+    """Bytt tema med en gang i hele programmet, og husk valget."""
+    if name not in THEMES:
+        return
+    _save_look(theme=name)
+    disp = Gdk.Display.get_default()
+    for sh in _SHEETS:
+        Gtk.StyleContext.remove_provider_for_display(disp, sh[2])
+        sh[2] = _provider(recolor(sh[0], name))
+        Gtk.StyleContext.add_provider_for_display(disp, sh[2], sh[1])
+    if _THEME[0] is not None:
+        Gtk.StyleContext.remove_provider_for_display(disp, _THEME[0])
+    _THEME[0] = _provider(theme_css(name))
+    Gtk.StyleContext.add_provider_for_display(disp, _THEME[0], Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 4)
+    _scheme(name)
+    for cb in list(_LISTENERS):
+        try:
+            cb(name)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+_LISTENERS = []
 
 
 # Sidemenyens seksjoner: fane -> seksjon (rekkefølgen her er rekkefølgen i menyen)

@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.31.0", "Temaer", [
+        ("Nytt", [
+            "Ti fargetemaer på PC-en (Linux og Windows) og i mobilappen: Nordlys, Synthwave, Solnedgang, Dyphav, Skog, "
+            "Midnatt og gull, Lava, Kirsebærblomst, Arktis – og det gamle Kontrollsenter. Hvert tema farger alt: "
+            "bakgrunnen med glød, kortene, sidemenyen, knappene, bryterne, grafene og det som er «på»",
+            "PC-en: Innstillinger → Utseende. Temaet byttes med en gang, uten omstart",
+            "Appen: Innstillinger → Utseende. Temaet glir over på et øyeblikk og gjelder også startskjermen og alle PC-ene",
+        ]),
+    ]),
     ("0.30.5", "Musa blir værende", [
         ("Rettet", [
             "Musa kunne fortsatt forsvinne når ladekabelen ble tatt ut og satt i igjen, fordi UPower mistet den. Nå leses "

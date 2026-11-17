@@ -35,7 +35,10 @@ async function loadMe() {
 // ---------- tema, enkel visning og språk (24, 25) ----------
 function applyLook() {
   const th = pref("theme", "auto");
-  if (th === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = th;
+  const lk = typeof curLook === "function" ? curLook() : "standard";
+  const lt = (window.KS_THEMES || []).find((t) => t.k === lk);
+  if (lt && lt.k !== "standard") document.documentElement.dataset.theme = lt.dark === false ? "light" : "dark";   // fargetema bestemmer
+  else if (th === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = th;
   $$("#theme button").forEach((b) => b.classList.toggle("on", b.dataset.v === th));
   document.body.classList.toggle("simple", !!pref("simple", false));
   $("#simple").checked = !!pref("simple", false);
@@ -45,6 +48,34 @@ function applyLook() {
   applyLang();
 }
 $$("#theme button").forEach((b) => (b.onclick = () => { setPref("theme", b.dataset.v); applyLook(); if (KS && KS.setTheme) KS.setTheme(b.dataset.v); }));
+
+// ---------- fargetema: samme temaer som på PC-en; deles med startskjermen og alle PC-ene via appen ----------
+function curLook() {
+  try { return (KS && KS.getLook && KS.getLook()) || localStorage.getItem("ks_look") || "standard"; } catch (e) { return "standard"; }
+}
+function setLook(k) {
+  try { localStorage.setItem("ks_look", k); } catch (e) {}
+  try { if (KS && KS.setLook) KS.setLook(k); } catch (e) {}
+  const root = document.documentElement;
+  root.classList.add("ks-fade");
+  if (k === "standard") root.removeAttribute("data-ks"); else root.setAttribute("data-ks", k);
+  setTimeout(() => root.classList.remove("ks-fade"), 700);
+  applyLook();
+  drawLooks();
+}
+function drawLooks() {
+  const box = $("#ks-themes"); if (!box || !window.KS_THEMES) return;
+  const cur = curLook();
+  box.innerHTML = KS_THEMES.map((t) => `<button type="button" class="theme-sw${t.k === cur ? " on" : ""}" data-k="${esc(t.k)}">
+    <span class="tp" style="background:radial-gradient(70% 90% at 10% 0%, ${t.a}cc, transparent 70%),radial-gradient(60% 80% at 100% 10%, ${t.b}bb, transparent 70%),radial-gradient(70% 60% at 50% 120%, ${t.c}88, transparent 70%),${t.bg}">
+      <i class="tc" style="background:${t.card}"><b style="background:${t.fg}"></b><b style="background:${t.fg}"></b><b style="background:${t.fg}"></b></i>
+      <i class="tg" style="background:linear-gradient(90deg, ${t.a}, ${t.b})"></i></span>
+    <span class="tn">${esc(t.name)}</span><span class="td">${esc(t.desc)}</span></button>`).join("");
+  box.querySelectorAll(".theme-sw").forEach((b) => (b.onclick = () => { setLook(b.dataset.k); if (KS && KS.vibrate) KS.vibrate(); }));
+  const std = cur === "standard";
+  $("#theme").hidden = !std; $("#theme-label").hidden = !std;
+}
+drawLooks();
 $("#simple").onchange = () => { setPref("simple", $("#simple").checked); applyLook(); };
 $("#simple-off").onclick = () => { setPref("simple", false); applyLook(); toast("Enkel visning er av"); };
 $("#auto-second").onchange = () => setPref("auto_second", $("#auto-second").checked);

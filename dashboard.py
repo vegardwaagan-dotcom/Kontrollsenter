@@ -68,13 +68,8 @@ def _css():
     if _css_done[0]:
         return
     _css_done[0] = True
-    p = Gtk.CssProvider()
-    if hasattr(p, "load_from_string"):
-        p.load_from_string(CSS)
-    else:
-        p.load_from_data(CSS.encode(), -1)
-    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), p,
-                                              Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
+    import theme
+    theme.add_css(CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
 
 
 class _Item(Gtk.Overlay):

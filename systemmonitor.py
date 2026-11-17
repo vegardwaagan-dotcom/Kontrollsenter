@@ -407,13 +407,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         flow.on_edit_request = lambda: self.edit_btn.set_active(not self.edit_btn.get_active())
         page.append(topbar)                   # Tilbakestill nederst – sjelden brukt
 
-        css = Gtk.CssProvider()
-        if hasattr(css, "load_from_string"):
-            css.load_from_string(CSS.decode())
-        else:
-            css.load_from_data(CSS, -1)
-        Gtk.StyleContext.add_provider_for_display(
-            self.get_display(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        import theme as _th
+        _th.add_css(CSS.decode())                      # følger temaet (fargene byttes når du velger et annet)
 
         scroller = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
         scroller.set_child(Adw.Clamp(maximum_size=MAX_WIDTH, tightening_threshold=900, child=page))

@@ -629,6 +629,18 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Fargetema (Nordlys, Synthwave …) – samme på startskjermen og for alle PC-ene. */
+        @JavascriptInterface
+        public String getLook() {
+            return getSharedPreferences("ks", 0).getString("look", "");
+        }
+
+        @JavascriptInterface
+        public void setLook(String name) {
+            if (name == null || !name.matches("[a-z]{1,20}")) return;
+            getSharedPreferences("ks", 0).edit().putString("look", name).apply();
+        }
+
         /** Varselvalg på denne telefonen: JSON {"all":true,"temp":false,...} (mangler = på). */
         @JavascriptInterface
         public String getNotify() {

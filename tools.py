@@ -951,6 +951,82 @@ class _Cards:
             i.append(dim("Start Kontrollsenter skjult ved innlogging: Programmer → Oppstart → Kontrollsenter."))
         self.box.append(c)
 
+    def _theme_card(self):
+        import i18n
+        import theme as ks_theme
+        c, i = card("Tema", "Farger på hele Kontrollsenter. Byttes med en gang – også i widgetene og detaljene. "
+                            "Samme temaer finnes i mobilappen.")
+        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=5,
+                           min_children_per_line=2, column_spacing=10, row_spacing=10)
+        cur = ks_theme.current_theme()
+        first = None
+        for key, t in ks_theme.THEMES.items():
+            b = Gtk.ToggleButton(active=(key == cur))
+            b.add_css_class("flat")
+            b.add_css_class("ks-swatch")
+            if first:
+                b.set_group(first)
+            first = first or b
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            da = Gtk.DrawingArea(content_width=132, content_height=78)
+            da.set_draw_func(self._draw_swatch, t)
+            col.append(da)
+            nm = Gtk.Label(label=i18n.tr(t["name"]), xalign=0)
+            nm.add_css_class("heading")
+            col.append(nm)
+            ds = Gtk.Label(label=i18n.tr(t["desc"]), xalign=0, wrap=True, max_width_chars=18)
+            ds.add_css_class("caption")
+            ds.add_css_class("dim-label")
+            col.append(ds)
+            b.set_child(col)
+            b.connect("toggled", lambda w, k=key: w.get_active() and ks_theme.set_theme(k))
+            flow.append(b)
+        i.append(flow)
+        self.box.append(c)
+
+    @staticmethod
+    def _draw_swatch(_a, cr, w, h, t):
+        import cairo
+        import math
+        import theme as ks_theme
+        rgb = lambda x: tuple(v / 255 for v in ks_theme._rgb(x))  # noqa: E731
+        r = 14
+
+        def rr(x, y, ww, hh, rad):
+            cr.new_sub_path()
+            cr.arc(x + ww - rad, y + rad, rad, -math.pi / 2, 0)
+            cr.arc(x + ww - rad, y + hh - rad, rad, 0, math.pi / 2)
+            cr.arc(x + rad, y + hh - rad, rad, math.pi / 2, math.pi)
+            cr.arc(x + rad, y + rad, rad, math.pi, 3 * math.pi / 2)
+            cr.close_path()
+        rr(0, 0, w, h, r)
+        cr.set_source_rgb(*rgb(t.get("bg", "#121320")))
+        cr.fill_preserve()
+        cr.save()
+        cr.clip()
+        for cx, cy, rad, col in ((w * .15, 0, w * .7, t["a"]), (w * .95, h * .1, w * .6, t["b"]),
+                                 (w * .5, h * 1.1, w * .6, t["c"])):
+            g = cairo.RadialGradient(cx, cy, 0, cx, cy, rad)
+            g.add_color_stop_rgba(0, *rgb(col), .55)
+            g.add_color_stop_rgba(1, *rgb(col), 0)
+            cr.set_source(g)
+            cr.paint()
+        # et lite «kort» og en knapp med gradienten
+        cr.set_source_rgba(*rgb(t.get("card", "#1c1d2b")), .85)
+        rr(10, 12, w * .52, h - 24, 8)
+        cr.fill()
+        g = cairo.LinearGradient(w * .62, 0, w - 10, 0)
+        g.add_color_stop_rgb(0, *rgb(t["a"]))
+        g.add_color_stop_rgb(1, *rgb(t["b"]))
+        cr.set_source(g)
+        rr(w * .62, h - 30, w * .38 - 10, 16, 8)
+        cr.fill()
+        cr.set_source_rgba(*rgb(t.get("fg", "#f3f3f7")), .8)
+        for k, ww in enumerate((.36, .26, .3)):
+            rr(18, 22 + k * 12, w * ww, 5, 2.5)
+            cr.fill()
+        cr.restore()
+
     def _look_card(self):
         import i18n
         import theme as ks_theme
@@ -1219,9 +1295,11 @@ class SettingsPage(TabbedPage, _Cards):
     """Alle innstillingene for selve Kontrollsenter samlet på ett sted."""
     def __init__(self):
         TabbedPage.__init__(self, "innstillinger")
+        self.tab("utseende", "Utseende")
+        self._try(self._theme_card)
+        self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)
-        self._try(self._look_card)
         self.tab("varsler", "Varsler")
         self._try(self._notify_card)
         self.tab("automatikk", "Automatikk")
