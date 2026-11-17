@@ -101,7 +101,99 @@ def devices():
     return out
 
 
-def cached(max_age=90):
+_LISTENERS = []
+_WATCH = {"on": False}
+
+
+def _sig(lst):
+    return [(d.get("id"), d.get("pct"), d.get("charging"), d.get("full")) for d in lst]
+
+
+def _changed():
+    from gi.repository import GLib
+    for fn in list(_LISTENERS):
+        GLib.idle_add(lambda f=fn: f() and False)
+
+
+_REF = {"busy": False, "again": False}
+
+
+def _refresh_now():
+    """Les UPower-enhetene på nytt i bakgrunnen (maks én om gangen) og si fra hvis noe endret seg."""
+    if _REF["busy"]:
+        _REF["again"] = True
+        return
+
+    def work():
+        try:
+            while True:
+                _REF["again"] = False
+                up = [] if IS_WIN else _upower()
+                with _LOCK:
+                    old = _CACHE["list"]
+                    new = up + [d for d in old if d.get("source") == "headsetcontrol"]
+                    changed = _sig(old) != _sig(new)
+                    _CACHE["list"] = new
+                    _CACHE["t"] = max(_CACHE["t"], time.time() - 15)
+                if changed:
+                    _changed()
+                if not _REF["again"]:
+                    break
+                time.sleep(0.3)
+        finally:
+            _REF["busy"] = False
+    _REF["busy"] = True
+    threading.Thread(target=work, daemon=True).start()
+
+
+def listen(fn):
+    """fn() kalles (i GTK-tråden) med en gang batteriene endrer seg. Starter overvåkingen første gang."""
+    if fn not in _LISTENERS:
+        _LISTENERS.append(fn)
+    start_watch()
+
+
+def start_watch():
+    """UPower sier fra med en gang en enhet begynner/slutter å lade (D-Bus-signal). Hodesett via HeadsetControl
+    har ingen signaler, så de sjekkes hvert 4. sekund. Må kalles fra GTK-tråden."""
+    if _WATCH["on"]:
+        return
+    _WATCH["on"] = True
+    if not IS_WIN:
+        try:
+            from gi.repository import Gio
+            bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            cb = lambda *_a: _refresh_now()  # noqa: E731
+            bus.signal_subscribe("org.freedesktop.UPower", "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                                 None, "org.freedesktop.UPower.Device", Gio.DBusSignalFlags.NONE, cb)
+            for sig in ("DeviceAdded", "DeviceRemoved"):
+                bus.signal_subscribe("org.freedesktop.UPower", "org.freedesktop.UPower", sig, None, None,
+                                     Gio.DBusSignalFlags.NONE, cb)
+            _WATCH["bus"] = bus
+        except Exception:  # noqa: BLE001
+            pass
+
+    def headset_loop():
+        while True:
+            time.sleep(4)
+            if not headsetcontrol_bin():
+                continue
+            try:
+                hs = _headsets()
+            except Exception:  # noqa: BLE001
+                continue
+            with _LOCK:
+                old = _CACHE["list"]
+                new = [d for d in old if d.get("source") != "headsetcontrol"] + hs
+                changed = _sig([d for d in old if d.get("source") == "headsetcontrol"]) != _sig(hs)
+                _CACHE["list"] = new
+            if changed:
+                _changed()
+    threading.Thread(target=headset_loop, daemon=True).start()
+    _refresh_now()
+
+
+def cached(max_age=20):
     """Siste kjente liste; starter en ny lesing i bakgrunnen når den er gammel."""
     if time.time() - _CACHE["t"] > max_age and not getattr(cached, "busy", False):
         cached.busy = True

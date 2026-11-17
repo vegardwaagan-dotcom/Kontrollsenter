@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.30.3", "Lading med en gang", [
+        ("Rettet", [
+            "Når du setter inn eller tar ut laderen, endres batteriet med en gang: mus og tastatur (UPower sier fra "
+            "umiddelbart) og hodesett (sjekkes hvert 4. sekund). Før kunne det ta opptil halvannet minutt",
+        ]),
+    ]),
     ("0.30.2", "Lading", [
         ("Nytt", [
             "Enheter som lader viser et grønt, pulserende lyn og «Lader · 64 %» – på PC-en, i appen, i detaljene og i "

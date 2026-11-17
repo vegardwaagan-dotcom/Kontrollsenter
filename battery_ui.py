@@ -42,7 +42,8 @@ class BatteryCard(Gtk.Box):
         i.append(self.msg)
         self._sig = None
         threading.Thread(target=lambda: (B.devices(), GLib.idle_add(self.refresh)), daemon=True).start()
-        GLib.timeout_add_seconds(30, lambda: self.refresh() or True)
+        GLib.timeout_add_seconds(5, lambda: self.refresh() or True)
+        B.listen(self.refresh)                     # med en gang en lader settes inn eller tas ut
 
     def refresh(self):
         ds = [d for d in B.cached() if d.get("logitech") or not self.logitech_only or d["kind"] == "headset"]
