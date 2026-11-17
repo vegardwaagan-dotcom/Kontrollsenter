@@ -700,6 +700,26 @@ def _feature_action(win, kind, a):
     if kind == "headsetinstall":
         import batteries
         return batteries.install_headsetcontrol()
+    if kind == "notify":                         # varselvalg på PC-en fra mobilappen
+        import background as B
+        kid, on = str(a.get("kind") or ""), bool(a.get("on"))
+        if kid != "all" and kid not in {k[0] for k in B.KINDS}:
+            raise ValueError("ukjent varseltype")
+
+        def go():
+            bg = getattr(win, "bg", None)
+            cfg = bg.cfg if bg else B.load()
+            if kid == "all":
+                val, key = on, "notify"
+            else:
+                val, key = {**(cfg.get("kinds") or {}), kid: on}, "kinds"
+            if bg:
+                bg.set(key, val)
+            else:
+                cfg[key] = val
+                B.save(cfg)
+        _call_main(go)
+        return True, "Varsler på PC-en: " + ("på" if on else "av")
     if kind == "smart":
         import smarthome
         return True, smarthome.action(a)
@@ -1064,7 +1084,7 @@ def _handler(remote):
                     "<h2>Kontrollpanelet mangler på PC-en</h2><p>Kontrollsenter på denne PC-en mangler mappen "
                     "<b>remote_web</b> (oppdateringen fra en eldre versjon tok den ikke med). Start Kontrollsenter "
                     "på nytt på PC-en mens den er på hjemmenettet – da hentes den fra NAS-en automatisk – eller "
-                    "oppdater Kontrollsenter i Verktøy.</p></body>")
+                    "oppdater Kontrollsenter i Innstillinger → Oppdatering.</p></body>")
             return self._send(503, html.encode(), "text/html; charset=utf-8")
 
         def _extra_get(self, what, q):
@@ -1073,6 +1093,17 @@ def _handler(remote):
             if what == "me":
                 d = getattr(self, "device", {}) or {}
                 return self._send(200, {"name": d.get("name"), "role": d.get("role", "full")})
+            if what == "notify":
+                import background as B
+                bg = getattr(remote.win, "bg", None)
+                cfg = bg.cfg if bg else B.load()
+                k = cfg.get("kinds") or {}
+                return self._send(200, {"all": bool(cfg.get("notify", True)), "kinds": [
+                    {"id": i, "name": n, "desc": d, "on": bool(k.get(i, True))} for i, n, d, _ in B.KINDS]})
+            if what == "detail":
+                import details
+                k = arg("k", "cpu")
+                return self._send(200, _call_main(lambda: details.collect(remote.win, k)))
             if what == "events":
                 return self._send(200, {"events": X.events(float(arg("since", 0) or 0)), "now": time.time()})
             if what == "playtime":

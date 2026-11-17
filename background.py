@@ -20,6 +20,52 @@ DEFAULTS = {"background": True, "tray": True, "notify": True, "cpu_limit": 90, "
 REPEAT = 30 * 60           # samme varsel tidligst igjen etter 30 min
 PERIODIC = 6 * 3600
 
+# Varseltyper du kan slå av og på hver for seg (Innstillinger → Varsler, og i mobilappen).
+# (id, navn, forklaring, varselnøkler – nøkler som slutter på * matcher alt som starter slik)
+KINDS = [
+    ("temp", "Høy temperatur", "Prosessoren eller skjermkortet blir for varmt.", ["cpu", "gpu"]),
+    ("disk", "Nesten full disk", "En disk har lite ledig plass igjen.", ["disk*"]),
+    ("battery", "Lavt batteri", "Mus, tastatur, hodesett eller kontroller må lades.", ["bat*"]),
+    ("syscheck", "Systemsjekk", "Systemsjekken i bakgrunnen fant noe som bør fikses.", ["syscheck"]),
+    ("updates", "Oppdateringer", "Nye programoppdateringer og nye versjoner av Kontrollsenter.",
+     ["updates", "lanupdate", "lanpublish", "restart"]),
+    ("chat", "Familie-chat og «Middag!»", "Meldinger fra de andre i huset.", ["chat"]),
+    ("game", "Spillprofil", "Når spillmodus slås på automatisk fordi et spill startet.", ["game"]),
+    ("session", "Rapport etter spilløkt", "FPS, temperaturer og strøm når du er ferdig med et spill.", ["session"]),
+    ("clip", "Klipp lagret", "Når et klipp av de siste minuttene er lagret.", ["clip"]),
+    ("night", "Stille om natten", "Når PC-en går over til stille nattmodus.", ["night"]),
+    ("playtime", "Spilletid og leggetid", "Snart tom for spilletid, og leggetid om 10 minutter. "
+     "Kan ikke slås av mens familiekontroll er på.", ["playlimit", "bedtime"]),
+    ("bg", "«Kjører i bakgrunnen»", "Beskjed første gang vinduet lukkes og programmet fortsetter i bakgrunnen.",
+     ["bg"]),
+]
+ALWAYS = ("watch",)        # «noen ser på skjermen din» – personvern, vises alltid
+
+
+def kind_of(key):
+    for kid, _n, _d, keys in KINDS:
+        for k in keys:
+            if key == k or (k.endswith("*") and key.startswith(k[:-1])):
+                return kid
+    return None
+
+
+def wants(cfg, key):
+    """Skal varselet med denne nøkkelen vises? Følger hovedbryteren og valget per type."""
+    if key in ALWAYS:
+        return True
+    kid = kind_of(key)
+    if kid == "playtime":
+        try:
+            import familylock
+            if familylock.locked():
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    if not cfg.get("notify", True):
+        return False
+    return bool((cfg.get("kinds") or {}).get(kid, True)) if kid else True
+
 
 def load():
     try:
@@ -270,7 +316,7 @@ class Background:
                 remote_extra.event(key, title, body, lvl)
         except Exception:  # noqa: BLE001
             pass
-        if not force and not self.cfg["notify"]:
+        if not wants(self.cfg, key):
             return
         now = time.time()
         if not force and now - self.sent.get(key, 0) < REPEAT:

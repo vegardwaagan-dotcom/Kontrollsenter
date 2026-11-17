@@ -13,6 +13,24 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.28.0", "Din egen oversikt", [
+        ("Nytt", [
+            "Oversikt kan ordnes som du vil – på PC-en og i mobilappen: dra flisene og kortene til nye plasser. "
+            "Flisen løftes når du drar, de andre glir unna, og den «spretter» på plass med en lilla glød når du slipper",
+            "Velg størrelse på hver flis og hvert kort: S, M, L (og XL i appen). På PC-en: trykk på rutenett-knappen øverst "
+            "eller høyreklikk på et kort. I appen: hold fingeren på en flis",
+            "Trykk på en flis eller et kort for mye mer info: graf for de siste 10 minuttene, nøkkeltall, hver tråd, "
+            "hva som bruker mest CPU og minne, alle disker, nettverkskort med IP, alle temperaturer, strømkostnad og batterier",
+            "Velg hvilke varsler du vil ha – eller slå av alle: Innstillinger → Varsler på PC-en. I appen kan du "
+            "velge både hva PC-en varsler om og hva telefonen varsler om (Innstillinger)",
+        ]),
+        ("Endret", [
+            "Batterier, Strømmodus og Vifter er nå kort i Oversikt som kan flyttes på, og 1 min / 10 min / 1 time for "
+            "grafene ligger øverst",
+            "Hovedbryteren for varsler slår nå av alle varsler (også chat, klipp og spilletid). Spilletid og leggetid "
+            "vises alltid når familiekontroll er på, og «noen ser på skjermen din» vises alltid",
+        ]),
+    ]),
     ("0.27.0", "Ryddet opp", [
         ("Endret", [
             "Ny side «Innstillinger» nederst i sidemenyen – alt du stiller inn i Kontrollsenter er samlet der i faner: "

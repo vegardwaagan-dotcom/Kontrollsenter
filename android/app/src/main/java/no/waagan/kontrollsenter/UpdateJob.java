@@ -103,7 +103,7 @@ public class UpdateJob extends JobService {
                     JSONObject e = evs.getJSONObject(k);
                     last = Math.max(last, e.optDouble("t", last));
                     String lvl = e.optString("level");
-                    if (!"info".equals(lvl)) {
+                    if (!"info".equals(lvl) && wants(c, e.optString("kind"))) {
                         notifyEvent(c, (int) (e.optDouble("t") % 100000), name + ": " + e.optString("title"),
                                 e.optString("body"));
                     }
@@ -131,7 +131,7 @@ public class UpdateJob extends JobService {
             } else {
                 continue;   // ingen PC svarer (f.eks. borte uten Tailscale) – da vet vi ingenting
             }
-            if (!intended) {
+            if (!intended && wants(c, "offline")) {
                 notifyEvent(c, name.hashCode(), name + " svarer ikke",
                         "Den var på for litt siden, men ble ikke slått av fra Kontrollsenter. Strømbrudd eller krasj?");
             }
@@ -150,7 +150,7 @@ public class UpdateJob extends JobService {
             try {
                 JSONObject j = new JSONObject(Net.request(base + "/api/appupdate", null, null, 5000));
                 long code = j.optLong("code", 0);
-                if (code > have && code > p.getLong("varslet", 0)) {
+                if (code > have && code > p.getLong("varslet", 0) && wants(c, "appupdate")) {
                     notifyUpdate(c, j.optString("version", ""));
                     p.edit().putLong("varslet", code).apply();
                 }
@@ -159,6 +159,25 @@ public class UpdateJob extends JobService {
                 // neste PC
             }
         }
+    }
+
+    /** Samme typer som på PC-en (background.KINDS), pluss «offline» og «appupdate» som bare finnes på telefonen. */
+    static String kindOf(String key) {
+        if (key == null) return "";
+        if (key.equals("cpu") || key.equals("gpu")) return "temp";
+        if (key.startsWith("disk")) return "disk";
+        if (key.startsWith("bat")) return "battery";
+        if (key.equals("lanupdate") || key.equals("lanpublish") || key.equals("restart")) return "updates";
+        if (key.equals("playlimit") || key.equals("bedtime")) return "playtime";
+        return key;
+    }
+
+    /** Skal dette varselet vises? Hovedbryter + valg per type (Innstillinger → Varsler i appen). */
+    static boolean wants(Context c, String key) {
+        if ("watch".equals(key)) return true;
+        SharedPreferences p = Net.prefs(c);
+        if (!p.getBoolean("nf_all", true)) return false;
+        return p.getBoolean("nf_" + kindOf(key), true);
     }
 
     static void channel(NotificationManager nm, String id, String name, int imp) {

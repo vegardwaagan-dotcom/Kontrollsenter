@@ -994,11 +994,19 @@ class _Cards:
     def _notify_card(self):
         import background
         cfg = background.load()
-        c, i = card("Varsler", "Kontrollsenter sier fra når noe er galt.")
-        for key, title, sub in (("notify", "Varsler", "Høy temperatur, nesten full disk og lavt batteri i trådløse enheter."),
-                                ("periodic", "Sjekk systemet og oppdateringer hver 6. time",
-                                 "Kjører Systemsjekk i bakgrunnen og sier fra om den finner noe.")):
-            self._switch_row(i, title, sub, cfg[key], lambda w, p, k=key: self._notify_set(w, p, k))
+        c, i = card("Varsler", "Kontrollsenter sier fra når noe er galt. Slå av alt her, eller velg under hvilke "
+                               "varsler du vil ha.")
+        kinds_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+
+        def master(w, p):
+            self._notify_set(w, p, "notify")
+            kinds_box.set_sensitive(w.get_active())
+            lim.set_sensitive(w.get_active())
+        self._switch_row(i, "Vis varsler", "Hovedbryter for alle varsler fra Kontrollsenter på denne PC-en.",
+                         cfg["notify"], master)
+        self._switch_row(i, "Sjekk systemet og oppdateringer hver 6. time",
+                         "Kjører Systemsjekk i bakgrunnen og sier fra om den finner noe.", cfg["periodic"],
+                         lambda w, p: self._notify_set(w, p, "periodic"))
         i.append(Gtk.Label(label="Varsle ved:", xalign=0))
         lim = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=4, column_spacing=12,
                           row_spacing=6)
@@ -1011,7 +1019,21 @@ class _Cards:
             sp.connect("value-changed", lambda w, k=key: self._notify_set_val(k, int(w.get_value())))
             one.append(sp)
             lim.append(one)
+        lim.set_sensitive(cfg["notify"])
         i.append(lim)
+        self.box.append(c)
+
+        c, i = card("Velg varsler", "Slå av de typene du ikke vil ha. «Noen ser på skjermen din» vises alltid.")
+        kinds_box.set_sensitive(cfg["notify"])
+        i.append(kinds_box)
+        on = dict(cfg.get("kinds") or {})
+
+        def set_kind(w, _p, kid):
+            cur = dict(background.load().get("kinds") or {})
+            cur[kid] = w.get_active()
+            self._notify_set_val("kinds", cur)
+        for kid, name, desc, _keys in background.KINDS:
+            self._switch_row(kinds_box, name, desc, on.get(kid, True), lambda w, p, k=kid: set_kind(w, p, k))
         self.box.append(c)
 
     def _notify_set(self, sw, _p, key):

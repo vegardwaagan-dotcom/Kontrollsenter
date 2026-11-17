@@ -629,6 +629,27 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Varselvalg på denne telefonen: JSON {"all":true,"temp":false,...} (mangler = på). */
+        @JavascriptInterface
+        public String getNotify() {
+            JSONObject o = new JSONObject();
+            try {
+                for (java.util.Map.Entry<String, ?> e : getSharedPreferences("ks", 0).getAll().entrySet()) {
+                    if (e.getKey().startsWith("nf_") && e.getValue() instanceof Boolean)
+                        o.put(e.getKey().substring(3), e.getValue());
+                }
+            } catch (Exception e) {
+                // tomt = alt på
+            }
+            return o.toString();
+        }
+
+        @JavascriptInterface
+        public void setNotify(String kind, boolean on) {
+            if (kind == null || !kind.matches("[a-z]{1,20}")) return;
+            getSharedPreferences("ks", 0).edit().putBoolean("nf_" + kind, on).apply();
+        }
+
         @JavascriptInterface
         public String version() {
             try {

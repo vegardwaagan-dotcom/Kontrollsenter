@@ -96,25 +96,25 @@ function gauge(pct, color) {
     stroke-width="11" stroke-dasharray="${arc * v} ${c}" stroke-linecap="round"/></svg>`;
 }
 const colFor = (p, warn = 70, bad = 85) => (p >= bad ? "var(--bad)" : p >= warn ? "var(--warn)" : "var(--ok)");
-function tile(name, pct, val, sub, color) {
-  return `<div class="tile"><div class="name">${esc(name)}</div><div class="gauge">${gauge(pct, color)}<div class="v">${esc(val)}</div></div><div class="sub">${esc(sub)}</div></div>`;
+function tile(name, pct, val, sub, color, k) {
+  return { k, html: `<div class="name">${esc(name)}</div><div class="gauge">${gauge(pct, color)}<div class="v">${esc(val)}</div></div><div class="sub">${esc(sub)}</div>` };
 }
 function renderOverview(s) {
   const t = [];
   const c = s.cpu || {};
   t.push(tile("CPU", c.load || 0, Math.round(c.load || 0) + " %",
-    [c.temp != null ? Math.round(c.temp) + " °C" : null, c.freq ? c.freq.toFixed(2) + " GHz" : null].filter(Boolean).join(" · "), "var(--c1)"));
+    [c.temp != null ? Math.round(c.temp) + " °C" : null, c.freq ? c.freq.toFixed(2) + " GHz" : null].filter(Boolean).join(" · "), "var(--c1)", "cpu"));
   if (s.gpu) t.push(tile("GPU", s.gpu.util || 0, Math.round(s.gpu.util || 0) + " %",
-    [s.gpu.temp != null ? Math.round(s.gpu.temp) + " °C" : null, s.gpu.power != null ? Math.round(s.gpu.power) + " W" : null].filter(Boolean).join(" · "), "var(--c2)"));
-  if (s.mem) { const p = (100 * s.mem[0]) / s.mem[1]; t.push(tile("Minne", p, Math.round(p) + " %", fmtB(s.mem[0]) + " av " + fmtB(s.mem[1]), colFor(p, 80, 92))); }
+    [s.gpu.temp != null ? Math.round(s.gpu.temp) + " °C" : null, s.gpu.power != null ? Math.round(s.gpu.power) + " W" : null].filter(Boolean).join(" · "), "var(--c2)", "gpu"));
+  if (s.mem) { const p = (100 * s.mem[0]) / s.mem[1]; t.push(tile("Minne", p, Math.round(p) + " %", fmtB(s.mem[0]) + " av " + fmtB(s.mem[1]), colFor(p, 80, 92), "mem")); }
   const hot = Math.max(...(s.temps || []).map((x) => x[2]), c.temp || 0, (s.gpu && s.gpu.temp) || 0);
-  if (hot > 0) t.push(tile("Varmest", hot, Math.round(hot) + "°", "høyeste temperatur", colFor(hot)));
-  if (s.watts) t.push(tile("Strøm", Math.min(100, s.watts / 6), s.watts + " W", "anslått forbruk", "var(--c3)"));
-  if (s.home) { const p = (100 * s.home[0]) / s.home[1]; t.push(tile("Disk", p, Math.round(p) + " %", fmtB(s.home[1] - s.home[0]) + " ledig", colFor(p, 80, 90))); }
+  if (hot > 0) t.push(tile("Varmest", hot, Math.round(hot) + "°", "høyeste temperatur", colFor(hot), "hot"));
+  if (s.watts) t.push(tile("Strøm", Math.min(100, s.watts / 6), s.watts + " W", "anslått forbruk", "var(--c3)", "watt"));
+  if (s.home) { const p = (100 * s.home[0]) / s.home[1]; t.push(tile("Disk", p, Math.round(p) + " %", fmtB(s.home[1] - s.home[0]) + " ledig", colFor(p, 80, 90), "disk")); }
   if (s.net) { const short = fmtB(s.net[0]).replace(/(\d+)\.\d (MB|GB|KB)/, (m, a, u) => (+a >= 10 ? a : m.split(" ")[0]) + " " + u);
-    t.push(tile("Nett", Math.min(100, (s.net[0] / 12.5e6) * 100), short, "↓ " + fmtR(s.net[0]) + " · ↑ " + fmtR(s.net[1]), "var(--c1)")); }
-  if (s.battery && s.battery.length) t.push(tile("Batteri", s.battery[0], Math.round(s.battery[0]) + " %", s.battery[1] || "", colFor(100 - s.battery[0], 70, 85)));
-  $("#tiles").innerHTML = t.join("");
+    t.push(tile("Nett", Math.min(100, (s.net[0] / 12.5e6) * 100), short, "↓ " + fmtR(s.net[0]) + " · ↑ " + fmtR(s.net[1]), "var(--c1)", "net")); }
+  if (s.battery && s.battery.length) t.push(tile("Batteri", s.battery[0], Math.round(s.battery[0]) + " %", s.battery[1] || "", colFor(100 - s.battery[0], 70, 85), "bat"));
+  if (window.dashTiles) dashTiles(t);
   const rows = (s.temps || []).slice();          // PC-en tar allerede med NVIDIA-temperaturen
   $("#temps").innerHTML = rows.map(([d, l, v]) => `<div><span class="d">${esc(d)}</span><span class="l">${esc(l)}</span><span class="num ${tcls(v)}">${Math.round(v)} °C</span></div>`).join("") || '<span class="dim">Ingen temperaturer</span>';
   const info = [["PC", s.name], ["Maskin", s.model], ["System", s.distro], ["Kontrollsenter", s.version], ["Oppetid", fmtUp(s.uptime || 0)],

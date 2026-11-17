@@ -56,16 +56,15 @@
       <button data-q="second"><span class="qi">🖥️</span><span class="ql">Andreskjerm</span><span class="qs">Store tall</span></button>
       <button data-q="lock"><span class="qi">🔒</span><span class="ql">Lås PC-en</span><span class="qs">Skjermlås</span></button>
     </div>
-    <div class="tiles" id="tiles"></div>
-    <div class="grid two">
-      <div class="card"><h2>Temperaturer</h2><div id="temps" class="temps collapsed"></div>
+    <div class="tiles" id="tiles">
+      <div class="card" data-k="temps"><h2>Temperaturer</h2><div id="temps" class="temps collapsed"></div>
         <button class="link" id="temps-more">Vis alle</button></div>
-      <div class="card" id="c-health"><h2>Helse</h2>
+      <div class="card" id="c-health" data-k="health"><h2>Helse</h2>
         <div class="row"><div id="grade" class="grade">–</div><div><div id="health-sum">Sjekker …</div>
           <div class="dim small">Systemsjekk av PC-en</div></div></div>
         <div id="health-items"></div>
         <div class="row wrap"><button id="health-refresh" class="soft">Sjekk på nytt</button><button id="health-open" class="soft">Åpne på PC-en</button></div></div>
-      <div class="card"><h2>Maskin</h2><div id="info" class="kv"></div></div>
+      <div class="card" data-k="info"><h2>Maskin</h2><div id="info" class="kv"></div></div>
     </div>
     <button id="simple-off" class="soft wide simple-only">Avslutt enkel visning</button>
   </section>
@@ -234,6 +233,12 @@
         <div class="row"><span>Enkel visning</span><label class="switch"><input type="checkbox" id="simple"><i></i></label></div>
         <div class="row"><span>Andreskjerm når et spill starter</span><label class="switch"><input type="checkbox" id="auto-second"><i></i></label></div>
         <div class="seg" id="lang"><button data-v="nb">Norsk</button><button data-v="en">English</button></div></div>
+      <div class="card" id="nf-phone-card" hidden><h2>Varsler på denne telefonen</h2>
+        <p class="dim small">Varsler fra alle PC-ene dine, også når appen er lukket.</p>
+        <div id="nf-phone"></div></div>
+      <div class="card full-only" id="nf-pc-card"><h2>Varsler på PC-en</h2>
+        <p class="dim small">Hva <b class="pcname-here">PC-en</b> selv varsler om på skjermen.</p>
+        <div id="nf-pc"></div></div>
       <div class="card"><h2>Sikkerhet</h2>
         <div class="row"><span>Fingeravtrykk før farlige handlinger</span><label class="switch"><input type="checkbox" id="bio"><i></i></label></div>
         <p class="dim small" id="bio-note"></p>
@@ -259,6 +264,7 @@
 <script src="app.js"></script>
 <script src="extra.js"></script>
 <script src="family.js"></script>
+<script src="dash.js"></script>
 <script src="glass.js"></script>
 <script src="picker.js"></script>
 <script src="swipe.js"></script>

@@ -263,12 +263,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             )
             toolbar.add_top_bar(banner)
 
-        flow = Gtk.FlowBox(
-            selection_mode=Gtk.SelectionMode.NONE,
-            homogeneous=True, max_children_per_line=3, min_children_per_line=1,
-            column_spacing=12, row_spacing=12,
-        )
-        flow.set_valign(Gtk.Align.START)
+        import dashboard
+        flow = dashboard.Dash("oversikt", max_cols=4, min_col=240)
 
         self.c_bat = Card("Batteri", [GREEN]) if self.batteries else None
         self.c_cpu = Card(cpu_model(), [accent_rgb()])          # følger systemets aksentfarge
@@ -299,13 +295,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.c_temp.inner.insert_child_after(self.temp_grid, self.c_temp.subtitle)
         self.temp_rows = {}
 
-        cards = ([self.c_bat] if self.c_bat else []) + [self.c_cpu, self.c_mem]
+        cards = ([("bat", self.c_bat)] if self.c_bat else []) + [("cpu", self.c_cpu), ("mem", self.c_mem)]
         if self.c_gpu:
-            cards.append(self.c_gpu)
-        cards += self.c_amd + [self.c_disk, self.c_net]
-        for c in cards:
-            flow.append(c)
-            c.get_parent().set_focusable(False)
+            cards.append(("gpu", self.c_gpu))
+        cards += [(f"amd{i}", c) for i, c in enumerate(self.c_amd)] + [("disk", self.c_disk), ("net", self.c_net)]
+        self.dash = flow
 
         # Temperaturer i egen rad nederst, i to kolonner
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -331,21 +325,14 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.energy = power_mod.EnergyLog()
         self._power = {"cpu": None, "gpu": None, "measured": None, "total": None}
         self._cpu_load = 0.0
-        tiles = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True,
-                            max_children_per_line=4, min_children_per_line=2, column_spacing=12, row_spacing=12)
+        tiles = flow
         self.t_cpu = Tile("Prosessor", gauge=Gauge(100, 75, 88))
         self.t_gpu = Tile("Skjermkort", gauge=Gauge(100, 75, 85)) if self.nvidia.available or self.amd else None
         self.t_pow = Tile("Strømforbruk", icon="ks-power-symbolic")
-        self.t_pow.set_tooltip_text("Klikk for detaljer og strømpris")
-        click = Gtk.GestureClick()
-        click.connect("released", lambda *_: power_mod.dialog(self))
-        self.t_pow.add_controller(click)
-        self.t_pow.set_cursor_from_name("pointer")
         self.t_mode = Tile("Strømmodus", icon="ks-overview-symbolic")
-        for t in (self.t_cpu, self.t_gpu, self.t_pow, self.t_mode):
+        for key, t in (("cpu", self.t_cpu), ("gpu", self.t_gpu), ("watt", self.t_pow), ("mode", self.t_mode)):
             if t:
-                tiles.append(t)
-                t.get_parent().set_focusable(False)
+                tiles.add("flis-" + key, t, 1, on_click=lambda k=key: self.open_details(k))
         hero = Gtk.Box(spacing=16)
         hero.set_margin_top(6)
         hero.set_margin_bottom(4)
@@ -360,24 +347,45 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.hello_chip = Gtk.Label(valign=Gtk.Align.CENTER)
         self.hello_chip.add_css_class("ks-chip")
         hero.append(self.hello_chip)
+        self.edit_btn = Gtk.ToggleButton(icon_name="view-grid-symbolic", valign=Gtk.Align.CENTER)
+        self.edit_btn.set_tooltip_text(i18n.tr("Tilpass oversikten: dra flisene til nye plasser og velg størrelse"))
+        self.edit_btn.add_css_class("circular")
+        self.edit_btn.connect("toggled", self._on_edit_dash)
+        hero.append(self.edit_btn)
+        self.edit_bar = Gtk.Revealer(transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN)
+        eb = Gtk.Box(spacing=10)
+        eb.add_css_class("card")
+        for side in ("top", "bottom", "start", "end"):
+            getattr(eb, f"set_margin_{side}")(0)
+        ebl = Gtk.Label(label=i18n.tr("Dra flisene og kortene dit du vil ha dem. S, M og L i hjørnet endrer "
+                                      "størrelsen. Høyreklikk virker også."), xalign=0, wrap=True, hexpand=True)
+        for side in ("top", "bottom", "start"):
+            getattr(ebl, f"set_margin_{side}")(10)
+        eb.append(ebl)
+        rb = Gtk.Button(label=i18n.tr("Tilbakestill"), valign=Gtk.Align.CENTER)
+        rb.connect("clicked", lambda *_: self.dash.reset())
+        eb.append(rb)
+        db = Gtk.Button(label=i18n.tr("Ferdig"), valign=Gtk.Align.CENTER)
+        db.set_margin_end(10)
+        db.connect("clicked", lambda *_: self.edit_btn.set_active(False))
+        eb.append(db)
+        self.edit_bar.set_child(eb)
         page.append(hero)
-        page.append(tiles)
+        page.append(self.edit_bar)
         try:                                  # batteri i mus, tastatur og hodesett
             import battery_ui
-            page.append(battery_ui.BatteryCard())
+            flow.add("batterier", battery_ui.BatteryCard(), 9, on_click=lambda: self.open_details("bat"))
         except Exception:  # noqa: BLE001
             pass
-        page.append(self.power)
+        flow.add("strommodus", self.power, 9)
         self.fans = FanCard(self.nvidia.available)
-        page.append(self.fans)
+        flow.add("vifter", self.fans, 9)
         # (Windows: viftene styres via LibreHardwareMonitor)
         self.connect("close-request", lambda *_: self.fans.all_auto_now() or False)
         # Tidsrom for grafene: 1 min, 10 min eller 1 time (hold musa over en graf for verdi og tid)
-        rng = Gtk.Box(spacing=8)
-        lbl = Gtk.Label(label="Grafer", xalign=0, hexpand=True)
-        lbl.add_css_class("heading")
-        rng.append(lbl)
-        seg = Gtk.Box()
+        rng = Gtk.Box(spacing=8, valign=Gtk.Align.CENTER)
+        seg = Gtk.Box(valign=Gtk.Align.CENTER)
+        seg.set_tooltip_text(i18n.tr("Hvor langt tilbake grafene viser"))
         seg.add_css_class("linked")
         first = None
         for secs, text in ((60, "1 min"), (600, "10 min"), (3600, "1 time")):
@@ -388,11 +396,15 @@ class MonitorWindow(Adw.ApplicationWindow):
             b.connect("toggled", self._on_range, secs)
             seg.append(b)
         rng.append(seg)
-        page.append(rng)
+        hero.insert_child_after(rng, self.hello_chip)
+        for key, c in cards:
+            flow.add(key, c, 2, on_click=lambda k=key: self.open_details("gpu" if k.startswith("amd") else k))
         page.append(flow)
         self.diskspace = DiskSpaceCard()
-        page.append(self.diskspace)
-        page.append(self.c_temp)
+        flow.add("space", self.diskspace, 9, on_click=lambda: self.open_details("disk"))
+        flow.add("temps", self.c_temp, 9, on_click=lambda: self.open_details("temps"))
+        flow.finish()
+        flow.on_edit_request = lambda: self.edit_btn.set_active(True)
         page.append(topbar)                   # Tilbakestill nederst – sjelden brukt
 
         css = Gtk.CssProvider()
@@ -894,6 +906,15 @@ class MonitorWindow(Adw.ApplicationWindow):
         import welcome
         welcome.WelcomeDialog(self).present(self)
 
+    def _on_edit_dash(self, btn):
+        on = btn.get_active()
+        self.edit_bar.set_reveal_child(on)
+        self.dash.set_editing(on)
+
+    def open_details(self, kind):
+        import details_ui
+        details_ui.DetailsDialog(self, kind).present(self)
+
     def _menu_actions(self):
         for name, fn in (("syscheck", lambda *_: self._open_syscheck(None)),
                          ("mini", self._open_mini), ("welcome", self._open_welcome),
@@ -985,6 +1006,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         # skjult: bare det bakgrunnen trenger. Åpent men ikke i fokus (f.eks. mens du spiller): vinduet
         # oppdateres annethvert sekund – dataene samles fortsatt hvert sekund.
         self._tick_n = getattr(self, "_tick_n", 0) + 1
+        try:
+            import details
+            details.record(self)
+        except Exception:  # noqa: BLE001
+            pass
         if not self.get_mapped() or (not self.is_active() and self._tick_n % 2):
             try:
                 self._update_quiet()
