@@ -87,7 +87,7 @@ def data(win):
         pass
     try:
         out["batteries"] = [{"name": d["name"], "pct": d.get("pct"), "kind": d.get("kind"),
-                             "charging": d.get("charging")} for d in (s.get("batteries") or {}).get("devices", [])]
+                             "charging": d.get("charging"), "full": d.get("full")} for d in (s.get("batteries") or {}).get("devices", [])]
     except Exception:  # noqa: BLE001
         out["batteries"] = []
     try:
@@ -295,9 +295,10 @@ BODIES = {
                     Rectangle {
                         width: 70; height: 8; radius: 4; color: Qt.rgba(1, 1, 1, 0.15)
                         Rectangle { width: parent.width * Math.max(0, Math.min(1, (modelData.pct || 0) / 100)); height: parent.height; radius: 4
-                                    color: (modelData.pct || 0) <= 20 ? "#ff6b7a" : "#3ddc97" }
+                                    color: modelData.charging || modelData.full ? "#57e389" : (modelData.pct || 0) <= 20 ? "#ff6b7a" : "#3ddc97" }
                     }
-                    Text { text: modelData.pct === null ? "av" : modelData.pct + " %"; color: "white"; font.pixelSize: 13; font.bold: true }
+                    Text { text: (modelData.charging ? "⚡ " : modelData.full ? "🔌 " : "") + (modelData.pct === null ? (modelData.charging ? "lader" : "av") : modelData.pct + " %")
+                           color: modelData.charging || modelData.full ? "#57e389" : "white"; font.pixelSize: 13; font.bold: true }
                 }
             }
             Text { visible: !(root.d.batteries || []).length; text: "Ingen trådløse enheter"; color: Qt.rgba(1, 1, 1, 0.6); font.pixelSize: 13 }

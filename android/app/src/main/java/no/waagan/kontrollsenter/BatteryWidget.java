@@ -29,8 +29,10 @@ public class BatteryWidget extends KsWidget {
             v.setTextViewText(ROWS[i][1], icon + "  " + x.optString("name"));
             boolean has = x.has("pct") && !x.isNull("pct");
             int pct = has ? x.optInt("pct") : 0;
-            v.setProgressBar(ROWS[i][2], 100, pct, false);
-            v.setTextViewText(ROWS[i][3], has ? pct + " %" : "av");
+            v.setProgressBar(ROWS[i][2], 100, has ? pct : (x.optBoolean("charging") || x.optBoolean("full") ? 100 : 0), false);
+            boolean chg = x.optBoolean("charging"), full = x.optBoolean("full");
+            v.setTextViewText(ROWS[i][3], (chg ? "⚡ " : full ? "🔌 " : "") + (has ? pct + " %" : chg ? "lader" : "av"));
+            v.setTextColor(ROWS[i][3], chg || full ? 0xFF57E389 : 0xFFFFFFFF);
         }
         v.setViewVisibility(R.id.w_none, n == 0 ? View.VISIBLE : View.GONE);
     }

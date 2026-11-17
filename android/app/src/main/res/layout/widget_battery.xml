@@ -11,7 +11,7 @@
             android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
         <ProgressBar android:id="@+id/b1p" style="?android:attr/progressBarStyleHorizontal" android:layout_width="64dp" android:layout_height="8dp"
             android:max="100" android:progressDrawable="@drawable/widget_progress" android:layout_marginStart="8dp" />
-        <TextView android:id="@+id/b1v" android:layout_width="46dp" android:layout_height="wrap_content" android:gravity="end"
+        <TextView android:id="@+id/b1v" android:layout_width="64dp" android:layout_height="wrap_content" android:gravity="end"
             android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
     </LinearLayout>
     <LinearLayout android:id="@+id/b2" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -20,7 +20,7 @@
             android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
         <ProgressBar android:id="@+id/b2p" style="?android:attr/progressBarStyleHorizontal" android:layout_width="64dp" android:layout_height="8dp"
             android:max="100" android:progressDrawable="@drawable/widget_progress" android:layout_marginStart="8dp" />
-        <TextView android:id="@+id/b2v" android:layout_width="46dp" android:layout_height="wrap_content" android:gravity="end"
+        <TextView android:id="@+id/b2v" android:layout_width="64dp" android:layout_height="wrap_content" android:gravity="end"
             android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
     </LinearLayout>
     <LinearLayout android:id="@+id/b3" android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -29,7 +29,7 @@
             android:textColor="#FFFFFF" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
         <ProgressBar android:id="@+id/b3p" style="?android:attr/progressBarStyleHorizontal" android:layout_width="64dp" android:layout_height="8dp"
             android:max="100" android:progressDrawable="@drawable/widget_progress" android:layout_marginStart="8dp" />
-        <TextView android:id="@+id/b3v" android:layout_width="46dp" android:layout_height="wrap_content" android:gravity="end"
+        <TextView android:id="@+id/b3v" android:layout_width="64dp" android:layout_height="wrap_content" android:gravity="end"
             android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
     </LinearLayout>
     <TextView android:id="@+id/w_none" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone"

@@ -34,8 +34,9 @@ def _upower():
             vendor = pr.get("Vendor") or ""
             kind = {5: "mouse", 6: "keyboard", 12: "gamepad", 17: "headset", 18: "speaker", 19: "headset"}.get(
                 pr.get("Type"), "device")
+            st = pr.get("State")                  # 1 = lader, 4 = fulladet, 5 = venter på lading
             out.append({"id": p, "name": name, "pct": round(float(pr.get("Percentage", 0))), "kind": kind,
-                        "charging": pr.get("State") == 1, "source": "upower",
+                        "charging": st == 1, "full": st == 4, "plugged": st in (1, 4, 5), "source": "upower",
                         "logitech": "logitech" in (name + vendor).lower()})
     except Exception:  # noqa: BLE001
         pass
@@ -72,10 +73,13 @@ def _headsets():
                 lvl, avail = None, False                       # hodesettet er av / ikke koblet til mottakeren
             else:
                 lvl, avail = int(b.get("level")), True
+                if lvl < 0:                                    # noen hodesett sier ikke nivået mens de lader
+                    lvl = None
             name = d.get("device") or d.get("product") or "Hodesett"
             vendor = d.get("vendor") or ""
             out.append({"id": f"hc{i}", "name": name, "pct": lvl, "kind": "headset", "available": avail,
-                        "charging": "CHARGING" in st, "source": "headsetcontrol",
+                        "charging": "CHARGING" in st, "full": "FULL" in st, "plugged": "CHARGING" in st or "FULL" in st,
+                        "source": "headsetcontrol",
                         "logitech": "logitech" in (name + vendor).lower()})
         return out
     try:                                                       # eldre HeadsetControl: -b -c gir bare et tall
@@ -115,9 +119,24 @@ ICON = {"mouse": "🖱️", "keyboard": "⌨️", "headset": "🎧", "gamepad": 
 
 
 def label(d):
-    if d.get("pct") is None:
-        return "av / ikke tilkoblet" if not d.get("charging") else "lader"
-    return f"{d['pct']} %" + (" ⚡" if d.get("charging") else "")
+    """«⚡ Lader · 64 %», «🔌 Fulladet · 100 %», «64 %» eller «av / ikke tilkoblet»."""
+    p = d.get("pct")
+    if d.get("charging"):
+        return "⚡ Lader" + (f" · {p} %" if p is not None else "")
+    if d.get("full"):
+        return "🔌 Fulladet" + (f" · {p} %" if p is not None else "")
+    if p is None:
+        return "av / ikke tilkoblet"
+    return f"{p} %"
+
+
+def charge_icon(d):
+    """Eget ikon (finnes på både Linux og Windows): lyn når enheten lader, støpsel når den er fulladet."""
+    if d.get("charging"):
+        return "ks-charging-symbolic"
+    if d.get("full"):
+        return "ks-plugged-symbolic"
+    return None
 
 
 RELEASES = "https://api.github.com/repos/Sapd/HeadsetControl/releases/latest"

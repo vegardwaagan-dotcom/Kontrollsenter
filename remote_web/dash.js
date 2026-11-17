@@ -9,7 +9,7 @@
 const DASH_KEY = "ks_dash_v1";
 const SIZES = { tile: ["s", "m", "l", "xl"], card: ["m", "xl"] };
 const SZ_TXT = { s: "S", m: "M", l: "L", xl: "XL" };
-const DETAIL = { cpu: "cpu", gpu: "gpu", mem: "mem", hot: "temps", watt: "watt", disk: "disk", net: "net", bat: "bat", temps: "temps", health: "health", info: "info" };
+const DETAIL = { cpu: "cpu", gpu: "gpu", mem: "mem", hot: "temps", watt: "watt", disk: "disk", net: "net", bat: "bat", temps: "temps", health: "health", info: "info", batteries: "bat" };
 let dashEditing = false, dashDrag = null, dashJustPressed = 0;
 
 const dashBox = () => $("#tiles");

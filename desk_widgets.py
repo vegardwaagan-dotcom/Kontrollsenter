@@ -144,10 +144,18 @@ class DeskWidget(Gtk.Window):
             r = Gtk.Box(spacing=10)
             r.append(_lbl({"headset": "🎧", "keyboard": "⌨️"}.get(b.get("kind"), "🖱️")))
             r.append(_lbl(b.get("name") or "", ("ks-desk-row",), hexpand=True, ellipsize=3))
-            lb = Gtk.LevelBar(min_value=0, max_value=100, value=b.get("pct") or 0, valign=Gtk.Align.CENTER)
+            chg = b.get("charging") or b.get("full")
+            lb = Gtk.LevelBar(min_value=0, max_value=100, value=b.get("pct") or (100 if chg else 0), valign=Gtk.Align.CENTER)
             lb.set_size_request(70, 8)
             r.append(lb)
-            r.append(_lbl("av" if b.get("pct") is None else f"{b['pct']} %", ("ks-desk-row", "numeric")))
+            import batteries
+            txt = batteries.label(b).replace(" · ", " ").replace("Lader ", "").replace("Fulladet ", "") \
+                if b.get("pct") is not None else batteries.label(b)
+            t = _lbl(txt, ("ks-desk-row", "numeric"))
+            if chg:
+                for w in (lb, t):
+                    w.add_css_class("ks-charging")
+            r.append(t)
             self.content.append(r)
 
     def _draw_playtime(self, d):

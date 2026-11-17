@@ -47,7 +47,7 @@ class BatteryCard(Gtk.Box):
     def refresh(self):
         ds = [d for d in B.cached() if d.get("logitech") or not self.logitech_only or d["kind"] == "headset"]
         self.hint.set_visible(not B.headsetcontrol_bin() and not any(d["kind"] == "headset" for d in ds))
-        sig = [(d["name"], d.get("pct"), d.get("charging")) for d in ds]
+        sig = [(d["name"], d.get("pct"), d.get("charging"), d.get("full")) for d in ds]
         if sig == self._sig:
             return False
         self._sig = sig
@@ -66,11 +66,21 @@ class BatteryCard(Gtk.Box):
             bar.set_size_request(110, 8)
             bar.add_offset_value("low", 20)
             bar.add_offset_value("high", 50)
-            bar.set_value(d["pct"] or 0)
-            bar.set_sensitive(d.get("pct") is not None)
+            bar.set_value(d["pct"] if d.get("pct") is not None else (100 if d.get("full") else 0))
+            bar.set_sensitive(d.get("pct") is not None or d.get("charging") or d.get("full"))
             r.append(bar)
-            v = Gtk.Label(label=i18n.tr(B.label(d)), width_chars=8, xalign=1)
-            if d.get("pct") is not None and d["pct"] <= 20 and not d.get("charging"):
+            ic = Gtk.Image(icon_name=B.charge_icon(d) or "ks-charging-symbolic", valign=Gtk.Align.CENTER,
+                           pixel_size=16)
+            ic.set_opacity(1 if B.charge_icon(d) else 0)                 # holder av plassen så stolpene står likt
+            ic.set_tooltip_text(i18n.tr("Lader" if d.get("charging") else "Fulladet"))
+            r.append(ic)
+            txt = B.label(d).replace("⚡ ", "").replace("🔌 ", "")      # ikonet viser lyn/støpsel
+            v = Gtk.Label(label=i18n.tr(txt), width_chars=16, xalign=1)
+            v.add_css_class("numeric")
+            if d.get("charging") or d.get("full"):
+                for w in (bar, ic, v):
+                    w.add_css_class("ks-charging")
+            elif d.get("pct") is not None and d["pct"] <= 20:
                 v.add_css_class("error")
             r.append(v)
             self.rows.append(r)

@@ -68,17 +68,22 @@ $("#st-pair").onclick = async () => { const p = $("#st-pin").value.trim(); if (p
 rustCard.querySelector("#rd-pc").onclick = () => act({ a: "rustdesk" });
 rustCard.querySelector("#rd-copy").onclick = () => { try { navigator.clipboard.writeText($("#rd-id").textContent); toast("Kopiert"); } catch (e) {} };
 
-const batCard = h(`<div class="card" id="c-bat"><h2>Batterier</h2><div id="bats"></div>
+const batCard = h(`<div class="card" id="c-bat" data-k="batteries"><h2>Batterier</h2><div id="bats"></div>
   <div id="bat-hint" class="row" hidden><span class="dim small">Hodesett vises når HeadsetControl er installert på PC-en.</span><button id="bat-inst" class="soft full-only">Installer</button></div></div>`);
-$("#oversikt .grid").prepend(batCard);
+{ const tl = $("#tiles"); batCard.dataset.ord = "-50"; if (tl) tl.insertBefore(batCard, tl.querySelector(':scope > [data-k="temps"]')); }
 const BICON = { mouse: "🖱️", keyboard: "⌨️", headset: "🎧", gamepad: "🎮", speaker: "🔊" };
 function renderBatteries(b) {
   if (!b) return;
   const ds = b.devices || [];
   $("#bats").innerHTML = ds.map((d) => {
-    const p = d.pct, low = p != null && p <= 20 && !d.charging;
-    return `<div class="row between"><span>${BICON[d.kind] || "🔋"} ${esc(d.name)}</span><span class="row"><span class="batbar"><i style="width:${p || 0}%" class="${low ? "low" : ""}"></i></span>
-      <b class="num ${low ? "t-bad" : ""}">${p == null ? (d.charging ? "lader" : "av") : p + " %"}${d.charging ? " ⚡" : ""}</b></span></div>`;
+    const p = d.pct, chg = !!d.charging, full = !!d.full, low = p != null && p <= 20 && !chg && !full;
+    const txt = chg ? "Lader" + (p != null ? " · " + p + " %" : "") : full ? "Fulladet" + (p != null ? " · " + p + " %" : "")
+      : p == null ? "av" : p + " %";
+    const w = p != null ? p : full ? 100 : chg ? 100 : 0;
+    return `<div class="row between bat-row${chg ? " charging" : ""}"><span>${BICON[d.kind] || "🔋"} ${esc(d.name)}</span><span class="row">
+      ${chg || full ? `<span class="bolt${chg ? " on" : ""}" title="${chg ? "Lader" : "Fulladet"}">${chg ? "⚡" : "🔌"}</span>` : ""}
+      <span class="batbar"><i style="width:${w}%" class="${chg || full ? "chg" : low ? "low" : ""}${chg && p == null ? " unknown" : ""}"></i></span>
+      <b class="num ${chg || full ? "t-ok" : low ? "t-bad" : ""}">${esc(txt)}</b></span></div>`;
   }).join("") || `<p class="dim small">Ingen trådløse enheter med batteri (av eller i dvale?).</p>`;
   $("#bat-hint").hidden = b.headsetcontrol || ds.some((d) => d.kind === "headset");
 }

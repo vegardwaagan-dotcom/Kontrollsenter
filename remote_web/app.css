@@ -693,3 +693,14 @@ body.eco .sortable.editing > .s-item { animation: none !important; }
 .sgrid > .s-item.csz-s { overflow: hidden; }
 .sgrid > .s-item.csz-s .seg, .sgrid > .s-item.csz-s .row, .sgrid > .s-item.csz-s .actions, .sgrid > .s-item.csz-s .chips { flex-wrap: wrap; }
 .sgrid > .s-item.csz-s .seg button { flex: 1 1 100%; }
+/* lading: grønt, pulserende lyn og glidende striper i stolpen */
+.bat-row .bolt { font-size: 15px; line-height: 1; }
+.bat-row .bolt.on { animation: ks-bolt 1.6s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(46,194,126,.8)); }
+@keyframes ks-bolt { 50% { opacity: .35; transform: scale(.88); } }
+.batbar i.chg { background: linear-gradient(90deg, #2ec27e, #57e389) !important; }
+.bat-row.charging .batbar i.chg { background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.28) 0 6px, transparent 6px 12px),
+  linear-gradient(90deg, #2ec27e, #57e389) !important; background-size: 34px 100%, 100% 100%; animation: ks-stripes 1s linear infinite; }
+.batbar i.chg.unknown { opacity: .55; }
+@keyframes ks-stripes { from { background-position: 0 0, 0 0; } to { background-position: 34px 0, 0 0; } }
+body.eco .bat-row .bolt.on, body.eco .bat-row.charging .batbar i.chg { animation: none; }
+.bat-row .batbar { flex: none; width: 70px; } .bat-row > span:first-child { min-width: 0; }

@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.30.2", "Lading", [
+        ("Nytt", [
+            "Enheter som lader viser et grønt, pulserende lyn og «Lader · 64 %» – på PC-en, i appen, i detaljene og i "
+            "widgetene (skrivebord, KDE og Android). Fulladet vises med støpsel og «Fulladet · 100 %»",
+        ]),
+        ("Rettet", [
+            "Batterier-kortet i appen var borte etter at Hjem ble ombygd – nå ligger det blant flisene igjen. "
+            "Feilen stoppet også resten av familie- og knappebord-funksjonene i appen",
+            "Hodesett som ikke oppgir nivå mens de lader, viste «-1 %»",
+        ]),
+    ]),
     ("0.30.1", "Batteri i hodesettet", [
         ("Rettet", [
             "«Installer» i Batterier-kortet feilet fordi Homebrew ikke lenger har HeadsetControl. Nå hentes ferdig "
