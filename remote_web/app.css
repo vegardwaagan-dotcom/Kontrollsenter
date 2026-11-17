@@ -717,3 +717,16 @@ body.eco .bat-row .bolt.on, body.eco .bat-row.charging .batbar i.chg { animation
 .theme-sw .tg { position: absolute; right: 7%; bottom: 14%; width: 30%; height: 18%; border-radius: 99px; }
 .theme-sw .tn { font-weight: 700; font-size: 13.5px; } .theme-sw .td { font-size: 11.5px; color: var(--dim); font-weight: 400; line-height: 1.3; }
 html.ks-fade, html.ks-fade body, html.ks-fade .card, html.ks-fade .tile, html.ks-fade button { transition: background-color .6s, color .6s, border-color .6s, box-shadow .6s !important; }
+/* scener */
+.scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.scene { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  padding: 14px 14px 12px; min-height: 118px; border-radius: 20px; border: 1px solid var(--line); color: #fff;
+  background: radial-gradient(90% 90% at 0% 0%, color-mix(in srgb, var(--sc) 95%, transparent), transparent 70%),
+              radial-gradient(70% 80% at 100% 20%, color-mix(in srgb, var(--sc) 55%, transparent), transparent 70%), #121219; }
+.scene .si { font-size: 30px; line-height: 1; margin-bottom: 6px; }
+.scene .sn { font-weight: 800; font-size: 15px; } .scene .ss { font-size: 11px; opacity: .8; line-height: 1.3; font-weight: 500; }
+.scene .st { margin-top: 6px; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,.18); }
+.scene.on { box-shadow: 0 0 0 2px #fff, 0 14px 30px -12px var(--sc); }
+.scene.fire { animation: ks-scene-fire .8s cubic-bezier(.2,1.3,.4,1); }
+@keyframes ks-scene-fire { 0% { transform: scale(.94); box-shadow: 0 0 0 0 var(--sc); } 40% { transform: scale(1.03); box-shadow: 0 0 0 10px color-mix(in srgb, var(--sc) 30%, transparent); }
+  100% { transform: none; } }

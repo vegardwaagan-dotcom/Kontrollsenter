@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.32.0", "Scener", [
+        ("Nytt", [
+            "Scener: én knapp som setter hele rommet og PC-en på én gang – strømmodus, vifter, RGB, Hue-lysene, "
+            "Samsung-TV-en, lyden, fargetemaet og varslene. Fem ferdige: Spillkveld, Etter spillet, Filmkveld, Fokus og "
+            "God natt – og du kan lage dine egne",
+            "Scener kan slå seg på av seg selv: når et spill starter, når det avsluttes, eller hver dag på et klokkeslett",
+            "Ny side «Scener» under Hjemmet på PC-en, og et Scener-kort øverst i Styr i mobilappen",
+            "«Ingen varsler» i en scene holder varslene unna til en annen scene slår dem på igjen (familie-chat og "
+            "spilletid slipper fortsatt gjennom)",
+        ]),
+    ]),
     ("0.31.0", "Temaer", [
         ("Nytt", [
             "Ti fargetemaer på PC-en (Linux og Windows) og i mobilappen: Nordlys, Synthwave, Solnedgang, Dyphav, Skog, "

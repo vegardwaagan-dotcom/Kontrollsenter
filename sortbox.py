@@ -140,7 +140,7 @@ def scan(root, name):
     return False
 
 
-DYNAMIC = ("hjemme", "smarthjem")
+DYNAMIC = ("hjemme", "smarthjem", "scener")
 
 
 def _to_dash(box, key):

@@ -207,6 +207,14 @@ class Automation:
         if now - self._last_night_check >= 30:
             self._last_night_check = now
             self.check_night()
+        if now - getattr(self, "_last_scene_check", 0) >= 5:       # scener med klokkeslett
+            self._last_scene_check = now
+            try:
+                import scenes
+                scenes.tick(self.win)
+            except Exception:  # noqa: BLE001
+                import applog
+                applog.log.exception("scener")
 
 
 # --------------------------------------------------------------------------

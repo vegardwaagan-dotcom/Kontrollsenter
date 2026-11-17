@@ -472,6 +472,30 @@ async function loadNotify() {
   }
 }
 
+// ---------- scener: én knapp setter hele rommet og PC-en ----------
+const sceneCard = document.createElement("div");
+sceneCard.className = "card"; sceneCard.id = "c-scenes"; sceneCard.dataset.ord = "-10";
+sceneCard.innerHTML = '<div class="row between"><h2>Scener</h2><span class="dim small" id="scene-now"></span></div><div class="scenes" id="scenes"></div>';
+{ const g = $("#kontroll .grid"); if (g) g.insertBefore(sceneCard, g.firstChild); }
+async function loadScenes() {
+  let d;
+  try { d = await X("scenes"); } catch (e) { sceneCard.hidden = true; return; }
+  sceneCard.hidden = !d.scenes.length;
+  const cur = d.scenes.find((x) => x.id === d.active);
+  $("#scene-now").textContent = cur ? "Nå: " + cur.name : "";
+  $("#scenes").innerHTML = d.scenes.map((x) => `<button type="button" class="scene${x.id === d.active ? " on" : ""}" data-id="${esc(x.id)}"
+      style="--sc:${esc(x.color || "#8a5cff")}"><span class="si">${esc(x.icon || "✨")}</span><span class="sn">${esc(x.name)}</span>
+      <span class="ss">${esc(x.summary)}</span>${x.auto ? `<span class="st">⚡ ${esc(x.trigger)}</span>` : ""}</button>`).join("");
+  $$("#scenes .scene").forEach((b) => (b.onclick = async () => {
+    vibe(12);
+    $$("#scenes .scene").forEach((x) => x.classList.toggle("on", x === b));
+    b.classList.remove("fire"); void b.offsetWidth; b.classList.add("fire");
+    await act({ a: "scene", id: b.dataset.id });
+    setTimeout(loadScenes, 2500);
+  }));
+}
+setInterval(() => tab === "kontroll" && !document.hidden && loadScenes(), 15000);
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
@@ -479,6 +503,8 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (detOpen) closeDetail();
   dashSetTab(t);
   if (t === "system") loadNotify();
+  if (t === "kontroll") loadScenes();
 };
 dashWire();
 if (tab === "system") loadNotify();
+if (tab === "kontroll") loadScenes();

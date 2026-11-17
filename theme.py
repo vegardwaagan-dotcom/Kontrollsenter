@@ -563,7 +563,7 @@ SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
     ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
     ("Spill", ["spill", "stromming"]),
-    ("Hjemmet", ["familie", "hjemme", "smarthjem"]),
+    ("Hjemmet", ["scener", "smarthjem", "familie", "hjemme"]),
     ("System", ["nettverk", "programmer", "verktoy", "innstillinger"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
@@ -591,6 +591,8 @@ PAGE_HELP = {
     "nettverk": "Hastighet, ping, hvilke programmer som bruker nettet, og enhetene på hjemmenettet.",
     "programmer": "Installer, oppdater og velg hvilke programmer som starter med PC-en.",
     "smarthjem": "Alle smartenhetene på hjemmenettet: styr Hue-lys, Samsung-TV og Chromecast/Nest, og se alt annet som er koblet til.",
+    "scener": "Én knapp setter hele rommet og PC-en: strømmodus, vifter, RGB, Hue-lys, TV, lyd, tema og varsler – "
+              "også automatisk når et spill starter eller på et klokkeslett.",
     "hjemme": "De andre PC-ene i huset med Kontrollsenter: status, temperatur og hvem som spiller.",
     "verktoy": "Hold PC-en i form: systeminfo, diskhelse, opprydding, gjenoppretting og feilsøking.",
     "innstillinger": "Alt du kan stille inn i Kontrollsenter: oppstart, utseende, språk, varsler, stille om natten, "

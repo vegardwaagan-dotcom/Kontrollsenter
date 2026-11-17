@@ -450,6 +450,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
                 ("familie", "Familie", "ks-family-symbolic", "family_page", "FamilyPage"),
                 ("smarthjem", "Smart Hjem", "ks-smarthome-symbolic", "smarthome_ui", "SmartHomePage"),
+                ("scener", "Scener", "ks-scenes-symbolic", "scenes_ui", "ScenesPage"),
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
                 ("verktoy", "Vedlikehold", "ks-tools-symbolic", "tools", "ToolsPage"),
                 ("innstillinger", "Innstillinger", "ks-settings-symbolic", "tools", "SettingsPage")):

@@ -720,6 +720,10 @@ def _feature_action(win, kind, a):
                 B.save(cfg)
         _call_main(go)
         return True, "Varsler på PC-en: " + ("på" if on else "av")
+    if kind == "scene":                          # kjør en scene fra mobilappen
+        import scenes
+        name = scenes.run(win, str(a.get("id", "")))
+        return True, f"«{name}» settes …"
     if kind == "smart":
         import smarthome
         return True, smarthome.action(a)
@@ -1093,6 +1097,14 @@ def _handler(remote):
             if what == "me":
                 d = getattr(self, "device", {}) or {}
                 return self._send(200, {"name": d.get("name"), "role": d.get("role", "full")})
+            if what == "scenes":
+                import scenes
+                d = scenes.load()
+                return self._send(200, {"active": d.get("active"), "scenes": [
+                    {"id": x["id"], "name": x["name"], "icon": x.get("icon"), "color": x.get("color"),
+                     "summary": scenes.summary(x), "trigger": scenes.trigger_text(x),
+                     "auto": bool((x.get("trigger") or {}).get("auto")) and (x.get("trigger") or {}).get("type") != "manual"}
+                    for x in d["scenes"]]})
             if what == "notify":
                 import background as B
                 bg = getattr(remote.win, "bg", None)

@@ -64,6 +64,8 @@ def wants(cfg, key):
             pass
     if not cfg.get("notify", True):
         return False
+    if cfg.get("dnd") and kid not in ("playtime", "chat"):    # scene med «ingen varsler» (chat slipper gjennom)
+        return False
     return bool((cfg.get("kinds") or {}).get(kid, True)) if kid else True
 
 

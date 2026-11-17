@@ -237,6 +237,11 @@ def tick(auto):
         if bg:
             bg.game_name = g[1]
         win.set_badge("spill", "▶")
+        try:
+            import scenes
+            scenes.on_event(win, "game_start", g[1])
+        except Exception:  # noqa: BLE001
+            pass
         enabled, p = profile_for(g[0])
         if enabled:
             if auto.night_snap is not None:                       # natt settes på pause
@@ -260,6 +265,11 @@ def tick(auto):
         if auto.night_snap is not None:                           # tilbake til natt om det fortsatt er natt
             auto.night_snap = None
             auto._last_night_check = 0
+        try:
+            import scenes
+            scenes.on_event(win, "game_end", name)
+        except Exception:  # noqa: BLE001
+            pass
         if auto.session:
             s = auto.session.finish()
             auto.session = None
