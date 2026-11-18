@@ -111,6 +111,32 @@ class FamilyPage(Gtk.ScrolledWindow):
         i.append(self.goal_msg)
         self.goal_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         i.append(self.goal_list)
+        vr = Gtk.Box(spacing=12, margin_top=6)
+        vl = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        vl.append(Gtk.Label(label=i18n.tr("Tell YouTube og Twitch som skjermtid"), xalign=0))
+        vs = Gtk.Label(label=i18n.tr("Video i nettleseren telles i spilletiden og grensene (ikke mens et spill kjører)."),
+                       xalign=0, wrap=True)
+        vs.add_css_class("ks-sub")
+        vl.append(vs)
+        vr.append(vl)
+        sw = Gtk.Switch(active=F.cfg().get("count_video", True), valign=Gtk.Align.CENTER)
+
+        def set_video(w, _p):
+            def do():
+                c = F.cfg()
+                c["count_video"] = w.get_active()
+                F.save_cfg(c)
+            if not w.get_active() and familylock.locked() and not getattr(w, "_rev", False):
+                def cancel():
+                    w._rev = True
+                    w.set_active(True)
+                    w._rev = False
+                familylock.ask(self.get_root(), "Skriv familiekoden for å slå av dette.", do, cancel)
+            else:
+                do()
+        sw.connect("notify::active", set_video)
+        vr.append(sw)
+        i.append(vr)
 
         # ---- ukesrapport og ranking ----
         c, i = _card("Ukesrapport og ranking", "Spilletid per person, mest spilte spill og strøm denne uka – for alle "

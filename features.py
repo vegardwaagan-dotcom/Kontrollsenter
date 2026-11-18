@@ -234,12 +234,28 @@ def chat_send(frm, text, notify=None, urgent=False):
     if not text:
         raise ValueError("tom melding")
     msgs = chat_list(500)
-    msgs.append({"t": time.time(), "from": str(frm)[:40], "text": text, "urgent": bool(urgent)})
+    try:
+        import launcher
+        _g, shown = launcher.parse_invite(text)
+    except Exception:  # noqa: BLE001
+        _g, shown = None, text
+    msgs.append({"t": time.time(), "from": str(frm)[:40], "text": shown, "urgent": bool(urgent),
+                 **({"invite": _g} if _g else {})})
     os.makedirs(DATA, exist_ok=True)
     with open(CHAT, "w", encoding="utf-8") as f:
         json.dump(msgs[-500:], f, ensure_ascii=False)
     title = ("📣 " if urgent else "💬 ") + str(frm)[:40]
-    if notify:
+    try:                                              # «Spill sammen»: trykk på varselet for å bli med
+        import launcher
+        g, clean = launcher.parse_invite(text)
+    except Exception:  # noqa: BLE001
+        g, clean = None, text
+    if g and notify:
+        from gi.repository import Gio
+        act = Gio.Action.print_detailed_name("app.joingame", GLib.Variant("s", json.dumps({"g": g, "from": frm})))
+        GLib.idle_add(lambda: (notify("invite", f"🎮 {frm} vil spille {g.get('name')}", "Trykk her for å bli med!",
+                                      force=True, action=act), False)[1])
+    elif notify:
         GLib.idle_add(lambda: (notify("chat", title, text, force=True), False)[1])
     if urgent:
         for snd in ("/usr/share/sounds/freedesktop/stereo/bell.oga", "/usr/share/sounds/freedesktop/stereo/complete.oga"):

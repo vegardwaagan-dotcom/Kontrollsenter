@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.42.0", "Spill-launcher", [
+        ("Nytt", [
+            "Ny fane «Spillene» under Spill: alle spillene dine med cover-bilder – Steam, Heroic (Epic/GOG) og Lutris "
+            "(f.eks. Battle.net). Ett trykk starter spillet, og scener, tema og spillprofil for spillet slår seg på av seg selv",
+            "«Spill sammen»: trykk på personer-knappen på et spill, så får de andre PC-ene i huset et varsel – trykker de "
+            "på det, starter samme spill hos dem og du får beskjed om at de blir med",
+            "YouTube og Twitch i nettleseren telles som skjermtid i spilletiden og familiegrensene (Linux). Kan slås av "
+            "på Familie-siden (krever familiekoden når familiekontroll er på)",
+            "Høydepunkt-klipp i CS2 ved 3+ kills eller ace lagres fortsatt av seg selv",
+        ]),
+    ]),
     ("0.41.0", "Discord: servere og chat", [
         ("Nytt", [
             "Discord-siden viser nå serverne du er med i og kanalene på hver server. Trykk på en tekstkanal for å lese "

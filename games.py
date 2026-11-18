@@ -29,6 +29,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 
 from tabbed import TabbedPage  # noqa: E402
+import i18n  # noqa: E402
 
 import vdf  # noqa: E402
 
@@ -391,6 +392,12 @@ class GamesPage(TabbedPage):
     def __init__(self):
         super().__init__("spill")
         self.changes = {}
+        self.tab("spillene", "Spillene")
+        try:
+            self._launcher()
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("spill-launcher")
         self.tab("statistikk", "Statistikk")
         try:
             import gamestats_ui
@@ -432,6 +439,106 @@ class GamesPage(TabbedPage):
             self.tab("kontrollere", "Kontrollere")
             self._ctrl_card()
         self.finish()
+
+    # --- Alle spillene med cover (launcher) --------------------------------------
+    def _launcher(self):
+        import launcher
+        head = Gtk.Box(spacing=10)
+        t = Gtk.Label(label=i18n.tr("Trykk på et spill for å starte det. Scener, temaer og spillprofiler for spillet slår "
+                                    "seg på av seg selv. «Spill sammen» spør de andre i huset om de blir med."),
+                      xalign=0, wrap=True, hexpand=True)
+        t.add_css_class("dim-label")
+        head.append(t)
+        self.box.append(head)
+        self.lflow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, min_children_per_line=2,
+                                 max_children_per_line=8, column_spacing=14, row_spacing=16, halign=Gtk.Align.START)
+        self.box.append(self.lflow)
+        self.lmsg = Gtk.Label(xalign=0)
+        self.lmsg.add_css_class("dim-label")
+        self.box.append(self.lmsg)
+        css = Gtk.CssProvider()
+        css.load_from_string(""".ks-cover { border-radius: 16px; }
+            .ks-cover-card { border-radius: 18px; padding: 0; }
+            .ks-cover-blank { font-size: 64px; font-weight: 800; color: white; border-radius: 16px;
+              background-image: linear-gradient(135deg, #5b8cff, #8a5cff); }
+            .ks-cover-name { font-weight: 800; color: white; text-shadow: 0 1px 3px black; }
+            .ks-cover-fade { background-image: linear-gradient(transparent 45%, alpha(black, 0.85)); border-radius: 16px; }
+            button.ks-cover-play { border-radius: 99px; min-width: 44px; min-height: 44px; padding: 0; color: white;
+              background-image: linear-gradient(135deg, #5b8cff, #8a5cff); }""")
+        import theme
+        theme.add_css(css.to_string(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 5)    # følger temaet
+
+        def work():
+            gs = launcher.all_games()
+            GLib.idle_add(self._show_games, gs)
+            if any(g["store"] == "steam" and not g.get("cover") for g in gs):
+                launcher.fetch_missing_covers(gs)
+                GLib.idle_add(self._show_games, gs)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_games(self, gs):
+        import launcher
+        import time as _t
+        while (c := self.lflow.get_first_child()) is not None:
+            self.lflow.remove(c)
+        for g in gs:
+            ov = Gtk.Overlay(halign=Gtk.Align.CENTER)
+            ov.add_css_class("ks-cover-card")
+            cov = g.get("cover")
+            pic = None
+            if cov and not str(cov).startswith("http") and os.path.exists(cov):
+                try:
+                    from gi.repository import Gdk, GdkPixbuf
+                    pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(cov, 168, 252, False)
+                    pic = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pb))
+                except Exception:  # noqa: BLE001
+                    pic = None
+            if pic is None:                              # uten cover: fargefelt med forbokstaven
+                pic = Gtk.Label(label=(g["name"] or "?")[:1].upper())
+                pic.add_css_class("ks-cover-blank")
+            else:
+                pic.set_content_fit(Gtk.ContentFit.COVER)
+                pic.set_can_shrink(True)
+            pic.set_size_request(168, 252)
+            pic.set_halign(Gtk.Align.CENTER)
+            pic.add_css_class("ks-cover")
+            ov.set_child(pic)
+            fade = Gtk.Box(hexpand=True, vexpand=True)
+            fade.add_css_class("ks-cover-fade")
+            ov.add_overlay(fade)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.END, margin_start=10,
+                          margin_end=10, margin_bottom=10)
+            nm = Gtk.Label(label=g["name"], xalign=0, wrap=True, lines=2, ellipsize=3, max_width_chars=16)
+            nm.add_css_class("ks-cover-name")
+            col.append(nm)
+            sub = ("sist " + _t.strftime("%d.%m", _t.localtime(g["last"]))) if g.get("last") else \
+                {"steam": "Steam", "lutris": "Lutris"}.get(g["store"], "Heroic")
+            sl = Gtk.Label(label=sub, xalign=0)
+            sl.add_css_class("caption")
+            sl.set_opacity(0.8)
+            col.append(sl)
+            ov.add_overlay(col)
+            btns = Gtk.Box(spacing=6, halign=Gtk.Align.END, valign=Gtk.Align.START, margin_top=8, margin_end=8)
+            inv = Gtk.Button(icon_name="system-users-symbolic", tooltip_text=i18n.tr("Spill sammen – inviter de andre"))
+            inv.add_css_class("circular")
+            inv.add_css_class("osd")
+            inv.connect("clicked", lambda _b, g=g: self.lmsg.set_label(launcher.invite(g)))
+            btns.append(inv)
+            play = Gtk.Button(icon_name="media-playback-start-symbolic", tooltip_text=i18n.tr("Start"))
+            play.add_css_class("ks-cover-play")
+            play.connect("clicked", lambda _b, g=g: (launcher.launch(g), self.lmsg.set_label(
+                i18n.tr("Starter ") + g["name"] + " …")))
+            btns.append(play)
+            ov.add_overlay(btns)
+            click = Gtk.GestureClick()
+            click.connect("released", lambda *_a, g=g: (launcher.launch(g), self.lmsg.set_label(
+                i18n.tr("Starter ") + g["name"] + " …")))
+            pic.add_controller(click)
+            pic.set_cursor_from_name("pointer")
+            self.lflow.append(ov)
+        if not gs:
+            self.lmsg.set_label(i18n.tr("Fant ingen installerte spill (Steam, Heroic eller Lutris)."))
+        return False
 
     # --- Siste spilløkter -------------------------------------------------------
     def _sessions_card(self):

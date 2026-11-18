@@ -29,7 +29,8 @@ KINDS = [
     ("syscheck", "Systemsjekk", "Systemsjekken i bakgrunnen fant noe som bør fikses.", ["syscheck"]),
     ("updates", "Oppdateringer", "Nye programoppdateringer og nye versjoner av Kontrollsenter.",
      ["updates", "lanupdate", "lanpublish", "restart"]),
-    ("chat", "Familie-chat og «Middag!»", "Meldinger fra de andre i huset.", ["chat"]),
+    ("chat", "Familie-chat og «Middag!»", "Meldinger fra de andre i huset – og «Spill sammen»-invitasjoner.",
+     ["chat", "invite"]),
     ("game", "Spillprofil", "Når spillmodus slås på automatisk fordi et spill startet.", ["game"]),
     ("session", "Rapport etter spilløkt", "FPS, temperaturer og strøm når du er ferdig med et spill.", ["session"]),
     ("clip", "Klipp lagret", "Når et klipp av de siste minuttene er lagret.", ["clip"]),
@@ -330,7 +331,7 @@ class Background:
             return
         # mens du spiller: hold varslene tilbake og vis dem samlet etterpå (ikke chat, spilletid eller personvern)
         if (self.cfg.get("game_hold", True) and getattr(self, "game_name", None) and key not in ALWAYS
-                and kind_of(key) not in ("playtime", "chat") and key not in ("game", "session", "held", "bg")):
+                and kind_of(key) not in ("playtime", "chat") and key not in ("game", "session", "held", "bg", "invite")):
             held = self.__dict__.setdefault("held", [])
             if all(h[0] != key for h in held):
                 held.append((key, title, body))
@@ -441,7 +442,16 @@ class Background:
             if not hasattr(self, "play"):
                 import remote_extra
                 self.play = remote_extra.PlayTracker(self.notify)
-            self.play.tick(getattr(self, "game_name", None), dt)
+            game = getattr(self, "game_name", None)
+            if not game:                                  # YouTube/Twitch i nettleseren teller som skjermtid
+                try:
+                    import features
+                    if features.cfg().get("count_video", True):
+                        import mediawatch
+                        game = mediawatch.playing_video()
+                except Exception:  # noqa: BLE001
+                    pass
+            self.play.tick(game, dt)
         except Exception:  # noqa: BLE001
             pass
         try:

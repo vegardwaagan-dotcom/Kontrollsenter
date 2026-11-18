@@ -1461,6 +1461,21 @@ class MonitorApp(Adw.Application):
         app_id = os.environ.get("SYSTEMMONITOR_APP_ID", "no.waagan.Systemmonitor")  # for testing
         super().__init__(application_id=app_id)
 
+    def do_startup(self):
+        Adw.Application.do_startup(self)
+        act = Gio.SimpleAction.new("joingame", GLib.VariantType.new("s"))      # «Spill sammen» fra varselet
+
+        def join(_a, v):
+            try:
+                import json as _j
+                import launcher
+                d = _j.loads(v.get_string())
+                launcher.join(d["g"], reply_to=d.get("from"))
+            except Exception:  # noqa: BLE001
+                applog.log.exception("bli med i spill")
+        act.connect("activate", join)
+        self.add_action(act)
+
     def do_activate(self):
         win = getattr(self, "win", None)
         if win is None:
