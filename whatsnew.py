@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.58.0", "VR med Meta Quest 3", [
+        ("Nytt", [
+            "Ny side «VR» under Spill: Meta Quest 3 gjennom Steam og SteamVR – trådløst eller med kabel, på Linux og "
+            "Windows. Linux: ALVR (trådløst og over USB). Windows: Steam Link (trådløst) og Meta Quest Link (kabel), "
+            "eller ALVR",
+            "Sjekkliste over alt som trengs – Steam, SteamVR, ALVR/Meta Link, brannmur, SteamVR-rettigheter, OpenXR, "
+            "adb, ALVR-appen i brillene, videokoding og nettverk – og «Fiks alt» som installerer og retter automatisk",
+            "«Start VR» starter alt i riktig rekkefølge, og VR-vakten starter ALVR, SteamVR og kabel-tilkoblingen "
+            "igjen av seg selv hvis noe stopper mens du spiller",
+            "VR-kort i mobilappen (Spill): start, fiks og stopp fra telefonen",
+        ]),
+    ]),
     ("0.57.1", "Rullehjulet følger musehjulet", [
         ("Forbedret", [
             "Rullehjulet i valgmenyene (PC og app): ett hakk på musehjulet = ett valg. Styreplate ruller fortsatt "

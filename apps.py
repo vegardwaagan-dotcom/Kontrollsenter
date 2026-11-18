@@ -32,6 +32,15 @@ APPS = {
                    flatpak="net.lutris.Lutris", cmds=["lutris"], ks=True),
     "bottles": dict(name="Bottles", why="Kjør enkeltstående Windows-spill og -programmer på Linux",
                     flatpak="com.usebottles.bottles"),
+    "alvr": dict(name="ALVR", why="Meta Quest trådløst eller med kabel gjennom SteamVR (Linux og Windows)",
+                 url="https://github.com/alvr-org/ALVR/releases/latest", ks=True,
+                 cmds=["alvr_dashboard"], win=[W + r"\Kontrollsenter\alvr\*\ALVR Dashboard.exe"]),
+    "metalink": dict(name="Meta Horizon Link", why="Meta Quest med kabel (Quest Link) på Windows",
+                     url="https://www.meta.com/help/quest/1517439565442928/", ks=True,
+                     win=[PF + r"\Oculus\Support\oculus-runtime\OVRServer_x64.exe"]),
+    "virtualdesktop": dict(name="Virtual Desktop", why="Den beste trådløse løsningen (betalt, kjøpes i Quest-butikken)",
+                           url="https://www.vrdesktop.net/", win=[PF + r"\Virtual Desktop Streamer\VirtualDesktop.Streamer.exe"]),
+    "wivrn": dict(name="WiVRn", why="Trådløs VR for Linux med OpenXR (uten SteamVR)", flatpak="io.github.wivrn.wivrn"),
     "retroarch": dict(name="RetroArch", why="Alle de gamle konsollene i én emulator",
                       flatpak="org.libretro.RetroArch", winget="Libretro.RetroArch"),
     "epic": dict(name="Epic Games", why="Gratis spill hver uke og Fortnite",
@@ -192,6 +201,8 @@ TOP5 = {
                  linux=["tailscale", "zerotier", "wireguard", "netbird", "kdeconnect"],
                  win=["tailscale", "zerotier", "wireguard", "netbird", "kdeconnect"]),
 }
+TOP5["vr"] = dict(title="VR med Meta Quest", linux=["alvr", "wivrn", "steam"],
+                  win=["metalink", "alvr", "virtualdesktop", "steam"])
 TOP5["medal"] = dict(title="Klipp på Windows", linux=[], win=["medal"])
 TOP5["moonlight"] = dict(title="Spill fra en annen PC", linux=["moonlight", "parsec", "steamlink"],
                          win=["moonlight", "parsec", "steamlink"])
@@ -256,6 +267,13 @@ def installed(key, max_age=20):
     if hit and time.time() - hit[0] < max_age:
         return hit[1]
     a = APPS[key]
+    if key == "alvr":                                  # Kontrollsenter legger ALVR i sin egen mappe
+        try:
+            import vr
+            if vr.alvr_dashboard():
+                return True
+        except Exception:  # noqa: BLE001
+            pass
     if a.get("builtin") == "windows":
         _CACHE[key] = (time.time(), True)
         return True

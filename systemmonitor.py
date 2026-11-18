@@ -502,6 +502,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),
                 ("nettverk", "Nettverk", "ks-network-symbolic", "netpage", "NetworkPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
+                ("vr", "VR", "ks-vr-symbolic", "vr_ui", "VrPage"),
                 ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
                 ("discord", "Discord", "ks-discord-symbolic", "discord_ui", "DiscordPage"),
                 ("familie", "Familie", "ks-family-symbolic", "family_page", "FamilyPage"),
@@ -842,7 +843,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         search.SearchDialog(self).present(self)
 
     # --- enkel modus: bare det viktigste i sidemenyen ---
-    SIMPLE_PAGES = {"oversikt", "lyd", "spill", "discord", "scener", "smarthjem", "familie", "innstillinger"}
+    SIMPLE_PAGES = {"oversikt", "lyd", "spill", "vr", "discord", "scener", "smarthjem", "familie", "innstillinger"}
 
     def simple_mode(self):
         try:

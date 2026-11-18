@@ -659,7 +659,7 @@ _LISTENERS = []
 SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
     ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
-    ("Spill", ["spill", "discord", "stromming"]),
+    ("Spill", ["spill", "vr", "discord", "stromming"]),
     ("Hjemmet", ["scener", "smarthjem", "familie", "hjemme"]),
     ("System", ["nettverk", "programmer", "verktoy", "innstillinger"]),
 ]
@@ -684,6 +684,7 @@ PAGE_HELP = {
              "automatisk, og kontrollere.",
     "discord": "Mikrofon, lyd av og forlat samtalen med ett trykk – og volum, mikrofon, høyttalere, støydemping, "
                "ekkodemping og overlay for Discord.",
+    "vr": "Meta Quest 3 gjennom Steam og SteamVR – trådløst eller med kabel. Kontrollsenter installerer og retter alt.",
     "stromming": "Spill og se PC-skjermen på telefonen (Sunshine + Moonlight), og fjernhjelp med RustDesk.",
     "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "
                "ekstra spilletid og leggetid.",

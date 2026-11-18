@@ -726,6 +726,18 @@ def _feature_action(win, kind, a):
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "vr":                             # VR fra mobilen: start / fiks alt / stopp
+        import vr
+        do = str(a.get("do", ""))
+        if do == "start":
+            return True, vr.start(a.get("mode") or None)
+        if do == "fixall":
+            return True, "; ".join(f"{t}: {m}" for t, m in vr.fix_all(mode=a.get("mode") or None)) or "Alt er klart ✓"
+        if do == "stop":
+            return True, vr.stop()
+        if do == "noop":
+            return True, ""
+        raise ValueError("ukjent VR-handling")
     if kind == "push":                           # slå ntfy-push av/på (bare full tilgang)
         import push
         if a.get("new_topic"):
@@ -1214,6 +1226,9 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "vr":
+                import vr
+                return self._send(200, vr.state())
             if what == "push":
                 import push
                 return self._send(200, {"enabled": push.enabled(), "topic": push.topic(), "port": PORT})

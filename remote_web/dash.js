@@ -588,6 +588,26 @@ async function loadSafe() {
   const sw = $("#safe-school"); sw.checked = st.school.enabled;
   sw.onchange = () => act({ a: "school", enabled: sw.checked });
 }
+const vrCard = document.createElement("div");
+vrCard.className = "card full-only"; vrCard.id = "c-vr"; vrCard.hidden = true;
+vrCard.innerHTML = '<h2>🥽 VR – Meta Quest 3</h2><div class="seg" id="vr-mode"><button data-m="wireless">📶 Trådløst</button><button data-m="wired">🔌 Kabel</button></div>'
+  + '<div id="vr-checks" class="dim small" style="margin-top:8px"></div>'
+  + '<div class="row" style="margin-top:8px"><button class="primary" id="vr-start">Start VR</button><button class="soft" id="vr-fix">Fiks alt</button><button class="soft" id="vr-stop">Stopp</button></div>'
+  + '<div class="dim small" id="vr-msg"></div>';
+{ const fg = $("#fam-grid"); const sp = $("#spill .grid") || fg; if (sp) sp.insertBefore(vrCard, sp.firstChild); }
+async function loadVr() {
+  if (document.body.classList.contains("limited")) return;
+  let st; try { st = await X("vr"); } catch (e) { vrCard.hidden = true; return; }
+  vrCard.hidden = false;
+  $$("#vr-mode button").forEach((b) => { b.classList.toggle("on", b.dataset.m === st.mode); b.onclick = async () => { await act({ a: "vr", do: "noop" }).catch(() => {}); st.mode = b.dataset.m; $$("#vr-mode button").forEach((x) => x.classList.toggle("on", x === b)); }; });
+  const bad = st.checks.filter((c) => !c.ok && !c.warn);
+  $("#vr-checks").innerHTML = (bad.length ? bad.map((c) => "❌ " + esc(c.title)).join("<br>") : "✅ Alt er klart")
+    + (st.quest && st.quest.state === "device" ? "<br>🥽 Questen er koblet til" : "") + (st.vr_running ? "<br>▶ SteamVR kjører" : "");
+  const mode = () => (($("#vr-mode .on") || {}).dataset || {}).m || st.mode;
+  $("#vr-start").onclick = async () => { $("#vr-msg").textContent = "Starter …"; const r = await act({ a: "vr", do: "start", mode: mode() }); $("#vr-msg").textContent = (r && r.msg) || ""; loadVr(); };
+  $("#vr-fix").onclick = async () => { $("#vr-msg").textContent = "Retter … (kan ta noen minutter)"; const r = await act({ a: "vr", do: "fixall", mode: mode() }); $("#vr-msg").textContent = (r && r.msg) || ""; loadVr(); };
+  $("#vr-stop").onclick = async () => { const r = await act({ a: "vr", do: "stop" }); $("#vr-msg").textContent = (r && r.msg) || ""; };
+}
 async function loadPlan() {
   let p; try { p = await X("plan"); } catch (e) { planCard.hidden = true; return; }
   planCard.hidden = false;
@@ -898,7 +918,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (t === "system") loadNotify();
   if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); pushScenesToPhone(); }
   if (t === "system") loadPush();
-  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); }
+  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadVr(); }
 };
 dashWire();
 if (tab === "system") loadNotify();
