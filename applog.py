@@ -97,6 +97,94 @@ def tail(lines=300):
         return ""
 
 
+def upload_errors(force=False):
+    """Legg de siste linjene av feilloggen på NAS-en (Kontrollsenter/Diagnose/<PC>-logg.txt) når det har kommet
+    nye feil siden sist – så feil på de andre PC-ene kan finnes herfra. Kalles fra bakgrunnen."""
+    import json
+    import socket
+    import time
+    state_p = os.path.join(LOG_DIR, "feil-sendt.json")
+    try:
+        st = json.load(open(state_p))
+    except (OSError, ValueError):
+        st = {}
+    try:
+        lines = open(LOG_FILE, encoding="utf-8", errors="replace").read().splitlines()
+    except OSError:
+        return False
+    errs = [ln for ln in lines if " ERROR " in ln]
+    last = errs[-1] if errs else ""
+    if not force and (not errs or last == st.get("last")):
+        return False
+    import shutil
+    import tempfile
+    import lanupdate as L
+    if not L.on_lan():
+        return False
+    host = socket.gethostname()
+    tmp = tempfile.mkdtemp()
+    try:
+        p = os.path.join(tmp, f"{host}-logg.txt")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(f"Kontrollsenter {RUNNING} på {host} – {time.strftime('%Y-%m-%d %H:%M')}\n"
+                    f"{len(errs)} feil i loggen. Siste 400 linjer:\n\n" + "\n".join(lines[-400:]))
+        s = os.path.join(tmp, f"{host}-status.json")
+        with open(s, "w") as f:
+            json.dump({"pc": host, "version": RUNNING, "t": time.time(), "errors": len(errs), "last": last[-300:]}, f)
+        _h, _s, folder = L._split()
+        L.smb_mkdir(f"{folder}/Diagnose")
+        L._smb(f'cd "Diagnose"; put "{p}" "{os.path.basename(p)}"; put "{s}" "{os.path.basename(s)}"', 60)
+        st["last"] = last
+        with open(state_p, "w") as f:
+            json.dump(st, f)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def house_reports():
+    """Feilrapportene alle PC-ene har lagt på NAS-en: [{pc, version, t, errors, last}]."""
+    import json
+    import shutil
+    import tempfile
+    import lanupdate as L
+    out = []
+    if not L.on_lan():
+        return out
+    tmp = tempfile.mkdtemp()
+    try:
+        try:
+            L._smb(f'cd "Diagnose"; prompt OFF; lcd "{tmp}"; mget *-status.json', 60)
+        except Exception:  # noqa: BLE001
+            return out
+        for f in sorted(os.listdir(tmp)):
+            try:
+                out.append(json.load(open(os.path.join(tmp, f))))
+            except (OSError, ValueError):
+                continue
+        return sorted(out, key=lambda x: -x.get("t", 0))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def house_log(pc):
+    """Hele feilloggen en PC har lagt på NAS-en."""
+    import re as _re
+    import shutil
+    import tempfile
+    import lanupdate as L
+    if not _re.fullmatch(r"[\w.\-]+", pc or ""):
+        raise ValueError("ugyldig navn")
+    tmp = tempfile.mkdtemp()
+    try:
+        L._smb(f'cd "Diagnose"; get "{pc}-logg.txt" "{tmp}/l.txt"', 60)
+        return open(os.path.join(tmp, "l.txt"), encoding="utf-8", errors="replace").read()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def crash(title):
     """Uventet feil under oppstart: skriv den til krasj.txt, legg den på NAS-en og vis en melding.
     På Windows (uten konsoll) er dette den eneste måten å se hvorfor programmet ikke startet."""
@@ -121,6 +209,12 @@ def crash(title):
             _h, _s, folder = L._split()
             L.smb_mkdir(f"{folder}/Diagnose")
             L._smb(f'cd "Diagnose"; put "{p}" "{os.path.basename(p)}"', 60)
+    except Exception:  # noqa: BLE001
+        pass
+    try:                                                   # nettopp oppdatert? gå tilbake til forrige versjon
+        import lanupdate as L
+        if L.ROLLBACK.exists():
+            text += "\n\n" + L.rollback() + " (den nye versjonen startet ikke)."
     except Exception:  # noqa: BLE001
         pass
     if sys.platform == "win32":

@@ -1479,15 +1479,15 @@ class MonitorApp(Adw.Application):
     def do_activate(self):
         win = getattr(self, "win", None)
         if win is None:
+            try:                                  # tell oppstarten FØR vinduet bygges – krasjer det, rulles det tilbake
+                import features
+                features.check_rollback()
+            except Exception:  # noqa: BLE001
+                pass
             try:
                 win = self.win = MonitorWindow(self)
                 import background
                 win.bg = background.Background(self, win)
-                try:
-                    import features
-                    features.check_rollback()
-                except Exception:  # noqa: BLE001
-                    pass
             except Exception:  # noqa: BLE001
                 applog.crash("Kontrollsenter kunne ikke starte")
                 self.quit()

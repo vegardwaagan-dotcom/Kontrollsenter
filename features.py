@@ -178,10 +178,8 @@ def auto_update_tick():
     _st, new = L.check()
     if not new:
         return
-    ok, msg = L.apply_update(tools.PACKAGE_FILES)
+    ok, msg = L.apply_update(tools.PACKAGE_FILES)          # (apply_update gjør klar tilbakerulling)
     if ok:
-        with open(ROLLBACK, "w") as f:
-            json.dump({"from": L.local_version(), "t": time.time()}, f)
         _ev("update", f"Oppdatert til {new} i natt", "Kontrollsenter startes på nytt", "info")
         if WIN is not None:
             GLib.idle_add(lambda: (WIN.restart_app(), False)[1])
@@ -198,13 +196,13 @@ def check_rollback():
     if st["starts"] >= 3:                                  # krasjet to ganger på rad etter oppdateringen
         try:
             import lanupdate as L
-            backup = getattr(L, "BACKUP", None)
-            if backup and os.path.exists(backup):
-                with tarfile.open(backup) as t:
-                    t.extractall(L.APP_DIR, filter="data")
-                _ev("update", "Oppdateringen ble rullet tilbake", "Den nye versjonen startet ikke", "error")
+            msg = L.rollback()
+            _ev("update", "Oppdateringen ble rullet tilbake", f"Den nye versjonen startet ikke. {msg}", "error")
         finally:
-            os.remove(ROLLBACK)
+            try:
+                os.remove(ROLLBACK)
+            except OSError:
+                pass
         return
     with open(ROLLBACK, "w") as f:
         json.dump(st, f)

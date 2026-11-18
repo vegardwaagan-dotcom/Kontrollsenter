@@ -919,6 +919,79 @@ class _Cards:
         box.append(r)
         return sw
 
+    def _rollback_card(self):
+        import lanupdate as L
+        if L.is_source_pc():
+            return
+        prev = L.backup_version()
+        c, i = card("Gå tilbake til forrige versjon",
+                    "Virker noe dårligere etter en oppdatering? Gå tilbake til versjonen du hadde før. "
+                    "Starter en ny versjon ikke i det hele tatt, skjer dette av seg selv.")
+        st = dim(f"Forrige versjon: {prev}" if prev else "Det finnes ingen forrige versjon ennå.")
+        b = Gtk.Button(label=f"Gå tilbake til {prev}" if prev else "Gå tilbake", halign=Gtk.Align.START)
+        b.set_sensitive(bool(prev))
+
+        def go(*_):
+            def do():
+                try:
+                    st.set_label(L.rollback())
+                    b.set_sensitive(False)
+                    win = self.get_root()
+                    if hasattr(win, "restart_app"):
+                        GLib.timeout_add_seconds(2, lambda: (win.restart_app(), False)[1])
+                except Exception as e:  # noqa: BLE001
+                    st.set_label(str(e))
+            dlg = Adw.AlertDialog(heading=f"Gå tilbake til {prev}?",
+                                  body="Kontrollsenter startes på nytt med forrige versjon. Innstillingene dine "
+                                       "beholdes.")
+            dlg.add_response("no", "Avbryt")
+            dlg.add_response("yes", "Gå tilbake")
+            dlg.set_response_appearance("yes", Adw.ResponseAppearance.DESTRUCTIVE)
+            dlg.connect("response", lambda _d, r: r == "yes" and do())
+            dlg.present(self.get_root())
+        b.connect("clicked", go)
+        i.append(b)
+        i.append(st)
+        self.box.append(c)
+
+    def _house_errors_card(self):
+        import applog
+        c, i = card("Feil fra PC-ene i huset",
+                    "Hver PC legger feilene sine på NAS-en (Kontrollsenter/Diagnose) – så de kan sees herfra.")
+        lst = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        i.append(lst)
+        lst.append(dim("Henter …"))
+        view = Gtk.TextView(editable=False, monospace=True, wrap_mode=Gtk.WrapMode.WORD_CHAR)
+        sc = Gtk.ScrolledWindow(child=view, min_content_height=260, visible=False)
+        i.append(sc)
+
+        def show(rows):
+            while (ch := lst.get_first_child()) is not None:
+                lst.remove(ch)
+            if not rows:
+                lst.append(dim("Ingen feilrapporter på NAS-en ✓"))
+            for r in rows:
+                row = Gtk.Box(spacing=10)
+                col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+                col.append(Gtk.Label(label=f"{r.get('pc')} · {r.get('version')} · "
+                                           f"{time.strftime('%d.%m %H:%M', time.localtime(r.get('t', 0)))} · "
+                                           f"{r.get('errors', 0)} feil", xalign=0))
+                last = Gtk.Label(label=(r.get("last") or "")[-160:], xalign=0, wrap=True)
+                last.add_css_class("dim-label")
+                last.add_css_class("caption")
+                col.append(last)
+                row.append(col)
+                b = Gtk.Button(label="Vis logg", valign=Gtk.Align.CENTER)
+
+                def open_log(_b, pc=r.get("pc")):
+                    self._bg(lambda: applog.house_log(pc),
+                             lambda t: (view.get_buffer().set_text(t[-60000:]), sc.set_visible(True)))
+                b.connect("clicked", open_log)
+                row.append(b)
+                lst.append(row)
+        self._bg(applog.house_reports, show)
+        self.box.append(c)
+
     def _apps_card(self):
         import apps_ui
         c, i = card("Programmer – topp 5 per funksjon", "De fem beste programmene for hver funksjon, rangert fra 1 "
@@ -1511,6 +1584,7 @@ class ToolsPage(TabbedPage, _Cards):
         self._try(self._slow_card)
         self._syscheck_card()
         self._try(self._diag_card)
+        self._try(self._house_errors_card)
         self._try(self._log_card)
         self.finish()
 
@@ -1763,6 +1837,7 @@ class SettingsPage(TabbedPage, _Cards):
             applog.log.exception("fjernstyring-kort")
         self.tab("oppdatering", "Oppdatering")
         self._try(self._app_card)
+        self._try(self._rollback_card)
         if sys.platform != "win32":
             self._try(self._backup_card)
         self.finish()

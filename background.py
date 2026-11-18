@@ -436,6 +436,10 @@ class Background:
             pass
         self._watch_extra()
         self._smart_check()
+        if time.time() - getattr(self, "_errup_t", 0) > 1800:        # nye feil → NAS-en (Diagnose)
+            self._errup_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("applog").upload_errors(), daemon=True).start()
         if time.time() - getattr(self, "_plan_t", 0) > 55:            # ukeplanen: sjekk hvert minutt
             self._plan_t = time.time()
 

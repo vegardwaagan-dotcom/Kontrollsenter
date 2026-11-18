@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.52.0", "Tryggere oppdateringer", [
+        ("Nytt", [
+            "Selvtest før hver ny versjon: alle sider, faner og mobilappen åpnes automatisk, og versjonen legges ikke "
+            "ut hvis noe krasjer (feilen i Innstillinger i 0.47 ville blitt stoppet)",
+            "Starter en ny versjon ikke, går PC-en tilbake til forrige versjon av seg selv – nå for alle oppdateringer, "
+            "ikke bare den nattlige. Krasjer den med en gang, skjer det umiddelbart",
+            "Innstillinger → Oppdatering: «Gå tilbake til forrige versjon» med ett trykk",
+            "Feil sendes til NAS-en (Diagnose) hver halvtime når det har kommet nye – og Vedlikehold → Feilsøking → "
+            "«Feil fra PC-ene i huset» viser dem for alle PC-ene",
+        ]),
+    ]),
     ("0.51.0", "Velg skjermkort", [
         ("Nytt", [
             "GPU-innstillinger → «Hovedskjermkort» (når PC-en har flere skjermkort): velg Automatisk, integrert eller "

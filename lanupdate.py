@@ -17,6 +17,7 @@ import socket
 import sys
 import subprocess
 import tarfile
+import time
 import tempfile
 from pathlib import Path
 
@@ -266,6 +267,7 @@ def apply_update(package_files):
             prog = _fetch_program(tmp)
         except RuntimeError as e:
             return False, str(e)
+        old = local_version()
         # ta vare på versjonen som kjører nå
         BACKUP.parent.mkdir(parents=True, exist_ok=True)
         with tarfile.open(BACKUP, "w:gz") as t:
@@ -274,11 +276,50 @@ def apply_update(package_files):
                     t.add(src, arcname=src.name)
         for src in sorted(prog.iterdir()):
             _install_entry(src)
+        arm_rollback(old, local_version())
         return True, f"Oppdatert til {local_version()} ✓ – start Kontrollsenter på nytt"
     except Exception as e:  # noqa: BLE001
         return False, str(e)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+ROLLBACK = Path.home() / ".local/share/systemmonitor/oppdatering-sjekk.json"
+
+
+def arm_rollback(old, new):
+    """Etter en oppdatering: starter den nye versjonen ikke (krasjer ved oppstart), går vi tilbake av oss selv."""
+    import json
+    if is_source_pc():
+        return
+    ROLLBACK.parent.mkdir(parents=True, exist_ok=True)
+    ROLLBACK.write_text(json.dumps({"from": old, "to": new, "t": time.time(), "starts": 0}))
+
+
+def backup_version():
+    """Versjonen i sikkerhetskopien (den forrige), eller None."""
+    try:
+        with tarfile.open(BACKUP) as t:
+            f = t.extractfile("VERSION")
+            return f.read().decode().strip() if f else None
+    except (OSError, KeyError, tarfile.TarError):
+        return None
+
+
+def rollback():
+    """Gå tilbake til forrige versjon (fra sikkerhetskopien som ble tatt ved siste oppdatering)."""
+    if is_source_pc():
+        raise RuntimeError("ikke på utviklings-PC-en")
+    if not BACKUP.exists():
+        raise RuntimeError("det finnes ingen forrige versjon å gå tilbake til")
+    prev = backup_version() or "forrige versjon"
+    with tarfile.open(BACKUP) as t:
+        t.extractall(APP_DIR, filter="data")
+    try:
+        ROLLBACK.unlink()
+    except FileNotFoundError:
+        pass
+    return f"Tilbake på {prev} ✓ – start Kontrollsenter på nytt"
 
 
 def repair_missing(package_files):
@@ -305,10 +346,21 @@ def repair_missing(package_files):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def publish(make_package):
-    """Legg denne versjonen på NAS-en, så andre PC-er på hjemmenettet finner den."""
+def publish(make_package, selftest=True):
+    """Legg denne versjonen på NAS-en, så andre PC-er på hjemmenettet finner den.
+    På utviklings-PC-en må selvtesten (alle sider, faner og mobilappen) være bestått først."""
     if not on_lan():
         return False, "NAS-en svarer ikke – er du på hjemmenettet?"
+    if selftest and is_source_pc():
+        try:
+            import selftest as ST
+            if not ST.passed_for_current():
+                r = ST.run()
+                if not r["ok"]:
+                    return False, ("Selvtesten feilet – versjonen ble IKKE lagt ut:\n  " +
+                                   "\n  ".join(r["errors"][:12]))
+        except Exception as e:  # noqa: BLE001
+            return False, f"Selvtesten kunne ikke kjøres: {e}"
     tmp = Path(tempfile.mkdtemp())
     try:
         _d, archive = make_package(tmp)
@@ -369,5 +421,11 @@ def auto_publish(make_package):
         rv = "0"
     if not newer(local_version(), rv):
         return None
-    ok, _msg = publish(make_package)
+    try:                                     # i bakgrunnen: bare versjoner som allerede har bestått selvtesten
+        import selftest as ST
+        if not ST.passed_for_current():
+            return None
+    except Exception:  # noqa: BLE001
+        return None
+    ok, _msg = publish(make_package, selftest=False)
     return local_version() if ok else None
