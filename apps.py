@@ -15,69 +15,201 @@ import time
 IS_WIN = sys.platform == "win32"
 HOME = os.path.expanduser("~")
 
-# nøkkel: navn, hva det brukes til, flatpak-id, winget-id, Linux-kommandoer, Windows-stier (glob, med %VAR%)
+# nøkkel: navn, hvorfor (kort), flatpak-id, winget-id, Linux-kommandoer, Windows-stier (glob, %VAR%),
+# url (nettside når det ikke finnes en sikker pakke), builtin (følger med systemet), ks (styres fra Kontrollsenter)
+W = r"%LOCALAPPDATA%"
+PF = r"%ProgramFiles%"
+PF86 = r"%ProgramFiles(x86)%"
 APPS = {
-    "steam": dict(name="Steam", why="Spillene, Spill-launcheren, spilletid og spillprofiler",
+    # ---- spill ----
+    "steam": dict(name="Steam", why="Største spillbutikken, Proton for Windows-spill, Remote Play og opptak",
                   flatpak="com.valvesoftware.Steam", winget="Valve.Steam", cmds=["steam"],
-                  win=[r"%ProgramFiles(x86)%\Steam\steam.exe", r"%ProgramFiles%\Steam\steam.exe"]),
-    "heroic": dict(name="Heroic", why="Epic Games- og GOG-spill i Spill-launcheren",
+                  win=[PF86 + r"\Steam\steam.exe", PF + r"\Steam\steam.exe"], ks=True),
+    "heroic": dict(name="Heroic", why="Epic Games, GOG og Amazon Prime Gaming i ett lett program",
                    flatpak="com.heroicgameslauncher.hgl", winget="HeroicGamesLauncher.HeroicGamesLauncher",
-                   cmds=["heroic"], win=[r"%LOCALAPPDATA%\Programs\heroic\Heroic.exe",
-                                         r"%ProgramFiles%\Heroic\Heroic.exe"]),
-    "lutris": dict(name="Lutris", why="Battle.net, EA, Ubisoft og andre spill på Linux",
-                   flatpak="net.lutris.Lutris", cmds=["lutris"]),
-    "battlenet": dict(name="Battle.net", why="Blizzard-spill (WoW, Overwatch, Diablo) på Windows",
-                      winget="Blizzard.BattleNet",
-                      win=[r"%ProgramFiles(x86)%\Battle.net\Battle.net Launcher.exe",
-                           r"%ProgramFiles%\Battle.net\Battle.net Launcher.exe"]),
-    "discord": dict(name="Discord", why="Discord-siden: mikrofon, lyd, overlay, servere og chat",
+                   cmds=["heroic"], win=[W + r"\Programs\heroic\Heroic.exe"], ks=True),
+    "lutris": dict(name="Lutris", why="Battle.net, EA, Ubisoft og emulatorer samlet på Linux",
+                   flatpak="net.lutris.Lutris", cmds=["lutris"], ks=True),
+    "bottles": dict(name="Bottles", why="Kjør enkeltstående Windows-spill og -programmer på Linux",
+                    flatpak="com.usebottles.bottles"),
+    "retroarch": dict(name="RetroArch", why="Alle de gamle konsollene i én emulator",
+                      flatpak="org.libretro.RetroArch", winget="Libretro.RetroArch"),
+    "epic": dict(name="Epic Games", why="Gratis spill hver uke og Fortnite",
+                 winget="EpicGames.EpicGamesLauncher",
+                 win=[PF86 + r"\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe"]),
+    "battlenet": dict(name="Battle.net", why="Blizzard-spill: WoW, Overwatch, Diablo, Call of Duty",
+                      winget="Blizzard.BattleNet", ks=True,
+                      win=[PF86 + r"\Battle.net\Battle.net Launcher.exe", PF + r"\Battle.net\Battle.net Launcher.exe"]),
+    "eaapp": dict(name="EA app", why="EA-spill: FC, Battlefield, The Sims",
+                  winget="ElectronicArts.EADesktop", win=[PF + r"\Electronic Arts\EA Desktop\EA Desktop\EADesktop.exe"]),
+    "gog": dict(name="GOG Galaxy", why="DRM-frie spill og samlet bibliotek",
+                winget="GOG.Galaxy", win=[PF86 + r"\GOG Galaxy\GalaxyClient.exe"]),
+    # ---- tale og chat ----
+    "discord": dict(name="Discord", why="Der vennene er – tale, chat og strømming",
                     flatpak="com.discordapp.Discord", winget="Discord.Discord", cmds=["discord", "Discord"],
-                    win=[r"%LOCALAPPDATA%\Discord\Update.exe"]),
-    "openrgb": dict(name="OpenRGB", why="RGB-lys på hovedkort, minne, vifter og tastatur",
-                    flatpak="org.openrgb.OpenRGB", winget="CalcProgrammer1.OpenRGB", cmds=["openrgb"],
-                    win=[r"%ProgramFiles%\OpenRGB\OpenRGB.exe", r"%LOCALAPPDATA%\Programs\OpenRGB\OpenRGB.exe",
-                         r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\*OpenRGB*\**\OpenRGB.exe"]),
-    "solaar": dict(name="Solaar", why="Logitech-mus og -tastatur: batteri, DPI og knapper (Linux)",
-                   flatpak="io.github.pwr_solaar.solaar", cmds=["solaar"]),
-    "ghub": dict(name="Logitech G HUB", why="Logitech-mus, -tastatur og -hodesett (Windows)",
-                 winget="Logitech.GHUB", win=[r"%ProgramFiles%\LGHUB\lghub.exe"]),
-    "gsr": dict(name="GPU Screen Recorder", why="Klipp av de siste minuttene og høydepunkter (Linux)",
-                flatpak="com.dec05eba.gpu_screen_recorder"),
-    "medal": dict(name="Medal", why="Klipp på Windows: tar opp i bakgrunnen og lagrer de siste sekundene med F8",
-                  winget="MedalB.V.Medal", win=[r"%LOCALAPPDATA%\Medal\Medal.exe",
-                                                r"%LOCALAPPDATA%\Medal\app-*\Medal.exe"]),
-    "ffmpeg": dict(name="FFmpeg", why="Redigere klipp: klippe til, GIF, montasje og «beste fra uka»",
-                   winget="Gyan.FFmpeg", cmds=["ffmpeg"],
-                   win=[r"%LOCALAPPDATA%\Microsoft\WinGet\Packages\*FFmpeg*\**\ffmpeg.exe"], linux_system=True),
-    "sunshine": dict(name="Sunshine", why="Spill PC-spillene på telefonen eller TV-en",
-                     flatpak="dev.lizardbyte.app.Sunshine", winget="LizardByte.Sunshine", cmds=["sunshine"],
-                     win=[r"%ProgramFiles%\Sunshine\sunshine.exe"]),
-    "moonlight": dict(name="Moonlight", why="Spill fra en annen PC i huset på denne",
+                    win=[W + r"\Discord\Update.exe"], ks=True),
+    "vesktop": dict(name="Vesktop", why="Discord med bedre skjermdeling og lyd på Linux",
+                    flatpak="dev.vencord.Vesktop", winget="Vencord.Vesktop", cmds=["vesktop"],
+                    win=[W + r"\Programs\Vesktop\Vesktop.exe"]),
+    "teamspeak": dict(name="TeamSpeak", why="Lav forsinkelse og god lyd for klaner og egne servere",
+                      flatpak="com.teamspeak.TeamSpeak", winget="TeamSpeakSystems.TeamSpeakClient",
+                      win=[PF + r"\TeamSpeak\TeamSpeak.exe", W + r"\Programs\TeamSpeak\TeamSpeak.exe"]),
+    "mumble": dict(name="Mumble", why="Åpen kildekode, svært lav forsinkelse, posisjonslyd i spill",
+                   flatpak="info.mumble.Mumble", winget="Mumble.Mumble.Client", cmds=["mumble"],
+                   win=[PF + r"\Mumble\client\mumble.exe"]),
+    "element": dict(name="Element", why="Kryptert chat og samtaler (Matrix)",
+                    flatpak="im.riot.Riot", winget="Element.Element", win=[W + r"\element-desktop\Element.exe"]),
+    # ---- RGB ----
+    "openrgb": dict(name="OpenRGB", why="Styrer nesten alle merker samtidig – hovedkort, minne, vifter, tastatur",
+                    flatpak="org.openrgb.OpenRGB", winget="CalcProgrammer1.OpenRGB", cmds=["openrgb"], ks=True,
+                    win=[PF + r"\OpenRGB\OpenRGB.exe", W + r"\Programs\OpenRGB\OpenRGB.exe",
+                         W + r"\Microsoft\WinGet\Packages\*OpenRGB*\**\OpenRGB.exe"]),
+    "signalrgb": dict(name="SignalRGB", why="Flotte effekter som følger spillet og skjermen (Windows)",
+                      winget="WhirlwindFX.SignalRgb", win=[W + r"\VortxEngine\SignalRgbLauncher.exe"]),
+    "icue": dict(name="Corsair iCUE", why="Alt fra Corsair: lys, vifter og pumper",
+                 winget="Corsair.iCUE.5", win=[PF + r"\Corsair\Corsair iCUE5 Software\iCUE.exe"]),
+    "polychromatic": dict(name="Polychromatic", why="Razer-utstyr på Linux (lys og DPI)",
+                          flatpak="app.polychromatic.controller"),
+    "ckbnext": dict(name="ckb-next", why="Corsair-tastatur og -mus på Linux", cmds=["ckb-next"],
+                    url="https://github.com/ckb-next/ckb-next"),
+    "armoury": dict(name="Armoury Crate", why="ASUS-hovedkort og -skjermkort (Aura Sync)",
+                    url="https://www.asus.com/supportonly/armoury%20crate/helpdesk_download/",
+                    win=[PF + r"\ASUS\ARMOURY CRATE Service\ArmouryCrate.Service.exe"]),
+    # ---- mus og tastatur ----
+    "solaar": dict(name="Solaar", why="Logitech: batteri, DPI, knapper og lys (Linux)",
+                   flatpak="io.github.pwr_solaar.solaar", cmds=["solaar"], ks=True),
+    "piper": dict(name="Piper", why="Gaming-mus fra Logitech, SteelSeries, Roccat m.fl.: DPI, knapper, profiler",
+                  flatpak="org.freedesktop.Piper", cmds=["piper"]),
+    "inputremapper": dict(name="Input Remapper", why="Endre hva hver knapp og tast gjør – også makroer",
+                          cmds=["input-remapper-gtk"], url="https://github.com/sezanzeb/input-remapper"),
+    "ghub": dict(name="Logitech G HUB", why="Alt for Logitech G: DPI, makroer, lys og hodesett",
+                 winget="Logitech.GHUB", win=[PF + r"\LGHUB\lghub.exe"], ks=True),
+    "optionsplus": dict(name="Logi Options+", why="Logitech MX- og kontormus og -tastatur",
+                        winget="Logitech.OptionsPlus", win=[PF + r"\LogiOptionsPlus\logioptionsplus.exe"]),
+    "steelseries": dict(name="SteelSeries GG", why="SteelSeries-mus, -tastatur og -hodesett (Sonar-lyd)",
+                        winget="SteelSeries.GG", win=[PF + r"\SteelSeries\GG\SteelSeriesGG.exe"]),
+    "synapse": dict(name="Razer Synapse", why="Alt Razer-utstyr", url="https://www.razer.com/synapse-4"),
+    # ---- klipp og opptak ----
+    "gsr": dict(name="GPU Screen Recorder", why="Klipp med skjermkortet nesten uten FPS-tap – som ShadowPlay",
+                flatpak="com.dec05eba.gpu_screen_recorder", ks=True),
+    "obs": dict(name="OBS Studio", why="Opptak og strømming til Twitch/YouTube med full kontroll",
+                flatpak="com.obsproject.Studio", winget="OBSProject.OBSStudio", cmds=["obs"],
+                win=[PF + r"\obs-studio\bin\64bit\obs64.exe"]),
+    "steamrec": dict(name="Steam spillopptak", why="Innebygd i Steam: tar opp i bakgrunnen, enkelt å dele",
+                     builtin="steam"),
+    "kooha": dict(name="Kooha", why="Enkelt skjermopptak med ett klikk", flatpak="io.github.seadve.Kooha"),
+    "spectacle": dict(name="Spectacle", why="KDE sitt skjermbilde- og opptaksverktøy", flatpak="org.kde.spectacle",
+                      cmds=["spectacle"]),
+    "medal": dict(name="Medal", why="Klipp med F8, automatisk høydepunkt og enkel deling",
+                  winget="MedalB.V.Medal", ks=True,
+                  win=[W + r"\Medal\Medal.exe", W + r"\Medal\app-*\Medal.exe"]),
+    "nvidiaapp": dict(name="NVIDIA App (ShadowPlay)", why="NVIDIA sitt eget opptak – minst FPS-tap på GeForce",
+                      url="https://www.nvidia.com/en-us/software/nvidia-app/",
+                      win=[PF + r"\NVIDIA Corporation\NVIDIA App\CEF\NVIDIA App.exe"]),
+    "gamebar": dict(name="Xbox Game Bar", why="Følger med Windows – virker uten å installere noe", builtin="windows",
+                    ks=True),
+    "outplayed": dict(name="Outplayed", why="Automatiske høydepunkter i LoL, Valorant, Fortnite m.fl.",
+                      url="https://www.outplayed.tv/"),
+    # ---- redigere klipp ----
+    "ffmpeg": dict(name="FFmpeg", why="Motoren bak klipp-redigeringen i Kontrollsenter (GIF, montasje …)",
+                   winget="Gyan.FFmpeg", cmds=["ffmpeg"], ks=True,
+                   win=[W + r"\Microsoft\WinGet\Packages\*FFmpeg*\**\ffmpeg.exe"], linux_system=True),
+    "losslesscut": dict(name="LosslessCut", why="Klipp til videoer på sekunder uten kvalitetstap",
+                        flatpak="no.mifi.losslesscut", winget="mifi.losslesscut"),
+    "kdenlive": dict(name="Kdenlive", why="Full videoredigering: tekst, overganger, musikk",
+                     flatpak="org.kde.kdenlive", winget="KDE.Kdenlive", cmds=["kdenlive"]),
+    "shotcut": dict(name="Shotcut", why="Enkel, men kraftig videoredigering",
+                    flatpak="org.shotcut.Shotcut", winget="Meltytech.Shotcut"),
+    "davinci": dict(name="DaVinci Resolve", why="Profesjonell redigering og fargekorrigering (gratis)",
+                    url="https://www.blackmagicdesign.com/products/davinciresolve"),
+    "clipchamp": dict(name="Clipchamp", why="Følger med Windows 11 – maler, tekst og musikk", builtin="windows"),
+    # ---- strømming av spill ----
+    "sunshine": dict(name="Sunshine", why="Spill PC-spillene på telefonen eller TV-en med lav forsinkelse",
+                     flatpak="dev.lizardbyte.app.Sunshine", winget="LizardByte.Sunshine", cmds=["sunshine"], ks=True,
+                     win=[PF + r"\Sunshine\sunshine.exe"]),
+    "moonlight": dict(name="Moonlight", why="Spill fra en annen PC i huset på denne (mot Sunshine)",
                       flatpak="com.moonlight_stream.Moonlight", winget="MoonlightGameStreamingProject.Moonlight",
-                      cmds=["moonlight"], win=[r"%ProgramFiles%\Moonlight Game Streaming\Moonlight.exe"]),
-    "rustdesk": dict(name="RustDesk", why="Fjernstyr PC-en fra telefonen eller en annen PC",
+                      cmds=["moonlight"], ks=True, win=[PF + r"\Moonlight Game Streaming\Moonlight.exe"]),
+    "steamlink": dict(name="Steam Remote Play", why="Innebygd i Steam – Steam Link-appen på TV og mobil",
+                      builtin="steam"),
+    "parsec": dict(name="Parsec", why="Spill sammen over nettet som om dere satt i samme rom",
+                   flatpak="com.parsecgaming.parsec", winget="Parsec.Parsec", win=[PF + r"\Parsec\parsecd.exe"]),
+    "chiaki": dict(name="chiaki-ng", why="Spill PlayStation 4/5 på PC-en",
+                   flatpak="io.github.streetpea.Chiaki4deck", url="https://streetpea.github.io/chiaki-ng/"),
+    # ---- fjernstyring ----
+    "rustdesk": dict(name="RustDesk", why="Gratis, åpen og rask – fungerer fra mobilen også", ks=True,
                      flatpak="com.rustdesk.RustDesk", winget="RustDesk.RustDesk", cmds=["rustdesk"],
-                     win=[r"%ProgramFiles%\RustDesk\rustdesk.exe"]),
-    "tailscale": dict(name="Tailscale", why="Bruk mobilappen når du ikke er hjemme",
-                      winget="Tailscale.Tailscale", cmds=["tailscale"],
-                      win=[r"%ProgramFiles%\Tailscale\tailscale.exe"], linux_system=True),
+                     win=[PF + r"\RustDesk\rustdesk.exe"]),
+    "anydesk": dict(name="AnyDesk", why="Rask og enkel fjernhjelp", flatpak="com.anydesk.Anydesk",
+                    winget="AnyDesk.AnyDesk", win=[PF86 + r"\AnyDesk\AnyDesk.exe", PF + r"\AnyDesk\AnyDesk.exe"]),
+    "teamviewer": dict(name="TeamViewer", why="Mest brukt til fjernhjelp, gratis privat",
+                       winget="TeamViewer.TeamViewer", url="https://www.teamviewer.com/download/",
+                       win=[PF + r"\TeamViewer\TeamViewer.exe"], cmds=["teamviewer"]),
+    "chromerd": dict(name="Chrome Remote Desktop", why="Fjernstyring rett fra nettleseren",
+                     url="https://remotedesktop.google.com/"),
+    "remmina": dict(name="Remmina", why="Koble til Windows (RDP) og andre PC-er fra Linux",
+                    flatpak="org.remmina.Remmina", cmds=["remmina"]),
+    # ---- utenfor huset (VPN) ----
+    "tailscale": dict(name="Tailscale", why="Mobilappen virker også borte – null oppsett, gratis privat",
+                      winget="Tailscale.Tailscale", cmds=["tailscale"], ks=True,
+                      win=[PF + r"\Tailscale\tailscale.exe"], linux_system=True),
+    "zerotier": dict(name="ZeroTier", why="Eget virtuelt nettverk mellom alle enhetene",
+                     winget="ZeroTier.ZeroTierOne", cmds=["zerotier-cli"], url="https://www.zerotier.com/download/"),
+    "wireguard": dict(name="WireGuard", why="Raskeste VPN – krever litt oppsett på ruteren",
+                      winget="WireGuard.WireGuard", cmds=["wg"], linux_system=True),
+    "netbird": dict(name="NetBird", why="Som Tailscale, men kan driftes selv", url="https://netbird.io/download"),
+    "kdeconnect": dict(name="KDE Connect", why="Telefon og PC sammen: varsler, filer, mediekontroll",
+                       cmds=["kdeconnect-app"], winget="KDE.KDEConnect", url="https://kdeconnect.kde.org/download.html"),
 }
 
-# hvilke programmer hver funksjon trenger (minst ett av dem i en gruppe holder)
-FEATURES = {
-    "launcher": [["steam", "heroic", "lutris", "battlenet"]],
-    "games": [["steam"]],
-    "discord": [["discord"]],
-    "rgb": [["openrgb"]],
-    "logitech": [["solaar", "ghub"]],
-    "clips": [["gsr"]],
-    "medal": [["medal"]],
-    "clipedit": [["ffmpeg"]],
-    "stream": [["sunshine"]],
-    "moonlight": [["moonlight"]],
-    "remote": [["rustdesk"]],
-    "away": [["tailscale"]],
+# Topp 5 per funksjon – rangert fra 1 (best) til 5, eget for Linux og Windows
+TOP5 = {
+    "launcher": dict(title="Spillbutikker og launchere",
+                     linux=["steam", "heroic", "lutris", "bottles", "retroarch"],
+                     win=["steam", "heroic", "epic", "battlenet", "eaapp"]),
+    "discord": dict(title="Tale og chat",
+                    linux=["discord", "vesktop", "teamspeak", "mumble", "element"],
+                    win=["discord", "teamspeak", "vesktop", "mumble", "element"]),
+    "rgb": dict(title="RGB-lys",
+                linux=["openrgb", "polychromatic", "solaar", "ckbnext", "piper"],
+                win=["openrgb", "signalrgb", "icue", "armoury", "ghub"]),
+    "logitech": dict(title="Mus og tastatur",
+                     linux=["solaar", "piper", "inputremapper", "openrgb", "polychromatic"],
+                     win=["ghub", "optionsplus", "steelseries", "synapse", "openrgb"]),
+    "clips": dict(title="Klipp og opptak",
+                  linux=["gsr", "obs", "steamrec", "kooha", "spectacle"],
+                  win=["medal", "nvidiaapp", "obs", "steamrec", "gamebar"]),
+    "clipedit": dict(title="Redigere klipp",
+                     linux=["ffmpeg", "losslesscut", "kdenlive", "shotcut", "davinci"],
+                     win=["ffmpeg", "losslesscut", "clipchamp", "kdenlive", "davinci"]),
+    "stream": dict(title="Spill på TV og mobil",
+                   linux=["sunshine", "moonlight", "steamlink", "parsec", "chiaki"],
+                   win=["sunshine", "moonlight", "steamlink", "parsec", "chiaki"]),
+    "remote": dict(title="Fjernstyring",
+                   linux=["rustdesk", "anydesk", "remmina", "teamviewer", "chromerd"],
+                   win=["rustdesk", "anydesk", "parsec", "teamviewer", "chromerd"]),
+    "away": dict(title="Bruk appen borte (VPN)",
+                 linux=["tailscale", "zerotier", "wireguard", "netbird", "kdeconnect"],
+                 win=["tailscale", "zerotier", "wireguard", "netbird", "kdeconnect"]),
 }
+TOP5["medal"] = dict(title="Klipp på Windows", linux=[], win=["medal"])
+TOP5["moonlight"] = dict(title="Spill fra en annen PC", linux=["moonlight", "parsec", "steamlink"],
+                         win=["moonlight", "parsec", "steamlink"])
+
+
+def top5(feature):
+    """De rangerte programmene for funksjonen på dette operativsystemet."""
+    t = TOP5.get(feature) or {}
+    return [k for k in t.get("win" if IS_WIN else "linux", []) if k in APPS and available(k)]
+
+
+def _feature_groups(feature):
+    """Programmene Kontrollsenter styrer for funksjonen (minst ett må finnes) – de andre er frittstående valg."""
+    ks = [k for k in top5(feature) if APPS[k].get("ks")]
+    return [ks] if ks else []
+
+
+FEATURES = {f: None for f in TOP5}
 
 _CACHE = {}
 _FP = {"t": 0, "ids": set()}
@@ -86,9 +218,14 @@ _FP = {"t": 0, "ids": set()}
 def available(key):
     """Finnes programmet for dette operativsystemet i det hele tatt?"""
     a = APPS[key]
+    b = a.get("builtin")
+    if b == "windows":
+        return IS_WIN
+    if b == "steam":
+        return True
     if IS_WIN:
-        return bool(a.get("winget") or a.get("win"))
-    return bool(a.get("flatpak") or a.get("cmds"))
+        return bool(a.get("winget") or a.get("win") or (a.get("url") and not a.get("flatpak") and not a.get("cmds")))
+    return bool(a.get("flatpak") or a.get("cmds") or (a.get("url") and not a.get("win") and not a.get("winget")))
 
 
 def _flatpaks():
@@ -119,6 +256,11 @@ def installed(key, max_age=20):
     if hit and time.time() - hit[0] < max_age:
         return hit[1]
     a = APPS[key]
+    if a.get("builtin") == "windows":
+        _CACHE[key] = (time.time(), True)
+        return True
+    if a.get("builtin") == "steam":
+        return installed("steam", max_age)
     if IS_WIN:
         ok = _win_found(a)
     else:
@@ -133,7 +275,7 @@ def installed(key, max_age=20):
 def missing(feature):
     """Programmene som mangler for en funksjon: [[nøkkel, …], …] – én liste per gruppe der ingen er installert."""
     out = []
-    for group in FEATURES.get(feature, []):
+    for group in _feature_groups(feature):
         group = [k for k in group if available(k)]
         if group and not any(installed(k) for k in group):
             out.append(group)
@@ -142,6 +284,8 @@ def missing(feature):
 
 def can_install(key):
     a = APPS[key]
+    if a.get("builtin"):
+        return False
     if IS_WIN:
         return bool(a.get("winget")) and bool(shutil.which("winget"))
     return bool(a.get("flatpak")) and bool(shutil.which("flatpak"))
@@ -149,6 +293,12 @@ def can_install(key):
 
 def manual_hint(key):
     a = APPS[key]
+    if a.get("builtin") == "windows":
+        return f"{a['name']} følger med Windows."
+    if a.get("builtin") == "steam":
+        return f"{a['name']} er en del av Steam – installer Steam."
+    if a.get("url"):
+        return f"Last ned {a['name']} fra nettsiden."
     if not IS_WIN and a.get("linux_system"):
         return f"{a['name']} installeres som systempakke – på Bazzite følger det med. Ellers: sudo dnf install {key}"
     return f"Installer {a['name']} fra produsentens nettside."
@@ -184,7 +334,32 @@ def install(key, progress=None):
     return f"{a['name']} er installert ✓"
 
 
+def info(k):
+    a = APPS[k]
+    return {"key": k, "name": a["name"], "why": a["why"], "installed": installed(k), "can_install": can_install(k),
+            "url": a.get("url"), "ks": bool(a.get("ks")), "builtin": a.get("builtin")}
+
+
 def status():
-    """Alle programmene for dette operativsystemet, til Innstillinger og mobilappen."""
-    return [{"key": k, "name": a["name"], "why": a["why"], "installed": installed(k), "can_install": can_install(k)}
-            for k, a in APPS.items() if available(k)]
+    """Topp 5 per funksjon for dette operativsystemet, til Innstillinger og mobilappen."""
+    out = []
+    for f, t in TOP5.items():
+        if f in ("medal", "moonlight"):
+            continue
+        keys = top5(f)
+        if keys:
+            out.append({"feature": f, "title": t["title"], "apps": [{**info(k), "rank": i + 1} for i, k in enumerate(keys)]})
+    return out
+
+
+def open_url(key):
+    url = APPS[key].get("url")
+    if not url:
+        return False
+    try:
+        from gi.repository import Gio
+        Gio.AppInfo.launch_default_for_uri(url, None)
+        return True
+    except Exception:  # noqa: BLE001
+        import webbrowser
+        return webbrowser.open(url)

@@ -19,6 +19,9 @@ CSS = """
 .ks-needapp { border-radius: 16px; padding: 12px 14px; margin-bottom: 10px;
   background: alpha(@accent_bg_color, .14); border: 1px solid alpha(@accent_bg_color, .45); }
 .ks-needapp .ks-needapp-title { font-weight: 700; }
+.ks-rank { font-weight: 800; font-size: 15px; min-width: 26px; min-height: 26px; border-radius: 99px;
+  background: alpha(currentColor, .10); }
+.ks-rank-1 { background: @accent_bg_color; color: @accent_fg_color; }
 """
 _css_done = []
 
@@ -56,32 +59,27 @@ class Need(Gtk.Box):
         while (ch := self.get_first_child()) is not None:
             self.remove(ch)
         self.set_visible(bool(miss))
-        for group in miss:
-            best = group[0]
-            a = apps.APPS[best]
-            t = Gtk.Label(xalign=0, wrap=True,
-                          label="🧩 " + i18n.tr("Denne funksjonen trenger {name}").format(name=a["name"]))
-            t.add_css_class("ks-needapp-title")
-            self.append(t)
-            sub = Gtk.Label(xalign=0, wrap=True, label=i18n.tr(self.text or a["why"]))
+        if not miss:
+            return False
+        best = miss[0][0]
+        title = apps.TOP5.get(self.feature, {}).get("title", "")
+        t = Gtk.Label(xalign=0, wrap=True, label="🧩 " + i18n.tr("Denne funksjonen trenger {name}").format(
+            name=apps.APPS[best]["name"]))
+        t.add_css_class("ks-needapp-title")
+        self.append(t)
+        if self.text:
+            sub = Gtk.Label(xalign=0, wrap=True, label=i18n.tr(self.text))
             sub.add_css_class("dim-label")
             self.append(sub)
-            row = Gtk.Box(spacing=8)
-            msg = Gtk.Label(xalign=0, wrap=True, hexpand=True)
-            msg.add_css_class("caption")
-            for k in group:
-                if not apps.can_install(k):
-                    continue
-                b = Gtk.Button(label=i18n.tr("Installer {name}").format(name=apps.APPS[k]["name"]))
-                if k == best:
-                    b.add_css_class("suggested-action")
-                b.add_css_class("pill")
-                b.connect("clicked", self._install, k, msg)
-                row.append(b)
-            if not any(apps.can_install(k) for k in group):
-                msg.set_label(i18n.tr(apps.manual_hint(best)))
-            row.append(msg)
-            self.append(row)
+        msg = Gtk.Label(xalign=0, wrap=True)
+        msg.add_css_class("caption")
+        lst = ranked_list(self.feature, msg, best=best, on_installed=self.check)
+        if title:
+            h = Gtk.Label(xalign=0, label=i18n.tr("Topp 5 – {t}").format(t=i18n.tr(title).lower()), margin_top=4)
+            h.add_css_class("caption-heading")
+            self.append(h)
+        self.append(lst)
+        self.append(msg)
         return False
 
     def _install(self, btn, key, msg):
@@ -127,48 +125,108 @@ def need(feature, on_done=None, text=None):
     return Need(feature, on_done, text)
 
 
-def all_card():
-    """Kort med alle programmene Kontrollsenter kan bruke (Innstillinger → Generelt)."""
-    _css()
+def ranked_list(feature, msg=None, best=None, on_installed=None):
+    """De fem beste programmene for en funksjon, rangert, med Installer / Nettside / ✅."""
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    lst = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    box.append(lst)
+    for rank, k in enumerate(apps.top5(feature), 1):
+        a = apps.APPS[k]
+        row = Gtk.Box(spacing=10)
+        num = Gtk.Label(label=str(rank), valign=Gtk.Align.CENTER, width_chars=2)
+        num.add_css_class("ks-rank")
+        if rank == 1:
+            num.add_css_class("ks-rank-1")
+        row.append(num)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        tags = []
+        if a.get("ks"):
+            tags.append(i18n.tr("styres fra Kontrollsenter"))
+        if a.get("builtin") == "windows":
+            tags.append(i18n.tr("følger med Windows"))
+        name = Gtk.Label(xalign=0, label=a["name"] + ("   ·  " + " · ".join(tags) if tags else ""))
+        name.add_css_class("heading" if rank == 1 else "body")
+        col.append(name)
+        why = Gtk.Label(xalign=0, wrap=True, label=i18n.tr(a["why"]))
+        why.add_css_class("dim-label")
+        why.add_css_class("caption")
+        col.append(why)
+        row.append(col)
+        right = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        row.append(right)
+        box.append(row)
 
-    def fill(rows):
-        while (ch := lst.get_first_child()) is not None:
-            lst.remove(ch)
-        for r in rows:
-            row = Gtk.Box(spacing=10)
-            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-            col.append(Gtk.Label(label=("✅ " if r["installed"] else "⬜ ") + r["name"], xalign=0))
-            s = Gtk.Label(label=i18n.tr(r["why"]), xalign=0, wrap=True)
-            s.add_css_class("dim-label")
-            s.add_css_class("caption")
-            col.append(s)
-            row.append(col)
-            if not r["installed"] and r["can_install"]:
-                b = Gtk.Button(label=i18n.tr("Installer"), valign=Gtk.Align.CENTER)
+        def fill(right=right, k=k, rank=rank):
+            while (ch := right.get_first_child()) is not None:
+                right.remove(ch)
+            if apps.installed(k):
+                ok = Gtk.Label(label="✅ " + i18n.tr("Installert"))
+                ok.add_css_class("dim-label")
+                right.append(ok)
+            elif apps.can_install(k):
+                b = Gtk.Button(label=i18n.tr("Installer"))
                 b.add_css_class("pill")
+                if (best and k == best) or (not best and rank == 1):
+                    b.add_css_class("suggested-action")
+                b.connect("clicked", _install_btn, k, msg, lambda: (fill(), on_installed and on_installed()))
+                right.append(b)
+            elif apps.APPS[k].get("url"):
+                b = Gtk.Button(label=i18n.tr("Nettside"))
+                b.add_css_class("pill")
+                b.connect("clicked", lambda *_x, k=k: apps.open_url(k))
+                right.append(b)
+            else:
+                hint = Gtk.Label(label=i18n.tr(apps.manual_hint(k)), wrap=True, max_width_chars=28)
+                hint.add_css_class("caption")
+                right.append(hint)
+        fill()
+    return box
 
-                def go(btn, k=r["key"]):
-                    btn.set_sensitive(False)
-                    btn.set_label(i18n.tr("Installerer …"))
 
-                    def work():
-                        try:
-                            apps.install(k)
-                        except Exception as e:  # noqa: BLE001
-                            GLib.idle_add(btn.set_label, str(e)[:60])
-                            return
-                        GLib.idle_add(load)
-                    threading.Thread(target=work, daemon=True).start()
-                b.connect("clicked", go)
-                row.append(b)
-            lst.append(row)
+def _install_btn(btn, key, msg, after):
+    btn.set_sensitive(False)
+    btn.set_label(i18n.tr("Installerer …"))
+
+    def work():
+        try:
+            res, ok = apps.install(key), True
+        except Exception as e:  # noqa: BLE001
+            res, ok = str(e), False
+
+        def done():
+            if msg is not None:
+                msg.set_label(res)
+            if ok:
+                after()
+            else:
+                btn.set_sensitive(True)
+                btn.set_label(i18n.tr("Prøv igjen"))
+            return False
+        GLib.idle_add(done)
+    threading.Thread(target=work, daemon=True).start()
+
+
+def all_card():
+    """Topp 5 for hver funksjon (Innstillinger → Generelt)."""
+    _css()
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+    msg = Gtk.Label(xalign=0, wrap=True)
+    msg.add_css_class("caption")
+    box.append(msg)
+    box.append(Gtk.Label(label=i18n.tr("Laster …"), xalign=0))
+
+    def show(_rows):
+        while (ch := box.get_last_child()) is not None and ch is not msg:
+            box.remove(ch)
+        for f, t in apps.TOP5.items():
+            if f in ("medal", "moonlight") or not apps.top5(f):
+                continue
+            exp = Gtk.Expander(label=i18n.tr(t["title"]))
+            exp.add_css_class("heading")
+            exp.set_child(ranked_list(f, msg))
+            miss = apps.missing(f)
+            if miss:
+                exp.set_label(i18n.tr(t["title"]) + "  ·  " + i18n.tr("mangler program"))
+                exp.set_expanded(True)
+            box.append(exp)
         return False
-
-    def load():
-        threading.Thread(target=lambda: GLib.idle_add(fill, apps.status()), daemon=True).start()
-        return False
-    load()
+    threading.Thread(target=lambda: (apps.status(), GLib.idle_add(show, None)), daemon=True).start()
     return box

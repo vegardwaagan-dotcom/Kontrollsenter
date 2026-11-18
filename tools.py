@@ -919,6 +919,15 @@ class _Cards:
         box.append(r)
         return sw
 
+    def _apps_card(self):
+        import apps_ui
+        c, i = card("Programmer – topp 5 per funksjon", "De fem beste programmene for hver funksjon, rangert fra 1 "
+                                                        "til 5 for denne PC-en. «Styres fra Kontrollsenter» betyr at "
+                                                        "Kontrollsenter kan styre det direkte; de andre er gode "
+                                                        "frittstående valg.")
+        i.append(apps_ui.all_card())
+        self.box.append(c)
+
     def _general_card(self):
         import background
         cfg = background.load()
@@ -1684,13 +1693,6 @@ class ToolsPage(TabbedPage, _Cards):
         b.connect("clicked", go)
         i.append(b)
         i.append(st)
-        self.box.append(c)
-
-    def _apps_card(self):
-        import apps_ui
-        c, i = card("Programmer funksjonene bruker", "Det beste programmet for hver funksjon. Mangler et, kan det "
-                                                     "installeres her – eller fra funksjonen selv.")
-        i.append(apps_ui.all_card())
         self.box.append(c)
 
     def _autoclean_card(self):

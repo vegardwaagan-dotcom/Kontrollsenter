@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.49.0", "Topp 5 programmer per funksjon", [
+        ("Nytt", [
+            "Hver funksjon som trenger et program viser de fem beste valgene, rangert fra 1 til 5 – eget for Linux og "
+            "Windows: spillbutikker, tale og chat, RGB, mus og tastatur, klipp, redigering, strømming, fjernstyring og VPN",
+            "Merket «styres fra Kontrollsenter» på programmene Kontrollsenter kan styre direkte. Installer med ett trykk "
+            "(Flathub/winget), eller «Nettside» der programmet må lastes ned fra produsenten",
+            "Samlet oversikt i Innstillinger → Generelt – funksjoner som mangler program er slått opp",
+        ]),
+        ("Rettet", [
+            "Innstillinger åpnet seg ikke (feil fra 0.47)",
+        ]),
+    ]),
     ("0.48.0", "Medal og «Se på» som virker", [
         ("Nytt", [
             "Windows: Medal brukes til klipp i stedet for Xbox Game Bar (kan byttes under Spill → Klipp). Mangler Medal, "
