@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.57.1", "Rullehjulet følger musehjulet", [
+        ("Forbedret", [
+            "Rullehjulet i valgmenyene (PC og app): ett hakk på musehjulet = ett valg. Styreplate ruller fortsatt "
+            "mykt og stopper på nærmeste valg",
+        ]),
+    ]),
     ("0.57.0", "Søk, enkel modus og ny «Hva er nytt»", [
         ("Nytt", [
             "Søk i hele Kontrollsenter: Ctrl+K (eller forstørrelsesglasset i sidemenyen) finner alle kort, brytere og "

@@ -97,6 +97,22 @@
       if (Math.round(sc.scrollTop / WH) === i) commit(); else sc.scrollTo({ top: i * WH, behavior: "smooth" });
     }));
     list.querySelector(".wdone").onclick = commit;
+    // musehjul: ett hakk = ett valg (styreplate/mus med jevn rulling summeres til ett valg om gangen)
+    let acc = 0, accT = 0;
+    sc.onwheel = (e) => {
+      e.preventDefault();
+      const px = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+      if (Date.now() - accT > 250) acc = 0;
+      accT = Date.now();
+      acc += px;
+      const notch = Math.abs(px) >= 50 ? Math.abs(px) : 60;      // vanlig hjul gir ~100 px per hakk
+      if (Math.abs(acc) < notch * 0.5) return;
+      const dir = acc > 0 ? 1 : -1;
+      acc = 0;
+      const cur = Math.round(sc.scrollTop / WH);
+      const nxt = Math.max(0, Math.min(opts.length - 1, cur + dir));
+      sc.scrollTo({ top: nxt * WH, behavior: "smooth" });
+    };
     back.hidden = false;
     requestAnimationFrame(() => { back.classList.add("open"); sc.scrollTop = idx * WH; paint(); });
   }

@@ -120,7 +120,17 @@ class Wheel(Gtk.DrawingArea):
             return False
         GLib.timeout_add(120, snap)
 
-    def _on_scroll(self, _c, _dx, dy):
+    def _on_scroll(self, c, _dx, dy):
+        # Musehjul: ett hakk = ett valg (høyoppløselige hjul summeres til et helt hakk).
+        # Styreplate: myk rulling som før, og snapper til nærmeste valg når fingrene slipper.
+        if c.get_unit() == Gdk.ScrollUnit.WHEEL:
+            self._acc = getattr(self, "_acc", 0.0) + dy
+            steps = int(self._acc) if abs(self._acc) >= 1 else 0
+            if steps:
+                self._acc -= steps
+                base = self.target if self._tick else round(self.pos)
+                self._animate_to(base + (1 if steps > 0 else -1) * min(abs(steps), 3))
+            return True
         self.pos = self._clamp(self.pos + dy * (0.45 if abs(dy) < 3 else 1.0))
         self.target = self.pos
         self.queue_draw()
