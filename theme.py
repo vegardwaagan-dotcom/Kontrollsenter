@@ -5,6 +5,7 @@ merkevare: blå–lilla gradient (samme som appen på mobil og nettbrett), myker
 med seksjoner og roligere typografi.
 """
 import json
+import time
 import os
 
 import gi
@@ -365,6 +366,60 @@ THEMES = {
     "lava":       {"name": "Lava", "desc": "Glødende rødt og gult på svart stein", "dark": True,
                    "a": "#ff4d1a", "b": "#ffb21a", "c": "#ff2e63",
                    "bg": "#130706", "side": "#190a08", "card": "#23100c", "fg": "#fff0ea", "dim": "#c39a8e"},
+    "cyberpunk":  {"name": "Cyberpunk", "desc": "Gul neon og cyan i en regnvåt by", "dark": True,
+                   "a": "#fcee0a", "b": "#00f0ff", "c": "#ff2a6d",
+                   "bg": "#0a0a0d", "side": "#0f0f14", "card": "#16161d", "fg": "#f6f6e9", "dim": "#a3a38f"},
+    "galakse":    {"name": "Galakse", "desc": "Magenta tåker og stjernestøv", "dark": True,
+                   "a": "#c86bff", "b": "#ff5fa2", "c": "#5f8bff",
+                   "bg": "#0b0716", "side": "#100a1f", "card": "#18102c", "fg": "#f3eaff", "dim": "#a998c4"},
+    "matrix":     {"name": "Matrix", "desc": "Grønn kode på svart", "dark": True,
+                   "a": "#00ff7b", "b": "#00c060", "c": "#9dff00",
+                   "bg": "#020604", "side": "#040a06", "card": "#08120c", "fg": "#d8ffe8", "dim": "#6f9c80"},
+    "oled":       {"name": "OLED-sort", "desc": "Helt svart – sparer strøm på OLED-skjermer", "dark": True,
+                   "a": "#8ab4ff", "b": "#c58aff", "c": "#7ff0e0",
+                   "bg": "#000000", "side": "#000000", "card": "#0b0b0f", "fg": "#f2f2f5", "dim": "#8d8d99"},
+    "ametyst":    {"name": "Ametyst", "desc": "Dyp lilla krystall", "dark": True,
+                   "a": "#b388ff", "b": "#7c4dff", "c": "#ea80fc",
+                   "bg": "#0f0a18", "side": "#140d20", "card": "#1c1430", "fg": "#f1eaff", "dim": "#a597c2"},
+    "smaragd":    {"name": "Smaragd og gull", "desc": "Mørkegrønt med gylne detaljer", "dark": True,
+                   "a": "#2ecc8f", "b": "#e8c35a", "c": "#1fa3a3",
+                   "bg": "#06110d", "side": "#081610", "card": "#0e2019", "fg": "#ecfaf3", "dim": "#93b3a5"},
+    "koralrev":   {"name": "Koralrev", "desc": "Korall og turkis under vann", "dark": True,
+                   "a": "#ff7a6b", "b": "#1fd1c1", "c": "#ffc46b",
+                   "bg": "#071216", "side": "#09181d", "card": "#0f2228", "fg": "#ebfbfa", "dim": "#91b3b2"},
+    "midnatt":    {"name": "Midnattsblå", "desc": "Marineblått og sølv – rolig og stilrent", "dark": True,
+                   "a": "#7aa7ff", "b": "#c0cad8", "c": "#5cc8ff",
+                   "bg": "#0a0f1c", "side": "#0d1324", "card": "#131b30", "fg": "#eaf0fb", "dim": "#93a0b8"},
+    "tokyo":      {"name": "Tokyo Night", "desc": "Det populære fargesettet fra kodeverdenen", "dark": True,
+                   "a": "#7aa2f7", "b": "#bb9af7", "c": "#7dcfff",
+                   "bg": "#1a1b26", "side": "#16161e", "card": "#24283b", "fg": "#c0caf5", "dim": "#7f88b0"},
+    "dracula":    {"name": "Dracula", "desc": "Lilla og rosa på mørkegrått", "dark": True,
+                   "a": "#bd93f9", "b": "#ff79c6", "c": "#50fa7b",
+                   "bg": "#282a36", "side": "#21222c", "card": "#343746", "fg": "#f8f8f2", "dim": "#a3a8c3"},
+    "nord":       {"name": "Nord", "desc": "Kjølig, arktisk og dempet", "dark": True,
+                   "a": "#88c0d0", "b": "#81a1c1", "c": "#a3be8c",
+                   "bg": "#2e3440", "side": "#2a2f3a", "card": "#3b4252", "fg": "#eceff4", "dim": "#a6aebf"},
+    "gruvbox":    {"name": "Gruvbox", "desc": "Varme retrofarger", "dark": True,
+                   "a": "#fabd2f", "b": "#fe8019", "c": "#b8bb26",
+                   "bg": "#282828", "side": "#1d2021", "card": "#32302f", "fg": "#ebdbb2", "dim": "#a89984"},
+    "catppuccin": {"name": "Catppuccin", "desc": "Myke pastellfarger på mørkt (Mocha)", "dark": True,
+                   "a": "#cba6f7", "b": "#f5c2e7", "c": "#94e2d5",
+                   "bg": "#1e1e2e", "side": "#181825", "card": "#313244", "fg": "#cdd6f4", "dim": "#9399b2"},
+    "rosepine":   {"name": "Rosé Pine", "desc": "Rosa og lavendel – lunt og mørkt", "dark": True,
+                   "a": "#ebbcba", "b": "#c4a7e7", "c": "#9ccfd8",
+                   "bg": "#191724", "side": "#1f1d2e", "card": "#26233a", "fg": "#e0def4", "dim": "#908caa"},
+    "sand":       {"name": "Sand", "desc": "Lyst beige og terrakotta", "dark": False,
+                   "a": "#d9733b", "b": "#c2a06b", "c": "#e8b04d",
+                   "bg": "#faf5ee", "side": "#f3ebdf", "card": "#ffffff", "fg": "#2d2218", "dim": "#8a7765"},
+    "mint":       {"name": "Mint", "desc": "Friskt, lyst og grønt", "dark": False,
+                   "a": "#14b38a", "b": "#2dbfd6", "c": "#8fe3c5",
+                   "bg": "#f1fbf7", "side": "#e6f6f0", "card": "#ffffff", "fg": "#10291f", "dim": "#5e7d71"},
+    "papir":      {"name": "Papir", "desc": "Rent og lyst med blå detaljer", "dark": False,
+                   "a": "#3367d6", "b": "#6b8ef0", "c": "#9db4ff",
+                   "bg": "#f7f7f5", "side": "#efefec", "card": "#ffffff", "fg": "#1d1f24", "dim": "#6b6f78"},
+    "latte":      {"name": "Catppuccin Latte", "desc": "Myke pastellfarger på lyst", "dark": False,
+                   "a": "#8839ef", "b": "#ea76cb", "c": "#179299",
+                   "bg": "#eff1f5", "side": "#e6e9ef", "card": "#ffffff", "fg": "#4c4f69", "dim": "#7c7f93"},
     "sakura":     {"name": "Kirsebærblomst", "desc": "Lyst, rosa og lavendel", "dark": False,
                    "a": "#ff6fa3", "b": "#a97bff", "c": "#ffb3c7",
                    "bg": "#fff5f8", "side": "#ffecf3", "card": "#ffffff", "fg": "#2a1a22", "dim": "#8a6a78"},
@@ -515,6 +570,35 @@ def web_css():
             f'color-scheme: {"dark" if dark else "light"}; }}')
     return "\n".join(out) + "\n"
 
+
+
+def write_web_themes():
+    """Skriv themes.css og themes.js til mobilappen (remote_web) og startskjermen i APK-en."""
+    import json as _j
+    here = os.path.dirname(os.path.abspath(__file__))
+    css = web_css()
+    rows = []
+    for k, t in THEMES.items():
+        rows.append({"k": k, "name": t["name"], "desc": t["desc"], "a": t["a"], "b": t["b"], "c": t["c"],
+                     "bg": t.get("bg", "#121320"), "card": t.get("card", "#1c1d2b"), "fg": t.get("fg", "#f3f3f7"),
+                     "dark": t.get("dark")})
+    js = "// Laget av theme.py – ikke rediger for hånd.\nwindow.KS_THEMES = " + _j.dumps(rows, ensure_ascii=False) + ";\n"
+    for d in (os.path.join(here, "remote_web"), os.path.join(here, "android", "app", "src", "main", "assets")):
+        if os.path.isdir(d):
+            with open(os.path.join(d, "themes.css"), "w", encoding="utf-8") as f:
+                f.write(css)
+            with open(os.path.join(d, "themes.js"), "w", encoding="utf-8") as f:
+                f.write(js)
+    return len(rows)
+
+
+def daily_theme(date=None):
+    """«Nytt tema hver dag»: samme tema hele dagen, nytt i morgen (mørke eller lyse etter valg)."""
+    import random
+    lk = look()
+    want_dark = lk.get("daily_dark", True)
+    keys = [k for k, t in THEMES.items() if k != "standard" and (t.get("dark") is not False) == bool(want_dark)]
+    return random.Random(date or time.strftime("%Y-%m-%d")).choice(keys) if keys else "standard"
 
 
 def _save_look(**kw):

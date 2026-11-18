@@ -60,6 +60,8 @@ def wanted():
         t = time_theme()
         if t:
             return t
+    if lk.get("auto") == "daily":
+        return theme.daily_theme()
     return theme.current_theme()
 
 

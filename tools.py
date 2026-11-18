@@ -1153,6 +1153,39 @@ class _Cards:
         i.append(st)
         self.box.append(c)
 
+    def _daily_card(self):
+        import theme as T
+        c, i = card("Nytt tema hver dag", "Kontrollsenter velger et nytt tema hver morgen – samme hele dagen. "
+                                          "Overstyres av temaer per spill.")
+        lk = T.look()
+
+        def on(w, _p):
+            if w.get_active():
+                T._save_look(auto="daily")
+            elif T.look().get("auto") == "daily":
+                T._save_look(auto=None)
+            try:
+                import looks
+                looks.refresh(force=True)
+            except Exception:  # noqa: BLE001
+                pass
+            today.set_label(f"I dag: {T.THEMES[T.daily_theme()]['name']}" if w.get_active() else "")
+        self._switch_row(i, "Nytt tema hver dag", "Overstyrer tid-på-døgnet-temaene.", lk.get("auto") == "daily", on)
+
+        def dark(w, _p):
+            T._save_look(daily_dark=w.get_active())
+            if T.look().get("auto") == "daily":
+                try:
+                    import looks
+                    looks.refresh(force=True)
+                except Exception:  # noqa: BLE001
+                    pass
+                today.set_label(f"I dag: {T.THEMES[T.daily_theme()]['name']}")
+        self._switch_row(i, "Bare mørke temaer", "Av: bare lyse temaer.", lk.get("daily_dark", True), dark)
+        today = dim(f"I dag: {T.THEMES[T.daily_theme()]['name']}" if lk.get("auto") == "daily" else "")
+        i.append(today)
+        self.box.append(c)
+
     def _fx_card(self):
         import effects
         c, i = card("Effekter", "Levende bakgrunn som sakte driver, kort som glir inn, myke overganger og knapper "
@@ -1902,6 +1935,7 @@ class SettingsPage(TabbedPage, _Cards):
         self.tab("utseende", "Utseende")
         self._try(self._theme_card)
         self._try(self._fx_card)
+        self._try(self._daily_card)
         self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)

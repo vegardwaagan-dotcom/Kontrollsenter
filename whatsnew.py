@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.61.0", "18 nye temaer", [
+        ("Nytt", [
+            "Nå 28 temaer på PC (Linux og Windows) og i mobilappen: Cyberpunk, Galakse, Matrix, OLED-sort, Ametyst, "
+            "Smaragd og gull, Koralrev, Midnattsblå, Tokyo Night, Dracula, Nord, Gruvbox, Catppuccin, Rosé Pine – og "
+            "de lyse Sand, Mint, Papir og Catppuccin Latte",
+            "«Nytt tema hver dag» (Innstillinger → Utseende): et nytt tema hver morgen, bare mørke eller bare lyse",
+        ]),
+    ]),
     ("0.60.0", "Nytt liv i utseendet", [
         ("Nytt", [
             "Levende bakgrunn som sakte driver i temaets farger – står stille når vinduet ikke er i fokus, så den "
