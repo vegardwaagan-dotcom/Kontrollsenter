@@ -171,6 +171,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         try:                                             # lys som følger musa på knappene
             import spotlight
             spotlight.attach(self)
+            import effects
+            effects.apply(self)
         except Exception:  # noqa: BLE001
             pass
         icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
@@ -527,6 +529,14 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.stack = stack
         stack.connect("notify::visible-child-name", self._on_tab)
         stack.connect("notify::visible-child-name", self._sync_sidebar)
+
+        def _fx(s, _p):
+            try:
+                import effects
+                effects.page_enter(s.get_visible_child())
+            except Exception:  # noqa: BLE001
+                pass
+        stack.connect("notify::visible-child-name", _fx)
         import progress_ui
         self.toast_overlay = Adw.ToastOverlay(child=progress_ui.attach(stack))
         self.page_help = Gtk.Label(xalign=0, wrap=True)

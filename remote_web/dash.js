@@ -881,6 +881,15 @@ pushCard.innerHTML = '<h2>Pushvarsler med ntfy</h2><p class="dim small">Varsler 
   + '<div class="row" style="margin-top:8px"><button class="primary" id="push-add">Legg til i ntfy</button><button class="soft" id="push-get">Hent ntfy</button></div>'
   + '<div class="dim small" id="push-url" style="margin-top:6px;word-break:break-all"></div>';
 { const g = $("#system .grid"); if (g) g.appendChild(pushCard); }
+const fxCard = document.createElement("div");
+fxCard.className = "card"; fxCard.id = "c-fx";
+fxCard.innerHTML = '<h2>Effekter</h2><p class="dim small">Kort som glir inn, knapper som gir etter og levende bakgrunn.</p>'
+  + '<div class="seg" id="fx-seg"><button data-fx="full">Full</button><button data-fx="rolig">Rolig</button><button data-fx="av">Av</button></div>';
+{ const g = $("#system .grid"); if (g) g.insertBefore(fxCard, g.children[1] || null); }
+$$("#fx-seg button").forEach((b) => {
+  b.classList.toggle("on", b.dataset.fx === pref("fx", "full"));
+  b.onclick = () => { setPref("fx", b.dataset.fx); applyFx(); $$("#fx-seg button").forEach((x) => x.classList.toggle("on", x === b)); fxEnter("system"); };
+});
 async function loadPush() {
   if (document.body.classList.contains("limited")) return;
   let st; try { st = await X("push"); } catch (e) { return; }
@@ -914,10 +923,25 @@ async function loadAv() {
 
 // ---------- kobling ----------
 const dashSetTab = setTab;
+// effekter: kortene glir inn ved fanebytte (Innstillinger → Utseende → Effekter)
+function applyFx() {
+  const lv = pref("fx", "full");
+  document.body.classList.toggle("fx", lv !== "av");
+  document.body.classList.toggle("fx-bg", lv === "full");
+}
+applyFx();
+function fxEnter(t) {
+  if (pref("fx", "full") === "av") return;
+  const sec = $("#" + t); if (!sec) return;
+  sec.querySelectorAll(":scope > .grid > *, :scope > .card, :scope > .tiles > *, :scope > .quick > *").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 10)));
+  sec.classList.remove("fx-enter"); void sec.offsetWidth; sec.classList.add("fx-enter");
+  setTimeout(() => sec.classList.remove("fx-enter"), 1100);
+}
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   if (t !== "oversikt") dashEdit(false);
   if (detOpen) closeDetail();
   dashSetTab(t);
+  fxEnter(t);
   if (t === "system") loadNotify();
   if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); pushScenesToPhone(); }
   if (t === "system") loadPush();

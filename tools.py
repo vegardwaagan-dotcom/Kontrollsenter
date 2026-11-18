@@ -1153,6 +1153,27 @@ class _Cards:
         i.append(st)
         self.box.append(c)
 
+    def _fx_card(self):
+        import effects
+        c, i = card("Effekter", "Levende bakgrunn som sakte driver, kort som glir inn, myke overganger og knapper "
+                                "som gir etter når du trykker. Bakgrunnen står stille når vinduet ikke er i fokus – "
+                                "så den ikke tar ytelse fra spill.")
+        row = Gtk.Box(spacing=0, homogeneous=True)
+        row.add_css_class("linked")
+        first = None
+        cur = effects.level()
+        for key, label in effects.LEVELS:
+            b = Gtk.ToggleButton(label=label.split(" – ")[0], tooltip_text=label)
+            if first is None:
+                first = b
+            else:
+                b.set_group(first)
+            b.set_active(key == cur)
+            b.connect("toggled", lambda w, k=key: w.get_active() and effects.set_level(k))
+            row.append(b)
+        i.append(row)
+        self.box.append(c)
+
     def _theme_card(self):
         import i18n
         import theme as ks_theme
@@ -1880,6 +1901,7 @@ class SettingsPage(TabbedPage, _Cards):
         TabbedPage.__init__(self, "innstillinger")
         self.tab("utseende", "Utseende")
         self._try(self._theme_card)
+        self._try(self._fx_card)
         self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)

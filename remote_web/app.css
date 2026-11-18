@@ -814,3 +814,16 @@ body.eco #tiles > [data-k]::before { display: none; }
 .dc-msg.mine .dc-bub { background: var(--grad); color: #fff; }
 #dcs-foot { padding-top: 8px; }
 #dc-servers { margin-top: 8px; }
+
+/* ---- effekter (fx) ---- */
+@keyframes fx-rise { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+body.fx .page.fx-enter > .grid > *, body.fx .page.fx-enter > .card, body.fx .page.fx-enter > .tiles > *,
+body.fx .page.fx-enter > .quick > * {
+  animation: fx-rise .48s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+body.fx button, body.fx .card { transition: transform .14s ease, box-shadow .25s ease, background-color .25s ease; }
+body.fx button:active { transform: scale(.955); }
+body.fx .tiles > [data-k]:active, body.fx .quick > button:active { transform: scale(.97); }
+body.fx #tabs button.on svg { animation: fx-pop .35s cubic-bezier(.3,1.6,.6,1); }
+@keyframes fx-pop { 0% { transform: scale(.7); } 100% { transform: scale(1); } }
+body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { body.fx *, body.fx *::before { animation: none !important; transition: none !important; } }

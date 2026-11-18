@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.60.0", "Nytt liv i utseendet", [
+        ("Nytt", [
+            "Levende bakgrunn som sakte driver i temaets farger – står stille når vinduet ikke er i fokus, så den "
+            "ikke tar ytelse fra spill",
+            "Kortene glir inn når du bytter side eller fane, knapper gir etter når du trykker, fliser løfter seg, "
+            "sidemenyen glir og brytere spretter",
+            "Samme effekter i mobilappen: kort som glir inn ved fanebytte, trykk-effekt og levende bakgrunn",
+            "Innstillinger → Utseende → «Effekter»: Full, Rolig eller Av (også i appen)",
+        ]),
+    ]),
     ("0.59.3", "VR: riktig sjekk for trådløst og kabel", [
         ("Forbedret", [
             "Trådløst: sjekklisten viser «Questen funnet på Wi-Fi» i stedet for å be om USB-kabel",

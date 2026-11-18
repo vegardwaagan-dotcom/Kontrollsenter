@@ -51,6 +51,14 @@ class TabbedPage(Gtk.Box):
         self.tabbar = bar
         self.append(bar)
         self.append(self.stack)
+
+        def _fx(s, _p):
+            try:
+                import effects
+                effects.page_enter(s.get_visible_child())
+            except Exception:  # noqa: BLE001
+                pass
+        self.stack.connect("notify::visible-child", _fx)
         self.box = None
 
     def tab(self, name, title):
