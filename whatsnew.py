@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.59.0", "Fremdriftslinje", [
+        ("Nytt", [
+            "Når Kontrollsenter installerer, laster ned, rydder, sjekker eller retter noe, vises en enkel fremdriftslinje "
+            "nederst i vinduet: hva som skjer, prosent og omtrent hvor lang tid som er igjen. Grønn ✓ når det er ferdig",
+            "Gjelder programinstallasjoner (Flathub/winget), Programmer-siden, Rydd opp, Systemsjekk, «Hvorfor er PC-en "
+            "treg?», ytelsestest, støymåler, sikkerhetskopi til NAS, oppdateringer, GE-Proton og VR-oppsettet",
+        ]),
+    ]),
     ("0.58.0", "VR med Meta Quest 3", [
         ("Nytt", [
             "Ny side «VR» under Spill: Meta Quest 3 gjennom Steam og SteamVR – trådløst eller med kabel, på Linux og "

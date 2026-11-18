@@ -97,6 +97,14 @@ def monthly_tick(notify):
 # «Hvorfor er PC-en treg?»
 # --------------------------------------------------------------------------
 def analyze(win=None):
+    import progress as P
+    with P.task("Sjekker hvorfor PC-en er treg", "Måler prosessor, minne, disk og temperaturer",
+                "Analysen er ferdig") as pt:
+        pt.set(0.1)
+        return _analyze(win)
+
+
+def _analyze(win=None):
     """Liste med funn: {"level": "bad"|"warn"|"ok", "title", "detail", "action": {...} eller None}."""
     import psutil
     out = []

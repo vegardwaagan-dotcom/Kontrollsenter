@@ -859,15 +859,21 @@ class GamesPage(TabbedPage):
         self.ge_prog.set_visible(True)
         self.ge_status.set_label("Ser etter nyeste versjon …")
 
+        import progress as P
+        pt = P.begin("Installerer GE-Proton", "Ser etter nyeste versjon …")
+
         def prog(frac, text):
+            pt.set(min(frac, 1), text)
             GLib.idle_add(lambda: (self.ge_prog.set_fraction(min(frac, 1)), self.ge_status.set_label(text), False)[2])
 
         def work():
             try:
                 tag, what = ge_install(prog)
                 msg = f"{tag} er {what} ✓ – start Steam på nytt for å se den"
+                pt.done(f"{tag} er {what}")
             except Exception as e:  # noqa: BLE001
                 msg = f"Kunne ikke installere GE-Proton: {e}"
+                pt.done(str(e)[:100], False)
             GLib.idle_add(lambda: (self.ge_status.set_label(msg), self.ge_btn.set_sensitive(True),
                                    self.ge_prog.set_visible(False), self._fill_ge(), False)[4])
         threading.Thread(target=work, daemon=True).start()

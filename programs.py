@@ -493,7 +493,10 @@ class ProgramsPage(Gtk.Box):
             name = self.names.get(app_id, (app_id,))[0] if app_id else ""
             if op == "update":
                 GLib.idle_add(self.status.set_label, "Oppdaterer alle Flatpak-programmer …")
-                code, out = _run(["flatpak", "update", "-y", "--noninteractive"], 3600)
+                import progress as P
+                pt = P.begin("Oppdaterer programmer", "Flathub")
+                code, out = P.run_cmd(["flatpak", "update", "-y", "--noninteractive"], pt, 3600)
+                pt.done("Alle programmer er oppdatert" if code == 0 else "Oppdateringen feilet", code == 0)
                 GLib.idle_add(self.status.set_label, "Alle programmer er oppdatert ✓" if code == 0
                               else "Oppdatering feilet: " + (out.strip().splitlines() or ["?"])[-1])
                 continue
@@ -507,13 +510,16 @@ class ProgramsPage(Gtk.Box):
                     (Path.home() / f".local/share/applications/systemmonitor-{key}.desktop").unlink(missing_ok=True)
                 code = 0 if (op == "install") == bool(script_bin(app_id)) else (code or 1)
             elif op == "install":
+                import progress as P
+                pt = P.begin(f"Installerer {name}", "Flathub")
                 where = ["--system"] if system_flathub() else ["--user"]
-                code, out = _run(["flatpak", "install", *where, "-y", "--noninteractive", "flathub", app_id], 3600)
+                code, out = P.run_cmd(["flatpak", "install", *where, "-y", "--noninteractive", "flathub", app_id], pt, 3600)
                 if code != 0 and where == ["--system"]:     # f.eks. ingen tilgang: prøv for brukeren
                     _run(["flatpak", "remote-add", "--user", "--if-not-exists", "flathub",
                           "https://dl.flathub.org/repo/flathub.flatpakrepo"], 60)
-                    code, out = _run(["flatpak", "install", "--user", "-y", "--noninteractive",
-                                      "flathub", app_id], 3600)
+                    code, out = P.run_cmd(["flatpak", "install", "--user", "-y", "--noninteractive",
+                                           "flathub", app_id], pt, 3600)
+                pt.done(f"{name} er installert" if code == 0 else "Installasjonen feilet", code == 0)
             else:
                 code, out = _run(["flatpak", "uninstall", "-y", "--noninteractive", app_id], 600)
             inst = installed_flatpaks()

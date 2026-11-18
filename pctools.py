@@ -133,12 +133,15 @@ def noise_test(win, progress=None):
     import remote
     steps = [30, 50, 70, 100]
     res = []
+    import progress as P
+    pt = P.begin("Måler viftestøy", "Lytter til stille rom")
     try:
         base = _record_db(2.5)
         if progress:
             progress(f"Stille rom: {base} dB")
         for v in steps:
             remote.do_action(win, {"a": "fans", "value": v})
+            pt.step(steps.index(v) + 1, len(steps) + 1, f"Viftene på {v} %")
             if progress:
                 progress(f"Viftene på {v} % – lytter …")
             time.sleep(4)                                # la viftene komme opp i fart
@@ -156,6 +159,7 @@ def noise_test(win, progress=None):
            "text": (f"Viftene høres nesten ikke opp til {best['pct']} %. Over det øker støyen merkbart"
                     f" ({res[-1]['db'] - quiet:+.0f} dB ved 100 %).")}
     save_cfg(noise=out)
+    pt.done(out["text"])
     return out
 
 
@@ -199,6 +203,8 @@ def backup_run(progress=None, max_files=2000):
     except (OSError, ValueError):
         man = {}
     pc = re.sub(r"[^\w\-]", "_", savegames.pc_name())
+    import progress as P
+    pt = P.begin("Sikkerhetskopi til NAS-en", "Finner nye filer …")
     sent = skipped = 0
     size = 0
     for d in [x for x in backup_dirs() if x.get("on")]:
@@ -220,7 +226,9 @@ def backup_run(progress=None, max_files=2000):
                     continue
                 rel = os.path.relpath(full, root).replace("\\", "/")
                 batch.append((full, rel, sig, st.st_size))
-        for full, rel, sig, sz in batch[:max_files]:
+        total = len(batch[:max_files])
+        for n, (full, rel, sig, sz) in enumerate(batch[:max_files]):
+            pt.step(n, total, f"{d['name']}: {rel.split('/')[-1]}")
             remote_dir = "/".join(["Sikkerhetskopi", pc, d["name"]] + rel.split("/")[:-1])
             try:
                 L.smb_mkdir(f"{L._split()[2]}/{remote_dir}")
@@ -236,6 +244,7 @@ def backup_run(progress=None, max_files=2000):
         with open(man_p, "w") as f:
             json.dump(man, f)
     rep = {"t": time.time(), "sent": sent, "skipped": skipped, "bytes": size}
+    pt.done(f"{sent} nye filer kopiert")
     save_cfg(backup_last=rep)
     return rep
 
@@ -259,6 +268,15 @@ def _hash_work(seconds):
 
 
 def benchmark(progress=None):
+    import progress as P
+    pt = P.begin("Ytelsestest", "Prosessor – én kjerne")
+    _orig = progress
+
+    def progress(text, _o=_orig, _n=[0]):          # noqa: F811 – også i fremdriftslinjen
+        _n[0] += 1
+        pt.step(_n[0] - 1, 4, text)
+        if _o:
+            _o(text)
     res = {}
     if progress:
         progress("Prosessor – én kjerne …")
@@ -293,6 +311,7 @@ def benchmark(progress=None):
     finally:
         shutil.rmtree(d, ignore_errors=True)
     res["t"] = time.time()
+    pt.done(f"Prosessor {res['cpuN']} poeng · minne {res['mem_gbs']} GB/s · disk {res['disk_w']} MB/s")
     hist = (cfg().get("bench") or [])[-9:] + [res]
     save_cfg(bench=hist)
     prev = hist[-2] if len(hist) > 1 else None

@@ -262,11 +262,16 @@ def apply_update(package_files):
     ALT i pakkens programmappe kopieres – ikke bare det denne (eldre) versjonen kjenner til. Ellers mangler
     nye mapper (f.eks. remote_web i 0.7.0) etter en oppdatering fra en gammel versjon."""
     tmp = Path(tempfile.mkdtemp())
+    import progress as P
+    pt = P.begin("Oppdaterer Kontrollsenter", "Henter den nye versjonen fra NAS-en")
+    pt.set(0.05)
     try:
         try:
             prog = _fetch_program(tmp)
         except RuntimeError as e:
+            pt.done(str(e), False)
             return False, str(e)
+        pt.set(0.6, "Tar vare på versjonen du har nå")
         old = local_version()
         # ta vare på versjonen som kjører nå
         BACKUP.parent.mkdir(parents=True, exist_ok=True)
@@ -274,9 +279,12 @@ def apply_update(package_files):
             for pat in package_files:
                 for src in Path(APP_DIR).glob(pat):
                     t.add(src, arcname=src.name)
-        for src in sorted(prog.iterdir()):
+        entries = sorted(prog.iterdir())
+        for n, src in enumerate(entries):
+            pt.set(0.7 + 0.3 * n / max(1, len(entries)), "Installerer filene")
             _install_entry(src)
         arm_rollback(old, local_version())
+        pt.done(f"Oppdatert til {local_version()}")
         return True, f"Oppdatert til {local_version()} ✓ – start Kontrollsenter på nytt"
     except Exception as e:  # noqa: BLE001
         return False, str(e)

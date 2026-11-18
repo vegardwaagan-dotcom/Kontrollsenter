@@ -718,7 +718,17 @@ class _Cards:
                                          "Noe feilet: " + " · ".join(errors)))
             self._refresh_clean()
             return False
-        self._bg(lambda: do_cleanup(chosen), done)
+        def work():
+            import progress as P
+            freed, errors = 0, []
+            with P.task("Rydder opp", "", "Opprydding ferdig") as pt:
+                for n, it in enumerate(chosen):
+                    pt.step(n, len(chosen), it[1])
+                    f, e = do_cleanup([it])
+                    freed += f
+                    errors += e
+            return freed, errors
+        self._bg(work, done)
 
     # --- diskhelse ------------------------------------------------------------
     def _health_card(self):

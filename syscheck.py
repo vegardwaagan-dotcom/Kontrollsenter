@@ -383,13 +383,18 @@ def run_all(progress=None):
     checks += [("Vifter", check_fans), ("Spill-overlay", check_overlay),
                ("Pakkebehandler og oppdateringer", _pkg), ("Drivere og fastvare", _drivers)]
     out = []
+    import progress as P
+    pt = P.begin("Sjekker PC-en", "")
     for i, (name, fn) in enumerate(checks):
+        pt.step(i, len(checks), f"Sjekker {name.lower()}")
         if progress:
             progress(f"Sjekker {name.lower()} … ({i + 1}/{len(checks)})")
         try:
             out += fn()
         except Exception as e:  # noqa: BLE001
             out.append(Result(f"{name}: kunne ikke sjekkes", "warn", str(e)))
+    bad = sum(1 for r in out if getattr(r, "level", "") in ("error", "warn"))
+    pt.done("Alt ser bra ut" if not bad else f"{bad} ting å se på")
     return out
 
 

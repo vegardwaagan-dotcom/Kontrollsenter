@@ -112,10 +112,12 @@ def install_adb():
     url = ("https://dl.google.com/android/repository/platform-tools-latest-" +
            ("windows" if IS_WIN else "linux") + ".zip")
     tmp = tempfile.mkdtemp()
+    import progress as P
     try:
-        z = os.path.join(tmp, "pt.zip")
-        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as r, open(z, "wb") as f:
-            shutil.copyfileobj(r, f)
+        with P.task("Installerer Android-verktøy (adb)", "", "adb er installert") as pt:
+            z = os.path.join(tmp, "pt.zip")
+            P.download(url, z, pt.sub(0, 0.9), UA)
+            pt.set(0.95, "Pakker ut …")
         with zipfile.ZipFile(z) as zf:
             zf.extractall(DATA)                  # → DATA/platform-tools/
         if not IS_WIN:
@@ -233,10 +235,12 @@ def install_alvr():
         raise RuntimeError("fant ikke ALVR for dette systemet")
     os.makedirs(ALVR_DIR, exist_ok=True)
     tmp = tempfile.mkdtemp()
+    import progress as P
+    pt = P.begin(f"Installerer ALVR {tag}", "")
     try:
         f = os.path.join(tmp, name)
-        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300) as r, open(f, "wb") as fh:
-            shutil.copyfileobj(r, fh)
+        P.download(url, f, pt.sub(0, 0.85), UA)
+        pt.set(0.9, "Pakker ut …")
         old = alvr_root()
         if old:
             shutil.rmtree(old, ignore_errors=True)
@@ -248,6 +252,10 @@ def install_alvr():
                 t.extractall(ALVR_DIR, filter="data")
         with open(os.path.join(ALVR_DIR, "VERSION"), "w") as fh:
             fh.write(tag)
+        pt.done(f"ALVR {tag} er installert")
+    except Exception as e:  # noqa: BLE001
+        pt.done(str(e)[:100], False)
+        raise
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return f"ALVR {tag} er installert ✓"
@@ -266,11 +274,13 @@ def install_alvr_client():
     if not url:
         raise RuntimeError("fant ikke ALVR-appen til Questen")
     tmp = tempfile.mkdtemp()
+    import progress as P
     try:
-        f = os.path.join(tmp, "alvr.apk")
-        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300) as r, open(f, "wb") as fh:
-            shutil.copyfileobj(r, fh)
-        code, out = _adb_q("install", "-r", f, t=300)
+        with P.task("Installerer ALVR i brillene", "", "ALVR er installert i Questen") as pt:
+            f = os.path.join(tmp, "alvr.apk")
+            P.download(url, f, pt.sub(0, 0.7), UA)
+            pt.set(0.75, "Legger appen inn i Questen …")
+            code, out = _adb_q("install", "-r", f, t=300)
         if code != 0 or "Success" not in out:
             raise RuntimeError("installasjonen på Questen feilet: " + out.strip()[-160:])
     finally:
@@ -584,10 +594,14 @@ ORDER = ["steam", "steamvr", "steamvr_first", "alvr", "steamvr_cap", "alvr_drive
 def fix_all(progress=None, mode=None):
     """Rett alt som kan rettes, i riktig rekkefølge. Returnerer [(tittel, melding)]."""
     done = []
+    import progress as P
+    todo = [x for x in checks(mode) if not x["ok"] and x["fix"]]
+    pt = P.begin("Setter opp VR", f"{len(todo)} ting å rette")
     for k in ORDER:
         c = next((x for x in checks(mode) if x["key"] == k), None)
         if not c or c["ok"] or not c["fix"]:
             continue
+        pt.step(len(done), max(1, len(todo)), f"Retter: {c['title']}")
         if progress:
             progress(f"Retter: {c['title']} …")
         try:
@@ -596,6 +610,8 @@ def fix_all(progress=None, mode=None):
             done.append((c["title"], f"feilet: {e}"))
         if k in ("steamvr", "steamvr_first"):
             break                                  # Steam må gjøre jobben først – sjekk igjen etterpå
+    bad = [t for t, m in done if m.startswith("feilet")]
+    pt.done("Alt som kan rettes automatisk er rettet" if not bad else f"{len(bad)} ting feilet", not bad)
     return done
 
 

@@ -330,7 +330,8 @@ def install(key, progress=None):
     a = APPS[key]
     if not can_install(key):
         raise RuntimeError(manual_hint(key))
-    with _LOCK:
+    import progress as P
+    with _LOCK, P.task(f"Installerer {a['name']}", "Gjør klar …", f"{a['name']} er installert") as pt:
         if progress:
             progress(f"Installerer {a['name']} … (kan ta noen minutter)")
         if IS_WIN:
@@ -342,10 +343,10 @@ def install(key, progress=None):
                             "https://dl.flathub.org/repo/flathub.flatpakrepo"], capture_output=True, timeout=60)
             cmd = ["flatpak", "install", "--user", "-y", "--noninteractive", "flathub", a["flatpak"]]
             kw = {}
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=1800, **kw)
-        out = (r.stdout or "") + (r.stderr or "")
+        kw.pop("creationflags", None)
+        code, out = P.run_cmd(cmd, pt, 1800)
         # winget: «allerede installert» (0x8A15002B) teller som ok
-        if r.returncode != 0 and "already installed" not in out.lower() and "allerede installert" not in out.lower():
+        if code != 0 and "already installed" not in out.lower() and "allerede installert" not in out.lower():
             raise RuntimeError(f"Installasjonen av {a['name']} feilet: " + out.strip()[-240:])
     _CACHE.pop(key, None)
     _FP["t"] = 0

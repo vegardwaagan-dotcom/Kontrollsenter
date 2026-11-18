@@ -527,7 +527,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.stack = stack
         stack.connect("notify::visible-child-name", self._on_tab)
         stack.connect("notify::visible-child-name", self._sync_sidebar)
-        self.toast_overlay = Adw.ToastOverlay(child=stack)
+        import progress_ui
+        self.toast_overlay = Adw.ToastOverlay(child=progress_ui.attach(stack))
         self.page_help = Gtk.Label(xalign=0, wrap=True)
         self.page_help.add_css_class("ks-pagehelp")
         for side, v in (("start", 18), ("end", 18), ("top", 4), ("bottom", 8)):
