@@ -754,3 +754,4 @@ body.eco.live-bg::before { animation: none; }
 .goal .gi { font-size: 26px; } .goal small { color: var(--dim); font-size: 11px; }
 .goal-req { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; }
 .wk { margin: 0 0 12px; } .wk .det-track { margin: 6px 0 4px; }
+.slow-row { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 10px; }

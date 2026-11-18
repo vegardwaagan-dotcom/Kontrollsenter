@@ -569,6 +569,28 @@ async function loadWeekly() {
   } catch (e) { $("#weekly").textContent = e.message; }
 }
 
+// ---------- «Hvorfor er PC-en treg?» (Verktøy) ----------
+const slowCard = document.createElement("div");
+slowCard.className = "card"; slowCard.id = "c-slow";
+slowCard.innerHTML = '<h2>Hvorfor er PC-en treg?</h2><p class="dim small">Ser på prosessor, minne, disk, temperatur, strømmodus og hva som kjører.</p>'
+  + '<button type="button" class="primary wide" id="slow-go">Finn ut hvorfor</button><div id="slow-res"></div>';
+{ const g = $("#mer .grid"); if (g) g.insertBefore(slowCard, g.firstChild); }
+$("#slow-go").onclick = async () => {
+  const b = $("#slow-go"); b.disabled = true; b.textContent = "Sjekker …";
+  try {
+    const r = await X("slow");
+    const ic = { bad: "❌", warn: "⚠️", ok: "✅" };
+    $("#slow-res").innerHTML = '<p><b>' + esc(r.summary) + '</b></p>' + r.items.map((x, i) => '<div class="row between slow-row"><span>' + ic[x.level] + ' <b>'
+      + esc(x.title) + '</b>' + (x.detail ? '<br><small class="dim">' + esc(x.detail) + '</small>' : '') + '</span>'
+      + (x.action ? '<button class="soft" data-fix="' + i + '">' + esc(x.action.label || "Fiks") + '</button>' : '') + '</div>').join("");
+    $$("#slow-res [data-fix]").forEach((fb) => (fb.onclick = async () => {
+      const a = Object.assign({}, r.items[+fb.dataset.fix].action); delete a.label;
+      await act(a); fb.disabled = true;
+    }));
+  } catch (e) { $("#slow-res").textContent = e.message; }
+  b.disabled = false; b.textContent = "Sjekk på nytt";
+};
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign

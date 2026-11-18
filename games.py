@@ -468,6 +468,22 @@ class GamesPage(TabbedPage):
                         lab.add_css_class("numeric")
                     grid.attach(lab, col, r, 1, 1)
             i.append(grid)
+            drops = [(s_, d) for s_ in ss[:3] for d in (s_.get("drops") or [])]
+            if drops:
+                h = Gtk.Label(label="FPS-dropp i de siste øktene", xalign=0)
+                h.add_css_class("heading")
+                h.set_margin_top(8)
+                i.append(h)
+                for s_, d in drops[-6:]:
+                    t = _t.strftime("%H:%M", _t.localtime(d["t"]))
+                    extra = [f"CPU {d['cpu_t']:.0f} °C" if d.get("cpu_t") else None,
+                             f"GPU {d['gpu_t']:.0f} °C" if d.get("gpu_t") else None,
+                             f"CPU {d['cpu_l']} % · GPU {d['gpu_l']} % last",
+                             ("kjørte: " + ", ".join(d["top"])) if d.get("top") else None]
+                    lab = Gtk.Label(label=f"{s_['name']} kl. {t}: {d['normal']} → {d['fps']} FPS – {d['why']}\n"
+                                    + " · ".join(e for e in extra if e), xalign=0, wrap=True)
+                    lab.add_css_class("caption")
+                    i.append(lab)
         self.box.append(c)
 
     # --- Steam-spill ----------------------------------------------------------

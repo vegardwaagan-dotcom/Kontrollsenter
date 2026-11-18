@@ -355,7 +355,7 @@ class MsiPage(Gtk.ScrolledWindow):
         if not getattr(self, "_ticking", False):          # bare én oppdateringsløkke
             self._ticking = True
             GLib.timeout_add_seconds(2, self._tick)
-        GLib.idle_add(lambda: getattr(self.get_root(), "rescan_cards", lambda: False)() or False)
+        GLib.idle_add(lambda: _rescan(self) or False)
 
     # --- les verdier ------------------------------------------------------------
 
@@ -497,3 +497,12 @@ class MsiPage(Gtk.ScrolledWindow):
             GLib.idle_add(self._status, "Ferdig ✓" if ok else f"Feilet: {msg[0] if msg else 'avbrutt'}")
             GLib.idle_add(self.build)
         threading.Thread(target=work, daemon=True).start()
+
+
+def _rescan(obj):
+    """Si fra til vinduet at kortene er bygd på nytt (så de kan flyttes og få ny størrelse)."""
+    w = obj if hasattr(obj, "get_root") else getattr(obj, "box", None)
+    root = w.get_root() if w is not None else None
+    fn = getattr(root, "rescan_cards", None)
+    if fn:
+        fn()

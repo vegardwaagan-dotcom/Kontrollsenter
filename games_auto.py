@@ -177,6 +177,60 @@ class Session:
         self.start = time.time()
         self.max_cpu = self.max_gpu = None
         self.watts = []
+        self.fps_hist = []                         # FPS de siste minuttene (til å oppdage dropp)
+        self.drops = []
+
+    def _live_fps(self):
+        """Siste FPS-verdier fra MangoHud-loggen som skrives nå (leser bare slutten av fila)."""
+        files = [f for f in glob.glob(os.path.join(LOG_DIR, "*.csv"))
+                 if os.path.getmtime(f) >= self.start - 5 and not f.endswith("_summary.csv")]
+        if not files:
+            return []
+        f = max(files, key=os.path.getmtime)
+        try:
+            with open(f, "rb") as fh:
+                fh.seek(0, 2)
+                fh.seek(max(0, fh.tell() - 4096))
+                lines = fh.read().decode("utf-8", "replace").splitlines()[1:]
+        except OSError:
+            return []
+        out = []
+        for ln in lines[-10:]:
+            try:
+                v = float(ln.split(",")[0])
+                if v > 0:
+                    out.append(v)
+            except (ValueError, IndexError):
+                continue
+        return out
+
+    def _check_drop(self, win, ct, gt):
+        cur = self._live_fps()
+        if not cur:
+            return
+        now = sum(cur[-3:]) / len(cur[-3:])
+        self.fps_hist = (self.fps_hist + [now])[-60:]
+        if len(self.fps_hist) < 8:
+            return
+        normal = sorted(self.fps_hist)[len(self.fps_hist) // 2]
+        if normal < 30 or now >= normal * 0.6:
+            return
+        if self.drops and time.time() - self.drops[-1]["t"] < 30:      # samme dropp
+            return
+        nv = win.nvidia.data if getattr(win, "nvidia", None) and win.nvidia.available else None
+        top = []
+        try:
+            import details                          # prosesslisten som oppdateres i bakgrunnen (blokkerer aldri)
+            top = [n for n, _t in details._top("cpu", 5) if self.name.lower()[:5] not in n.lower()][:3]
+        except Exception:  # noqa: BLE001
+            pass
+        cpu_l = getattr(win, "_cpu_load", 0) or 0
+        gpu_l = (nv or {}).get("util") or 0
+        why = ("CPU-en var varm" if (ct or 0) >= 90 else "skjermkortet var varmt" if (gt or 0) >= 85 else
+               "skjermkortet jobbet for fullt" if gpu_l >= 97 else "CPU-en jobbet hardt" if cpu_l >= 85 else
+               ("noe i bakgrunnen: " + ", ".join(top[:2])) if top else "ukjent – kanskje lasting eller nettet")
+        self.drops.append({"t": time.time(), "fps": round(now), "normal": round(normal), "cpu_t": ct, "gpu_t": gt,
+                           "cpu_l": round(cpu_l), "gpu_l": round(gpu_l), "top": top, "why": why})
 
     def sample(self, win):
         ct = getattr(win, "_cpu_t", None)
@@ -189,6 +243,10 @@ class Session:
         pw = (getattr(win, "_power", None) or {}).get("total")
         if pw:
             self.watts.append(pw)
+        try:
+            self._check_drop(win, ct, gt)
+        except Exception:  # noqa: BLE001
+            pass
 
     def finish(self):
         dur = time.time() - self.start
@@ -200,7 +258,8 @@ class Session:
              "max_cpu": round(self.max_cpu) if self.max_cpu else None,
              "max_gpu": round(self.max_gpu) if self.max_gpu else None,
              "watts": round(avg_w) if avg_w else None,
-             "kr": round(power.cost(avg_w, dur / 3600), 2) if avg_w else None}
+             "kr": round(power.cost(avg_w, dur / 3600), 2) if avg_w else None,
+             "drops": self.drops[-10:]}
         _save_session(s)
         _prune_logs()
         return s
@@ -235,6 +294,11 @@ def summary(s):
         parts.append(f"GPU maks {s['max_gpu']} °C")
     if s.get("watts"):
         parts.append(f"{s['watts']} W snitt ≈ {s['kr']:.2f} kr")
+    if s.get("drops"):
+        d = s["drops"]
+        from collections import Counter
+        why = Counter(x["why"] for x in d).most_common(1)[0][0]
+        parts.append(f"{len(d)} FPS-dropp – oftest: {why}")
     return " · ".join(i18n.tr(p) for p in parts)
 
 

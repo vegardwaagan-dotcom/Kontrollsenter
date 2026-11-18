@@ -1112,6 +1112,9 @@ def _handler(remote):
             if what == "me":
                 d = getattr(self, "device", {}) or {}
                 return self._send(200, {"name": d.get("name"), "role": d.get("role", "full")})
+            if what == "slow":
+                import upkeep
+                return self._send(200, upkeep.analyze(remote.win))
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())

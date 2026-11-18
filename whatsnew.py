@@ -13,6 +13,22 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.39.0", "Ytelse og vedlikehold", [
+        ("Nytt", [
+            "«Hvorfor er PC-en treg?» – én knapp (Vedlikehold → Feilsøking, og i appen under Verktøy) som ser på "
+            "prosessor, minne, disk, temperatur, strømmodus og oppdateringer i bakgrunnen, forklarer hva som er galt og "
+            "har en knapp for å fikse det (avslutt programmet, kraftigere vifter, bytt strømmodus)",
+            "Automatisk opprydding én gang i måneden – bare det som er helt trygt (miniatyrbilder og shader-cache for "
+            "spill som ikke er installert; på Windows også midlertidige filer). Aldri papirkurven eller filene dine. "
+            "Rapport som varsel og i Vedlikehold → Rydd opp",
+            "Overvåking av FPS-dropp: når FPS-en faller kraftig mens du spiller, lagres hva som skjedde – temperaturer, "
+            "belastning og hva som kjørte. Øktrapporten sier hvor mange dropp det var og den vanligste årsaken, og "
+            "detaljene står under Spill → Statistikk",
+        ]),
+        ("Rettet", [
+            "Feil på Logitech-siden (Solaar-enheter) når kortene ble bygd på nytt",
+        ]),
+    ]),
     ("0.38.0", "Familie og spill", [
         ("Nytt", [
             "Ukesrapport søndag kveld: spilletid per person, mest spilte spill, antall økter, lengste økt og strøm – for "

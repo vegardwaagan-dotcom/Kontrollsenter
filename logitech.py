@@ -739,7 +739,7 @@ class SolaarPage:
         self.settings = s
         self.locked = next((c for c in onboard.get("choices") or [] if c != "Disabled"), None)
         self.status(f"{self.name}: innstillinger lest")
-        GLib.idle_add(lambda: getattr(self.get_root(), "rescan_cards", lambda: False)() or False)
+        GLib.idle_add(lambda: _rescan(self) or False)
         return False
 
     def factory_reset(self):
@@ -861,3 +861,12 @@ class LogitechPage(Gtk.Box):
         self.status("Tilbakestiller til fabrikkstandard …")
         for pg in self.pages:
             pg.factory_reset()
+
+
+def _rescan(obj):
+    """Si fra til vinduet at kortene er bygd på nytt (så de kan flyttes og få ny størrelse)."""
+    w = obj if hasattr(obj, "get_root") else getattr(obj, "box", None)
+    root = w.get_root() if w is not None else None
+    fn = getattr(root, "rescan_cards", None)
+    if fn:
+        fn()

@@ -42,6 +42,8 @@ KINDS = [
      ["smart*", "temprise*"]),
     ("goal", "Mål og belønning", "Når noen er ferdig med lekser e.l. og ber om ekstra spilletid – og svaret.", ["goal"]),
     ("weekly", "Ukesrapport", "Søndag kveld: spilletid per person, mest spilte spill og strøm denne uka.", ["weekly"]),
+    ("cleanup", "Månedlig opprydding", "Rapport når Kontrollsenter har ryddet trygge ting (cache, miniatyrbilder).",
+     ["cleanup"]),
     ("bg", "«Kjører i bakgrunnen»", "Beskjed første gang vinduet lukkes og programmet fortsetter i bakgrunnen.",
      ["bg"]),
 ]
@@ -425,6 +427,11 @@ class Background:
 
     def _tick(self):
         c = self.cfg
+        try:
+            import upkeep
+            upkeep.monthly_tick(self.notify)
+        except Exception:  # noqa: BLE001
+            pass
         self._watch_extra()
         self._smart_check()
         try:                                              # spilletid per dag (grenser og oversikt)

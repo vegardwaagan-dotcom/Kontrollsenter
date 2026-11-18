@@ -1488,15 +1488,93 @@ class ToolsPage(TabbedPage, _Cards):
             self._try(self._info_card)
             self._try(self._health_card)
         self.tab("rydd", "Rydd opp")
+        self._try(self._autoclean_card)
         self._try(W._cleanup_card, self, card) if win else self._try(self._cleanup_card)
         self._try(diskusage.build_card, self, card)
         self.tab("gjenoppretting", "Gjenoppretting")
         self._try(W._restore_card, self, card) if win else self._try(self._restore_card)
         self.tab("feilsoking", "Feilsøking")
+        self._try(self._slow_card)
         self._syscheck_card()
         self._try(self._diag_card)
         self._try(self._log_card)
         self.finish()
+
+    def _slow_card(self):
+        c, i = card("Hvorfor er PC-en treg?", "Én knapp: Kontrollsenter ser på prosessoren, minnet, disken, "
+                                              "temperaturen, strømmodusen og hva som kjører – og forteller hva som er "
+                                              "galt og hva du kan gjøre.")
+        b = Gtk.Button(label="Finn ut hvorfor", halign=Gtk.Align.START)
+        b.add_css_class("suggested-action")
+        res = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+
+        def show(r):
+            b.set_sensitive(True)
+            b.set_label("Sjekk på nytt")
+            while (ch := res.get_first_child()) is not None:
+                res.remove(ch)
+            h = Gtk.Label(label=r["summary"], xalign=0, wrap=True)
+            h.add_css_class("heading")
+            res.append(h)
+            icon = {"bad": "❌", "warn": "⚠️", "ok": "✅"}
+            for x in r["items"]:
+                row = Gtk.Box(spacing=10)
+                col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+                col.append(Gtk.Label(label=f"{icon[x['level']]}  {x['title']}", xalign=0, wrap=True))
+                if x["detail"]:
+                    col.append(dim(x["detail"]))
+                row.append(col)
+                if x.get("action"):
+                    act = dict(x["action"])
+                    lab = act.pop("label", "Fiks")
+                    ab = Gtk.Button(label=lab, valign=Gtk.Align.CENTER)
+
+                    def do(_b, a=act):
+                        import remote
+                        win = self.get_root()
+                        threading.Thread(target=lambda: GLib.idle_add(
+                            lambda: (win.toast(remote.do_action(win, a)[1]) if hasattr(win, "toast") else None,
+                                     False)[1]), daemon=True).start()
+                    ab.connect("clicked", do)
+                    row.append(ab)
+                res.append(row)
+
+        def go(*_):
+            b.set_sensitive(False)
+            b.set_label("Sjekker …")
+            import upkeep
+            win = self.get_root()
+            self._bg(lambda: upkeep.analyze(win), show)
+        b.connect("clicked", go)
+        i.append(b)
+        i.append(res)
+        self.box.append(c)
+
+    def _autoclean_card(self):
+        import upkeep
+        c, i = card("Automatisk opprydding", "Én gang i måneden rydder Kontrollsenter det som er helt trygt: "
+                                             "miniatyrbilder og shader-cache for spill som ikke er installert "
+                                             "(Windows: midlertidige filer og shader-cache). Aldri papirkurven eller "
+                                             "filene dine, og aldri noe som krever passord.")
+        cf = upkeep.cfg()
+        self._switch_row(i, "Rydd automatisk hver måned", None, cf.get("auto", True),
+                         lambda w, _p: upkeep.save_cfg(auto=w.get_active()))
+        hist = cf.get("history") or []
+        st = dim(("Sist: " + time.strftime("%d.%m.%Y", time.localtime(hist[-1]["t"])) + " – "
+                  + upkeep.report_text(hist[-1])) if hist else "Ikke kjørt ennå.")
+        i.append(st)
+        b = Gtk.Button(label="Rydd nå", halign=Gtk.Align.START)
+
+        def run_now(*_):
+            b.set_sensitive(False)
+
+            def done(rep):
+                b.set_sensitive(True)
+                __import__("ui").status(st, (upkeep.report_text(rep) or "Ingenting å rydde") + " ✓")
+            self._bg(lambda: upkeep.auto_clean(force=True), done)
+        b.connect("clicked", run_now)
+        i.append(b)
+        self.box.append(c)
 
     def _syscheck_card(self):
         c, i = card("Systemsjekk", "Går gjennom drivere, disker, oppdateringer og vanlige feil, og forteller hva "
