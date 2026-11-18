@@ -101,16 +101,30 @@ class PlayTracker:
                 txt = f"Spilletiden i dag er {total / 3600:.1f} t – grensen er {lim:g} t"
                 event("playtime", "Spilletid nådd", txt, "warn")
                 self.notify("playlimit", "Spilletid nådd", txt, force=True)
+                _ingame("Spilletiden for i dag er brukt opp")
+            elif total >= lim * 3600 - 300 and self.warned.get(day) in (None, "soon"):
+                self.warned[day] = "5min"
+                self.notify("playlimit", "5 minutter spilletid igjen", "Lagre spillet nå", force=True)
+                _ingame("5 minutter igjen – lagre spillet", 40)
             elif total >= lim * 3600 - 900 and not self.warned.get(day):
                 self.warned[day] = "soon"
                 event("playtime", "15 minutter igjen", f"Grensen for spilletid i dag er {lim:g} t", "info")
                 self.notify("playlimit", "15 minutter spilletid igjen", f"Grensen i dag er {lim:g} t", force=True)
+                _ingame("15 minutter spilletid igjen")
 
     def save(self):
         self.saved = time.time()
         keep = sorted(self.data)[-120:]
         self.data = {k: self.data[k] for k in keep}
         _jsave(PLAYTIME, self.data)
+
+
+def _ingame(text, secs=25):
+    try:
+        import familysafe
+        familysafe.ingame(text, secs)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def limit_cfg():

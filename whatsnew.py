@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.55.0", "Trygg på nettet og leksetid", [
+        ("Nytt", [
+            "Nettfilter (Familie-siden og mobilen): Cloudflare Family, CleanBrowsing eller AdGuard Family blokkerer "
+            "voksen-, gambling- og skadelige sider for hele PC-en. Krever familiekoden når familiekontroll er på",
+            "Leksetid: velg dager og klokkeslett – spill lukkes etter 2 minutters varsel, unntatt når «Ferdig med "
+            "lekser» er godkjent i dag",
+            "Meldinger rett i spillet (MangoHud på Linux): «15 minutter igjen», «5 minutter igjen – lagre spillet», "
+            "«Leggetid om 10 min» og «Leksetid» – også når overlayet er skjult",
+        ]),
+    ]),
     ("0.54.0", "Lyd- og skjermprofiler", [
         ("Nytt", [
             "Lydprofiler (Lyd-siden): lagre utgang (høyttalere, hodesett, TV), mikrofon og volum – bytt med ett trykk. "

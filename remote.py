@@ -726,6 +726,14 @@ def _feature_action(win, kind, a):
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "dnsfilter":                      # nettfilter (familie-DNS) – bare full tilgang
+        import familysafe
+        return True, familysafe.set_dns(a.get("provider") or None)
+    if kind == "school":                         # leksetid
+        import familysafe
+        kw = {k: a[k] for k in ("enabled", "days", "from", "to") if k in a}
+        familysafe.set_school(**kw)
+        return True, "Leksetid lagret ✓"
     if kind == "avprofile":                      # lyd-/skjermprofil (mobilen og scener)
         import avprofiles as P
         k, pid = str(a.get("kind", "")), str(a.get("id", ""))
@@ -1179,6 +1187,9 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "familysafe":
+                import familysafe
+                return self._send(200, familysafe.state())
             if what == "avprofiles":
                 import avprofiles as P
                 return self._send(200, P.state())

@@ -568,6 +568,26 @@ shopCard.innerHTML = '<h2>Belønningsbutikk <span id="shop-stars" class="chip"><
   + '<p class="dim small">Godkjente mål gir stjerner. Løs dem inn her – en voksen godkjenner.</p>'
   + '<div class="goals" id="shop-items"></div><div id="shop-pending"></div>';
 { const fg = $("#fam-grid"); if (fg) { fg.insertBefore(shopCard, weekCard); fg.insertBefore(planCard, shopCard); } }
+const safeCard = document.createElement("div");
+safeCard.className = "card full-only"; safeCard.id = "c-safe"; safeCard.hidden = true;
+safeCard.innerHTML = '<h2>Trygg på nettet og leksetid</h2>'
+  + '<div class="row between"><span>Nettfilter</span><select id="safe-dns"></select></div>'
+  + '<div class="row between" style="margin-top:8px"><span>📚 Leksetid <small class="dim" id="safe-when"></small></span>'
+  + '<label class="switch"><input type="checkbox" id="safe-school"><i></i></label></div>'
+  + '<div class="dim small" id="safe-msg"></div>';
+{ const fg = $("#fam-grid"); if (fg) fg.appendChild(safeCard); }
+async function loadSafe() {
+  if (document.body.classList.contains("limited")) { safeCard.hidden = true; return; }
+  let st; try { st = await X("familysafe"); } catch (e) { safeCard.hidden = true; return; }
+  safeCard.hidden = false;
+  const sel = $("#safe-dns");
+  sel.innerHTML = '<option value="">Av</option>' + Object.entries(st.providers).map(([k, v]) => '<option value="' + k + '"' + (st.dns === k ? " selected" : "") + '>' + esc(v) + '</option>').join("");
+  sel.onchange = async () => { $("#safe-msg").textContent = "Endrer …"; const r = await act({ a: "dnsfilter", provider: sel.value || null }); $("#safe-msg").textContent = (r && r.msg) || ""; };
+  const days = ["ma", "ti", "on", "to", "fr", "lø", "sø"];
+  $("#safe-when").textContent = st.school.from + "–" + st.school.to + " · " + st.school.days.map((d) => days[d]).join(" ") + (st.school_now ? " · nå" : "");
+  const sw = $("#safe-school"); sw.checked = st.school.enabled;
+  sw.onchange = () => act({ a: "school", enabled: sw.checked });
+}
 async function loadPlan() {
   let p; try { p = await X("plan"); } catch (e) { planCard.hidden = true; return; }
   planCard.hidden = false;
@@ -848,7 +868,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   dashSetTab(t);
   if (t === "system") loadNotify();
   if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); }
-  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); }
+  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); }
 };
 dashWire();
 if (tab === "system") loadNotify();

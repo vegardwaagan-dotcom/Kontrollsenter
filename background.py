@@ -451,6 +451,19 @@ class Background:
                     pass
             import threading
             threading.Thread(target=plan, daemon=True).start()
+        if time.time() - getattr(self, "_school_t", 0) > 20:           # leksetid
+            self._school_t = time.time()
+            g = getattr(self, "game_name", None)
+            if g:
+                import threading as _th
+
+                def school(g=g):
+                    try:
+                        import familysafe
+                        familysafe.school_tick(g, lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1]))
+                    except Exception:  # noqa: BLE001
+                        pass
+                _th.Thread(target=school, daemon=True).start()
         for mod in ("presence", "pricejobs"):
             try:
                 m = __import__(mod)

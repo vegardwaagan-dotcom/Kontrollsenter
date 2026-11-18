@@ -138,6 +138,92 @@ class FamilyPage(Gtk.ScrolledWindow):
         vr.append(sw)
         i.append(vr)
 
+        # ---- trygg på nettet og leksetid ----
+        c, i = _card("Trygg på nettet og leksetid",
+                     "Nettfilter blokkerer voksen-, gambling- og skadelige sider for hele PC-en. Leksetid lukker spill "
+                     "på valgte tider – unntatt når «Ferdig med lekser» er godkjent i dag.")
+        box.append(c)
+        import familysafe as FS
+        r = Gtk.Box(spacing=10)
+        r.append(Gtk.Label(label=i18n.tr("Nettfilter"), xalign=0, hexpand=True))
+        self.dns_keys = [None] + list(FS.PROVIDERS)
+        self.dns_dd = Gtk.DropDown.new_from_strings([i18n.tr("Av")] + [v[0] for v in FS.PROVIDERS.values()])
+        r.append(self.dns_dd)
+        i.append(r)
+        note = Gtk.Label(label=i18n.tr("Tips: slå av «sikker DNS» i nettleseren, ellers kan den gå forbi filteret."),
+                         xalign=0, wrap=True)
+        note.add_css_class("ks-sub")
+        i.append(note)
+        sc = FS.school_cfg()
+        r2 = Gtk.Box(spacing=10, margin_top=6)
+        r2.append(Gtk.Label(label=i18n.tr("Leksetid"), xalign=0))
+        self.sch_from = Gtk.Entry(text=sc["from"], width_chars=5, max_length=5)
+        self.sch_to = Gtk.Entry(text=sc["to"], width_chars=5, max_length=5)
+        r2.append(self.sch_from)
+        r2.append(Gtk.Label(label="–"))
+        r2.append(self.sch_to)
+        days = Gtk.Box(spacing=2, hexpand=True)
+        days.add_css_class("linked")
+        self.sch_days = []
+        for n, d in enumerate(["Ma", "Ti", "On", "To", "Fr", "Lø", "Sø"]):
+            b = Gtk.ToggleButton(label=i18n.tr(d), active=n in sc["days"])
+            self.sch_days.append(b)
+            days.append(b)
+        r2.append(days)
+        self.sch_sw = Gtk.Switch(active=sc["enabled"], valign=Gtk.Align.CENTER)
+        r2.append(self.sch_sw)
+        i.append(r2)
+        self.safe_msg = Gtk.Label(xalign=0, wrap=True)
+        self.safe_msg.add_css_class("ks-sub")
+        i.append(self.safe_msg)
+        self._safe_busy = True
+
+        def dns_loaded(cur):
+            self.dns_dd.set_selected(self.dns_keys.index(cur) if cur in self.dns_keys else 0)
+            self._safe_busy = False
+            return False
+        threading.Thread(target=lambda: GLib.idle_add(dns_loaded, FS.dns_state()), daemon=True).start()
+
+        def guarded(fn):
+            if familylock.locked():
+                familylock.ask(self.get_root(), "Skriv familiekoden for å endre dette.", fn, lambda: None)
+            else:
+                fn()
+
+        def dns_changed(d, _p):
+            if self._safe_busy:
+                return
+            prov = self.dns_keys[d.get_selected()]
+
+            def do():
+                self.safe_msg.set_label(i18n.tr("Endrer nettfilter …"))
+
+                def work():
+                    try:
+                        m = FS.set_dns(prov)
+                    except Exception as e:  # noqa: BLE001
+                        m = str(e)
+                    GLib.idle_add(self.safe_msg.set_label, m)
+                threading.Thread(target=work, daemon=True).start()
+            guarded(do)
+        self.dns_dd.connect("notify::selected", dns_changed)
+
+        def school_save(*_):
+            def do():
+                try:
+                    FS.set_school(enabled=self.sch_sw.get_active(), **{"from": self.sch_from.get_text().strip(),
+                                                                        "to": self.sch_to.get_text().strip()},
+                                  days=[n for n, b in enumerate(self.sch_days) if b.get_active()])
+                    self.safe_msg.set_label(i18n.tr("Leksetid lagret ✓"))
+                except Exception as e:  # noqa: BLE001
+                    self.safe_msg.set_label(str(e))
+            guarded(do)
+        self.sch_sw.connect("notify::active", school_save)
+        for w in (self.sch_from, self.sch_to):
+            w.connect("activate", school_save)
+        for b in self.sch_days:
+            b.connect("toggled", school_save)
+
         # ---- ukeplan ----
         c, i = _card("Ukeplan", "Felles for hele huset (ligger på NAS-en). Hver PC minner om avtalene sine – f.eks. "
                                 "«Fotballtrening 17:30» med varsel 15 minutter før, så rekker man å lagre spillet.")

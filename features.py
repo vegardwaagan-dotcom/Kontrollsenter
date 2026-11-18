@@ -346,6 +346,11 @@ def bedtime_tick(notify):
     if mins == 10 and st.get(key) != 10:
         st[key] = 10
         notify("bedtime", "Leggetid om 10 minutter", f"PC-en slås av kl. {when}", force=True)
+        try:
+            import familysafe
+            familysafe.ingame(f"Leggetid om 10 min – PC-en slås av {when}", 60)
+        except Exception:  # noqa: BLE001
+            pass
         _ev("bedtime", "Leggetid om 10 minutter", when, "warn")
     elif mins == 0 and st.get(key) != 0:
         st[key] = 0
