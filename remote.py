@@ -753,6 +753,9 @@ def _feature_action(win, kind, a):
             return True, vr.stop()
         if do == "noop":
             return True, ""
+        if do == "engine" and a.get("engine") in ("alvr", "wivrn"):
+            vr.save_cfg(engine=a["engine"])
+            return True, ("WiVRn" if a["engine"] == "wivrn" else "ALVR") + " er valgt"
         raise ValueError("ukjent VR-handling")
     if kind == "push":                           # slå ntfy-push av/på (bare full tilgang)
         import push

@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.68.0", "VR: WiVRn som alternativ til ALVR", [
+        ("Nytt", [
+            "VR-siden (Linux): velg mellom ALVR (gjennom SteamVR) og WiVRn (OpenXR rett til brillene – ofte lavere "
+            "forsinkelse). Både trådløst og med kabel",
+            "Sjekklisten og «Fiks alt» følger valget: WiVRn fra Flathub, Avahi, brannmur (9757 og 5353), adb og "
+            "WiVRn-appen i brillene i nøyaktig samme versjon som PC-en",
+            "«Start VR» starter WiVRn og – med kabel – setter opp tilkoblingen gjennom USB og åpner WiVRn i brillene. "
+            "VR-vakten starter WiVRn og kabel-tilkoblingen igjen hvis de stopper",
+            "Samme valg i VR-kortet i mobilappen",
+        ]),
+    ]),
     ("0.67.0", "Ryddig PC-app", [
         ("Nytt", [
             "Sidemenyen er ryddet fra 23 til 14 linjer: sider som hører sammen er gruppert – Spill (Spill, VR, "

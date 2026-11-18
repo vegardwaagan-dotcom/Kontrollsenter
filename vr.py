@@ -49,7 +49,13 @@ def cfg():
             c = json.load(f)
     except (OSError, ValueError):
         c = {}
-    return {"mode": "wireless", "keepalive": True, **c}
+    return {"mode": "wireless", "keepalive": True, "engine": "alvr", **c}
+
+
+def engine():
+    """«alvr» eller «wivrn» (Linux). Windows: «alvr» hvis valgt, ellers Steam Link / Quest Link."""
+    e = cfg().get("engine", "alvr")
+    return e if (e in ("alvr", "wivrn") and not IS_WIN) else ("alvr" if cfg().get("win_alvr") else "meta")
 
 
 def save_cfg(**kw):
@@ -322,6 +328,90 @@ def register_alvr_driver():
 
 
 # --------------------------------------------------------------------------
+# WiVRn (Linux): OpenXR rett til brillene – trådløst eller med kabel (adb reverse)
+# --------------------------------------------------------------------------
+WIVRN_APP = "io.github.wivrn.wivrn"
+WIVRN_PKG = "org.meumeu.wivrn"
+WIVRN_PORTS = ["9757/tcp", "9757/udp", "5353/udp"]
+
+
+def wivrn_installed():
+    import apps
+    return apps.installed("wivrn", 5)
+
+
+def wivrn_version():
+    _c, out = _run(["flatpak", "info", WIVRN_APP], 15)
+    m = re.search(r"Version:\s*(\S+)", out)
+    return m.group(1) if m else None
+
+
+def avahi_ok():
+    return _run(["systemctl", "is-active", "avahi-daemon"], 10)[1].strip() == "active"
+
+
+def fix_avahi():
+    code, out = _run(["pkexec", "systemctl", "enable", "--now", "avahi-daemon"], 120)
+    if code in (126, 127):
+        raise RuntimeError("Passordet ble ikke gitt (avbrutt) – prøv igjen")
+    if code != 0:
+        raise RuntimeError("kunne ikke starte Avahi: " + (out.strip().splitlines() or ["?"])[-1][:120])
+    return "Avahi kjører – brillene finner PC-en ✓"
+
+
+def wivrn_client_pkg():
+    try:
+        return WIVRN_PKG if WIVRN_PKG in quest_packages() else None
+    except RuntimeError:
+        return None
+
+
+def install_wivrn_client():
+    """WiVRn-appen i brillene må ha samme versjon som serveren – hent APK-en for akkurat den versjonen."""
+    ver = wivrn_version()
+    tag = f"v{ver}" if ver and not ver.startswith("v") else ver
+    url = None
+    try:
+        rel = f"https://api.github.com/repos/WiVRn/WiVRn/releases/tags/{tag}" if tag else \
+            "https://api.github.com/repos/WiVRn/WiVRn/releases/latest"
+        with urllib.request.urlopen(urllib.request.Request(rel, headers=UA), timeout=20) as r:
+            d = json.load(r)
+        url = next((a["browser_download_url"] for a in d.get("assets", []) if a["name"].endswith(".apk")), None)
+        tag = d.get("tag_name", tag)
+    except Exception:  # noqa: BLE001
+        pass
+    if not url:
+        raise RuntimeError("fant ikke WiVRn-appen for versjon " + str(ver))
+    tmp = tempfile.mkdtemp()
+    import progress as P
+    try:
+        with P.task("Installerer WiVRn i brillene", "", "WiVRn er installert i Questen") as pt:
+            f = os.path.join(tmp, "wivrn.apk")
+            P.download(url, f, pt.sub(0, 0.7), UA)
+            pt.set(0.75, "Legger appen inn i Questen …")
+            code, out = _adb_q("install", "-r", f, t=300)
+            if code != 0 or "Success" not in out:
+                raise RuntimeError("installasjonen på Questen feilet: " + out.strip()[-160:])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    save_cfg(wivrn_client_ok=True)
+    return f"WiVRn {tag} er installert i brillene ✓ (under «Ukjente kilder»)"
+
+
+def wivrn_running():
+    return running("wivrn-server") or running("wivrn-dashboard") or running("wivrn")
+
+
+def wivrn_wired():
+    q = quest()
+    if q["state"] != "device":
+        raise RuntimeError("Questen er ikke koblet til med USB (eller PC-en er ikke godkjent i brillene)")
+    _adb_q("reverse", "tcp:9757", "tcp:9757", t=15)
+    _adb_q("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "wivrn+tcp://localhost", WIVRN_PKG, t=15)
+    return "Kabel-tilkobling klar – WiVRn åpnes i brillene"
+
+
+# --------------------------------------------------------------------------
 # Linux: brannmur, SteamVR-rettigheter, OpenXR og videokoding
 # --------------------------------------------------------------------------
 PORTS = ["9943-9944/tcp", "9943-9944/udp"]
@@ -342,27 +432,30 @@ def _covers(spec, port, proto):
     return lo <= port <= hi
 
 
-def _zone_open(z):
-    _c, ports = _run(["firewall-cmd", "--zone", z, "--list-ports"], 10)
+def _zone_open(z, ports=None):
+    _c, ports_now = _run(["firewall-cmd", "--zone", z, "--list-ports"], 10)
     _c, svcs = _run(["firewall-cmd", "--zone", z, "--list-services"], 10)
     _c, target = _run(["firewall-cmd", "--zone", z, "--get-target"], 10)
     if "alvr" in svcs.split() or target.strip().upper() == "ACCEPT":
         return True
-    specs = ports.split()
-    return all(any(_covers(sp, p, proto) for sp in specs) for p in (9943, 9944) for proto in ("tcp", "udp"))
+    specs = ports_now.split()
+    want = [(int(p.split("/")[0].split("-")[0]), p.split("/")[1]) for p in (ports or PORTS)]
+    want += [(int(p.split("/")[0].split("-")[1]), p.split("/")[1]) for p in (ports or PORTS) if "-" in p.split("/")[0]]
+    return all(any(_covers(sp, port, proto) for sp in specs) for port, proto in want)
 
 
-def firewall_ok():
+def firewall_ok(ports=None):
     if IS_WIN:
         _c, out = _run(["powershell", "-NoProfile", "-Command",
                         "(Get-NetFirewallRule -DisplayName 'Kontrollsenter ALVR*' -ErrorAction SilentlyContinue).Count"], 20)
         return out.strip() not in ("", "0")
     if not shutil.which("firewall-cmd") or _run(["firewall-cmd", "--state"], 10)[0] != 0:
         return True                                   # ingen aktiv brannmur
-    return all(_zone_open(z) for z in _zones())
+    return all(_zone_open(z, ports) for z in _zones())
 
 
-def fix_firewall():
+def fix_firewall(ports=None):
+    ports = ports or PORTS
     if IS_WIN:
         ps = ("New-NetFirewallRule -DisplayName 'Kontrollsenter ALVR TCP' -Direction Inbound -Action Allow -Protocol TCP "
               "-LocalPort 9943-9944 -Profile Private,Domain | Out-Null; New-NetFirewallRule -DisplayName "
@@ -374,16 +467,16 @@ def fix_firewall():
         if code != 0:
             raise RuntimeError("Windows ga ikke administratortilgang")
         return "Brannmuren slipper gjennom VR-strømmen ✓"
-    if firewall_ok():
+    if firewall_ok(ports):
         return "Brannmuren slipper allerede gjennom VR-strømmen ✓"
-    zones = [z for z in _zones() if not _zone_open(z)]
+    zones = [z for z in _zones() if not _zone_open(z, ports)]
     if not zones:
         return "Brannmuren slipper gjennom VR-strømmen ✓"
     if not all(re.fullmatch(r"[\w.-]+", z) for z in zones):
         raise RuntimeError("uventet navn på brannmursone")
     cmds = []
     for z in zones:
-        for p in PORTS:
+        for p in ports:
             cmds.append(f"firewall-cmd --zone={z} --add-port={p} --permanent")
     cmds.append("firewall-cmd --reload")
     code, out = _run(["pkexec", "sh", "-c", " && ".join(cmds)], 180)
@@ -391,7 +484,7 @@ def fix_firewall():
         raise RuntimeError("Passordet ble ikke gitt (avbrutt) – prøv igjen")
     if code != 0:
         raise RuntimeError("firewall-cmd feilet: " + (out.strip().splitlines() or ["ukjent feil"])[-1][:160])
-    if not firewall_ok():
+    if not firewall_ok(ports):
         raise RuntimeError("Portene ble lagt til, men brannmuren melder fortsatt at de er stengt")
     return "Brannmuren slipper gjennom VR-strømmen ✓"
 
@@ -527,6 +620,8 @@ def checks(mode=None):
                     "warn": warn})
     st = steam_ok()
     add("steam", "Steam", st, "", True)
+    if engine() == "wivrn":
+        return _checks_wivrn(mode, add, out)
     svr = steamvr_dir()
     add("steamvr", "SteamVR", bool(svr), "Installeres gjennom Steam (gratis)" if not svr else "", st)
     vp = os.path.exists(_vrpaths_file())
@@ -600,6 +695,45 @@ def checks(mode=None):
     return out
 
 
+def _checks_wivrn(mode, add, out):
+    inst = wivrn_installed()
+    add("wivrn", "WiVRn på PC-en", inst, wivrn_version() or "OpenXR-strømming til Questen (Flathub)", True)
+    add("avahi", "Avahi kjører", avahi_ok(), "Gjør at brillene finner PC-en på nettet", True)
+    add("firewall_w", "Brannmur åpen for WiVRn", firewall_ok(WIVRN_PORTS), "Port 9757 og 5353", True)
+    add("encoder", "Videokoding i skjermkortet", encoder_ok(), "NVENC / VA-API", False,
+        None if encoder_ok() else "Installer skjermkortdriveren (NVIDIA) eller Mesa VA-API (AMD/Intel).")
+    add("adb", "Android-verktøy (adb)", bool(adb()), "Til å installere WiVRn i brillene og kabel", True)
+    q = quest()
+    if mode == "wired":
+        if q.get("state") == "unauthorized":
+            add("quest_auth", "Godkjenn PC-en i brillene", False, "", False,
+                "Ta på brillene og trykk «Tillat» (kryss av for «Tillat alltid fra denne datamaskinen»).")
+        else:
+            usb = q.get("usb") or q.get("state") == "device"
+            add("quest_usb", "Questen koblet til med kabel", usb, "USB-C" if usb else "", False,
+                None if usb else "Kabel ikke koblet til – koble Questen til PC-en med en USB 3-kabel (USB-C). Første "
+                                 "gang: slå på utviklermodus i Meta Horizon-appen og godkjenn PC-en i brillene.")
+    else:
+        h = headset()
+        found = h["wifi_online"] or h["streaming"]
+        add("quest_wifi_found", "Questen funnet på Wi-Fi", found,
+            (h["wifi_ip"] + (" · strømmer nå" if h["streaming"] else "")) if found else "", False,
+            None if found else "Slå på brillene, koble dem til samme Wi-Fi som PC-en, og åpne WiVRn i brillene.",
+            warn=not found)
+    if q.get("state") == "device":
+        pkg = wivrn_client_pkg()
+        add("wivrn_client", "WiVRn-appen i brillene", bool(pkg), (wivrn_version() or "") if pkg else
+            "Må ha samme versjon som PC-en", True)
+    elif not cfg().get("wivrn_client_ok"):
+        add("wivrn_client_tip", "WiVRn-appen i brillene", False, "", False,
+            "Installer «WiVRn» fra butikken i Questen – eller koble til med kabel én gang, så legger Kontrollsenter "
+            "inn riktig versjon.", warn=True)
+    add("wivrn_steam", "Steam-spill i WiVRn", None, "", False,
+        "Start VR-spill fra WiVRn-dashbordet, eller fra Steam. Ber dashbordet om et startvalg for et spill, lim det "
+        "inn under Spill → Bibliotek → spillet → «Egne argumenter».", warn=True)
+    return out
+
+
 def alvr_client_installed_flag():
     return bool(cfg().get("client_ok"))
 
@@ -633,13 +767,21 @@ def fix(key):
         return m
     if key == "metalink":
         return install_meta_link()
+    if key == "wivrn":
+        return apps.install("wivrn")
+    if key == "avahi":
+        return fix_avahi()
+    if key == "firewall_w":
+        return fix_firewall(WIVRN_PORTS)
+    if key == "wivrn_client":
+        return install_wivrn_client()
     if key == "metasvc":
         return fix_meta_service()
     raise ValueError("kan ikke rettes automatisk")
 
 
 ORDER = ["steam", "steamvr", "steamvr_first", "alvr", "steamvr_cap", "alvr_driver", "firewall", "openxr", "adb",
-         "alvr_client", "metalink", "metasvc"]
+         "alvr_client", "metalink", "metasvc", "wivrn", "avahi", "firewall_w", "wivrn_client"]
 
 
 def fix_all(progress=None, mode=None):
@@ -674,6 +816,23 @@ def start(mode=None):
     save_cfg(mode=mode)
     use_alvr = not IS_WIN or cfg().get("win_alvr")
     msgs = []
+    if engine() == "wivrn":
+        if not wivrn_installed():
+            raise RuntimeError("WiVRn er ikke installert – trykk «Fiks alt»")
+        if not wivrn_running():
+            subprocess.Popen(["flatpak", "run", WIVRN_APP], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+            msgs.append("WiVRn startet")
+            time.sleep(2)
+        if mode == "wired":
+            msgs.append(wivrn_wired())
+        elif quest()["state"] == "device" and wivrn_client_pkg():
+            _adb_q("shell", "monkey", "-p", WIVRN_PKG, "-c", "android.intent.category.LAUNCHER", "1", t=20)
+            msgs.append("WiVRn åpnet i brillene")
+        else:
+            msgs.append("Åpne WiVRn i brillene og velg PC-en")
+        save_cfg(active=True, started=time.time())
+        return " · ".join(msgs)
     if use_alvr:
         dash = alvr_dashboard()
         if not dash:
@@ -742,9 +901,19 @@ def watch_tick(notify=None):
     if time.time() - _WATCH["t"] < 20 or time.time() - c.get("started", 0) < 40:
         return None
     _WATCH["t"] = time.time()
-    use_alvr = not IS_WIN or c.get("win_alvr")
+    use_alvr = (not IS_WIN or c.get("win_alvr")) and engine() != "wivrn"
     fixed = []
     try:
+        if engine() == "wivrn":
+            if wivrn_installed() and not wivrn_running():
+                subprocess.Popen(["flatpak", "run", WIVRN_APP], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                 start_new_session=True)
+                fixed.append("WiVRn ble startet igjen")
+            if c.get("mode") == "wired" and quest()["state"] == "device":
+                _c, out = _run([adb(), "reverse", "--list"], 10)
+                if "9757" not in out:
+                    wivrn_wired()
+                    fixed.append("kabel-tilkoblingen ble satt opp igjen")
         if use_alvr and alvr_dashboard() and not running("alvr_dashboard") and not running("ALVR Dashboard"):
             kw = {"creationflags": 0x08000000} if IS_WIN else {"start_new_session": True}
             subprocess.Popen([alvr_dashboard()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
@@ -754,7 +923,7 @@ def watch_tick(notify=None):
             if "9944" not in out:
                 wired_link()
                 fixed.append("kabel-tilkoblingen ble satt opp igjen")
-        if not running("vrserver") and running("steam"):
+        if engine() != "wivrn" and not running("vrserver") and running("steam"):
             _steam_uri(f"steam://run/{STEAMVR_APPID}")
             fixed.append("SteamVR ble startet igjen")
     except Exception:  # noqa: BLE001
@@ -772,7 +941,7 @@ def state():
     c = cfg()
     q = quest()
     return {"mode": c["mode"], "active": bool(c.get("active")), "quest": q, "os": "windows" if IS_WIN else "linux",
-            "headset": headset(),
+            "headset": headset(), "engine": engine(),
             "alvr": alvr_version(), "steamvr": bool(steamvr_dir()), "win_alvr": bool(c.get("win_alvr")),
             "vr_running": running("vrserver"), "checks": checks(c["mode"])}
 
@@ -857,7 +1026,8 @@ def headset():
                 out.update(wifi_ip=ip, wifi_online=True)
                 break
     if out["streaming"]:
-        out["via"] = "ALVR" if (not IS_WIN or cfg().get("win_alvr")) else "Steam Link"
+        e = engine()
+        out["via"] = {"alvr": "ALVR", "wivrn": "WiVRn"}.get(e, "Steam Link")
     if out["usb"] and (running("OVRServer") or running("OVRServer_x64")):
         out["via"] = out["via"] or "Quest Link"
     return out

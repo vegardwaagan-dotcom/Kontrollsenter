@@ -45,6 +45,9 @@ def _bg(work, done):
 
 
 HOW = {
+    ("wivrn", "wireless"): "WiVRn strømmer VR-spill trådløst rett med OpenXR – ofte lavere forsinkelse enn ALVR. Steam-spill "
+                           "startes fra WiVRn-dashbordet eller Steam. PC-en bør stå på kabel til ruteren, og Questen på 5/6 GHz.",
+    ("wivrn", "wired"): "WiVRn over USB-kabel: bildet går gjennom kabelen (adb) – stabilt og uten Wi-Fi. Bruk en USB 3-kabel.",
     ("linux", "wireless"): "ALVR strømmer SteamVR trådløst til Questen. PC-en bør stå på kabel til ruteren, og Questen "
                            "på 5 GHz- eller 6 GHz-Wi-Fi. Første gang trengs en USB-kabel for å legge ALVR inn i brillene.",
     ("linux", "wired"): "ALVR over USB-kabel: bildet går gjennom kabelen (via adb) – stabilt og uten Wi-Fi. Bruk en "
@@ -83,6 +86,16 @@ class VrPage(Gtk.ScrolledWindow):
         c, i = card("Meta Quest 3", "Spill SteamVR-spill i Questen – trådløst eller med kabel. Kontrollsenter setter opp "
                                     "alt som trengs, starter det og holder det i gang.")
         box.append(c)
+        if not IS_WIN:                                     # Linux: ALVR eller WiVRn
+            erow = Gtk.Box(spacing=0, homogeneous=True)
+            erow.add_css_class("linked")
+            self.e_alvr = Gtk.ToggleButton(label="ALVR  ·  " + _t("gjennom SteamVR"))
+            self.e_wivrn = Gtk.ToggleButton(label="WiVRn  ·  " + _t("OpenXR, lav forsinkelse"), group=self.e_alvr)
+            (self.e_wivrn if vr.engine() == "wivrn" else self.e_alvr).set_active(True)
+            for b in (self.e_alvr, self.e_wivrn):
+                erow.append(b)
+                b.connect("toggled", self._engine_changed)
+            i.append(erow)
         mrow = Gtk.Box(spacing=0, homogeneous=True)
         mrow.add_css_class("linked")
         self.m_wl = Gtk.ToggleButton(label="📶  " + _t("Trådløst"))
@@ -246,7 +259,16 @@ class VrPage(Gtk.ScrolledWindow):
 
     def _update_how(self):
         os_ = "windows" if IS_WIN and not vr.cfg().get("win_alvr") else "linux"
+        if vr.engine() == "wivrn":
+            os_ = "wivrn"
         self.how.set_label(_t(HOW[(os_, self._mode())]))
+
+    def _engine_changed(self, b):
+        if not b.get_active():
+            return
+        vr.save_cfg(engine="wivrn" if self.e_wivrn.get_active() else "alvr")
+        self._update_how()
+        self.refresh()
 
     def _mode_changed(self, b):
         if not b.get_active():

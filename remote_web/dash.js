@@ -590,7 +590,7 @@ async function loadSafe() {
 }
 const vrCard = document.createElement("div");
 vrCard.className = "card full-only"; vrCard.id = "c-vr"; vrCard.hidden = true;
-vrCard.innerHTML = '<h2>🥽 VR – Meta Quest 3</h2><div class="seg" id="vr-mode"><button data-m="wireless">📶 Trådløst</button><button data-m="wired">🔌 Kabel</button></div>'
+vrCard.innerHTML = '<h2>🥽 VR – Meta Quest 3</h2><div class="seg" id="vr-eng" hidden><button data-e="alvr">ALVR</button><button data-e="wivrn">WiVRn</button></div><div class="seg" id="vr-mode"><button data-m="wireless">📶 Trådløst</button><button data-m="wired">🔌 Kabel</button></div>'
   + '<div id="vr-checks" class="dim small" style="margin-top:8px"></div>'
   + '<div class="row" style="margin-top:8px"><button class="primary" id="vr-start">Start VR</button><button class="soft" id="vr-fix">Fiks alt</button><button class="soft" id="vr-stop">Stopp</button></div>'
   + '<div class="dim small" id="vr-msg"></div>';
@@ -603,6 +603,9 @@ async function loadVr() {
   const h = st.headset || {};
   const hsTxt = "🔌 Kabel: " + (h.usb ? "tilkoblet" + (h.battery != null ? " · 🔋 " + h.battery + " %" : "") : "ikke tilkoblet")
     + "<br>📶 Wi-Fi: " + (h.streaming ? "strømmer nå" + (h.via ? " (" + esc(h.via) + ")" : "") : h.wifi_online ? "på nettet (" + esc(h.wifi_ip || "") + ")" : "ikke funnet");
+  $("#vr-eng").hidden = st.os !== "linux";
+  $$("#vr-eng button").forEach((b) => { b.classList.toggle("on", b.dataset.e === st.engine);
+    b.onclick = async () => { const r = await act({ a: "vr", do: "engine", engine: b.dataset.e }); if (r && r.msg) toast(r.msg); loadVr(); }; });
   const bad = st.checks.filter((c) => !c.ok && !c.warn);
   $("#vr-checks").innerHTML = '<div style="margin-bottom:6px">' + hsTxt + '</div>' + (bad.length ? bad.map((c) => "❌ " + esc(c.title)).join("<br>") : "✅ Alt er klart")
     + (st.quest && st.quest.state === "device" ? "<br>🥽 Questen er koblet til" : "") + (st.vr_running ? "<br>▶ SteamVR kjører" : "");
