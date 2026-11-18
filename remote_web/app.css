@@ -874,3 +874,13 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s ease-i
 .amb-card { padding: 2.2vh 2.4vw; border-radius: 22px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); display: flex; flex-direction: column; gap: 6px; }
 .amb-card small { letter-spacing: .12em; font-weight: 800; color: rgba(255,255,255,.55); }
 .amb-card b { font-size: min(7vw, 5vh); } .amb-fam div { font-size: min(4.5vw, 3vh); }
+
+/* ---- kategorier i hver fane (rullehjul øverst) ---- */
+.card.cat-off { display: none !important; }
+.cat-bar { position: sticky; top: calc(env(safe-area-inset-top) + 6px); z-index: 20; display: flex; align-items: center; gap: 8px;
+  margin: 2px 0 12px; padding: 6px; border-radius: 18px; background: var(--card-solid);
+  box-shadow: 0 8px 24px rgba(0,0,0,.28); border: 1px solid var(--line); }
+.cat-bar .picker { flex: 1; justify-content: center; font-size: 16px; }
+.cat-bar .picker b { font-size: 16px; }
+.cat-prev, .cat-next { width: 40px; height: 40px; border-radius: 12px; font-size: 22px; background: var(--card2); flex: none; }
+.pn-wheel { gap: 8px; align-items: center; } .pn-wheel .picker { flex: 1; }

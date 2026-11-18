@@ -1008,31 +1008,46 @@ function pnRender(p) {
     if (p.rows && p.rows.length) h += '<div class="pn-rows">' + p.rows.map(([k, v]) => '<div class="row between"><span class="dim">' + esc(k) + '</span><b>' + esc(String(v)) + '</b></div>').join("") + '</div>';
     if (p.select) h += '<div class="row between"><span>' + esc(p.select.label) + '</span><select data-ps=\'' + esc(JSON.stringify(p.select.action)) + '\''
       + (p.select.confirm ? ' data-pc="' + esc(p.select.confirm) + '"' : "") + '>' + p.select.options.map(([v, t]) => '<option value="' + esc(v) + '"' + (v === p.select.value ? " selected" : "") + '>' + esc(t) + '</option>').join("") + '</select></div>';
-    if (p.items && p.items.length) h += '<div class="pn-items' + (p.grid ? " grid" : "") + '">' + p.items.map((it) =>
+    const wheelList = p.items && p.items.length > 10 && !p.grid && p.items.every((it) => it.tap);
+    if (wheelList) {
+      h += '<div class="row pn-wheel"><select data-title="' + esc(p.title) + '">' + p.items.map((it) => '<option value=\'' + esc(JSON.stringify(it.tap)) + '\'>'
+        + esc(it.title) + '</option>').join("") + '</select><button class="primary small" data-pw="1">Kjør</button></div>';
+    } else if (p.items && p.items.length) h += '<div class="pn-items' + (p.grid ? " grid" : "") + '">' + p.items.map((it) =>
       '<div class="pn-it" data-q="' + esc((it.title + " " + (it.sub || "")).toLowerCase()) + '"' + (it.detail ? ' data-pd=\'' + esc(JSON.stringify(it.detail)) + '\'' : "")
       + (it.tap ? ' data-pa=\'' + esc(JSON.stringify(it.tap)) + '\'' : "") + '>' + pnImg(it.img)
       + '<div class="pn-t"><b>' + esc(it.title) + '</b>' + (it.badge ? ' <span class="chip">' + esc(it.badge) + '</span>' : "")
       + (it.sub ? '<small class="dim">' + esc(it.sub) + '</small>' : "") + '</div>'
-      + (it.buttons && it.buttons.length ? '<div class="pn-b">' + it.buttons.map(pnBtn).join("") + '</div>' : "") + '</div>').join("") + '</div>';
+      + (it.buttons && it.buttons.length > 3 ? '<div class="row pn-wheel"><select data-title="' + esc(it.title) + '">' + it.buttons.map((b) => '<option value=\''
+          + esc(JSON.stringify(b.action)) + '\'' + (b.confirm ? ' data-pc="' + esc(b.confirm) + '"' : "") + '>' + esc(b.label) + '</option>').join("") + '</select><button class="primary small" data-pw="1">▶</button></div>'
+        : it.buttons && it.buttons.length ? '<div class="pn-b">' + it.buttons.map(pnBtn).join("") + '</div>' : "") + '</div>').join("") + '</div>';
     if (p.buttons && p.buttons.length) h += '<div class="row wrap pn-bb">' + p.buttons.map(pnBtn).join("") + '</div>';
   }
   return h + '</div>';
 }
 let pnData = [];
+function pnRedraw() {
+  // hvert panel tegnes og flyttes til riktig fane og kategori (layout.js)
+  document.querySelectorAll(".card.pn").forEach((el) => el.parentNode.removeChild(el));
+  $("#pn-list").innerHTML = pnData.map(pnRender).join("");
+  if (window.ksPlacePanels) window.ksPlacePanels();
+  pnWire();
+}
 async function loadPanels() {
   if (document.body.classList.contains("limited")) { pnWrap.hidden = true; return; }
   let d; try { d = await X("panels"); } catch (e) { return; }
   pnData = d.panels || [];
-  $("#pn-list").innerHTML = pnData.map(pnRender).join("");
-  $$("#pn-list .pn-h").forEach((el) => (el.onclick = () => { const id = el.parentElement.dataset.pn; pnOpen.has(id) ? pnOpen.delete(id) : pnOpen.add(id); pnSave(); $("#pn-list").innerHTML = pnData.map(pnRender).join(""); pnWire(); }));
-  pnWire();
+  pnRedraw();
 }
 function pnWire() {
-  $$("#pn-list .pn-h").forEach((el) => (el.onclick = () => { const id = el.parentElement.dataset.pn; pnOpen.has(id) ? pnOpen.delete(id) : pnOpen.add(id); pnSave(); $("#pn-list").innerHTML = pnData.map(pnRender).join(""); pnWire(); }));
-  $$("#pn-list [data-pa]").forEach((el) => (el.onclick = (e) => { e.stopPropagation(); pnRun(JSON.parse(el.dataset.pa), el.dataset.pc); }));
-  $$("#pn-list [data-ps]").forEach((el) => (el.onchange = () => pnRun({ ...JSON.parse(el.dataset.ps), value: el.value }, el.dataset.pc)));
-  $$("#pn-list [data-pd]").forEach((el) => (el.onclick = () => pnDetail(JSON.parse(el.dataset.pd))));
-  $$("#pn-list [data-pq]").forEach((el) => (el.oninput = () => {
+  $$(".card.pn .pn-h").forEach((el) => (el.onclick = () => { const id = el.parentElement.dataset.pn; pnOpen.has(id) ? pnOpen.delete(id) : pnOpen.add(id); pnSave(); pnRedraw(); }));
+  $$(".card.pn [data-pa]").forEach((el) => (el.onclick = (e) => { e.stopPropagation(); pnRun(JSON.parse(el.dataset.pa), el.dataset.pc); }));
+  $$(".card.pn [data-ps]").forEach((el) => (el.onchange = () => pnRun({ ...JSON.parse(el.dataset.ps), value: el.value }, el.dataset.pc)));
+  $$(".card.pn [data-pw]").forEach((el) => (el.onclick = (e) => {      // rullehjul + «Kjør»
+    e.stopPropagation(); const sel = el.parentElement.querySelector("select"); if (!sel || !sel.value) return;
+    const o = sel.options[sel.selectedIndex]; pnRun(JSON.parse(sel.value), o.dataset.pc);
+  }));
+  $$(".card.pn [data-pd]").forEach((el) => (el.onclick = () => pnDetail(JSON.parse(el.dataset.pd))));
+  $$(".card.pn [data-pq]").forEach((el) => (el.oninput = () => {
     const q = el.value.toLowerCase(); el.parentElement.querySelectorAll(".pn-it").forEach((it) => (it.hidden = q && !it.dataset.q.includes(q)));
   }));
 }

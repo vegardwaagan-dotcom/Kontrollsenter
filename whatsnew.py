@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.66.0", "Ryddig mobilapp", [
+        ("Nytt", [
+            "Hver fane i appen er delt i kategorier – velg med rullehjulet øverst (eller pilene / sveip). Bare kortene "
+            "i valgt kategori vises, så du slipper å rulle langt ned. Appen husker valget",
+            "Styr: PC-en · Lyd og skjerm · Scener og hjemmet · Discord. Spill: Spillene · Klipp · Prestasjoner · VR og "
+            "strømming · Familie · Venner og PC-er. Verktøy: PC-verktøy · Historikk og strøm · Nett og NAS · "
+            "Fjernstyring. Innstillinger: Utseende · Varsler · PC-en og appen",
+            "PC-funksjonene ligger nå der de hører hjemme (spillene under Spill, radio og hjemme/borte under Styr …), "
+            "og hurtigkommandoene er et rullehjul på Hjem",
+            "Lange valglister (kommandoer, radiokanaler) er rullehjul i stedet for lange lister",
+        ]),
+    ]),
     ("0.65.0", "Mobilappen: alt fra PC-en", [
         ("Nytt", [
             "Ny seksjon «Alt fra PC-en» øverst i Verktøy i appen: hurtigkommandoer (samme som Ctrl+K), spillene med "
