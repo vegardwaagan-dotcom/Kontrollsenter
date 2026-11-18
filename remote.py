@@ -964,6 +964,12 @@ def _handler(remote):
             tok = h[7:].strip() if h.startswith("Bearer ") else ""
             d = remote.check(tok)
             if d:
+                try:
+                    import presence
+                    presence.seen_api(self.client_address[0])
+                except Exception:  # noqa: BLE001
+                    pass
+            if d:
                 self.device = d
                 return True
             self._send(401, {"error": "ikke paret"})

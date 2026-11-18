@@ -84,7 +84,61 @@ class SmartHomePage(Gtk.ScrolledWindow):
             row.set_subtitle_lines(3)
             row.connect("notify::active", lambda r, _p, k=key: smartauto.set_opt(k, r.get_active()))
             grp.add(row)
+        self.pres_row = Adw.ExpanderRow(title=i18n.tr("Hjemme / borte"),
+                                        subtitle=i18n.tr("Velg telefonene i huset. Scener kan slå seg på «Når noen "
+                                                         "kommer hjem» eller «Når alle har dratt» (Scener → Når). "
+                                                         "Tips: gi telefonene navn i lista lenger ned først."))
+        self.pres_row.set_subtitle_lines(3)
+        grp.add(self.pres_row)
+        import presence
+        ar = Adw.SpinRow.new_with_range(5, 120, 5)
+        ar.set_title(i18n.tr("Borte etter (minutter uten livstegn)"))
+        ar.set_value(presence.cfg().get("away_min", 20))
+
+        def set_away(r, _p):
+            c = presence.cfg()
+            c["away_min"] = int(r.get_value())
+            presence.save_cfg(c)
+        ar.connect("notify::value", set_away)
+        self.pres_row.add_row(ar)
+        self._pres_rows = []
         return grp
+
+    def _fill_presence(self, devs):
+        import presence
+        for r in self._pres_rows:
+            self.pres_row.remove(r)
+        self._pres_rows = []
+        chosen = {p.get("mac") or p.get("ip"): p for p in presence.cfg().get("phones") or []}
+        st = {p["name"]: p.get("home") for p in presence.state()["phones"]}
+        phones = [d for d in devs if d.get("kind") == "phone"]
+        for key, p in chosen.items():                       # valgte telefoner som ikke ble funnet nå
+            if not any((d.get("mac") or d["ip"]) == key for d in phones):
+                phones.append({"mac": p.get("mac", ""), "ip": p.get("ip", ""), "name": p["name"], "kind_name": ""})
+        if not phones:
+            r = Adw.ActionRow(title=i18n.tr("Fant ingen telefoner på nettet ennå"),
+                              subtitle=i18n.tr("Telefonen må være koblet til wifi-en hjemme. Trykk «Søk på nytt»."))
+            self.pres_row.add_row(r)
+            self._pres_rows.append(r)
+            return
+        for d in phones:
+            key = d.get("mac") or d["ip"]
+            name = d.get("name") or f"{i18n.tr('Mobil')} …{d['ip'].rsplit('.', 1)[-1]}"
+            here = st.get(chosen[key]["name"]) if key in chosen else None
+            r = Adw.SwitchRow(title=GLib.markup_escape_text(name),
+                              subtitle=GLib.markup_escape_text(d["ip"] + ("  ·  🏠 " + i18n.tr("hjemme") if here else "")),
+                              active=key in chosen)
+
+            def toggle(w, _p, d=d, key=key, name=name):
+                c = presence.cfg()
+                ph = [p for p in c.get("phones") or [] if (p.get("mac") or p.get("ip")) != key]
+                if w.get_active():
+                    ph.append({"name": name, "mac": d.get("mac", ""), "ip": d["ip"]})
+                c["phones"] = ph
+                presence.save_cfg(c)
+            r.connect("notify::active", toggle)
+            self.pres_row.add_row(r)
+            self._pres_rows.append(r)
 
     # ---------- henting ----------
     def _tick(self):
@@ -148,6 +202,10 @@ class SmartHomePage(Gtk.ScrolledWindow):
         self.body.append(lab)
 
     def render(self, d):
+        try:
+            self._fill_presence(d.get("devices") or [])
+        except Exception:  # noqa: BLE001
+            pass
         while (ch := self.body.get_first_child()):
             self.body.remove(ch)
         devs = d.get("devices") or []
@@ -381,6 +439,18 @@ class SmartHomePage(Gtk.ScrolledWindow):
         self._debounce(sc, lambda v: self.act({"do": "cast", "ip": x["ip"], "what": "volume", "value": int(v)}))
         vb.append(sc)
         box.append(vb)
+        import smarthome
+        names = [n for n, _u in smarthome.radio_list()]
+        rb = Gtk.Box(spacing=6)
+        rb.append(Gtk.Image(icon_name="audio-x-generic-symbolic"))
+        dd = Gtk.DropDown.new_from_strings(names)
+        dd.set_hexpand(True)
+        dd.set_tooltip_text(i18n.tr("Nettradio rett på høyttaleren – PC-en kan slås av etterpå"))
+        rb.append(dd)
+        rb.append(_btn("📻 " + i18n.tr("Spill radio"),
+                       lambda: self.act({"do": "cast", "ip": x["ip"], "what": "radio",
+                                         "value": names[dd.get_selected()]}, quiet=False)))
+        box.append(rb)
         return c
 
     # ---- vanlige enheter ----

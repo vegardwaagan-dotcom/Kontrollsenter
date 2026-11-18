@@ -834,7 +834,64 @@ def cast_state(ip):
         c.close()
 
 
+RADIO = [("NRK P1", "https://lyd.nrk.no/nrk_radio_p1_ostlandssendingen_mp3_h"),
+         ("NRK P2", "https://lyd.nrk.no/nrk_radio_p2_mp3_h"),
+         ("NRK P3", "https://lyd.nrk.no/nrk_radio_p3_mp3_h"),
+         ("NRK mP3", "https://lyd.nrk.no/nrk_radio_mp3_mp3_h"),
+         ("NRK Klassisk", "https://lyd.nrk.no/nrk_radio_klassisk_mp3_h"),
+         ("NRK Jazz", "https://lyd.nrk.no/nrk_radio_jazz_mp3_h")]
+DEFAULT_RECEIVER = "CC1AD845"
+
+
+def radio_list():
+    """Innebygde kanaler + egne (~/.config/systemmonitor/radio.json: [{"name", "url"}])."""
+    out = list(RADIO)
+    try:
+        with open(os.path.expanduser("~/.config/systemmonitor/radio.json")) as f:
+            out += [(x["name"], x["url"]) for x in json.load(f) if str(x.get("url", "")).startswith("http")]
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return out
+
+
+def cast_radio(ip, name):
+    """Spill en radiokanal direkte på Chromecast/Nest – PC-en trenger ikke være på etterpå."""
+    url = dict(radio_list()).get(name)
+    if not url:
+        raise ValueError("ukjent radiokanal")
+    c = _Cast(ip)
+    try:
+        app = None
+        st = c.request("receiver-0", NS_RECV, {"type": "LAUNCH", "appId": DEFAULT_RECEIVER}, ("RECEIVER_STATUS",
+                                                                                              "LAUNCH_ERROR"))
+        end = time.time() + 10
+        while time.time() < end:
+            if st.get("type") == "LAUNCH_ERROR":
+                raise RuntimeError("enheten ville ikke starte avspilleren")
+            app = next((a for a in (st.get("status") or {}).get("applications") or []
+                        if a.get("appId") == DEFAULT_RECEIVER and a.get("transportId")), None)
+            if app:
+                break
+            time.sleep(0.6)
+            st = c.request("receiver-0", NS_RECV, {"type": "GET_STATUS"}, ("RECEIVER_STATUS",))
+        if not app:
+            raise TimeoutError("avspilleren startet ikke")
+        c.connect(app["transportId"])
+        r = c.request(app["transportId"], NS_MEDIA, {
+            "type": "LOAD", "autoplay": True,
+            "media": {"contentId": url, "contentType": "audio/mpeg", "streamType": "LIVE",
+                      "metadata": {"metadataType": 3, "title": name, "artist": "Radio"}}},
+            ("MEDIA_STATUS", "LOAD_FAILED", "LOAD_CANCELLED", "INVALID_REQUEST"))
+        if r.get("type") != "MEDIA_STATUS":
+            raise RuntimeError(f"kanalen kunne ikke spilles ({r.get('type')})")
+        return f"Spiller {name} ✓"
+    finally:
+        c.close()
+
+
 def cast_do(ip, what, value=None):
+    if what == "radio":
+        return cast_radio(ip, str(value or ""))
     c = _Cast(ip)
     try:
         if what == "volume":

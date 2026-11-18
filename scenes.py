@@ -20,7 +20,11 @@ FANS = [(None, "Ikke endre"), ("auto", "Auto"), ("curve", "Kurve"), (30, "Stille
 TV = [(None, "Ikke endre"), ("on", "Slå på"), ("off", "Slå av")]
 QUIET = [(None, "Ikke endre"), (True, "Stille – ingen varsler"), (False, "Vanlige varsler")]
 TRIGGERS = [("manual", "Bare når jeg trykker"), ("game_start", "Når et spill starter"),
-            ("game_end", "Når et spill avsluttes"), ("time", "Hver dag klokka …")]
+            ("game_end", "Når et spill avsluttes"), ("time", "Hver dag klokka …"),
+            ("home", "Når noen kommer hjem"), ("away", "Når alle har dratt hjemmefra"),
+            ("cheap_power", "Når strømmen er billigst i natt")]
+WHY = {"game_start": "spillet startet", "game_end": "spillet ble avsluttet", "home": "noen kom hjem",
+       "away": "alle har dratt", "cheap_power": "billigste strømtime"}
 
 DEFAULTS = [
     {"id": "spillkveld", "name": "Spillkveld", "icon": "🎮", "color": "#ff2bd6",
@@ -253,12 +257,11 @@ _FIRED = {}
 
 
 def on_event(win, kind, game=None):
-    """kind = «game_start» eller «game_end» (fra spillprofilene)."""
+    """kind = «game_start»/«game_end» (spillprofilene), «home»/«away» (presence) eller «cheap_power» (pricejobs)."""
     for s in load()["scenes"]:
         t = s.get("trigger") or {}
         if t.get("auto") and t.get("type") == kind:
-            run(win, s["id"], why=("spillet startet" if kind == "game_start" else "spillet ble avsluttet")
-                + (f": {game}" if game else ""), done=_toast(win))
+            run(win, s["id"], why=WHY.get(kind, kind) + (f": {game}" if game else ""), done=_toast(win))
 
 
 def tick(win):

@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.45.0", "Smartere hjem", [
+        ("Nytt", [
+            "Hjemme/borte (Smart Hjem → Automatikk): velg telefonene i huset, så kan scener slå seg på «Når noen kommer "
+            "hjem» eller «Når alle har dratt». Alt skjer lokalt på hjemmenettet",
+            "Strømpris-smart: ny scene-utløser «Når strømmen er billigst i natt», og den ukentlige sikkerhetskopien til "
+            "NAS-en kjøres i den billigste timen mellom 22 og 07",
+            "Nettradio rett på Chromecast/Nest: NRK P1, P2, P3, mP3, Klassisk og Jazz – høyttaleren spiller selv, så "
+            "PC-en kan slås av. Egne kanaler kan legges i radio.json",
+        ]),
+    ]),
     ("0.44.0", "Mobilen mens du spiller", [
         ("Nytt", [
             "Levende varsel på telefonen mens et spill kjører: spillet, FPS, CPU-/GPU-temperatur og spilletid i dag – "

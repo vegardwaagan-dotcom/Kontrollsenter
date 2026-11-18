@@ -435,6 +435,12 @@ class Background:
             pass
         self._watch_extra()
         self._smart_check()
+        for mod in ("presence", "pricejobs"):
+            try:
+                m = __import__(mod)
+                m.tick(self.win, self.notify) if mod == "pricejobs" else m.tick(self.win)
+            except Exception:  # noqa: BLE001
+                pass
         try:                                              # spilletid per dag (grenser og oversikt)
             now = time.monotonic()
             dt = min(30.0, now - getattr(self, "_play_t", now))
