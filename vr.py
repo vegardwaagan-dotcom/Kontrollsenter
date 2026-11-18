@@ -556,20 +556,38 @@ def checks(mode=None):
     q = quest() if (use_alvr or mode == "wired") else {"state": "skip"}
     if use_alvr:
         a = adb()
-        add("adb", "Android-verktøy (adb)", bool(a), "Til å installere ALVR på Questen og kabel-tilkobling", True)
-        if q["state"] == "device":
-            pkg = alvr_client_pkg()
-            add("alvr_client", "ALVR-appen på Questen", bool(pkg), pkg or "", True)
-        elif q["state"] == "unauthorized":
+        add("adb", "Android-verktøy (adb)", bool(a), "Til å installere ALVR i brillene og kabel-tilkobling", True)
+    if mode == "wired":
+        # ---- kablet: bare kabelen ----
+        if q.get("state") == "unauthorized":
             add("quest_auth", "Godkjenn PC-en i brillene", False, "", False,
                 "Ta på brillene og trykk «Tillat» (kryss av for «Tillat alltid fra denne datamaskinen»).")
-        elif mode == "wired" or not alvr_client_installed_flag():
-            add("quest_usb", "Questen koblet til med USB", False, "", False,
-                "Koble Questen til PC-en med USB-C-kabel (USB 3). Første gang: slå på utviklermodus i Meta "
-                "Horizon-appen på mobilen (Meny → Enheter → Utviklermodus), og godkjenn PC-en i brillene.")
-    elif mode == "wired":
-        add("quest_usb", "Questen koblet til med USB", bool(q.get("usb")), "", False,
-            None if q.get("usb") else "Koble til med en USB 3-kabel (USB-C), og velg «Link» i Questen.")
+        else:
+            usb = q.get("usb") or q.get("state") == "device"
+            add("quest_usb", "Questen koblet til med kabel", usb, "USB-C" if usb else "", False,
+                None if usb else ("Kabel ikke koblet til – koble Questen til PC-en med en USB 3-kabel (USB-C)." +
+                                  (" Første gang: slå på utviklermodus i Meta Horizon-appen på mobilen og godkjenn "
+                                   "PC-en i brillene." if use_alvr else " Velg «Link» i brillene.")))
+        if use_alvr and q.get("state") == "device":
+            pkg = alvr_client_pkg()
+            add("alvr_client", "ALVR-appen i brillene", bool(pkg), pkg or "", True)
+    else:
+        # ---- trådløst: Questen på Wi-Fi ----
+        h = headset()
+        found = h["wifi_online"] or h["streaming"]
+        add("quest_wifi_found", "Questen funnet på Wi-Fi", found,
+            (f"{h['wifi_ip']}" + (" · strømmer nå" if h["streaming"] else "")) if found else "", False,
+            None if found else "Slå på brillene og koble dem til samme Wi-Fi som PC-en, og åpne " +
+            ("ALVR" if use_alvr else "Steam Link") + " i brillene.", warn=not found)
+        if use_alvr:
+            known = bool(_alvr_client_ips()) or alvr_client_installed_flag()
+            if q.get("state") == "device":
+                pkg = alvr_client_pkg()
+                add("alvr_client", "ALVR-appen i brillene", bool(pkg), pkg or "", True)
+            elif not known:
+                add("alvr_client_tip", "ALVR-appen i brillene", False, "", False,
+                    "Har du ikke ALVR i brillene ennå: koble dem til med kabel én gang, så legger Kontrollsenter den "
+                    "inn. Har du den allerede, åpne den – da blir dette grønt.", warn=True)
     if mode == "wireless":
         w = pc_wired()
         add("pc_lan", "PC-en på kabel til ruteren", w, "Gir jevnest trådløs VR", False,

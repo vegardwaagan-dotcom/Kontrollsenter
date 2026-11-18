@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.59.3", "VR: riktig sjekk for trådløst og kabel", [
+        ("Forbedret", [
+            "Trådløst: sjekklisten viser «Questen funnet på Wi-Fi» i stedet for å be om USB-kabel",
+            "Med kabel: «Questen koblet til med kabel» – eller «Kabel ikke koblet til» med hva du skal gjøre",
+            "ALVR-appen i brillene regnes som installert når ALVR allerede kjenner brillene – ellers bare et tips",
+        ]),
+    ]),
     ("0.59.2", "VR: se hodesettet", [
         ("Nytt", [
             "VR-siden viser hodesettet øverst: 🔌 kabel (tilkoblet, modell og batteri) og 📶 Wi-Fi (på nettet, eller "
