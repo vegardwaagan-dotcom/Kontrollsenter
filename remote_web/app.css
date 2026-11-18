@@ -751,6 +751,9 @@ body.eco.live-bg::before { animation: none; }
 /* mål og ukesrapport */
 .goals { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin: 6px 0 10px; }
 .goal { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 8px; border-radius: 18px; min-height: 96px; }
+.goal[disabled] { opacity: .45; }
+.plan-form { gap: 6px; margin-top: 10px; } .plan-form input, .plan-form select { flex: 1 1 110px; min-width: 0; }
+.plan-day { margin-top: 8px; } .plan-it { padding: 4px 0; }
 .goal .gi { font-size: 26px; } .goal small { color: var(--dim); font-size: 11px; }
 .goal-req { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; }
 .wk { margin: 0 0 12px; } .wk .det-track { margin: 6px 0 4px; }

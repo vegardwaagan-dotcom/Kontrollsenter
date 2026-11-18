@@ -138,6 +138,42 @@ class FamilyPage(Gtk.ScrolledWindow):
         vr.append(sw)
         i.append(vr)
 
+        # ---- ukeplan ----
+        c, i = _card("Ukeplan", "Felles for hele huset (ligger på NAS-en). Hver PC minner om avtalene sine – f.eks. "
+                                "«Fotballtrening 17:30» med varsel 15 minutter før, så rekker man å lagre spillet.")
+        box.append(c)
+        form = Gtk.Box(spacing=6)
+        import familyplus
+        self.p_day = Gtk.DropDown.new_from_strings([i18n.tr(d) for d in familyplus.DAYS])
+        self.p_day.set_selected(time.localtime().tm_wday)
+        self.p_at = Gtk.Entry(text="17:00", width_chars=5, max_length=5)
+        self.p_text = Gtk.Entry(placeholder_text=i18n.tr("Hva skjer? (f.eks. Fotballtrening)"), hexpand=True)
+        self.p_who = Gtk.Entry(placeholder_text=i18n.tr("Hvem (tomt = alle)"), width_chars=12)
+        add = Gtk.Button(label=i18n.tr("Legg til"))
+        add.add_css_class("suggested-action")
+        add.connect("clicked", lambda *_: self._plan_add())
+        for w in (self.p_day, self.p_at, self.p_text, self.p_who, add):
+            form.append(w)
+        i.append(form)
+        self.plan_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        i.append(self.plan_box)
+
+        # ---- belønningsbutikk ----
+        c, i = _card("Belønningsbutikk", "Hvert godkjente mål gir stjerner (1 ⭐ per 5 minutter). Stjernene kan løses "
+                                         "inn her – en voksen må godkjenne.")
+        box.append(c)
+        self.shop_head = Gtk.Label(xalign=0)
+        self.shop_head.add_css_class("title-3")
+        i.append(self.shop_head)
+        self.shop_flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=3,
+                                     min_children_per_line=2, column_spacing=10, row_spacing=10, homogeneous=True)
+        i.append(self.shop_flow)
+        self.shop_msg = Gtk.Label(xalign=0, wrap=True)
+        self.shop_msg.add_css_class("ks-sub")
+        i.append(self.shop_msg)
+        self.shop_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        i.append(self.shop_list)
+
         # ---- ukesrapport og ranking ----
         c, i = _card("Ukesrapport og ranking", "Spilletid per person, mest spilte spill og strøm denne uka – for alle "
                                                "PC-ene i huset. Kommer også som varsel søndag kveld.")
@@ -150,8 +186,11 @@ class FamilyPage(Gtk.ScrolledWindow):
         self._show_lock()
         self._show_goals()
         self._load_week()
+        self._load_plan()
+        self._show_shop()
         self.refresh()
-        GLib.timeout_add_seconds(30, lambda: (self.get_mapped() and (self.refresh(), self._show_goals()), True)[1])
+        GLib.timeout_add_seconds(30, lambda: (self.get_mapped() and (self.refresh(), self._show_goals(),
+                                                                     self._show_shop()), True)[1])
 
     # ---- familiekontroll ----
     def _show_lock(self):
@@ -222,6 +261,125 @@ class FamilyPage(Gtk.ScrolledWindow):
                 self.goal_msg.set_label(str(e))
             self._show_goals()
         if familylock.locked():                         # barna kan ikke godkjenne sine egne
+            familylock.ask(self.get_root(), "Skriv familiekoden for å svare.", do, lambda: None)
+        else:
+            do()
+
+    # ---- ukeplan ----
+    def _load_plan(self, max_age=600):
+        def work():
+            import familyplus
+            try:
+                p, err = familyplus.load_plan(max_age), None
+            except Exception as e:  # noqa: BLE001
+                p, err = {"items": []}, str(e)
+            GLib.idle_add(self._show_plan, p, err)
+        threading.Thread(target=work, daemon=True).start()
+        return False
+
+    def _show_plan(self, plan, err=None):
+        import familyplus
+        while (ch := self.plan_box.get_first_child()) is not None:
+            self.plan_box.remove(ch)
+        today = time.localtime().tm_wday
+        if err:
+            self.plan_box.append(Gtk.Label(label=err, xalign=0))
+        if not plan["items"]:
+            lab = Gtk.Label(label=i18n.tr("Ingen avtaler ennå."), xalign=0)
+            lab.add_css_class("dim-label")
+            self.plan_box.append(lab)
+        last = None
+        for x in plan["items"]:
+            if x["day"] != last:
+                last = x["day"]
+                h = Gtk.Label(label=i18n.tr(familyplus.DAYS[x["day"]]) + (" · " + i18n.tr("i dag") if x["day"] == today else ""),
+                              xalign=0, margin_top=6)
+                h.add_css_class("heading")
+                self.plan_box.append(h)
+            row = Gtk.Box(spacing=10)
+            who = "" if x.get("who") in ("*", "", None) else f" · {x['who']}"
+            row.append(Gtk.Label(label=f"{x['at']}  {x['text']}{who}", xalign=0, hexpand=True, wrap=True))
+            sub = Gtk.Label(label=f"🔔 {x.get('remind', 10)} min")
+            sub.add_css_class("dim-label")
+            row.append(sub)
+            rm = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=i18n.tr("Fjern"))
+            rm.add_css_class("flat")
+            rm.connect("clicked", lambda _b, iid=x["id"]: self._plan_do(lambda: familyplus.plan_del(iid)))
+            row.append(rm)
+            self.plan_box.append(row)
+        return False
+
+    def _plan_add(self):
+        import familyplus
+        day, at = self.p_day.get_selected(), self.p_at.get_text().strip()
+        text, who = self.p_text.get_text(), self.p_who.get_text().strip() or "*"
+        self._plan_do(lambda: familyplus.plan_add(day, at, text, who, 15))
+        self.p_text.set_text("")
+
+    def _plan_do(self, fn):
+        def work():
+            try:
+                msg = fn()
+            except Exception as e:  # noqa: BLE001
+                msg = str(e)
+            GLib.idle_add(lambda: (self.msg.set_label(i18n.tr(msg)), self._load_plan(0), False)[2])
+        threading.Thread(target=work, daemon=True).start()
+
+    # ---- butikk ----
+    def _show_shop(self):
+        import familyplus
+        s = familyplus.shop()
+        self.shop_head.set_label(f"⭐ {s['stars']} " + i18n.tr("stjerner"))
+        while (ch := self.shop_flow.get_first_child()) is not None:
+            self.shop_flow.remove(ch)
+        for it in s["items"]:
+            b = Gtk.Button()
+            b.add_css_class("ks-goal")
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            ic = Gtk.Label(label=it["icon"])
+            ic.add_css_class("title-1")
+            col.append(ic)
+            col.append(Gtk.Label(label=i18n.tr(it["name"]), wrap=True, justify=Gtk.Justification.CENTER))
+            pr = Gtk.Label(label=f"{it['price']} ⭐")
+            pr.add_css_class("dim-label")
+            col.append(pr)
+            b.set_child(col)
+            b.set_sensitive(s["stars"] >= it["price"])
+            b.connect("clicked", lambda _b, iid=it["id"]: self._shop_req(iid))
+            self.shop_flow.append(b)
+        while (ch := self.shop_list.get_first_child()) is not None:
+            self.shop_list.remove(ch)
+        for r in s["pending"]:
+            row = Gtk.Box(spacing=10)
+            row.append(Gtk.Label(label=f"{r['icon']} {r['name']} · {r['price']} ⭐ · {r.get('by', '')}",
+                                 xalign=0, hexpand=True, wrap=True))
+            for lab, ok in (("Godkjenn", True), ("Avslå", False)):
+                bb = Gtk.Button(label=i18n.tr(lab))
+                if ok:
+                    bb.add_css_class("suggested-action")
+                bb.connect("clicked", lambda _b, rid=r["id"], ok=ok: self._shop_answer(rid, ok))
+                row.append(bb)
+            self.shop_list.append(row)
+        return False
+
+    def _shop_req(self, iid):
+        import familyplus
+        try:
+            self.shop_msg.set_label(i18n.tr(familyplus.shop_request(iid, "PC-en")))
+        except Exception as e:  # noqa: BLE001
+            self.shop_msg.set_label(str(e))
+        self._show_shop()
+
+    def _shop_answer(self, rid, ok):
+        import familyplus
+
+        def do():
+            try:
+                self.shop_msg.set_label(i18n.tr(familyplus.shop_answer(rid, ok)))
+            except Exception as e:  # noqa: BLE001
+                self.shop_msg.set_label(str(e))
+            self._show_shop()
+        if familylock.locked():
             familylock.ask(self.get_root(), "Skriv familiekoden for å svare.", do, lambda: None)
         else:
             do()

@@ -454,6 +454,11 @@ def goal_answer(rid, ok):
     save_cfg(c)
     if ok:
         give_bonus(r["minutes"])
+        try:
+            import familyplus
+            familyplus.add_stars(max(1, int(r["minutes"]) // 5), r["name"])
+        except Exception:  # noqa: BLE001
+            pass
     _ev("goal", f"{r['icon']} {r['name']}: " + ("godkjent ✓" if ok else "ikke godkjent"),
         f"{r['minutes']} min ekstra spilletid i dag" if ok else "", "game")
     return "Godkjent – " + str(r["minutes"]) + " min ekstra i dag" if ok else "Avslått"

@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.46.0", "Familieplan og belønningsbutikk", [
+        ("Nytt", [
+            "Felles ukeplan (Familie-siden og mobilappen): legg inn avtaler som «Fotballtrening tirsdag 17:30». Planen "
+            "ligger på NAS-en, og hver PC varsler 15 minutter før – også midt i et spill – så man rekker å lagre",
+            "Belønningsbutikk: godkjente mål gir stjerner (1 ⭐ per 5 minutter). Stjernene løses inn mot ekstra "
+            "spilletid, å velge middag eller film, være oppe lenger i helgen m.m. – en voksen godkjenner",
+            "Ny varseltype «Ukeplan» under Innstillinger → Varsler",
+        ]),
+    ]),
     ("0.45.0", "Smartere hjem", [
         ("Nytt", [
             "Hjemme/borte (Smart Hjem → Automatikk): velg telefonene i huset, så kan scener slå seg på «Når noen kommer "

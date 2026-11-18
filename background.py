@@ -42,6 +42,7 @@ KINDS = [
     ("health", "Diskhelse og rask oppvarming", "Disken nærmer seg slitt, eller temperaturen stiger unormalt raskt.",
      ["smart*", "temprise*"]),
     ("goal", "Mål og belønning", "Når noen er ferdig med lekser e.l. og ber om ekstra spilletid – og svaret.", ["goal"]),
+    ("plan", "Ukeplan", "Påminnelser om avtaler i familiens ukeplan (trening, middag, lekser …).", ["plan"]),
     ("weekly", "Ukesrapport", "Søndag kveld: spilletid per person, mest spilte spill og strøm denne uka.", ["weekly"]),
     ("cleanup", "Månedlig opprydding", "Rapport når Kontrollsenter har ryddet trygge ting (cache, miniatyrbilder).",
      ["cleanup"]),
@@ -435,6 +436,17 @@ class Background:
             pass
         self._watch_extra()
         self._smart_check()
+        if time.time() - getattr(self, "_plan_t", 0) > 55:            # ukeplanen: sjekk hvert minutt
+            self._plan_t = time.time()
+
+            def plan():
+                try:
+                    import familyplus
+                    familyplus.plan_tick(lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1]))
+                except Exception:  # noqa: BLE001
+                    pass
+            import threading
+            threading.Thread(target=plan, daemon=True).start()
         for mod in ("presence", "pricejobs"):
             try:
                 m = __import__(mod)

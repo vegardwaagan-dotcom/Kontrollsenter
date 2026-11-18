@@ -555,6 +555,54 @@ async function loadGoals() {
   $$("#goal-pending [data-ok]").forEach((b) => (b.onclick = async () => { await act({ a: "goal_ok", id: b.dataset.ok, ok: true }); loadGoals(); }));
   $$("#goal-pending [data-no]").forEach((b) => (b.onclick = async () => { await act({ a: "goal_ok", id: b.dataset.no, ok: false }); loadGoals(); }));
 }
+const planCard = document.createElement("div");
+planCard.className = "card"; planCard.id = "c-plan";
+planCard.innerHTML = '<h2>Ukeplan</h2><p class="dim small">Felles for hele huset. PC-ene minner om avtalene sine.</p>'
+  + '<div id="plan-list" class="dim small">Henter …</div>'
+  + '<div class="row wrap plan-form"><select id="plan-day"></select><input id="plan-at" type="time" value="17:00">'
+  + '<input id="plan-text" placeholder="Hva skjer?"><input id="plan-who" placeholder="Hvem (tomt = alle)">'
+  + '<button class="primary" id="plan-add">Legg til</button></div>';
+const shopCard = document.createElement("div");
+shopCard.className = "card"; shopCard.id = "c-shop";
+shopCard.innerHTML = '<h2>Belønningsbutikk <span id="shop-stars" class="chip"></span></h2>'
+  + '<p class="dim small">Godkjente mål gir stjerner. Løs dem inn her – en voksen godkjenner.</p>'
+  + '<div class="goals" id="shop-items"></div><div id="shop-pending"></div>';
+{ const fg = $("#fam-grid"); if (fg) { fg.insertBefore(shopCard, weekCard); fg.insertBefore(planCard, shopCard); } }
+async function loadPlan() {
+  let p; try { p = await X("plan"); } catch (e) { planCard.hidden = true; return; }
+  planCard.hidden = false;
+  const today = (new Date().getDay() + 6) % 7;
+  const sel = $("#plan-day");
+  if (!sel.options.length) { sel.innerHTML = p.days.map((d, i) => '<option value="' + i + '">' + esc(d) + '</option>').join(""); sel.value = today; }
+  let last = -1;
+  $("#plan-list").innerHTML = p.items.length ? p.items.map((x) => {
+    const h = x.day !== last ? '<div class="plan-day"><b>' + esc(p.days[x.day]) + (x.day === today ? " · i dag" : "") + '</b></div>' : "";
+    last = x.day;
+    return h + '<div class="row between plan-it"><span>' + esc(x.at) + ' &nbsp;' + esc(x.text)
+      + (x.who && x.who !== "*" ? ' <small class="dim">· ' + esc(x.who) + '</small>' : "") + '</span><button class="soft" data-pdel="' + esc(x.id) + '">✕</button></div>';
+  }).join("") : "Ingen avtaler ennå.";
+  $$("[data-pdel]").forEach((b) => (b.onclick = async () => { await act({ a: "plan_del", id: b.dataset.pdel }); loadPlan(); }));
+}
+$("#plan-add").onclick = async () => {
+  const text = $("#plan-text").value.trim(); if (!text) { toast("Skriv hva det gjelder"); return; }
+  await act({ a: "plan_add", day: +$("#plan-day").value, at: $("#plan-at").value, text, who: $("#plan-who").value.trim() || "*", remind: 15 });
+  $("#plan-text").value = ""; loadPlan();
+};
+async function loadShop() {
+  let s; try { s = await X("shop"); } catch (e) { shopCard.hidden = true; return; }
+  shopCard.hidden = false;
+  $("#shop-stars").textContent = "⭐ " + s.stars;
+  $("#shop-items").innerHTML = s.items.map((x) => '<button type="button" class="goal" data-shop="' + esc(x.id) + '"' + (s.stars < x.price ? " disabled" : "")
+    + '><span class="gi">' + esc(x.icon) + '</span><span>' + esc(x.name) + '</span><small>' + x.price + ' ⭐</small></button>').join("");
+  $$("[data-shop]").forEach((b) => (b.onclick = async () => { vibe(10); await act({ a: "shop_req", item: b.dataset.shop }); loadShop(); }));
+  const full = !document.body.classList.contains("limited");
+  $("#shop-pending").innerHTML = s.pending.map((r) => '<div class="row between goal-req"><span>' + esc(r.icon) + ' <b>' + esc(r.name)
+    + '</b><br><small class="dim">' + esc(r.pc || "") + ' · ' + r.price + ' ⭐</small></span>'
+    + (full ? '<span class="row"><button class="primary" data-sok="' + esc(r.id) + '">Godkjenn</button><button class="soft" data-sno="' + esc(r.id) + '">Avslå</button></span>'
+      : '<span class="dim small">Venter …</span>') + '</div>').join("");
+  $$("[data-sok]").forEach((b) => (b.onclick = async () => { await act({ a: "shop_ok", id: b.dataset.sok, ok: true }); loadShop(); }));
+  $$("[data-sno]").forEach((b) => (b.onclick = async () => { await act({ a: "shop_ok", id: b.dataset.sno, ok: false }); loadShop(); }));
+}
 async function loadWeekly() {
   try {
     const r = await X("weekly");
@@ -770,7 +818,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   dashSetTab(t);
   if (t === "system") loadNotify();
   if (t === "kontroll") { loadScenes(); loadDiscord(); }
-  if (t === "spill") { loadGoals(); loadWeekly(); }
+  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); }
 };
 dashWire();
 if (tab === "system") loadNotify();

@@ -726,6 +726,19 @@ def _feature_action(win, kind, a):
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "plan_add":                       # ny avtale i familiens ukeplan
+        import familyplus
+        return True, familyplus.plan_add(a.get("day", 0), str(a.get("at", "")), str(a.get("text", "")),
+                                         str(a.get("who", "*")), int(a.get("remind", 10)))
+    if kind == "plan_del":
+        import familyplus
+        return True, familyplus.plan_del(str(a.get("id", "")))
+    if kind == "shop_req":                       # løs inn stjerner (må godkjennes)
+        import familyplus
+        return True, familyplus.shop_request(str(a.get("item", "")), a.get("_dev") or "Mobil")
+    if kind == "shop_ok":
+        import familyplus
+        return True, familyplus.shop_answer(str(a.get("id", "")), bool(a.get("ok")))
     if kind == "goal_ok":                        # foreldrene godkjenner eller avslår
         import features as F
         return True, F.goal_answer(str(a.get("id", "")), bool(a.get("ok")))
@@ -826,7 +839,7 @@ WEB_TYPES = {".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js
 
 
 LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "uilog",
-              "goal_req"}   # «begrenset» tilgang
+              "goal_req", "shop_req"}   # «begrenset» tilgang
 
 
 class Remote:
@@ -1152,6 +1165,13 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "plan":
+                import familyplus
+                import savegames
+                return self._send(200, {**familyplus.load_plan(), "days": familyplus.DAYS, "me": savegames.pc_name()})
+            if what == "shop":
+                import familyplus
+                return self._send(200, familyplus.shop())
             if what == "weekly":
                 import features as F
                 r = F.weekly_report()
