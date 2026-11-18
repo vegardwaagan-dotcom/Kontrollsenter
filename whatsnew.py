@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.57.0", "Søk, enkel modus og ny «Hva er nytt»", [
+        ("Nytt", [
+            "Søk i hele Kontrollsenter: Ctrl+K (eller forstørrelsesglasset i sidemenyen) finner alle kort, brytere og "
+            "valg – og hopper rett dit, med riktig fane og kortet markert",
+            "Enkel modus (Innstillinger → Generelt): viser bare Oversikt, Lyd, Spill, Discord, Scener, Smart Hjem, "
+            "Familie og Innstillinger. Fint på barnas PC-er – familiekoden trengs for å slå den av",
+            "Ny «Hva er nytt»: det nye siden sist som kort med illustrasjon og «Vis meg»-knapp rett til funksjonen; "
+            "eldre versjoner sammenfoldet og søkbare",
+        ]),
+    ]),
     ("0.56.0", "Mobilen: widget, snarveier og push", [
         ("Nytt", [
             "Ny widget «Spillstatus» på Android-hjemskjermen: hva som spilles nå, FPS, CPU- og GPU-temperatur, "
@@ -1142,31 +1152,160 @@ def mark_seen():
         pass
 
 
+def last_seen():
+    try:
+        with open(SEEN) as f:
+            return json.load(f).get("version")
+    except (OSError, ValueError):
+        return None
+
+
+def _vt(v):
+    try:
+        return tuple(int(x) for x in str(v).split("."))
+    except ValueError:
+        return (0,)
+
+
+# Illustrasjon og «Vis meg»-side ut fra hva punktet handler om (første treff vinner)
+ART = [
+    (r"skjermkort|GPU|FPS|HDR|oppløsning|Hz\b", "🖥️", "gpu"), (r"lyd|mikrofon|hodesett|høyttaler", "🎧", "lyd"),
+    (r"nattlys|lysstyrke", "🌙", "gpu"), (r"klipp|Medal|opptak|Game Bar", "🎬", "spill"),
+    (r"spill|Steam|launcher|Heroic|Lutris", "🎮", "spill"), (r"Discord", "💬", "discord"),
+    (r"Familie|leksetid|nettfilter|ukeplan|stjern|belønning|spilletid|leggetid", "👨‍👩‍👧", "familie"),
+    (r"Scene", "✨", "scener"), (r"Smart Hjem|Hue|Chromecast|radio|hjemme/borte|strømpris", "🏠", "smarthjem"),
+    (r"Strømming|Sunshine|Moonlight|RustDesk|«Se på»", "📡", "stromming"),
+    (r"mobil|Android|widget|telefon|ntfy|push", "📱", None), (r"NAS|sikkerhetskopi|oppdatering|selvtest|versjon", "🛡️", "innstillinger"),
+    (r"Innstillinger|søk|enkel modus", "⚙️", "innstillinger"), (r"Vedlikehold|oppstart|ytelsestest|vifte", "🔧", "verktoy"),
+]
+
+
+def _art(text):
+    import re as _re
+    for rx, emoji, page in ART:
+        if _re.search(rx, text, _re.I):
+            return emoji, page
+    return "✨", None
+
+
+CSS = """
+.ks-news-hero { border-radius: 22px; padding: 18px 20px; background-image: linear-gradient(135deg, alpha(@accent_bg_color, .55), alpha(@accent_bg_color, .12)); }
+.ks-news-card { border-radius: 18px; padding: 14px; }
+.ks-news-art { font-size: 34px; min-width: 56px; min-height: 56px; border-radius: 16px; background: alpha(currentColor, .07); }
+.ks-news-ver { font-weight: 800; }
+"""
+
+
 class WhatsNewDialog(Adw.Dialog):
+    """«Hva er nytt?» – det nye siden sist øverst som kort med illustrasjon og «Vis meg», eldre versjoner
+    sammenfoldet og søkbare."""
+
     def __init__(self):
-        super().__init__(title="Hva er nytt?", content_width=720, content_height=720)
+        super().__init__(title=i18n.tr("Hva er nytt?"), content_width=760, content_height=760)
+        try:
+            import theme
+            theme.add_css(CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 4)
+        except Exception:  # noqa: BLE001
+            pass
+        seen = last_seen()
         tv = Adw.ToolbarView()
         tv.add_top_bar(Adw.HeaderBar())
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         for side in ("top", "bottom", "start", "end"):
             getattr(box, f"set_margin_{side}")(20)
-        for ver, title, sections in NEWS:
-            h = Gtk.Label(label=f"{i18n.tr('Versjon')} {ver} – {i18n.tr(title)}", xalign=0)
-            h.add_css_class("title-2")
-            box.append(h)
+        new = [n for n in NEWS if seen is None or _vt(n[0]) > _vt(seen)] or NEWS[:1]
+        old = [n for n in NEWS if n not in new]
+        hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        hero.add_css_class("ks-news-hero")
+        ht = Gtk.Label(label=i18n.tr("Nytt siden sist") if seen and len(new) > 1 else
+                       f"{i18n.tr('Versjon')} {new[0][0]} – {i18n.tr(new[0][1])}", xalign=0, wrap=True)
+        ht.add_css_class("title-1")
+        hero.append(ht)
+        n_items = sum(len(items) for _v, _t, secs in new for _s, items in secs)
+        hs = Gtk.Label(label=(f"{len(new)} " + i18n.tr("versjoner") + " · " if len(new) > 1 else "") +
+                       f"{n_items} " + i18n.tr("nyheter og forbedringer"), xalign=0)
+        hs.add_css_class("dim-label")
+        hero.append(hs)
+        box.append(hero)
+        for ver, title, sections in new:
+            if len(new) > 1:
+                h = Gtk.Label(label=f"{ver} – {i18n.tr(title)}", xalign=0, margin_top=6)
+                h.add_css_class("ks-news-ver")
+                h.add_css_class("title-4")
+                box.append(h)
+            flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=2,
+                               min_children_per_line=1, column_spacing=10, row_spacing=10, homogeneous=True)
             for sec, items in sections:
-                s = Gtk.Label(label=sec, xalign=0)
-                s.add_css_class("heading")
-                s.set_margin_top(6)
-                box.append(s)
                 for it in items:
-                    row = Gtk.Box(spacing=8)
-                    row.set_margin_start(8)
-                    row.append(Gtk.Label(label="•", yalign=0))
-                    row.append(Gtk.Label(label=it, xalign=0, wrap=True, hexpand=True))
-                    box.append(row)
+                    flow.append(self._card(it, sec))
+            box.append(flow)
+        if old:
+            oh = Gtk.Label(label=i18n.tr("Tidligere versjoner"), xalign=0, margin_top=12)
+            oh.add_css_class("title-4")
+            box.append(oh)
+            self.find = Gtk.SearchEntry(placeholder_text=i18n.tr("Søk i alt som er nytt, f.eks. «Discord»"))
+            box.append(self.find)
+            self.old_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            box.append(self.old_box)
+            self.old = old
+            self.find.connect("search-changed", lambda *_: self._fill_old())
+            self._fill_old()
         sc = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
         sc.set_child(box)
         tv.set_content(sc)
         self.set_child(tv)
         mark_seen()
+
+    def _card(self, text, sec):
+        emoji, page = _art(text)
+        c = Gtk.Box(spacing=12)
+        c.add_css_class("card")
+        c.add_css_class("ks-news-card")
+        art = Gtk.Label(label=emoji, valign=Gtk.Align.START)
+        art.add_css_class("ks-news-art")
+        c.append(art)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, hexpand=True)
+        tag = Gtk.Label(label=i18n.tr(sec).upper(), xalign=0)
+        tag.add_css_class("caption-heading")
+        tag.add_css_class("dim-label")
+        col.append(tag)
+        col.append(Gtk.Label(label=i18n.tr(text), xalign=0, wrap=True))
+        if page:
+            b = Gtk.Button(label=i18n.tr("Vis meg"), halign=Gtk.Align.START)
+            b.add_css_class("pill")
+            b.add_css_class("suggested-action")
+            b.connect("clicked", lambda *_: self._show(page))
+            col.append(b)
+        c.append(col)
+        return c
+
+    def _show(self, page):
+        win = self.get_root()
+        app_win = win.get_transient_for() if hasattr(win, "get_transient_for") else None
+        self.close()
+        for w in (app_win, win, Gtk.Application.get_default() and Gtk.Application.get_default().get_active_window()):
+            if w is not None and hasattr(w, "stack"):
+                w.stack.set_visible_child_name(page)
+                break
+
+    def _fill_old(self):
+        while (ch := self.old_box.get_first_child()) is not None:
+            self.old_box.remove(ch)
+        q = self.find.get_text().strip().lower()
+        shown = 0
+        for ver, title, sections in self.old:
+            items = [(sec, it) for sec, its in sections for it in its if not q or q in (it + title).lower()]
+            if not items:
+                continue
+            exp = Gtk.Expander(label=f"{ver} – {i18n.tr(title)}", expanded=bool(q) and shown < 6)
+            inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_start=18, margin_top=4)
+            for sec, it in items:
+                row = Gtk.Box(spacing=8)
+                row.append(Gtk.Label(label=_art(it)[0], yalign=0))
+                row.append(Gtk.Label(label=i18n.tr(it), xalign=0, wrap=True, hexpand=True))
+                inner.append(row)
+            exp.set_child(inner)
+            self.old_box.append(exp)
+            shown += 1
+            if shown >= 60:
+                break

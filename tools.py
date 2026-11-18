@@ -919,6 +919,37 @@ class _Cards:
         box.append(r)
         return sw
 
+    def _simple_card(self):
+        c, i = card("Enkel modus", "Viser bare det viktigste i sidemenyen: Oversikt, Lyd, Spill, Discord, Scener, "
+                                   "Smart Hjem, Familie og Innstillinger. Fint på barnas PC-er – alt annet er "
+                                   "fortsatt der når du slår den av. Søk (Ctrl+K) finner også skjulte sider.")
+        win = self.get_root()
+
+        def toggle(w, _p):
+            import familylock
+            root = self.get_root()
+
+            def do():
+                if hasattr(root, "set_simple_mode"):
+                    root.set_simple_mode(w.get_active())
+            if not w.get_active() and familylock.locked() and not getattr(w, "_rev", False):
+                def cancel():
+                    w._rev = True
+                    w.set_active(True)
+                    w._rev = False
+                familylock.ask(root, "Skriv familiekoden for å vise alle sidene.", do, cancel)
+            elif not getattr(w, "_rev", False):
+                do()
+        on = False
+        try:
+            import json as _j
+            on = bool(_j.load(open(os.path.expanduser("~/.config/systemmonitor/enkel.json"))).get("on"))
+        except (OSError, ValueError):
+            pass
+        self._switch_row(i, "Enkel modus", "Skjul de avanserte sidene i sidemenyen.", on, toggle)
+        _ = win
+        self.box.append(c)
+
     def _push_card(self):
         import push
         import socket
@@ -1842,6 +1873,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)
+        self._try(self._simple_card)
         self._try(self._apps_card)
         self._try(self._infotiles_card)
         self.tab("varsler", "Varsler")

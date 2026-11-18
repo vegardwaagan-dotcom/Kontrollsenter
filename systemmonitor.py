@@ -585,6 +585,7 @@ class MonitorWindow(Adw.ApplicationWindow):
             else:
                 row.set_header(None)
         self.sidebar.set_header_func(section_header)
+        self.sidebar.set_filter_func(lambda row: not self.simple_mode() or row.page_name in self.SIMPLE_PAGES)
         side_tv = Adw.ToolbarView()
         side_tv.add_css_class("ks-side")
         side_header = Adw.HeaderBar(show_title=True, show_start_title_buttons=False)
@@ -608,6 +609,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         brand.append(bcol)
         side_header.set_title_widget(brand)
         side_header.pack_end(self.menu_btn)
+        sbtn = Gtk.Button(icon_name="system-search-symbolic", tooltip_text=i18n.tr("Søk (Ctrl+K)"))
+        sbtn.add_css_class("flat")
+        sbtn.connect("clicked", self.open_search)
+        side_header.pack_end(sbtn)
         side_tv.add_top_bar(side_header)
         side_tv.set_content(Gtk.ScrolledWindow(child=self.sidebar, hscrollbar_policy=Gtk.PolicyType.NEVER,
                                                vexpand=True))
@@ -806,6 +811,56 @@ class MonitorWindow(Adw.ApplicationWindow):
             self._sleep_bus = bus
         except Exception:  # noqa: BLE001
             pass
+
+    def ensure_lazy(self, name):
+        """Bygg en side som ikke er åpnet ennå – uten å vise den (brukes av søket)."""
+        lz = getattr(self, "_lazy", {}).get(name)
+        if lz and lz[3] is None:
+            import importlib
+            page = getattr(importlib.import_module(lz[1]), lz[2])()
+            page.set_hexpand(True)
+            page.set_vexpand(True)
+            lz[0].append(page)
+            lz[3] = page
+        return lz[3] if lz else None
+
+    def ensure_audio_page(self):
+        if self.audio_page is None:
+            if IS_WIN:
+                import winaudio
+                self.audio_page = winaudio.AudioWinPage()
+            else:
+                import audio
+                self.audio_page = audio.AudioPage()
+            self.audio_page.set_hexpand(True)
+            self.audio_page.set_vexpand(True)
+            self.audio_holder.append(self.audio_page)
+        return self.audio_page
+
+    def open_search(self, *_):
+        import search
+        search.SearchDialog(self).present(self)
+
+    # --- enkel modus: bare det viktigste i sidemenyen ---
+    SIMPLE_PAGES = {"oversikt", "lyd", "spill", "discord", "scener", "smarthjem", "familie", "innstillinger"}
+
+    def simple_mode(self):
+        try:
+            import json as _j
+            return bool(_j.load(open(os.path.expanduser("~/.config/systemmonitor/enkel.json"))).get("on"))
+        except (OSError, ValueError):
+            return False
+
+    def set_simple_mode(self, on):
+        import json as _j
+        p = os.path.expanduser("~/.config/systemmonitor/enkel.json")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w") as f:
+            _j.dump({"on": bool(on)}, f)
+        self.sidebar.invalidate_filter()
+        self.sidebar.invalidate_headers()
+        if on and self.stack.get_visible_child_name() not in self.SIMPLE_PAGES:
+            self.stack.set_visible_child_name("oversikt")
 
     def _on_tab(self, stack, _p):
         # RGB-fanen (og OpenRGB) startes først når du åpner den – eller av rgb_restore ved oppstart
@@ -1475,6 +1530,10 @@ class MonitorApp(Adw.Application):
                 applog.log.exception("bli med i spill")
         act.connect("activate", join)
         self.add_action(act)
+        sa = Gio.SimpleAction.new("search", None)
+        sa.connect("activate", lambda *_: getattr(self, "win", None) and self.win.open_search())
+        self.add_action(sa)
+        self.set_accels_for_action("app.search", ["<Control>k", "<Control>f"])
 
     def do_activate(self):
         win = getattr(self, "win", None)
