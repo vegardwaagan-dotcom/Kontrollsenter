@@ -726,6 +726,19 @@ def _feature_action(win, kind, a):
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "friend":                         # legg til / fjern venn, del av/på (bare full tilgang)
+        import friends
+        do = str(a.get("do", ""))
+        if do == "add":
+            f = friends.add_friend(str(a.get("invite", "")), a.get("name"))
+            return True, f"{f['name']} er lagt til ✓"
+        if do == "remove":
+            friends.remove_friend(str(a.get("addr", "")))
+            return True, "Fjernet"
+        if do == "share":
+            friends.set_share(on=bool(a.get("on")))
+            return True, "Deling " + ("på ✓" if a.get("on") else "av")
+        raise ValueError("ukjent")
     if kind == "vr":                             # VR fra mobilen: start / fiks alt / stopp
         import vr
         do = str(a.get("do", ""))
@@ -1077,6 +1090,11 @@ def _handler(remote):
                     except (BrokenPipeError, ConnectionResetError, OSError):
                         pass
                     return
+                if p == "/api/friend":                   # venner utenfor huset (Tailscale): bare lesing, egen kode
+                    import friends
+                    if not friends.check_key((parse_qs(u.query).get("k") or [""])[0]):
+                        return self._send(403, {"error": "feil vennekode eller deling er av"})
+                    return self._send(200, friends.snapshot(remote.win))
                 if p == "/api/watch":                    # «Se på»: MJPEG-strøm av skjermen (bare visning)
                     return self._watch(parse_qs(u.query))
                 if p in ("/api/clipfile", "/api/clipthumb"):   # nøkkel i adressen – <video>/<img> kan ikke sende den
@@ -1226,6 +1244,9 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "friends":
+                import friends
+                return self._send(200, friends.state())
             if what == "today":
                 import today
                 s = today.summary()

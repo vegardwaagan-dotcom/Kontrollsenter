@@ -633,6 +633,35 @@ async function loadToday() {
     + '</b><small>' + esc(a.desc) + '</small></div>').join("");
 }
 setTimeout(loadToday, 2500);
+// ---------- venner: PC-er utenfor hjemmet ----------
+const frCard = document.createElement("div");
+frCard.className = "card"; frCard.id = "c-friends"; frCard.hidden = true;
+frCard.innerHTML = '<h2>👥 Venner <span class="chip" id="fr-n"></span></h2><div id="fr-list"></div>'
+  + '<div class="row full-only" style="margin-top:8px"><input id="fr-inv" placeholder="Lim inn ks-venn://…" style="flex:1;min-width:0">'
+  + '<button class="soft" id="fr-add">Legg til</button></div><div class="dim small" id="fr-msg"></div>';
+{ const sp = $("#spill .grid") || $("#fam-grid"); if (sp) sp.insertBefore(frCard, sp.firstChild); }
+let frOpen = null;
+async function loadFriends() {
+  let st; try { st = await X("friends"); } catch (e) { return; }
+  frCard.hidden = false;
+  const on = st.friends.filter((f) => f.online);
+  $("#fr-n").textContent = on.length + " på";
+  const val = (v, u) => (v == null ? "–" : (typeof v === "number" ? Math.round(v) : v) + (u || ""));
+  $("#fr-list").innerHTML = st.friends.length ? st.friends.map((f) => {
+    const det = frOpen === f.addr ? '<div class="fr-det">' + [
+      ["Spiller", f.game ? "🎮 " + f.game + (f.fps ? " · " + f.fps + " FPS" : "") : "–"],
+      ["Spilt i dag", f.play_s != null ? Math.floor(f.play_s / 3600) + " t " + Math.floor(f.play_s % 3600 / 60) + " min" : "–"],
+      ["CPU", val(f.cpu_t, "°") + " · " + val(f.cpu_l, " %")], ["GPU", val(f.gpu_t, "°") + " · " + val(f.gpu_l, " %")],
+      ["Minne", f.ram_used != null ? f.ram_used + " / " + f.ram_total + " GB" : "–"], ["Strøm", val(f.watts, " W")],
+      ["Prosessor", f.cpu || "–"], ["Skjermkort", f.gpu || "–"], ["Hovedkort", f.board || "–"], ["System", f.os || "–"],
+    ].map(([k, v]) => '<div class="row between"><span class="dim">' + k + '</span><b>' + esc(String(v)) + '</b></div>').join("") + '</div>' : "";
+    return '<div class="fr" data-fr="' + esc(f.addr) + '"><div class="row between"><b>' + (f.online ? "🟢 " : "⚫ ") + esc(f.friend)
+      + '</b><span class="dim small">' + (f.online ? [f.cpu_t != null ? "CPU " + Math.round(f.cpu_t) + "°" : "", f.gpu_t != null ? "GPU " + Math.round(f.gpu_t) + "°" : ""].filter(Boolean).join(" · ") : "av") + '</span></div>'
+      + (f.online && f.game ? '<div class="small">🎮 ' + esc(f.game) + '</div>' : "") + det + '</div>';
+  }).join("") : '<p class="dim small">Ingen venner ennå – lim inn en invitasjon fra en venn.</p>';
+  $$("[data-fr]").forEach((el) => (el.onclick = () => { frOpen = frOpen === el.dataset.fr ? null : el.dataset.fr; loadFriends(); }));
+  $("#fr-add").onclick = async () => { const r = await act({ a: "friend", do: "add", invite: $("#fr-inv").value }); $("#fr-msg").textContent = (r && r.msg) || ""; $("#fr-inv").value = ""; loadFriends(); };
+}
 async function loadPlan() {
   let p; try { p = await X("plan"); } catch (e) { planCard.hidden = true; return; }
   planCard.hidden = false;
@@ -967,7 +996,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (t === "system") loadNotify();
   if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); pushScenesToPhone(); }
   if (t === "system") loadPush();
-  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadVr(); loadToday(); }
+  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadVr(); loadToday(); loadFriends(); }
   if (t === "oversikt") loadToday();
 };
 dashWire();

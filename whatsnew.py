@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.63.0", "PC-er utenfor hjemmet", [
+        ("Nytt", [
+            "Ny side «PC-er utenfor hjemmet» (under Hjemmet): se vennenes PC-er – hva de spiller, FPS, CPU- og "
+            "GPU-temperatur, minne og strøm. Trykk på en venns flis for alt om PC-en: prosessor, skjermkort, "
+            "hovedkort, disker, driver, system og hvor lenge den har vært på – oppdateres live",
+            "Del PC-en din med en vennekode: velg hva du deler (spill, temperaturer, maskinvare), kopier invitasjonen "
+            "og send den. Vennene kan bare se – ikke styre noe. «Ny kode» stenger ute gamle invitasjoner",
+            "PC-ene snakker direkte sammen over Tailscale – ingen skytjeneste. Del maskinen med vennen i Tailscale",
+            "Venner-kort i mobilappen (Spill): trykk på en venn for detaljene, og legg til venner fra telefonen",
+        ]),
+    ]),
     ("0.62.0", "Hurtigkommandoer, prestasjoner og stue-modus", [
         ("Nytt", [
             "Hurtigkommandoer i søket (Ctrl+K): skriv «spillmodus», «klipp», «skjermbilde», «VR», «nattlys», «middag», "

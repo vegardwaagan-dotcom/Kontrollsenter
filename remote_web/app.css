@@ -834,3 +834,7 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s ease-i
   border-radius: 16px; background: var(--card2); opacity: .5; }
 .ach.on { opacity: 1; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ga) 45%, transparent); }
 .ach span { font-size: 26px; } .ach small { color: var(--dim); font-size: 11px; }
+
+.fr { padding: 10px 2px; border-top: 1px solid var(--line); cursor: pointer; }
+.fr:first-child { border-top: 0; }
+.fr-det { margin-top: 8px; padding: 10px 12px; border-radius: 14px; background: var(--card2); display: grid; gap: 4px; font-size: 13px; }

@@ -518,6 +518,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("smarthjem", "Smart Hjem", "ks-smarthome-symbolic", "smarthome_ui", "SmartHomePage"),
                 ("scener", "Scener", "ks-scenes-symbolic", "scenes_ui", "ScenesPage"),
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
+                ("venner", "PC-er utenfor hjemmet", "ks-friends-symbolic", "friends_ui", "FriendsPage"),
                 ("verktoy", "Vedlikehold", "ks-tools-symbolic", "tools", "ToolsPage"),
                 ("innstillinger", "Innstillinger", "ks-settings-symbolic", "tools", "SettingsPage")):
             if name == "bluetooth" and not self.hw["bluetooth"]:
