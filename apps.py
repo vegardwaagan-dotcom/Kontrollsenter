@@ -363,3 +363,107 @@ def open_url(key):
     except Exception:  # noqa: BLE001
         import webbrowser
         return webbrowser.open(url)
+
+
+# --------------------------------------------------------------------------
+# Hvilket program brukes til hver funksjon (valgt der funksjonen er)
+# --------------------------------------------------------------------------
+USE_CFG = os.path.join(HOME, ".config", "systemmonitor", "programvalg.json")
+MULTI = {"launcher"}              # funksjoner der alle brukes samtidig – valget er et filter («Alle» = None)
+
+
+def _use_all():
+    try:
+        import json
+        with open(USE_CFG, encoding="utf-8") as f:
+            return json.load(f).get("use", {})
+    except (OSError, ValueError):
+        return {}
+
+
+def choices(feature):
+    """Installerte programmer for funksjonen, i rangert rekkefølge."""
+    return [k for k in top5(feature) if installed(k)]
+
+
+def get_use(feature):
+    """Programmet som brukes til funksjonen: ditt valg hvis det er installert, ellers det beste installerte
+    som Kontrollsenter styrer, ellers det beste installerte. None = ingen (eller «Alle» for MULTI)."""
+    pick = _use_all().get(feature)
+    if feature in MULTI:
+        return pick if pick and installed(pick) else None
+    ch = choices(feature)
+    if pick in ch:
+        return pick
+    return next((k for k in ch if APPS[k].get("ks")), ch[0] if ch else None)
+
+
+def set_use(feature, key):
+    import json
+    if key is not None and key not in APPS:
+        raise ValueError("ukjent program")
+    d = {}
+    try:
+        with open(USE_CFG, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        pass
+    d.setdefault("use", {})[feature] = key
+    os.makedirs(os.path.dirname(USE_CFG), exist_ok=True)
+    with open(USE_CFG, "w", encoding="utf-8") as f:
+        json.dump(d, f, indent=1)
+    for fn in list(_LISTENERS):
+        try:
+            fn(feature, key)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+_LISTENERS = []
+
+
+def on_use_changed(fn):
+    _LISTENERS.append(fn)
+
+
+def launch(key, *args):
+    """Start programmet (med f.eks. en fil som argument)."""
+    a = APPS[key]
+    if a.get("builtin") == "steam":
+        key, a = "steam", APPS["steam"]
+    if a.get("builtin") == "windows":
+        uri = {"gamebar": "ms-gamebar:", "clipchamp": "ms-clipchamp:"}.get(key)
+        if uri:
+            os.startfile(uri)  # noqa: S606
+            return True
+        return False
+    if IS_WIN:
+        for p in a.get("win") or []:
+            hits = sorted(glob.glob(os.path.expandvars(p), recursive=True))
+            if hits:
+                exe = hits[-1]
+                if exe.lower().endswith("update.exe"):           # Squirrel-programmer (Discord)
+                    subprocess.Popen([exe, "--processStart", os.path.basename(os.path.dirname(exe)) + ".exe",
+                                      *(["--process-start-args", " ".join(args)] if args else [])],
+                                     creationflags=0x08000000)
+                else:
+                    subprocess.Popen([exe, *args], creationflags=0x08000000)
+                return True
+        for c in a.get("cmds") or []:
+            if shutil.which(c):
+                subprocess.Popen([shutil.which(c), *args], creationflags=0x08000000)
+                return True
+        return False
+    for c in a.get("cmds") or []:
+        if shutil.which(c):
+            subprocess.Popen([c, *args], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+    if a.get("flatpak") and a["flatpak"] in _flatpaks():
+        subprocess.Popen(["flatpak", "run", a["flatpak"], *args], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    return False
+
+
+# Windows: tasten som lagrer et klipp i hvert klippeprogram (kan endres under Klipp)
+CLIP_KEYS = {"medal": "F8", "nvidiaapp": "Alt+F10", "obs": "", "steamrec": "", "gamebar": "Meta+Alt+G"}

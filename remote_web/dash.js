@@ -793,13 +793,21 @@ async function dcChat(g, gname, c, name) {
       if (typeof shareFile === "function") shareFile(list[0].name, list[0].pc);
     } catch (e) { toast(e.message); }
   };
-  mk("remote", "🖥️", "Fjernstyr", "RustDesk").onclick = async () => {
+  const RAPPS = { rustdesk: ["RustDesk", "com.carriez.flutter_hbb"], anydesk: ["AnyDesk", "com.anydesk.anydeskandroid"],
+    teamviewer: ["TeamViewer", "com.teamviewer.teamviewer.market.mobile"], parsec: ["Parsec", "com.parsec.app"],
+    chromerd: ["Chrome Remote Desktop", "com.google.chromeremotedesktop"], remmina: ["RustDesk", "com.carriez.flutter_hbb"] };
+  const rb = mk("remote", "🖥️", "Fjernstyr", "RustDesk");
+  X("stream").then((st) => { const a = RAPPS[st.remote_app]; if (a) rb.querySelector(".qs").textContent = a[0]; }).catch(() => {});
+  rb.onclick = async () => {
     try {
       const st = await X("stream");
-      const id = st.rustdesk && st.rustdesk.id;
-      if (id) { try { await navigator.clipboard.writeText(id); } catch (e) {} toast("RustDesk-ID " + id + " er kopiert"); }
-      else toast("RustDesk er ikke satt opp på PC-en (Strømming)");
-      if (KS && KS.openApp && !KS.openApp("com.carriez.flutter_hbb")) toast("Installer RustDesk på telefonen først");
+      const app = RAPPS[st.remote_app] || RAPPS.rustdesk;
+      if (app[0] === "RustDesk") {
+        const id = st.rustdesk && st.rustdesk.id;
+        if (id) { try { await navigator.clipboard.writeText(id); } catch (e) {} toast("RustDesk-ID " + id + " er kopiert"); }
+        else toast("RustDesk er ikke satt opp på PC-en (Strømming)");
+      }
+      if (KS && KS.openApp && !KS.openApp(app[1])) toast("Installer " + app[0] + " på telefonen først");
     } catch (e) { toast(e.message); }
   };
 })();

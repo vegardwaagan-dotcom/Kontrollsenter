@@ -58,14 +58,20 @@ _WIN_DIR = None
 
 
 def engine():
-    """«medal» eller «gamebar» på Windows, «gsr» på Linux."""
+    """Klippeprogrammet som brukes (valgt under Klipp): Windows – medal, nvidiaapp, obs, steamrec eller gamebar;
+    Linux – gsr (Kontrollsenter tar opp selv) eller et frittstående program (obs, kooha …)."""
+    import apps
+    u = apps.get_use("clips")
     if not IS_WIN:
-        return "gsr"
-    e = load_cfg().get("win_engine", "auto")
-    if e == "auto":
-        import medal
-        return "medal" if medal.installed() else "gamebar"
-    return e
+        return u or "gsr"
+    return u or "gamebar"
+
+
+def app_key(eng=None):
+    """Tasten som lagrer et klipp i klippeprogrammet (Windows)."""
+    import apps
+    eng = eng or engine()
+    return load_cfg().get(f"{eng}_key") or apps.CLIP_KEYS.get(eng, "")
 
 
 def _medal_root():
@@ -190,6 +196,10 @@ class Recorder:
             pass
         if IS_WIN:
             return
+        if engine() != "gsr":                                 # et annet klippeprogram er valgt – ikke ta opp dobbelt
+            if self.running():
+                self.stop()
+            return
         # AFK: stopp opptaket etter 5 min uten tastetrykk/mus, start igjen når du er tilbake
         idle = False
         if c.get("idle_pause") and time.time() - getattr(self, "_idle_t", 0) > 10:
@@ -307,8 +317,17 @@ class Recorder:
         if time.time() - self.last_save < 2:
             return False, "Vent litt mellom hvert klipp"
         self.last_save = time.time()
+        eng = engine()
         if IS_WIN:
-            return self._save_medal() if engine() == "medal" else self._save_windows()
+            if eng == "gamebar":
+                return self._save_windows()
+            if eng == "medal":
+                return self._save_medal()
+            return self._save_key(eng)
+        if eng != "gsr":
+            import apps
+            n = apps.APPS[eng]["name"]
+            return False, f"Du bruker {n} til klipp – lagre klippet med tasten i {n} (bytt under Spill → Klipp)"
         if not self.running():
             c = load_cfg()
             if c["enabled"] and c["only_games"]:
@@ -391,6 +410,18 @@ class Recorder:
             clipx.confirm(name)
         except Exception:  # noqa: BLE001
             pass
+
+    def _save_key(self, eng):
+        """NVIDIA App, OBS, Steam …: trykk tasten programmet lagrer klipp med."""
+        import apps
+        import medal
+        n = apps.APPS[eng]["name"]
+        key = app_key(eng)
+        if not key:
+            return False, f"Velg tasten {n} lagrer klipp med (Spill → Klipp → «Tast i {n}»)"
+        medal.press(key)
+        self._saved(n)
+        return True, f"Klippet lagres av {n}"
 
     def _save_medal(self):
         import medal
@@ -534,9 +565,9 @@ class Hotkey:
     def set_key(self, spec):
         parse_key(spec)
         self.spec = spec
-        if IS_WIN and engine() == "medal":                     # samme tast som i Medal
+        if IS_WIN and engine() != "gamebar":                   # samme tast som i klippeprogrammet
             c = load_cfg()
-            c["medal_key"] = spec
+            c[f"{engine()}_key"] = spec
             save_cfg(c)
         if IS_WIN:
             self._win_rebind = True
@@ -627,9 +658,9 @@ class Hotkey:
         def bind():
             u.UnregisterHotKey(None, self.wid)
             try:
-                c = load_cfg()
-                if engine() == "medal" and self.spec == (c.get("medal_key") or "F8"):
-                    self.ok, self.how, self.error = True, "medal", None      # Medal fanger tasten selv
+                eng = engine()
+                if eng != "gamebar" and self.spec == app_key(eng):
+                    self.ok, self.how, self.error = True, eng, None      # klippeprogrammet fanger tasten selv
                     return
             except Exception:  # noqa: BLE001
                 pass
@@ -771,9 +802,10 @@ def set_options(**kw):
             if v and not os.path.isdir(str(v)):
                 raise ValueError("mappen finnes ikke")
             c[k] = str(v or "")
-        elif k == "medal_key":
-            parse_key(v)
-            c[k] = str(v)
+        elif k.endswith("_key") and k[:-4] in __import__("apps").CLIP_KEYS:
+            if v:
+                parse_key(v)
+            c[k] = str(v or "")
         else:
             raise ValueError(f"ukjent valg {k}")
     save_cfg(c)

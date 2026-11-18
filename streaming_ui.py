@@ -78,6 +78,8 @@ class StreamingPage(Gtk.ScrolledWindow):
                     "Se og spill det som skjer på PC-en, på telefonen eller nettbrettet – også spillet du spiller nå. "
                     "Sunshine sender bildet fra PC-en, og Moonlight-appen viser det på telefonen med lav forsinkelse.")
         box.append(c)
+        import apps_ui
+        i.append(apps_ui.need("stream", on_done=lambda: self.refresh() if hasattr(self, "refresh") else None))
         status = Gtk.Box(spacing=10)
         self.dot = Gtk.Label(label="●")
         status.append(self.dot)
@@ -186,6 +188,7 @@ class StreamingPage(Gtk.ScrolledWindow):
                     "under og passordet som vises i RustDesk. Til spill er Moonlight raskere; RustDesk er best til "
                     "vanlig bruk og hjelp.")
         box.append(c)
+        i.append(apps_ui.need("remote", on_done=lambda: self.refresh() if hasattr(self, "refresh") else None))
         rrow = Gtk.Box(spacing=12)
         idcol = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
         idcol.append(Gtk.Label(label=_t("RustDesk-ID"), xalign=0, css_classes=["ks-sub"]))

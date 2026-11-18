@@ -1264,6 +1264,11 @@ def _handler(remote):
                 st = ST.sunshine_state()
                 st["clients"] = ST.clients() if st["running"] and st["has_login"] else []
                 st["rustdesk"] = ST.rustdesk_state()
+                try:
+                    import apps
+                    st["remote_app"] = apps.get_use("remote")
+                except Exception:  # noqa: BLE001
+                    st["remote_app"] = "rustdesk"
                 return self._send(200, st)
             if what in simple:
                 return self._send(200, simple[what]())

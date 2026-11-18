@@ -89,6 +89,8 @@ class LogitechWinPage(_Page):
         c, i, _h = _card("Logitech-enheter", "På Windows styres DPI, knapper, lys og profiler i Logitech G HUB. "
                                              "Innstillingene lagres i musa og tastaturet, så de virker også på Linux.",
                          "ks-mouse-symbolic")
+        import apps_ui
+        i.append(apps_ui.need("logitech"))
         lb = _list()
         devs = {}
         for d in WS.pnp_devices():

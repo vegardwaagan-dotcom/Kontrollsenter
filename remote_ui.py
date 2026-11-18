@@ -105,6 +105,11 @@ class RemoteCard(Gtk.Box):
         sep.add_css_class("heading")
         sep.set_margin_top(8)
         inner.append(sep)
+        try:
+            import apps_ui
+            inner.append(apps_ui.need("away"))
+        except Exception:  # noqa: BLE001
+            pass
         inner.append(_dim("Tailscale er et privat, kryptert nett mellom dine egne enheter – gratis for privat bruk. "
                           "Slå det på her og installer Tailscale-appen på mobilen/nettbrettet med samme konto. "
                           "Da virker Kontrollsenter-appen overalt, uten å åpne noe i ruteren."))

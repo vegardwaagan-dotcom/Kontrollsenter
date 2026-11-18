@@ -40,8 +40,7 @@ class ClipsCard(Gtk.Box):
                                                                         "mobilen – for å lagre de siste sekundene."))
         self.append(c)
         import apps_ui
-        if IS_WIN:
-            self._medal_rows(i, apps_ui)
+        self._engine_rows(i, apps_ui)
         i.append(apps_ui.need("clipedit", text="Trengs for å klippe til, lage GIF, montasje og «beste fra uka». "
                                                 "Opptak og deling virker uten."))
         row = Gtk.Box(spacing=10)
@@ -369,73 +368,92 @@ class ClipsCard(Gtk.Box):
         GLib.timeout_add_seconds(4, lambda: (self.refresh(), False)[1])
 
     # ---- Windows: Medal eller Game Bar ----
-    def _medal_rows(self, i, apps_ui):
-        cfg = clips.load_cfg()
-        r = Gtk.Box(spacing=10)
-        r.append(Gtk.Label(label=i18n.tr("Opptaksprogram"), xalign=0, hexpand=True))
-        opts = [("medal", "Medal (anbefalt)"), ("gamebar", "Xbox Game Bar")]
-        dd = Gtk.DropDown.new_from_strings([i18n.tr(n) for _k, n in opts])
-        dd.set_selected(0 if clips.engine() == "medal" else 1)
-        r.append(dd)
-        i.append(r)
+    # ---- hvilket klippeprogram (Medal, NVIDIA App, OBS, Steam, Game Bar / GPU Screen Recorder …) ----
+    def _engine_rows(self, i, apps_ui):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        i.append(box)
 
-        def fill():
+        def fill(_k=None):
             while (ch := box.get_first_child()) is not None:
                 box.remove(ch)
-            if clips.engine() != "medal":
-                return
-            box.append(apps_ui.need("medal", on_done=fill,
-                                    text="Medal tar opp spillet i bakgrunnen med skjermkortet og lagrer de siste "
-                                         "sekundene når du trykker F8. Lengde og kvalitet velges i Medal."))
-            import medal
-            st = medal.status(clips.load_cfg())
-            if not st["installed"]:
-                return
-            row = Gtk.Box(spacing=8)
-            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-            col.append(Gtk.Label(label=i18n.tr("Medal-mappen"), xalign=0))
-            sub = Gtk.Label(label=st["dir"] or i18n.tr("Fant ikke mappen – velg den Medal lagrer i (Medal → "
-                                                       "Settings → PC Storage)"), xalign=0, wrap=True)
-            sub.add_css_class("dim-label")
-            sub.add_css_class("caption")
-            col.append(sub)
-            row.append(col)
-            pick = Gtk.Button(label=i18n.tr("Velg mappe"), valign=Gtk.Align.CENTER)
-
-            def on_pick(*_):
-                d = Gtk.FileDialog(title=i18n.tr("Mappen Medal lagrer klipp i"))
-
-                def chosen(dlg, res):
-                    try:
-                        f = dlg.select_folder_finish(res)
-                    except GLib.Error:
-                        return
-                    if f:
-                        clips.set_options(medal_dir=f.get_path())
-                        fill()
-                d.select_folder(self.get_root(), None, chosen)
-            pick.connect("clicked", on_pick)
-            row.append(pick)
-            box.append(row)
-            if not st["running"]:
-                sb = Gtk.Button(label=i18n.tr("Start Medal"), halign=Gtk.Align.START)
-                sb.connect("clicked", lambda *_: (medal.start(), GLib.timeout_add_seconds(4, lambda: (fill(), False)[1])))
-                box.append(sb)
-            kr = Gtk.Label(label=i18n.tr("Klippetasten i Medal: {k}. Bruker du en annen tast i Medal, velg samme "
-                                         "tast under «Hurtigtast» her.").format(k=st["key"]), xalign=0, wrap=True)
-            kr.add_css_class("dim-label")
-            kr.add_css_class("caption")
-            box.append(kr)
-
-        def changed(d, _p):
-            clips.set_options(win_engine=opts[d.get_selected()][0])
-            if clips.engine() == "gamebar" and clips.load_cfg()["enabled"]:
-                clips.windows_enable(True)
-            fill()
-        dd.connect("notify::selected", changed)
+            eng = clips.engine()
+            if IS_WIN and eng == "medal":
+                self._medal_extra(box, fill)
+            elif IS_WIN and eng != "gamebar":
+                self._key_row(box, eng)
+            elif IS_WIN and eng == "gamebar" and clips.load_cfg()["enabled"]:
+                try:
+                    clips.windows_enable(True)
+                except Exception:  # noqa: BLE001
+                    pass
+            if hasattr(self, "refresh"):
+                GLib.idle_add(lambda: (self.refresh(), False)[1])
+        i.append(apps_ui.need("clips", on_change=fill, on_done=fill,
+                              text="Programmet som tar opp spillet i bakgrunnen og lagrer de siste sekundene."))
+        i.append(box)
         fill()
+
+    def _key_row(self, box, eng):
+        import apps
+        n = apps.APPS[eng]["name"]
+        row = Gtk.Box(spacing=8)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        col.append(Gtk.Label(label=i18n.tr("Tast i {n}").format(n=n), xalign=0))
+        sub = Gtk.Label(label=i18n.tr("Tasten {n} lagrer klipp med. «Lagre klipp» i appen og på mobilen trykker den "
+                                      "for deg.").format(n=n), xalign=0, wrap=True)
+        sub.add_css_class("dim-label")
+        sub.add_css_class("caption")
+        col.append(sub)
+        row.append(col)
+        e = Gtk.Entry(text=clips.app_key(eng), placeholder_text="f.eks. Alt+F10", width_chars=12,
+                      valign=Gtk.Align.CENTER)
+
+        def save(*_):
+            try:
+                clips.set_options(**{f"{eng}_key": e.get_text().strip()})
+                e.remove_css_class("error")
+            except ValueError:
+                e.add_css_class("error")
+        e.connect("activate", save)
+        row.append(e)
+        b = Gtk.Button(label=i18n.tr("Lagre"), valign=Gtk.Align.CENTER)
+        b.connect("clicked", save)
+        row.append(b)
+        box.append(row)
+
+    def _medal_extra(self, box, fill):
+        import medal
+        st = medal.status(clips.load_cfg())
+        row = Gtk.Box(spacing=8)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        col.append(Gtk.Label(label=i18n.tr("Medal-mappen"), xalign=0))
+        sub = Gtk.Label(label=st["dir"] or i18n.tr("Fant ikke mappen – velg den Medal lagrer i (Medal → "
+                                                   "Settings → PC Storage)"), xalign=0, wrap=True)
+        sub.add_css_class("dim-label")
+        sub.add_css_class("caption")
+        col.append(sub)
+        row.append(col)
+        pick = Gtk.Button(label=i18n.tr("Velg mappe"), valign=Gtk.Align.CENTER)
+
+        def on_pick(*_):
+            d = Gtk.FileDialog(title=i18n.tr("Mappen Medal lagrer klipp i"))
+
+            def chosen(dlg, res):
+                try:
+                    f = dlg.select_folder_finish(res)
+                except GLib.Error:
+                    return
+                if f:
+                    clips.set_options(medal_dir=f.get_path())
+                    fill()
+            d.select_folder(self.get_root(), None, chosen)
+        pick.connect("clicked", on_pick)
+        row.append(pick)
+        box.append(row)
+        if not st["running"]:
+            sb = Gtk.Button(label=i18n.tr("Start Medal"), halign=Gtk.Align.START)
+            sb.connect("clicked", lambda *_: (medal.start(), GLib.timeout_add_seconds(4, lambda: (fill(), False)[1])))
+            box.append(sb)
+        self._key_row(box, "medal")
 
     def _install(self, *_):
         self.inst.set_sensitive(False)

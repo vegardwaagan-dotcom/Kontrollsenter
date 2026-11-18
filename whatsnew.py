@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.50.0", "Velg program i hver funksjon", [
+        ("Nytt", [
+            "Øverst i hver funksjon: «Program» – velg hvilket av de installerte programmene du vil bruke, og bytt når du "
+            "vil (f.eks. Medal ↔ Xbox Game Bar). «Åpne» starter programmet, og «Flere programmer – topp 5» lar deg "
+            "installere flere",
+            "Klipp følger valget: på Windows trykker «Lagre klipp» og F8 tasten til Medal, NVIDIA App (Alt+F10), OBS, "
+            "Steam eller Game Bar. Tasten kan endres per program. På Linux stoppes Kontrollsenters eget opptak når du "
+            "velger et annet program, så det ikke tas opp dobbelt",
+            "Spill-launcheren: «Vis spill fra» – alle, eller bare Steam / Heroic / Lutris",
+            "Fjernstyr-knappen på mobilen åpner programmet du har valgt (RustDesk, AnyDesk, TeamViewer, Parsec …)",
+        ]),
+    ]),
     ("0.49.0", "Topp 5 programmer per funksjon", [
         ("Nytt", [
             "Hver funksjon som trenger et program viser de fem beste valgene, rangert fra 1 til 5 – eget for Linux og "

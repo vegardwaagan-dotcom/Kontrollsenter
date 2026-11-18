@@ -460,6 +460,7 @@ class GamesPage(TabbedPage):
         self.box.append(head)
         import apps_ui
         self.box.append(apps_ui.need("launcher", on_done=self._reload_launcher,
+                                     on_change=lambda _k: self._reload_launcher(),
                                      text="Spillene dine hentes fra Steam, Heroic (Epic/GOG) og Lutris/Battle.net. "
                                           "Installer minst én spillbutikk."))
         self.lflow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, min_children_per_line=2,
@@ -493,6 +494,13 @@ class GamesPage(TabbedPage):
         import time as _t
         while (c := self.lflow.get_first_child()) is not None:
             self.lflow.remove(c)
+        try:                                            # «Vis spill fra»: bare én butikk
+            import apps
+            only = apps.get_use("launcher")
+        except Exception:  # noqa: BLE001
+            only = None
+        if only:
+            gs = [g for g in gs if g["store"] == only or g["store"].startswith(only + "-")]
         for g in gs:
             ov = Gtk.Overlay(halign=Gtk.Align.CENTER)
             ov.add_css_class("ks-cover-card")

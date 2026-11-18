@@ -19,6 +19,8 @@ CSS = """
 .ks-needapp { border-radius: 16px; padding: 12px 14px; margin-bottom: 10px;
   background: alpha(@accent_bg_color, .14); border: 1px solid alpha(@accent_bg_color, .45); }
 .ks-needapp .ks-needapp-title { font-weight: 700; }
+.ks-useapp { border-radius: 16px; padding: 10px 14px; margin-bottom: 10px; background: alpha(currentColor, .05);
+  border: 1px solid alpha(currentColor, .10); }
 .ks-rank { font-weight: 800; font-size: 15px; min-width: 26px; min-height: 26px; border-radius: 99px;
   background: alpha(currentColor, .10); }
 .ks-rank-1 { background: @accent_bg_color; color: @accent_fg_color; }
@@ -37,11 +39,17 @@ def _css():
 
 
 class Need(Gtk.Box):
-    def __init__(self, feature, on_done=None, text=None):
+    """Programfeltet øverst i en funksjon.
+
+    * Mangler programmet: «Denne funksjonen trenger …» + topp 5 med Installer/Nettside.
+    * Ellers: «Program: [velger] Åpne» med de installerte programmene, og «Flere programmer» (topp 5).
+    on_change(nøkkel) kalles når du bytter program; on_done når et program er installert.
+    """
+
+    def __init__(self, feature, on_done=None, text=None, on_change=None, picker=True):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         _css()
-        self.feature, self.on_done, self.text = feature, on_done, text
-        self.add_css_class("ks-needapp")
+        self.feature, self.on_done, self.text, self.on_change, self.picker = feature, on_done, text, on_change, picker
         self.set_visible(False)
         self.check()
 
@@ -49,18 +57,35 @@ class Need(Gtk.Box):
         def work():
             try:
                 miss = apps.missing(self.feature)
+                ch = apps.choices(self.feature)
+                use = apps.get_use(self.feature)
             except Exception:  # noqa: BLE001
-                miss = []
-            GLib.idle_add(self._show, miss)
+                miss, ch, use = [], [], None
+            GLib.idle_add(self._show, miss, ch, use)
         threading.Thread(target=work, daemon=True).start()
         return False
 
-    def _show(self, miss):
+    def _clear(self):
         while (ch := self.get_first_child()) is not None:
             self.remove(ch)
-        self.set_visible(bool(miss))
-        if not miss:
+        for c in ("ks-needapp", "ks-useapp"):
+            self.remove_css_class(c)
+
+    def _show(self, miss, ch, use):
+        self._clear()
+        multi = self.feature in apps.MULTI
+        if miss:
+            self._show_missing(miss)
+        elif self.picker and (len(ch) >= 2 or (ch and not apps.APPS[ch[0]].get("ks"))):
+            self._show_picker(ch, use, multi)
+        else:
+            self.set_visible(False)
             return False
+        self.set_visible(True)
+        return False
+
+    def _show_missing(self, miss):
+        self.add_css_class("ks-needapp")
         best = miss[0][0]
         title = apps.TOP5.get(self.feature, {}).get("title", "")
         t = Gtk.Label(xalign=0, wrap=True, label="🧩 " + i18n.tr("Denne funksjonen trenger {name}").format(
@@ -73,56 +98,73 @@ class Need(Gtk.Box):
             self.append(sub)
         msg = Gtk.Label(xalign=0, wrap=True)
         msg.add_css_class("caption")
-        lst = ranked_list(self.feature, msg, best=best, on_installed=self.check)
         if title:
             h = Gtk.Label(xalign=0, label=i18n.tr("Topp 5 – {t}").format(t=i18n.tr(title).lower()), margin_top=4)
             h.add_css_class("caption-heading")
             self.append(h)
-        self.append(lst)
+        self.append(ranked_list(self.feature, msg, best=best, on_installed=self._installed))
         self.append(msg)
-        return False
 
-    def _install(self, btn, key, msg):
-        for b in self._buttons():
-            b.set_sensitive(False)
-        spin = Gtk.Spinner(spinning=True)
-        btn.get_parent().insert_child_after(spin, btn)
+    def _installed(self):
+        self.check()
+        if self.on_done:
+            GLib.timeout_add(800, lambda: (self.on_done(), False)[1])
 
-        def work():
-            try:
-                res, ok = apps.install(key, lambda t: GLib.idle_add(msg.set_label, i18n.tr(t))), True
-            except Exception as e:  # noqa: BLE001
-                res, ok = str(e), False
-            GLib.idle_add(done, res, ok)
+    def _show_picker(self, ch, use, multi):
+        self.add_css_class("ks-useapp")
+        row = Gtk.Box(spacing=10)
+        lab = Gtk.Label(label=i18n.tr("Vis spill fra") if multi else i18n.tr("Program"), xalign=0)
+        lab.add_css_class("heading")
+        row.append(lab)
+        keys = ([None] if multi else []) + ch
+        names = [(i18n.tr("Alle") if k is None else apps.APPS[k]["name"]) for k in keys]
+        dd = Gtk.DropDown.new_from_strings(names)
+        dd.set_selected(keys.index(use) if use in keys else 0)
+        dd.set_hexpand(not multi)
+        row.append(dd)
+        if multi:
+            row.append(Gtk.Box(hexpand=True))
+        open_b = Gtk.Button(label=i18n.tr("Åpne"), valign=Gtk.Align.CENTER)
+        open_b.add_css_class("pill")
+        row.append(open_b)
+        self.append(row)
+        note = Gtk.Label(xalign=0, wrap=True)
+        note.add_css_class("dim-label")
+        note.add_css_class("caption")
+        self.append(note)
 
-        def done(res, ok):
-            spin.get_parent() and spin.get_parent().remove(spin)
-            msg.set_label(res)
-            for b in self._buttons():
-                b.set_sensitive(True)
-            if ok:
-                self.check()
-                if self.on_done:
-                    GLib.timeout_add(800, lambda: (self.on_done(), False)[1])
-            return False
-        threading.Thread(target=work, daemon=True).start()
+        def refresh_note(k):
+            open_b.set_visible(k is not None)
+            note.set_visible(k is not None)
+            if k is None:
+                return
+            a = apps.APPS[k]
+            note.set_label(i18n.tr("Styres her i Kontrollsenter.") if a.get("ks") else
+                           i18n.tr("Kontrollsenter kan ikke styre {n} – innstillingene gjøres i {n} (trykk «Åpne»).")
+                           .format(n=a["name"]))
 
-    def _buttons(self):
-        out = []
+        def changed(d, _p):
+            k = keys[d.get_selected()]
+            apps.set_use(self.feature, k)
+            refresh_note(k)
+            if self.on_change:
+                self.on_change(k)
+        dd.connect("notify::selected", changed)
+        open_b.connect("clicked", lambda *_: keys[dd.get_selected()] and apps.launch(keys[dd.get_selected()]))
+        refresh_note(keys[dd.get_selected()])
+        more = Gtk.Expander(label=i18n.tr("Flere programmer – topp 5"))
+        more.add_css_class("caption")
+        msg = Gtk.Label(xalign=0, wrap=True)
+        msg.add_css_class("caption")
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_top=6)
+        box.append(ranked_list(self.feature, msg, on_installed=self.check))
+        box.append(msg)
+        more.set_child(box)
+        self.append(more)
 
-        def walk(w):
-            c = w.get_first_child()
-            while c is not None:
-                if isinstance(c, Gtk.Button):
-                    out.append(c)
-                walk(c)
-                c = c.get_next_sibling()
-        walk(self)
-        return out
 
-
-def need(feature, on_done=None, text=None):
-    return Need(feature, on_done, text)
+def need(feature, on_done=None, text=None, on_change=None, picker=True):
+    return Need(feature, on_done, text, on_change, picker)
 
 
 def ranked_list(feature, msg=None, best=None, on_installed=None):
