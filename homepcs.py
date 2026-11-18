@@ -120,6 +120,62 @@ def _extra():
     return out
 
 
+def live(p, timeout=3):
+    """Full live-status direkte fra en PC hjemme (husnøkkelen), med NAS-dataene som reserve."""
+    import json as _j
+    import urllib.request
+    import watch
+    base = {**p, "friend": p.get("name"), "online": False}
+    for ip in (p.get("ips") or [])[:2]:
+        try:
+            url = f"http://{ip}:27100/api/house/status?fk={watch.house_key()}"
+            with urllib.request.urlopen(url, timeout=timeout) as r:
+                d = _j.load(r)
+            return {**base, **d, "online": True, "_seen": time.time(), "addr": ip}
+        except Exception:  # noqa: BLE001
+            continue
+    base["_seen"] = p.get("time")
+    return base
+
+
+def update_pc(p, timeout=180):
+    """Be en PC hjemme oppdatere seg fra NAS-en og starte Kontrollsenter på nytt. Returnerer (ok, melding)."""
+    import json as _j
+    import urllib.request
+    import watch
+    for ip in (p.get("ips") or [])[:2]:
+        try:
+            url = f"http://{ip}:27100/api/house/update?fk={watch.house_key()}"
+            with urllib.request.urlopen(url, timeout=timeout) as r:
+                d = _j.load(r)
+            return bool(d.get("ok")), d.get("msg", "")
+        except Exception as e:  # noqa: BLE001
+            last = str(e)
+            if "403" in last:
+                return False, "husnøkkelen stemmer ikke (start Kontrollsenter på nytt der)"
+            continue
+    return False, "svarer ikke" + (f" ({last[:60]})" if p.get("ips") else " (ingen adresse)")
+
+
+def update_all(pcs, progress=None):
+    """Oppdater alle PC-ene som er på (ikke denne). [(navn, ok, melding)]"""
+    import savegames
+    me = savegames.pc_name()
+    todo = [p for p in pcs if p.get("name") != me and time.time() - p.get("time", 0) < STALE]
+    out = []
+    import progress as P
+    pt = P.begin("Oppdaterer PC-ene hjemme", f"{len(todo)} PC-er")
+    for n, p in enumerate(todo):
+        pt.step(n, len(todo), p.get("name"))
+        if progress:
+            progress(f"Oppdaterer {p.get('name')} …")
+        ok, msg = update_pc(p)
+        out.append((p.get("name"), ok, msg))
+    bad = [x for x in out if not x[1]]
+    pt.done(f"{len(out) - len(bad)} av {len(out)} er oppdatert" if out else "Ingen andre PC-er er på", not bad)
+    return out
+
+
 def publish(win, off=False):
     """Legg denne PC-ens status på NAS-en (kalles fra bakgrunnen hvert 5. minutt)."""
     import lanupdate as L
@@ -205,6 +261,19 @@ class HomePage(Gtk.ScrolledWindow):
         ref.connect("clicked", lambda *_: self.refresh(publish_first=True))
         top.append(ref)
         box.append(top)
+        ur = Gtk.Box(spacing=10)
+        self.upd_btn = Gtk.Button(label=i18n.tr("Oppdater alle PC-ene"))
+        self.upd_btn.add_css_class("suggested-action")
+        self.upd_btn.add_css_class("pill")
+        self.upd_btn.set_tooltip_text(i18n.tr("Henter nyeste versjon fra NAS-en på alle PC-ene som er på, og starter "
+                                              "Kontrollsenter på nytt der"))
+        self.upd_btn.connect("clicked", self._update_all)
+        ur.append(self.upd_btn)
+        self.upd_msg = Gtk.Label(xalign=0, wrap=True, hexpand=True)
+        self.upd_msg.add_css_class("ks-sub")
+        ur.append(self.upd_msg)
+        box.append(ur)
+        self._pcs = []
         hint = Gtk.Label(label=i18n.tr("Mobilappen, fjernstyring og «Del denne PC-en» ligger i Innstillinger → Mobil. "
                                        "Familie-chat og «Se på» ligger i Familie."), xalign=0, wrap=True)
         hint.add_css_class("ks-sub")
@@ -224,7 +293,32 @@ class HomePage(Gtk.ScrolledWindow):
             GLib.idle_add(self.show, fetch())
         threading.Thread(target=work, daemon=True).start()
 
+    def _update_all(self, *_):
+        self.upd_btn.set_sensitive(False)
+        self.upd_msg.set_label(i18n.tr("Oppdaterer …"))
+
+        def work():
+            res = update_all(self._pcs or fetch() or [], lambda t: GLib.idle_add(self.upd_msg.set_label, t))
+            GLib.idle_add(done, res)
+
+        def done(res):
+            self.upd_btn.set_sensitive(True)
+            self.upd_msg.set_label("  ·  ".join(f"{'✓' if ok else '✗'} {n}: {m}" for n, ok, m in res)
+                                   or i18n.tr("Ingen andre PC-er er på akkurat nå"))
+            GLib.timeout_add_seconds(25, lambda: (self.refresh(), False)[1])     # se nye versjoner etter omstart
+            return False
+        threading.Thread(target=work, daemon=True).start()
+
+    def _open(self, p):
+        import friends_ui
+        on = time.time() - p.get("time", 0) < STALE
+        dlg = friends_ui.FriendDialog({**p, "friend": p.get("name"), "online": on, "_seen": p.get("time")},
+                                      fetch=lambda pp=p: live(pp))
+        dlg.present(self.get_root())
+        dlg._tick()                                    # hent live-data med en gang
+
     def show(self, pcs):
+        self._pcs = pcs or []
         while (ch := self.flow.get_first_child()):
             self.flow.remove(ch)
         import ui
@@ -291,6 +385,27 @@ class HomePage(Gtk.ScrolledWindow):
             ver = p.get("version", "?")
             from lanupdate import newer
             old = newer(applog.RUNNING, ver) if ver != "?" else False
+            br = Gtk.Box(spacing=6)
+            more = Gtk.Button(label=i18n.tr("Alt om PC-en"), halign=Gtk.Align.START)
+            more.add_css_class("flat")
+            more.connect("clicked", lambda _b, pp=p: self._open(pp))
+            br.append(more)
+            if old and on and p.get("name") != me:
+                ub = Gtk.Button(label=i18n.tr("Oppdater"), halign=Gtk.Align.START)
+                ub.add_css_class("suggested-action")
+
+                def upd(_b, pp=p, btn=None):
+                    _b.set_sensitive(False)
+                    _b.set_label(i18n.tr("Oppdaterer …"))
+
+                    def work():
+                        ok, msg = update_pc(pp)
+                        GLib.idle_add(lambda: (_b.set_label(("✓ " if ok else "✗ ") + msg[:40]), False)[1])
+                        GLib.timeout_add_seconds(25, lambda: (self.refresh(), False)[1])
+                    threading.Thread(target=work, daemon=True).start()
+                ub.connect("clicked", upd)
+                br.append(ub)
+            inner.append(br)
             foot = Gtk.Label(label=f"{i18n.tr('Versjon')} {ver}" + (" – " + i18n.tr("kan oppdateres") if old else "")
                              + f" · {i18n.tr('sist sett')} {_ago(p.get('time', 0))}", xalign=0)
             foot.add_css_class("caption")

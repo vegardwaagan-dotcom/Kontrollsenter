@@ -824,6 +824,30 @@ def _live_fps(win):
         return None
 
 
+def house_update(win):
+    """Oppdater denne PC-en fra NAS-en og start Kontrollsenter på nytt (bedt om av en annen PC hjemme)."""
+    import applog
+    import lanupdate as L
+    import tools
+    if L.is_source_pc():
+        return {"ok": True, "msg": "utviklings-PC-en – oppdateres ikke herfra", "version": applog.RUNNING}
+    try:
+        st, new = L.check()
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "msg": f"fikk ikke sjekket NAS-en: {e}", "version": applog.RUNNING}
+    if new:
+        ok, msg = L.apply_update(tools.PACKAGE_FILES)
+        if not ok:
+            return {"ok": False, "msg": msg, "version": applog.RUNNING}
+        GLib.timeout_add_seconds(2, lambda: (win.restart_app(), False)[1])
+        return {"ok": True, "msg": f"oppdatert til {new} – starter på nytt", "version": new, "restart": True}
+    if applog.needs_restart():                        # ny versjon er installert, men den gamle kjører fortsatt
+        GLib.timeout_add_seconds(2, lambda: (win.restart_app(), False)[1])
+        return {"ok": True, "msg": f"starter på nytt med {applog.needs_restart()}", "version": applog.needs_restart(),
+                "restart": True}
+    return {"ok": True, "msg": "har allerede nyeste versjon", "version": applog.RUNNING}
+
+
 def _info():
     try:
         import infotiles
@@ -1090,6 +1114,14 @@ def _handler(remote):
                     except (BrokenPipeError, ConnectionResetError, OSError):
                         pass
                     return
+                if p in ("/api/house/status", "/api/house/update"):   # PC-ene hjemme (felles husnøkkel)
+                    import watch as W
+                    if not W.check_house_key((parse_qs(u.query).get("fk") or [""])[0]):
+                        return self._send(403, {"error": "feil husnøkkel"})
+                    if p == "/api/house/status":
+                        import friends
+                        return self._send(200, friends.snapshot(remote.win, full=True))
+                    return self._send(200, house_update(remote.win))
                 if p == "/api/friend":                   # venner utenfor huset (Tailscale): bare lesing, egen kode
                     import friends
                     if not friends.check_key((parse_qs(u.query).get("k") or [""])[0]):

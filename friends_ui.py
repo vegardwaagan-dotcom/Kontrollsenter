@@ -92,11 +92,12 @@ def rows_for(d):
 
 
 class FriendDialog(Adw.Dialog):
-    """Alt om én venns PC – oppdateres hvert 5. sekund mens det er åpent."""
+    """Alt om én PC – oppdateres hvert 5. sekund mens det er åpent. fetch() henter nye data (i en tråd)."""
 
-    def __init__(self, f):
-        super().__init__(title=f.get("friend", "?"), content_width=560, content_height=640)
-        self.addr = f["addr"]
+    def __init__(self, f, fetch=None):
+        super().__init__(title=f.get("friend") or f.get("name") or "?", content_width=560, content_height=640)
+        self.addr = f.get("addr")
+        self.fetch = fetch
         tv = Adw.ToolbarView()
         tv.add_top_bar(Adw.HeaderBar())
         self.page = Adw.PreferencesPage()
@@ -108,6 +109,9 @@ class FriendDialog(Adw.Dialog):
         self.connect("closed", lambda *_: GLib.source_remove(self._tid))
 
     def _tick(self):
+        if self.fetch:
+            threading.Thread(target=lambda: GLib.idle_add(self._show, self.fetch()), daemon=True).start()
+            return True
         fr = next((x for x in F.cfg()["friends"] if x["addr"] == self.addr), None)
         if fr:
             threading.Thread(target=lambda: GLib.idle_add(self._show, F.fetch_one(fr)), daemon=True).start()

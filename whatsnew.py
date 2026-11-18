@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.64.0", "PC-er hjemme: alt om PC-en og oppdater alle", [
+        ("Nytt", [
+            "PC-er hjemme: «Alt om PC-en» på hver PC – live temperaturer, CPU, minne, skjermkort, hva som spilles, "
+            "maskinvare og system (samme detaljer som for venner, hentet direkte fra PC-en)",
+            "«Oppdater alle PC-ene»: henter nyeste versjon fra NAS-en på alle PC-ene som er på, og starter Kontrollsenter "
+            "på nytt der. Er den nye versjonen allerede installert, startes den bare på nytt. «Oppdater» finnes også på "
+            "hver PC som har en eldre versjon",
+        ]),
+        ("Rettet", ["Minnet hos venner ble vist med feil enhet"]),
+    ]),
     ("0.63.0", "PC-er utenfor hjemmet", [
         ("Nytt", [
             "Ny side «PC-er utenfor hjemmet» (under Hjemmet): se vennenes PC-er – hva de spiller, FPS, CPU- og "

@@ -143,9 +143,9 @@ def remove_friend(addr):
 # --------------------------------------------------------------------------
 # Det jeg deler (svar på /api/friend)
 # --------------------------------------------------------------------------
-def snapshot(win):
+def snapshot(win, full=False):
     c = cfg()
-    show = c["show"]
+    show = {"game": True, "temps": True, "hw": True} if full else c["show"]
     out = {"name": my_name(), "time": time.time(), "version": None}
     try:
         import applog
@@ -184,8 +184,8 @@ def snapshot(win):
         try:
             from sensors import meminfo
             m = meminfo()
-            out["ram_used"] = round((m.get("MemTotal", 0) - m.get("MemAvailable", 0)) / 1048576, 1)
-            out["ram_total"] = round(m.get("MemTotal", 0) / 1048576, 1)
+            out["ram_used"] = round((m.get("MemTotal", 0) - m.get("MemAvailable", 0)) / 1024 ** 3, 1)   # byte → GB
+            out["ram_total"] = round(m.get("MemTotal", 0) / 1024 ** 3, 1)
         except Exception:  # noqa: BLE001
             pass
         if nv:
