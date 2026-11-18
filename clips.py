@@ -3,8 +3,8 @@ knappen i appen) lagrer de siste sekundene som en videofil.
 
 Linux:   GPU Screen Recorder (Flathub) i «replay»-modus – skjermkortets egen videokoder, med lyd. SIGUSR1 lagrer.
          F8 registreres via skrivebordets portal for globale hurtigtaster (KDE spør én gang).
-Windows: Xbox Game Bar sitt «Ta opp det som skjedde» (innebygd i Windows). F8 registreres med RegisterHotKey og
-         sender Win+Alt+G. Lengden velges i Windows-innstillingene (Spill → Opptak).
+Windows: Medal (anbefalt, se medal.py) – Medal eier klippetasten selv, og «Lagre klipp» sender Medals tast.
+         Eller Xbox Game Bar sitt «Ta opp det som skjedde»: F8 registreres med RegisterHotKey og sender Win+Alt+G.
 """
 import glob
 import json
@@ -32,6 +32,8 @@ def load_cfg():
     except (OSError, ValueError):
         c = {}
     d = {"enabled": False, "length": 60, "only_games": True, "hotkey": "F8",
+         # Windows: «auto» = Medal hvis det er installert, ellers Game Bar
+         "win_engine": "auto", "medal_dir": "", "medal_key": "F8",
          # opptak
          "fps": 60, "quality": "very_high", "scale": "", "mic": False, "tracks": "mixed", "webcam": False,
          # flere hurtigtaster («» = av)
@@ -55,7 +57,27 @@ def save_cfg(c):
 _WIN_DIR = None
 
 
+def engine():
+    """«medal» eller «gamebar» på Windows, «gsr» på Linux."""
+    if not IS_WIN:
+        return "gsr"
+    e = load_cfg().get("win_engine", "auto")
+    if e == "auto":
+        import medal
+        return "medal" if medal.installed() else "gamebar"
+    return e
+
+
+def _medal_root():
+    import medal
+    return medal.find_dir(load_cfg().get("medal_dir"))
+
+
 def clip_dir():
+    if IS_WIN and engine() == "medal":
+        root = _medal_root()
+        if root:
+            return root
     if IS_WIN:
         global _WIN_DIR
         if _WIN_DIR is None:                       # «Opptak»-mappen kan være flyttet (f.eks. til OneDrive)
@@ -70,6 +92,9 @@ def clip_dir():
 
 
 def clips(limit=60):
+    if IS_WIN and engine() == "medal":
+        import medal
+        return medal.clips(_medal_root(), limit)
     out = []
     for f in glob.glob(os.path.join(clip_dir(), "*.mp4")):
         try:
@@ -84,6 +109,9 @@ def clip_path(name):
     """Full sti for et klipp – bare filer i klippmappen (ingen ../)."""
     if not name or "/" in name or "\\" in name or name.startswith(".") or not name.lower().endswith(".mp4"):
         return None
+    if IS_WIN and engine() == "medal":                  # Medal lagrer i undermapper per spill
+        import medal
+        return medal.path_of(_medal_root(), name)
     p = os.path.join(clip_dir(), name)
     return p if os.path.isfile(p) else None
 
@@ -127,7 +155,14 @@ class Recorder:
 
     def state(self):
         c = load_cfg()
-        return {**c, "installed": installed() if not IS_WIN else True, "running": self.running(),
+        eng = engine()
+        med = {}
+        if eng == "medal":
+            import medal
+            med = medal.status(c)
+        return {**c, "engine": eng, "medal": med,
+                "installed": installed() if not IS_WIN else (eng != "medal" or med.get("installed", False)),
+                "running": self.running(),
                 "dir": clip_dir(), "os": "windows" if IS_WIN else "linux", "error": self.error,
                 "hotkey_ok": bool(self.hotkey and self.hotkey.ok), "lengths": LENGTHS,
                 "hotkey_error": self.hotkey.error if self.hotkey else None,
@@ -273,7 +308,7 @@ class Recorder:
             return False, "Vent litt mellom hvert klipp"
         self.last_save = time.time()
         if IS_WIN:
-            return self._save_windows()
+            return self._save_medal() if engine() == "medal" else self._save_windows()
         if not self.running():
             c = load_cfg()
             if c["enabled"] and c["only_games"]:
@@ -356,6 +391,30 @@ class Recorder:
             clipx.confirm(name)
         except Exception:  # noqa: BLE001
             pass
+
+    def _save_medal(self):
+        import medal
+        c = load_cfg()
+        if not medal.installed():
+            return False, "Medal er ikke installert – installer det under Klipp"
+        if not medal.running():
+            medal.start()
+            return False, "Medal startet nå – prøv igjen om noen sekunder"
+        since = time.time() - 1
+        medal.press(c.get("medal_key") or "F8")
+        root = _medal_root()
+
+        def done(path):
+            try:
+                import clipx
+                clipx.thumb(path)
+                clipx.after_save(path)
+            except Exception:  # noqa: BLE001
+                pass
+            self._saved(os.path.basename(path))
+        if root:
+            medal.watch_new(root, since, done)
+        return True, "Klippet lagres av Medal"
 
     def _save_windows(self):
         import ctypes
@@ -475,6 +534,10 @@ class Hotkey:
     def set_key(self, spec):
         parse_key(spec)
         self.spec = spec
+        if IS_WIN and engine() == "medal":                     # samme tast som i Medal
+            c = load_cfg()
+            c["medal_key"] = spec
+            save_cfg(c)
         if IS_WIN:
             self._win_rebind = True
             if getattr(self, "_win_tid", None):
@@ -563,6 +626,13 @@ class Hotkey:
 
         def bind():
             u.UnregisterHotKey(None, self.wid)
+            try:
+                c = load_cfg()
+                if engine() == "medal" and self.spec == (c.get("medal_key") or "F8"):
+                    self.ok, self.how, self.error = True, "medal", None      # Medal fanger tasten selv
+                    return
+            except Exception:  # noqa: BLE001
+                pass
             m, vk = win_code(self.spec)
             self.ok = bool(u.RegisterHotKey(None, self.wid, m, vk))
             self.how = "windows"
@@ -693,6 +763,17 @@ def set_options(**kw):
             c[k] = v
         elif k == "watermark":
             c[k] = str(v)[:40]
+        elif k == "win_engine":
+            if v not in ("auto", "medal", "gamebar"):
+                raise ValueError("ugyldig opptaksprogram")
+            c[k] = v
+        elif k == "medal_dir":
+            if v and not os.path.isdir(str(v)):
+                raise ValueError("mappen finnes ikke")
+            c[k] = str(v or "")
+        elif k == "medal_key":
+            parse_key(v)
+            c[k] = str(v)
         else:
             raise ValueError(f"ukjent valg {k}")
     save_cfg(c)
@@ -714,7 +795,12 @@ def set_cfg(enabled=None, length=None, only_games=None):
         c["only_games"] = bool(only_games)
     save_cfg(c)
     if IS_WIN and enabled is not None:
-        windows_enable(c["enabled"])
+        if engine() == "medal":
+            if c["enabled"]:
+                import medal
+                medal.start()
+        else:
+            windows_enable(c["enabled"])
     r = INSTANCE
     if r:
         if c["enabled"]:

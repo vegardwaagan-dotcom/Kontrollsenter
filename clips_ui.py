@@ -34,12 +34,14 @@ def _open(path):
 class ClipsCard(Gtk.Box):
     def __init__(self, card_fn):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
-        how = ("Xbox Game Bar tar opp spillet i bakgrunnen" if IS_WIN else
-               "GPU Screen Recorder tar opp skjermen i bakgrunnen med skjermkortets videokoder")
+        how = (("Medal" if clips.engine() == "medal" else "Xbox Game Bar") + " tar opp spillet i bakgrunnen"
+               if IS_WIN else "GPU Screen Recorder tar opp skjermen i bakgrunnen med skjermkortets videokoder")
         c, i = card_fn(i18n.tr("Klipp"), i18n.tr(how) + ". " + i18n.tr("Trykk F8 – eller «Lagre klipp» i appen på "
                                                                         "mobilen – for å lagre de siste sekundene."))
         self.append(c)
         import apps_ui
+        if IS_WIN:
+            self._medal_rows(i, apps_ui)
         i.append(apps_ui.need("clipedit", text="Trengs for å klippe til, lage GIF, montasje og «beste fra uka». "
                                                 "Opptak og deling virker uten."))
         row = Gtk.Box(spacing=10)
@@ -365,6 +367,75 @@ class ClipsCard(Gtk.Box):
         ok, msg = clips.INSTANCE.save()
         self.status.set_label(i18n.tr(msg))
         GLib.timeout_add_seconds(4, lambda: (self.refresh(), False)[1])
+
+    # ---- Windows: Medal eller Game Bar ----
+    def _medal_rows(self, i, apps_ui):
+        cfg = clips.load_cfg()
+        r = Gtk.Box(spacing=10)
+        r.append(Gtk.Label(label=i18n.tr("Opptaksprogram"), xalign=0, hexpand=True))
+        opts = [("medal", "Medal (anbefalt)"), ("gamebar", "Xbox Game Bar")]
+        dd = Gtk.DropDown.new_from_strings([i18n.tr(n) for _k, n in opts])
+        dd.set_selected(0 if clips.engine() == "medal" else 1)
+        r.append(dd)
+        i.append(r)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        i.append(box)
+
+        def fill():
+            while (ch := box.get_first_child()) is not None:
+                box.remove(ch)
+            if clips.engine() != "medal":
+                return
+            box.append(apps_ui.need("medal", on_done=fill,
+                                    text="Medal tar opp spillet i bakgrunnen med skjermkortet og lagrer de siste "
+                                         "sekundene når du trykker F8. Lengde og kvalitet velges i Medal."))
+            import medal
+            st = medal.status(clips.load_cfg())
+            if not st["installed"]:
+                return
+            row = Gtk.Box(spacing=8)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            col.append(Gtk.Label(label=i18n.tr("Medal-mappen"), xalign=0))
+            sub = Gtk.Label(label=st["dir"] or i18n.tr("Fant ikke mappen – velg den Medal lagrer i (Medal → "
+                                                       "Settings → PC Storage)"), xalign=0, wrap=True)
+            sub.add_css_class("dim-label")
+            sub.add_css_class("caption")
+            col.append(sub)
+            row.append(col)
+            pick = Gtk.Button(label=i18n.tr("Velg mappe"), valign=Gtk.Align.CENTER)
+
+            def on_pick(*_):
+                d = Gtk.FileDialog(title=i18n.tr("Mappen Medal lagrer klipp i"))
+
+                def chosen(dlg, res):
+                    try:
+                        f = dlg.select_folder_finish(res)
+                    except GLib.Error:
+                        return
+                    if f:
+                        clips.set_options(medal_dir=f.get_path())
+                        fill()
+                d.select_folder(self.get_root(), None, chosen)
+            pick.connect("clicked", on_pick)
+            row.append(pick)
+            box.append(row)
+            if not st["running"]:
+                sb = Gtk.Button(label=i18n.tr("Start Medal"), halign=Gtk.Align.START)
+                sb.connect("clicked", lambda *_: (medal.start(), GLib.timeout_add_seconds(4, lambda: (fill(), False)[1])))
+                box.append(sb)
+            kr = Gtk.Label(label=i18n.tr("Klippetasten i Medal: {k}. Bruker du en annen tast i Medal, velg samme "
+                                         "tast under «Hurtigtast» her.").format(k=st["key"]), xalign=0, wrap=True)
+            kr.add_css_class("dim-label")
+            kr.add_css_class("caption")
+            box.append(kr)
+
+        def changed(d, _p):
+            clips.set_options(win_engine=opts[d.get_selected()][0])
+            if clips.engine() == "gamebar" and clips.load_cfg()["enabled"]:
+                clips.windows_enable(True)
+            fill()
+        dd.connect("notify::selected", changed)
+        fill()
 
     def _install(self, *_):
         self.inst.set_sensitive(False)

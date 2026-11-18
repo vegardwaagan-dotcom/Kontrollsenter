@@ -439,7 +439,7 @@ async function loadClips() {
     $("#clip-linux").hidden = c.os === "windows";
     $("#clip-len").innerHTML = (c.lengths || []).map((s) => `<button data-s="${s}" class="${s === c.length ? "on" : ""}">${lenName(s)}</button>`).join("");
     $$("#clip-len button").forEach((b) => (b.onclick = () => act({ a: "clipcfg", length: +b.dataset.s }, true).then(loadClips)));
-    $("#q-clip").textContent = c.os === "windows" ? "Game Bar" : "Siste " + lenName(c.length);
+    $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length);
     const KEYS = ["F8", "F9", "F10", "F12", "Alt+F10", "Ctrl+Shift+S", "Print"];
     const cur = c.hotkey || "F8";
     $("#clip-keys").innerHTML = [...new Set([cur, ...KEYS])].map((k) => `<button class="${k === cur ? "on" : ""}" data-key="${esc(k)}">${esc(k)}</button>`).join("");
@@ -609,7 +609,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (t === "mer") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
   if (t === "kontroll") loadMedia();
   if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); loadGoals(); }
-  if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? "Game Bar" : "Siste " + lenName(c.length); }).catch(() => {});
+  if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length); }).catch(() => {});
   if (t === "oversikt") loadHealth(false);
   applyLang();
 };

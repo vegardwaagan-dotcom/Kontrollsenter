@@ -164,6 +164,71 @@ class Capture:
 
     # --- Linux: skjermdelingsportalen + GStreamer ---
     def _run_linux(self):
+        """GPU Screen Recorder først (skjermkortets egen opptaker – virker på NVIDIA, der GStreamer sin
+        PipeWire-leser gir svart bilde med en strek), ellers skjermdelingsportalen + GStreamer."""
+        try:
+            import clips
+            if clips.installed():
+                return self._run_gsr()
+        except Exception as e:  # noqa: BLE001
+            import applog
+            applog.log.info("Se på: GPU Screen Recorder virket ikke (%s) – prøver GStreamer", e)
+        return self._run_portal()
+
+    def _run_gsr(self):
+        import subprocess
+        import gi
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst
+        import clips
+        Gst.init(None)
+        c = cfg()
+        w = int(c["width"])
+        proc = subprocess.Popen(
+            ["flatpak", "run", "--command=gpu-screen-recorder", clips.GSR_APP, "-w", "portal",
+             "-restore-portal-session", "yes", "-f", str(int(c["fps"])), "-s", f"{w}x{w}", "-k", "h264",
+             "-c", "mpegts", "-o", "/dev/stdout"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, start_new_session=True)
+        pipe = Gst.parse_launch(
+            f"fdsrc fd={proc.stdout.fileno()} ! tsdemux ! h264parse ! avdec_h264 ! videoconvert ! videoscale ! "
+            f"video/x-raw,width={w},pixel-aspect-ratio=1/1 ! jpegenc quality=70 ! "
+            "appsink name=out emit-signals=false max-buffers=1 drop=true sync=false")
+        sink = pipe.get_by_name("out")
+        pipe.set_state(Gst.State.PLAYING)
+        got = False
+        t0 = time.monotonic()
+        try:
+            while not self._stop.is_set():
+                smp = sink.emit("try-pull-sample", 500 * Gst.MSECOND)
+                if smp is None:
+                    msg = pipe.get_bus().pop_filtered(Gst.MessageType.ERROR | Gst.MessageType.EOS)
+                    if msg or proc.poll() is not None:
+                        if got:
+                            raise RuntimeError("opptaket stoppet")
+                        raise RuntimeError("GPU Screen Recorder ga ikke bilde")
+                    if not got and time.monotonic() - t0 > 130:   # første gang: tid til å godkjenne delingen
+                        raise RuntimeError("skjermdelingen ble ikke godkjent på PC-en")
+                    continue
+                b = smp.get_buffer()
+                ok, info = b.map(Gst.MapFlags.READ)
+                if ok:
+                    got = True
+                    self._push(bytes(info.data))
+                    b.unmap(info)
+        finally:
+            pipe.set_state(Gst.State.NULL)
+            import signal
+            for sig, wait in ((signal.SIGINT, 4), (signal.SIGKILL, 2)):     # hele gruppen – også opptakeren
+                try:                                                          # inne i flatpak-sandkassen
+                    os.killpg(proc.pid, sig)
+                    proc.wait(wait)
+                    break
+                except (ProcessLookupError, subprocess.TimeoutExpired):
+                    continue
+                except OSError:
+                    break
+
+    def _run_portal(self):
         fd, node = _portal_screencast()
         import gi
         gi.require_version("Gst", "1.0")
@@ -182,15 +247,22 @@ class Capture:
             f"videoconvert ! {tail}",
             f"pipewiresrc fd={{fd}} path={node} do-timestamp=true keepalive-time=1000 ! videoconvert ! {tail}",
         ]
+        good = c.get("variant")                       # start med oppsettet som virket sist
+        if isinstance(good, int) and 0 <= good < len(variants):
+            variants.insert(0, variants.pop(good))
+            order = [good] + [n for n in range(len(variants)) if n != good]
+        else:
+            order = list(range(len(variants)))
         last_err = None
         try:
-            for v in variants:
+            for idx, v in zip(order, variants):
                 if self._stop.is_set():
                     return
                 pipe = Gst.parse_launch(v.format(fd=os.dup(fd)))
                 sink = pipe.get_by_name("out")
                 pipe.set_state(Gst.State.PLAYING)
                 got = False
+                checked = 0
                 t0 = time.monotonic()
                 try:
                     while not self._stop.is_set():
@@ -205,9 +277,21 @@ class Capture:
                         b = smp.get_buffer()
                         ok, info = b.map(Gst.MapFlags.READ)
                         if ok:
-                            got = True
-                            self._push(bytes(info.data))
+                            jpg = bytes(info.data)
                             b.unmap(info)
+                            if not got:
+                                checked += 1
+                                black = _is_black(jpg)          # svart (med strek) → prøv neste oppsett
+                                if black and checked < 8:
+                                    continue
+                                if black and v is not variants[-1]:
+                                    raise RuntimeError("bare svarte bilder")
+                                got = True
+                                if c.get("variant") != idx:
+                                    c2 = cfg()
+                                    c2["variant"] = idx
+                                    save_cfg(c2)
+                            self._push(jpg)
                     return
                 except RuntimeError as e:
                     last_err = e
@@ -224,6 +308,26 @@ class Capture:
             except OSError:
                 pass
             _portal_close()
+
+
+def _is_black(jpg):
+    """Nesten bare svarte piksler (typisk feilavlest GPU-minne: svart med en tynn strek)."""
+    try:
+        import gi
+        gi.require_version("GdkPixbuf", "2.0")
+        from gi.repository import GdkPixbuf
+        ld = GdkPixbuf.PixbufLoader()
+        ld.set_size(64, 36)
+        ld.write(jpg)
+        ld.close()
+        pb = ld.get_pixbuf()
+        px = pb.get_pixels()
+        step = pb.get_n_channels()
+        vals = [px[i] + px[i + 1] + px[i + 2] for i in range(0, len(px) - 2, step)]
+        dark = sum(1 for x in vals if x < 80)          # «svart» fra GStreamer er ofte 16,16,16
+        return dark / max(1, len(vals)) > 0.97
+    except Exception:  # noqa: BLE001
+        return False
 
 
 CAP = Capture()

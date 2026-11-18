@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.48.0", "Medal og «Se på» som virker", [
+        ("Nytt", [
+            "Windows: Medal brukes til klipp i stedet for Xbox Game Bar (kan byttes under Spill → Klipp). Mangler Medal, "
+            "kommer «Installer Medal». Medal eier F8 selv, «Lagre klipp» i appen og på mobilen trykker Medals tast, og "
+            "klippene vises fra Medal-mappen (finnes av seg selv, eller velg den)",
+        ]),
+        ("Rettet", [
+            "«Se på» på Linux ga svart skjerm med en tynn strek: bildet hentes nå med GPU Screen Recorder (samme som "
+            "klippene), som leser skjermkortets bilde riktig – også på NVIDIA. Første bilde kommer etter ca. 1,5 sekunder",
+            "Gjenkjenner svarte bilder og prøver neste metode av seg selv, og husker metoden som virket",
+        ]),
+    ]),
     ("0.47.0", "Riktig program til hver funksjon", [
         ("Nytt", [
             "Funksjoner som trenger et program viser «Installer …» rett i funksjonen når programmet mangler – med det "
