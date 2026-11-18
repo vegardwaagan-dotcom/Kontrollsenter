@@ -553,6 +553,11 @@ class MonitorWindow(Adw.ApplicationWindow):
             getattr(self.page_help, f"set_margin_{side}")(v)
         self.page_help_clamp = Adw.Clamp(maximum_size=MAX_WIDTH, child=self.page_help, visible=False)
         toolbar.add_top_bar(self.page_help_clamp)
+        self.group_clamp = Adw.Clamp(maximum_size=MAX_WIDTH, visible=False)
+        for side, v in (("start", 14), ("end", 14)):
+            getattr(self.group_clamp, f"set_margin_{side}")(v)
+        toolbar.add_top_bar(self.group_clamp)
+        self._group_bar = None
         toolbar.set_content(self.toast_overlay)
         self.content_page = Adw.NavigationPage(title=i18n.tr("Oversikt"), child=toolbar)
 
@@ -605,7 +610,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             else:
                 row.set_header(None)
         self.sidebar.set_header_func(section_header)
-        self.sidebar.set_filter_func(lambda row: not self.simple_mode() or row.page_name in self.SIMPLE_PAGES)
+        self._setup_groups()
+        self.sidebar.set_filter_func(self._row_visible)
         side_tv = Adw.ToolbarView()
         side_tv.add_css_class("ks-side")
         side_header = Adw.HeaderBar(show_title=True, show_start_title_buttons=False)
@@ -832,6 +838,54 @@ class MonitorWindow(Adw.ApplicationWindow):
         except Exception:  # noqa: BLE001
             pass
 
+    # --- grupper i sidemenyen (pagecats.GROUPS) ---
+    def _setup_groups(self):
+        import pagecats
+        self._leader = {}                       # side -> lederens navn (den som vises i sidemenyen)
+        for key, title, icon, members in pagecats.GROUPS:
+            present = [m for m in members if m in self._rows]
+            if len(present) < 2:
+                continue
+            lead = present[0]
+            for m in present:
+                self._leader[m] = lead
+            row = self._rows[lead]
+            box = row.get_child()
+            img = box.get_first_child()
+            lab = img.get_next_sibling() if img is not None else None
+            if isinstance(lab, Gtk.Label):
+                lab.set_label(i18n.tr(title))
+            if isinstance(img, Gtk.Image):
+                img.set_from_icon_name(icon)
+            row.group_key = key
+            row.group_members = present
+            row.set_tooltip_text(i18n.tr(title) + ": " + ", ".join(
+                self.stack.get_page(self.stack.get_child_by_name(m)).get_title() for m in present))
+
+    def _row_visible(self, row):
+        if self.simple_mode() and row.page_name not in self.SIMPLE_PAGES:
+            return False
+        lead = getattr(self, "_leader", {}).get(row.page_name)
+        return lead is None or lead == row.page_name
+
+    def _update_group_bar(self, name):
+        import pagecats
+        lead = getattr(self, "_leader", {}).get(name)
+        if not lead:
+            self.group_clamp.set_visible(False)
+            return
+        row = self._rows[lead]
+        members = row.group_members
+        if self._group_bar is None or getattr(self._group_bar, "_lead", None) != lead:
+            items = [(m, pagecats.ICONS.get(m, "") + "  " +
+                      self.stack.get_page(self.stack.get_child_by_name(m)).get_title()) for m in members]
+            self._group_bar = pagecats.CatBar(items, name, lambda m: self.stack.set_visible_child_name(m))
+            self._group_bar._lead = lead
+            self.group_clamp.set_child(self._group_bar)
+        self._group_bar.select(name)
+        self.group_clamp.set_visible(True)
+        pagecats._save(**{"group:" + row.group_key: name})
+
     def ensure_lazy(self, name):
         """Bygg en side som ikke er åpnet ennå – uten å vise den (brukes av søket)."""
         lz = getattr(self, "_lazy", {}).get(name)
@@ -842,6 +896,11 @@ class MonitorWindow(Adw.ApplicationWindow):
             page.set_vexpand(True)
             lz[0].append(page)
             lz[3] = page
+            try:
+                import pagecats
+                pagecats.attach(name, page)
+            except Exception:  # noqa: BLE001
+                applog.log.exception("sidekategorier")
         return lz[3] if lz else None
 
     def ensure_audio_page(self):
@@ -892,12 +951,7 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.ensure_rgb_page()
         lz = getattr(self, "_lazy", {}).get(stack.get_visible_child_name())
         if lz and lz[3] is None:
-            import importlib
-            page = getattr(importlib.import_module(lz[1]), lz[2])()
-            page.set_hexpand(True)
-            page.set_vexpand(True)
-            lz[0].append(page)
-            lz[3] = page
+            self.ensure_lazy(stack.get_visible_child_name())
         if stack.get_visible_child_name() == "msi" and self.msi_page is None:
             if IS_WIN:
                 import winmsi
@@ -1198,12 +1252,24 @@ class MonitorWindow(Adw.ApplicationWindow):
         d.present(self)
 
     def _on_sidebar(self, _lb, row):
-        self.stack.set_visible_child_name(row.page_name)
+        target = row.page_name
+        if getattr(row, "group_members", None):
+            import pagecats
+            last = pagecats._prefs().get("group:" + row.group_key)
+            cur = self.stack.get_visible_child_name()
+            if cur in row.group_members:
+                target = cur
+            elif last in row.group_members:
+                target = last
+        self.stack.set_visible_child_name(target)
         self.split.set_show_content(True)
 
     def _sync_sidebar(self, *_):
         name = self.stack.get_visible_child_name()
-        row = self._rows.get(name) if hasattr(self, "_rows") else None
+        lead = getattr(self, "_leader", {}).get(name, name)
+        row = self._rows.get(lead) if hasattr(self, "_rows") else None
+        if hasattr(self, "group_clamp"):
+            self._update_group_bar(name)
         if row and self.sidebar.get_selected_row() is not row:
             self.sidebar.select_row(row)
         pg = self.stack.get_page(self.stack.get_visible_child())

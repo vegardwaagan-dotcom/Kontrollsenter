@@ -128,9 +128,10 @@ def search(idx, q, limit=40):
 def go_to(win, row):
     name, _title, tab, _tt, _text, w = row
     win.stack.set_visible_child_name(name)
-    if hasattr(win, "_on_sidebar") and getattr(win, "_rows", {}).get(name) is not None:
+    lead = getattr(win, "_leader", {}).get(name, name)
+    if hasattr(win, "_on_sidebar") and getattr(win, "_rows", {}).get(lead) is not None:
         try:
-            win.sidebar.select_row(win._rows[name])
+            win.sidebar.select_row(win._rows[lead])
         except Exception:  # noqa: BLE001
             pass
 

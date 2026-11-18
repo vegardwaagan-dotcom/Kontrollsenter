@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.67.0", "Ryddig PC-app", [
+        ("Nytt", [
+            "Sidemenyen er ryddet fra 23 til 14 linjer: sider som hører sammen er gruppert – Spill (Spill, VR, "
+            "Strømming), Utstyr (RGB, Logitech, CPU-skjerm, MSI), Nett og tilkobling (Nettverk, Wi-Fi, Bluetooth), "
+            "Scener og Smart Hjem, og PC-er (hjemme og utenfor hjemmet)",
+            "Øverst i en gruppe: ‹ rullehjul › for å bytte mellom sidene – som i mobilappen. Linjen i sidemenyen husker "
+            "hvilken side du var på sist",
+            "Lange sider er delt i kategorier med samme rullehjul: Familie (Kontroll og trygghet · Sammen · Mål og "
+            "belønning), GPU-innstillinger (Skjermkortene · Skjerm og lys) og Discord (Samtalen · Lyd, mikrofon og "
+            "overlay · Servere og chat · Tilkobling)",
+        ]),
+    ]),
     ("0.66.0", "Ryddig mobilapp", [
         ("Nytt", [
             "Hver fane i appen er delt i kategorier – velg med rullehjulet øverst (eller pilene / sveip). Bare kortene "
