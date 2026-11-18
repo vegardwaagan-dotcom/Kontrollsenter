@@ -178,6 +178,15 @@ class Background:
             except Exception:  # noqa: BLE001
                 pass
         threading.Thread(target=_repair, daemon=True).start()
+        def _warm():
+            import time as _t
+            _t.sleep(45)
+            for fn in (lambda: __import__("remote_extra").health(), lambda: __import__("apppanels").all_panels(win)):
+                try:
+                    fn()
+                except Exception:  # noqa: BLE001
+                    pass
+        threading.Thread(target=_warm, daemon=True, name="varm-opp").start()
         # fjernstyring fra mobil/nettbrett (av til den slås på i Hjemme-fanen)
         try:
             import remote

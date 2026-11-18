@@ -27,13 +27,37 @@ def _works(path):
         return False
 
 
+_CACHE_FILE = os.path.join(HOME, ".cache", "systemmonitor", "trcc-sjekk.json")
+
+
 @functools.lru_cache(maxsize=1)
 def find_trcc():
-    """Første trcc-kommando som faktisk virker (en ødelagt gammel installasjon hoppes over)."""
-    for p in TRCC_CANDIDATES:
-        if _works(p):
+    """Første trcc-kommando som faktisk virker (en ødelagt gammel installasjon hoppes over).
+    Svaret huskes på disk sammen med filens endringstid – «trcc --version» kjøres bare når noe er endret."""
+    import json
+    try:
+        c = json.load(open(_CACHE_FILE))
+        p = c.get("path")
+        if p is None and all(not os.path.exists(x) for x in TRCC_CANDIDATES) == c.get("none_missing"):
+            if c.get("none") and c.get("stamp") == _stamp():
+                return None
+        elif p and os.path.exists(p) and os.path.getmtime(p) == c.get("mtime"):
             return p
-    return None
+    except (OSError, ValueError):
+        pass
+    found = next((p for p in TRCC_CANDIDATES if _works(p)), None)
+    try:
+        os.makedirs(os.path.dirname(_CACHE_FILE), exist_ok=True)
+        json.dump({"path": found, "mtime": os.path.getmtime(found) if found else None, "none": found is None,
+                   "stamp": _stamp(), "none_missing": all(not os.path.exists(x) for x in TRCC_CANDIDATES)},
+                  open(_CACHE_FILE, "w"))
+    except OSError:
+        pass
+    return found
+
+
+def _stamp():
+    return [os.path.getmtime(p) if os.path.exists(p) else 0 for p in TRCC_CANDIDATES]
 
 
 def enable_trcc_import():

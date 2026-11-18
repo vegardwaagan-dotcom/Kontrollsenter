@@ -13,6 +13,22 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.70.0", "Raskere og ryddigere", [
+        ("Raskere", [
+            "Spill-siden åpnes 7 ganger raskere (583 → 87 ms), Ny CPU-skjerm-siden 40 ganger (521 → 12 ms)",
+            "Ingen hakk over 0,12 s når du bytter side (før: to på over 0,6 s)",
+            "Rullehjulene koster ingenting lenger – vinduet skannes ikke hvert sekund",
+            "Helse og panelene til mobilappen varmes opp i bakgrunnen, så appen slipper å vente",
+        ]),
+        ("Rettet", [
+            "Knapper og hurtigkommandoer som styrer PC-en kunne gi «vinduet svarte ikke»",
+            "Discord-kanaler/-chat i appen ga serverfeil uten valgt server",
+            "Helsesjekken fra mobilen viste ikke lenger en fremdriftslinje på PC-en",
+        ]),
+        ("Ryddet", [
+            "Kortere og tydeligere tekster på Discord, Familie, Opprydding, MSI, WoW, Pushvarsler og Enkel modus",
+        ]),
+    ]),
     ("0.69.0", "Raskere, særlig på Windows", [
         ("Nytt", [
             "Innstillinger → Generelt → «Ytelse»: se hvor mye prosessor, minne og lesing/skriving til disk "

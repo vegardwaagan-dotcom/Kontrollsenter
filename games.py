@@ -157,7 +157,11 @@ def steam_running():
     if IS_WIN:
         import psutil
         return any((p.info.get("name") or "").lower() == "steam.exe" for p in psutil.process_iter(["name"]))
-    return subprocess.run(["pgrep", "-x", "steam"], capture_output=True).returncode == 0
+    try:
+        import procs
+        return "steam" in procs.comm_map().values()
+    except Exception:  # noqa: BLE001
+        return subprocess.run(["pgrep", "-x", "steam"], capture_output=True).returncode == 0
 
 
 def parse_options(s):

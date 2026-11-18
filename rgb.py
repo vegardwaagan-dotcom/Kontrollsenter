@@ -158,7 +158,7 @@ class RgbBackend:
                     self._status(f"Feil: {str(e) or type(e).__name__} – trykk «Bruk» for å prøve igjen")
                     continue
                 # Forbindelsen hikket: koble til på nytt og prøv én gang til
-                self._status("Mistet kontakt med OpenRGB – kobler til igjen …", True)
+                self._status("Kobler til OpenRGB igjen …", True)
                 if self._reconnect():
                     try:
                         getattr(self, "_" + job[0])(*job[1:])

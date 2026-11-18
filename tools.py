@@ -967,9 +967,8 @@ class _Cards:
         self.box.append(c)
 
     def _simple_card(self):
-        c, i = card("Enkel modus", "Viser bare det viktigste i sidemenyen: Oversikt, Lyd, Spill, Discord, Scener, "
-                                   "Smart Hjem, Familie og Innstillinger. Fint på barnas PC-er – alt annet er "
-                                   "fortsatt der når du slår den av. Søk (Ctrl+K) finner også skjulte sider.")
+        c, i = card("Enkel modus", "Bare det viktigste i sidemenyen – fint på barnas PC-er. Alt annet er der "
+                                   "fortsatt, og søket (Ctrl+K) finner også de skjulte sidene.")
         win = self.get_root()
 
         def toggle(w, _p):
@@ -1001,9 +1000,8 @@ class _Cards:
         import push
         import socket
         c, i = card("Pushvarsler til mobilen (ntfy)",
-                    "Varslene kommer på telefonen med en gang – uten at Kontrollsenter-appen er åpen og uten "
-                    "skytjenester. Installer ntfy-appen, og trykk «Legg til i ntfy» i Kontrollsenter-appen "
-                    "(Innstillinger) – eller legg inn adressen under for hånd.")
+                    "Varsler på telefonen med en gang – uten at appen er åpen og uten skytjenester. Installer "
+                    "ntfy, og trykk «Legg til i ntfy» i Kontrollsenter-appen.")
         st = dim("")
 
         def show():
@@ -1934,10 +1932,9 @@ class ToolsPage(TabbedPage, _Cards):
 
     def _autoclean_card(self):
         import upkeep
-        c, i = card("Automatisk opprydding", "Én gang i måneden rydder Kontrollsenter det som er helt trygt: "
-                                             "miniatyrbilder og shader-cache for spill som ikke er installert "
-                                             "(Windows: midlertidige filer og shader-cache). Aldri papirkurven eller "
-                                             "filene dine, og aldri noe som krever passord.")
+        c, i = card("Automatisk opprydding", "Én gang i måneden ryddes det som er helt trygt: miniatyrbilder, "
+                                             "shader-cache for avinstallerte spill og midlertidige filer. Aldri "
+                                             "filene dine eller papirkurven.")
         cf = upkeep.cfg()
         self._switch_row(i, "Rydd automatisk hver måned", None, cf.get("auto", True),
                          lambda w, _p: upkeep.save_cfg(auto=w.get_active()))

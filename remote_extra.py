@@ -630,7 +630,7 @@ def health(force=False):
                 items.append({"title": title, "level": level, "detail": detail})
         else:
             import syscheck
-            for r in syscheck.run_all():
+            for r in syscheck.run_all(show=False):
                 items.append({"title": r.title, "level": r.level, "detail": r.detail})
     except Exception as e:  # noqa: BLE001
         items.append({"title": "Systemsjekk", "level": "warn", "detail": str(e)})

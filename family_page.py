@@ -42,9 +42,8 @@ class FamilyPage(Gtk.ScrolledWindow):
 
         # ---- familiekontroll ----
         c, i = _card("Familiekontroll",
-                     "Velg en kode som trengs for å lukke Kontrollsenter på denne PC-en. Lukkes vinduet, fortsetter "
-                     "programmet i bakgrunnen. Koden beskytter også familieinnstillingene, ekstra spilletid og "
-                     "bakgrunn/oppstart. Glemt koden? Slå den av fra telefonen (Spill → Familie).")
+                     "En kode for å lukke Kontrollsenter og endre familieinnstillingene. Lukkes vinduet, går "
+                     "programmet videre i bakgrunnen. Glemt koden? Slå den av fra telefonen (Spill → Familie).")
         box.append(c)
         r = Gtk.Box(spacing=16)
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, hexpand=True)

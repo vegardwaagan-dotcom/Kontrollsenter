@@ -125,11 +125,9 @@ class DiscordPage(Gtk.ScrolledWindow):
         # ---- oppsett ----
         g = Adw.PreferencesGroup(title=i18n.tr("Full tilkobling til Discord"),
                                  description=i18n.tr(
-                                     "For volum, enheter, mikrofonmodus og demping må Discord gi Kontrollsenter lov. "
-                                     "Det gjøres én gang: 1) Gå til discord.com/developers/applications og trykk "
-                                     "«New Application» (kall den f.eks. Kontrollsenter). 2) Under OAuth2: kopier "
-                                     "Client ID og Client Secret, og legg til Redirect «http://localhost». 3) Lim inn "
-                                     "her og trykk «Koble til» – Discord spør om du godkjenner."))
+                                     "Discord må gi lov én gang. 1) discord.com/developers/applications → «New "
+                                     "Application». 2) OAuth2: kopier Client ID og Secret, og legg til Redirect "
+                                     "«http://localhost». 3) Lim inn her og trykk «Koble til»."))
         c = D.cfg()
         self.cid = Adw.EntryRow(title="Client ID", text=c.get("client_id", ""))
         self.secret = Adw.PasswordEntryRow(title="Client Secret", text=c.get("client_secret", ""))

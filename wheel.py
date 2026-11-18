@@ -334,13 +334,27 @@ def scan(root):
 
 
 def install(window):
-    """Skann vinduet jevnlig mens det er i bruk – nye sider og dialoger får rullehjul av seg selv."""
-    def tick():
-        if window.get_mapped() and window.is_active():
-            try:
-                scan(window)
-            except Exception:  # noqa: BLE001
-                pass
-        return True
-    GLib.timeout_add(1200, tick)
-    tick()
+    """Rullehjul på alle valgmenyer – uten å skanne vinduet: ett klikk-filter på hele vinduet finner valgmenyen
+    under pekeren når du trykker (nye sider og dialoger virker av seg selv, og det koster ingenting ellers)."""
+    g = Gtk.GestureClick(button=1)
+    g.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+    def pressed(gest, _n, x, y):
+        try:
+            w = window.pick(x, y, Gtk.PickFlags.DEFAULT)
+        except Exception:  # noqa: BLE001
+            return
+        for _ in range(14):
+            if w is None:
+                return
+            if isinstance(w, (Gtk.DropDown, Adw.ComboRow)):
+                break
+            w = w.get_parent()
+        else:
+            return
+        if w is None or not w.get_sensitive() or getattr(w, "_ks_wheel", False) or _strings(w) is None:
+            return
+        gest.set_state(Gtk.EventSequenceState.CLAIMED)
+        open_wheel(w)
+    g.connect("pressed", pressed)
+    window.add_controller(g)

@@ -219,8 +219,16 @@ def confirm_ok():
 # --------------------------------------------------------------------------
 # Felles
 # --------------------------------------------------------------------------
-def gpus():
-    return _win_gpus() if IS_WIN else _linux_gpus()
+_GPUS = {"t": 0, "v": None}
+
+
+def gpus(max_age=60):
+    """Skjermkortene (mellomlagret et minutt – lspci/PowerShell er tregt)."""
+    if _GPUS["v"] is not None and time.time() - _GPUS["t"] < max_age:
+        return _GPUS["v"]
+    v = _win_gpus() if IS_WIN else _linux_gpus()
+    _GPUS.update(t=time.time(), v=v)
+    return v
 
 
 def choice(all_gpus=None):

@@ -367,7 +367,7 @@ def _pkg():
     return pkgcheck.run_all()
 
 
-def run_all(progress=None):
+def run_all(progress=None, show=True):
     import hardware
     hw = hardware.present()
     pids = ratbag_pids() if hw["logitech"] or hw["rgb"] else []
@@ -384,7 +384,7 @@ def run_all(progress=None):
                ("Pakkebehandler og oppdateringer", _pkg), ("Drivere og fastvare", _drivers)]
     out = []
     import progress as P
-    pt = P.begin("Sjekker PC-en", "")
+    pt = P.begin("Sjekker PC-en", "") if show else P.NULL
     for i, (name, fn) in enumerate(checks):
         pt.step(i, len(checks), f"Sjekker {name.lower()}")
         if progress:
@@ -394,7 +394,8 @@ def run_all(progress=None):
         except Exception as e:  # noqa: BLE001
             out.append(Result(f"{name}: kunne ikke sjekkes", "warn", str(e)))
     bad = sum(1 for r in out if getattr(r, "level", "") in ("error", "warn"))
-    pt.done("Alt ser bra ut" if not bad else f"{bad} ting å se på")
+    if show:
+        pt.done("Alt ser bra ut" if not bad else f"{bad} ting å se på")
     return out
 
 

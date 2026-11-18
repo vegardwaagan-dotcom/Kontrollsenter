@@ -197,9 +197,8 @@ class MsiPage(Gtk.ScrolledWindow):
         # Mangler driver eller oppsett?
         if not ec_ok():
             c, i = card("MSI-driveren (msi-ec) mangler",
-                        "Linux trenger kjernedriveren msi-ec for å styre MSI-funksjonene. Driveren som følger "
-                        "med kjernen støtter ikke alle modeller (bl.a. Vector GP68HX), så den nyeste "
-                        "utgaven hentes fra github.com/BeardOverflow/msi-ec og bygges for kjernen din.")
+                        "MSI-funksjonene trenger driveren msi-ec. Den som følger med Linux støtter ikke alle "
+                        "modeller, så nyeste utgave hentes fra GitHub og bygges for din kjerne.")
             b = Gtk.Button(label="Installer MSI-driver", halign=Gtk.Align.START)
             b.add_css_class("suggested-action")
             b.connect("clicked", lambda *_: self._setup(driver=True))

@@ -122,7 +122,11 @@ def tailscale_info(force=False):
 
 
 def _call_main(fn, timeout=4):
-    """Kjør fn i GTK-tråden og vent på svaret (vinduet og kortene er ikke trådsikre)."""
+    """Kjør fn i GTK-tråden og vent på svaret (vinduet og kortene er ikke trådsikre).
+    Kalles den fra GTK-tråden selv (f.eks. en knapp i vinduet eller en hurtigkommando), kjøres fn direkte –
+    ellers ville den vente på seg selv til tidsavbruddet («vinduet svarte ikke»)."""
+    if threading.current_thread() is threading.main_thread():
+        return fn()
     box, ev = {}, threading.Event()
 
     def run():
@@ -1291,9 +1295,13 @@ def _handler(remote):
                 return self._send(200, {"guilds": DC.guilds()})
             if what == "dc_channels":
                 import discord_ctl as DC
+                if not arg("g", ""):
+                    return self._send(400, {"error": "mangler server (g)"})
                 return self._send(200, {"channels": DC.channels(arg("g", ""))})
             if what == "dc_chat":
                 import discord_ctl as DC
+                if not arg("c", ""):
+                    return self._send(400, {"error": "mangler kanal (c)"})
                 d = DC.messages(arg("c", ""))
                 d["url"] = DC.open_url(arg("g", ""), arg("c", ""), app=False)
                 return self._send(200, d)

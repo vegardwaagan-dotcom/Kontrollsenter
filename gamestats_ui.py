@@ -50,9 +50,8 @@ class WowPlusCard(Gtk.Box):
         import wowplus
         self.W = wowplus
         c, i = card_fn("World of Warcraft",
-                       i18n.tr("Varsel ved hvisking, oversikt over karakterene, bagsøk, questlogg, gull, raid-låser, "
-                               "yrker, reparasjonsvarsel og WoW-skjermbilder. Bare lesing av det WoW og addonen lagrer – "
-                               "ingen automatisering. Endringer gjelder etter /reload i spillet."))
+                       i18n.tr("Hvisking, karakterene, bagsøk, quester, gull, raid-låser, yrker og skjermbilder. "
+                               "Bare lesing – ingen automatisering. Endringer gjelder etter /reload i spillet."))
         self.append(c)
         top = Gtk.Box(spacing=10)
         top.append(_lab(i18n.tr("Alle WoW-funksjonene"), "heading"))
