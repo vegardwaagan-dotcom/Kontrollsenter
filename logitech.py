@@ -794,6 +794,15 @@ class LogitechPage(Gtk.Box):
         bar.append(self._reset_btn)
         self.append(bar)
         try:
+            import apps_ui
+            nd = apps_ui.need("logitech", text="Solaar viser batteri og styrer DPI, knapper og lys på trådløse "
+                                               "Logitech-mus og -tastatur.")
+            for side in ("top", "start", "end"):
+                getattr(nd, f"set_margin_{side}")(12)
+            self.append(nd)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             import battery_ui
             bc = battery_ui.BatteryCard(logitech_only=True, title="Batteri")
             bc.set_margin_top(12)

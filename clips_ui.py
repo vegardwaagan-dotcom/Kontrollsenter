@@ -39,6 +39,9 @@ class ClipsCard(Gtk.Box):
         c, i = card_fn(i18n.tr("Klipp"), i18n.tr(how) + ". " + i18n.tr("Trykk F8 – eller «Lagre klipp» i appen på "
                                                                         "mobilen – for å lagre de siste sekundene."))
         self.append(c)
+        import apps_ui
+        i.append(apps_ui.need("clipedit", text="Trengs for å klippe til, lage GIF, montasje og «beste fra uka». "
+                                                "Opptak og deling virker uten."))
         row = Gtk.Box(spacing=10)
         row.append(Gtk.Label(label=i18n.tr("Opptak i bakgrunnen"), xalign=0, hexpand=True))
         cfg = clips.load_cfg()

@@ -30,6 +30,10 @@ class DiscordPage(Gtk.ScrolledWindow):
         self.st = {}
         pp = Adw.PreferencesPage()
         self.set_child(pp)
+        import apps_ui
+        ng = Adw.PreferencesGroup()
+        ng.add(apps_ui.need("discord", on_done=lambda: self.refresh()))
+        pp.add(ng)
 
         # ---- status og hurtigknapper ----
         g = Adw.PreferencesGroup()

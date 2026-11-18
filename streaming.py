@@ -393,12 +393,6 @@ INSTALL = {"sunshine": (SUN_FLATPAK, "LizardByte.Sunshine"),
 def install(what):
     if what not in INSTALL:
         raise ValueError("ukjent program")
-    fp, wg = INSTALL[what]
-    if IS_WIN:
-        code, out = _run(["winget", "install", "-e", "--id", wg, "--silent", "--accept-package-agreements",
-                          "--accept-source-agreements"], 900)
-    else:
-        code, out = _run(["flatpak", "install", "-y", "--user", "flathub", fp], 900)
-    if code != 0:
-        raise RuntimeError("Installasjonen feilet: " + out[-300:])
+    import apps
+    apps.install(what)
     return True

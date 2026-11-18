@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.47.0", "Riktig program til hver funksjon", [
+        ("Nytt", [
+            "Funksjoner som trenger et program viser «Installer …» rett i funksjonen når programmet mangler – med det "
+            "beste valget for Linux (Flathub) og Windows (winget): Spill-launcheren (Steam, Heroic, Lutris, Battle.net), "
+            "Discord, RGB (OpenRGB), Logitech (Solaar / G HUB), klipp (GPU Screen Recorder, FFmpeg), Strømming "
+            "(Sunshine, Moonlight) og fjernstyring (RustDesk)",
+            "Ny oversikt i Innstillinger → Generelt: alle programmene funksjonene bruker, hva de er til, og om de er "
+            "installert",
+            "Alle installasjoner går nå samme vei, og programmer som er installert på andre måter blir funnet",
+        ]),
+    ]),
     ("0.46.0", "Familieplan og belønningsbutikk", [
         ("Nytt", [
             "Felles ukeplan (Familie-siden og mobilappen): legg inn avtaler som «Fotballtrening tirsdag 17:30». Planen "

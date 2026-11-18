@@ -791,9 +791,16 @@ class RgbPage(Gtk.ScrolledWindow):
             "Antall LED på vifteuttakene beholdes, siden det beskriver viftene dine.",
             self.factory_reset))
         box.append(bar)
+        import apps_ui
+        box.append(apps_ui.need("rgb", on_done=self._after_install))
 
         self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         box.append(self.content)
+        self.backend = RgbBackend(self._on_status, self._on_ready)
+
+    def _after_install(self):
+        global OPENRGB_CMD
+        OPENRGB_CMD = _openrgb_cmd()                    # ny sti på Windows etter installasjonen
         self.backend = RgbBackend(self._on_status, self._on_ready)
 
     # --- status og tilkobling ----------------------------------------------

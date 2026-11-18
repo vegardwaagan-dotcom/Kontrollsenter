@@ -1686,6 +1686,13 @@ class ToolsPage(TabbedPage, _Cards):
         i.append(st)
         self.box.append(c)
 
+    def _apps_card(self):
+        import apps_ui
+        c, i = card("Programmer funksjonene bruker", "Det beste programmet for hver funksjon. Mangler et, kan det "
+                                                     "installeres her – eller fra funksjonen selv.")
+        i.append(apps_ui.all_card())
+        self.box.append(c)
+
     def _autoclean_card(self):
         import upkeep
         c, i = card("Automatisk opprydding", "Én gang i måneden rydder Kontrollsenter det som er helt trygt: "
@@ -1731,6 +1738,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)
+        self._try(self._apps_card)
         self._try(self._infotiles_card)
         self.tab("varsler", "Varsler")
         self._try(self._notify_card)

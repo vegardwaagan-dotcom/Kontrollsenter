@@ -109,9 +109,14 @@ class LogitechWinPage(_Page):
 
             def install():
                 st.set_label(i18n.tr("Installerer G HUB …"))
-                _bg(lambda: _winget("install", "-e", "--id", "Logitech.GHUB", "--silent")[0],
-                    lambda code: st.set_label(i18n.tr("G HUB er installert ✓") if code == 0 else
-                                              i18n.tr("Kunne ikke installere G HUB")))
+                import apps
+
+                def work():
+                    try:
+                        return apps.install("ghub")
+                    except Exception as e:  # noqa: BLE001
+                        return str(e)
+                _bg(work, lambda msg: st.set_label(i18n.tr(msg)))
             btns.append(_button("Installer G HUB", install, True))
             i.append(btns)
             i.append(st)

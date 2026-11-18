@@ -100,10 +100,8 @@ def installed():
 
 def install():
     """Installer GPU Screen Recorder fra Flathub (bare når du trykker på knappen)."""
-    r = subprocess.run(["flatpak", "install", "--user", "-y", "--noninteractive", "flathub", GSR_APP],
-                       capture_output=True, text=True, timeout=900)
-    if r.returncode != 0:
-        raise RuntimeError((r.stderr or r.stdout).strip()[-300:] or "installasjonen feilet")
+    import apps
+    apps.install("gsr")
 
 
 # --------------------------------------------------------------------------

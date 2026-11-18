@@ -441,6 +441,14 @@ class GamesPage(TabbedPage):
         self.finish()
 
     # --- Alle spillene med cover (launcher) --------------------------------------
+    def _reload_launcher(self):
+        import launcher
+
+        def work():
+            gs = launcher.all_games()
+            GLib.idle_add(self._show_games, gs)
+        threading.Thread(target=work, daemon=True).start()
+
     def _launcher(self):
         import launcher
         head = Gtk.Box(spacing=10)
@@ -450,6 +458,10 @@ class GamesPage(TabbedPage):
         t.add_css_class("dim-label")
         head.append(t)
         self.box.append(head)
+        import apps_ui
+        self.box.append(apps_ui.need("launcher", on_done=self._reload_launcher,
+                                     text="Spillene dine hentes fra Steam, Heroic (Epic/GOG) og Lutris/Battle.net. "
+                                          "Installer minst én spillbutikk."))
         self.lflow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, min_children_per_line=2,
                                  max_children_per_line=8, column_spacing=14, row_spacing=16, halign=Gtk.Align.START)
         self.box.append(self.lflow)
