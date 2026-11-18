@@ -754,5 +754,92 @@ def state():
     c = cfg()
     q = quest()
     return {"mode": c["mode"], "active": bool(c.get("active")), "quest": q, "os": "windows" if IS_WIN else "linux",
+            "headset": headset(),
             "alvr": alvr_version(), "steamvr": bool(steamvr_dir()), "win_alvr": bool(c.get("win_alvr")),
             "vr_running": running("vrserver"), "checks": checks(c["mode"])}
+
+
+# --------------------------------------------------------------------------
+# Hodesettet: koblet til med kabel eller Wi-Fi?
+# --------------------------------------------------------------------------
+def _alvr_session():
+    for p in ([os.path.join(alvr_root() or "", "session.json")] if IS_WIN else []) + \
+            [os.path.expanduser("~/.config/alvr/session.json")]:
+        try:
+            with open(p) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            continue
+    return {}
+
+
+def _alvr_client_ips():
+    """IP-ene ALVR kjenner for brillene (fra «klienter» i ALVR)."""
+    ips = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("current_ip", "ip") and isinstance(v, str) and re.fullmatch(r"\d+\.\d+\.\d+\.\d+", v):
+                    ips.append(v)
+                elif k == "manual_ips" and isinstance(v, list):
+                    ips.extend(x for x in v if isinstance(x, str) and re.fullmatch(r"\d+\.\d+\.\d+\.\d+", x))
+                else:
+                    walk(v)
+        elif isinstance(o, list):
+            for x in o:
+                walk(x)
+    walk(_alvr_session().get("client_connections", {}))
+    return [ip for ip in dict.fromkeys(ips) if not ip.startswith("127.")]
+
+
+def _ping(ip):
+    cmd = ["ping", "-n", "1", "-w", "700", ip] if IS_WIN else ["ping", "-c", "1", "-W", "1", ip]
+    return _run(cmd, 4)[0] == 0
+
+
+def _talking_to(ip):
+    """Har PC-en en aktiv forbindelse til brillene akkurat nå (strømmer)?"""
+    if IS_WIN:
+        _c, out = _run(["netstat", "-an"], 15)
+    else:
+        _c, out = _run(["ss", "-tunH"], 10)
+    return any(f"{ip}:" in ln for ln in out.splitlines())
+
+
+def headset():
+    """{"usb", "adb", "model", "battery", "wifi_ip", "wifi_online", "streaming", "via"}"""
+    out = {"usb": _quest_usb(), "adb": None, "model": None, "battery": None, "wifi_ip": None,
+           "wifi_online": False, "streaming": False, "via": None}
+    q = quest() if out["usb"] else {"state": "none"}
+    out["adb"] = q.get("state")
+    if q.get("state") == "device":
+        try:
+            _c, m = _adb_q("shell", "getprop", "ro.product.model", t=8)
+            out["model"] = m.strip() or None
+            _c, b = _adb_q("shell", "dumpsys", "battery", t=8)
+            mm = re.search(r"level: (\d+)", b)
+            out["battery"] = int(mm.group(1)) if mm else None
+            _c, ipo = _adb_q("shell", "ip", "-f", "inet", "addr", "show", "wlan0", t=8)
+            mi = re.search(r"inet (\d+\.\d+\.\d+\.\d+)", ipo)
+            if mi:
+                out["wifi_ip"] = mi.group(1)
+                if cfg().get("quest_ip") != mi.group(1):
+                    save_cfg(quest_ip=mi.group(1))
+        except Exception:  # noqa: BLE001
+            pass
+    ips = list(dict.fromkeys([x for x in ([out["wifi_ip"], cfg().get("quest_ip")] + _alvr_client_ips()) if x]))
+    for ip in ips:
+        if _talking_to(ip):
+            out.update(wifi_ip=ip, wifi_online=True, streaming=True)
+            break
+    if not out["streaming"]:
+        for ip in ips[:3]:
+            if _ping(ip):
+                out.update(wifi_ip=ip, wifi_online=True)
+                break
+    if out["streaming"]:
+        out["via"] = "ALVR" if (not IS_WIN or cfg().get("win_alvr")) else "Steam Link"
+    if out["usb"] and (running("OVRServer") or running("OVRServer_x64")):
+        out["via"] = out["via"] or "Quest Link"
+    return out

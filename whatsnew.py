@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.59.2", "VR: se hodesettet", [
+        ("Nytt", [
+            "VR-siden viser hodesettet øverst: 🔌 kabel (tilkoblet, modell og batteri) og 📶 Wi-Fi (på nettet, eller "
+            "«Strømmer nå» med ALVR / Steam Link). Oppdateres hvert 5. sekund – også i mobilappen",
+            "Koble Questen til med kabel én gang, så husker Kontrollsenter Wi-Fi-adressen og ser den trådløst etterpå",
+        ]),
+    ]),
     ("0.59.1", "VR: brannmur-rettingen virker", [
         ("Rettet", [
             "VR → «Fiks alt»: brannmur-rettingen feilet fordi sonenavnet ble lest feil («FedoraWorkstation (default)»)",

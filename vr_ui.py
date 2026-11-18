@@ -65,6 +65,20 @@ class VrPage(Gtk.ScrolledWindow):
         self.set_child(Adw.Clamp(maximum_size=theme.PAGE_WIDTH, child=box))
         self._busy = False
 
+        # ---- hodesettet ----
+        c, i = card("Hodesettet", "Ser om Questen er koblet til med kabel eller er på Wi-Fi – og om den strømmer nå.")
+        box.append(c)
+        hs = Gtk.Box(spacing=12, homogeneous=True)
+        self.h_usb = self._hs_tile("🔌", _t("Kabel"))
+        self.h_wifi = self._hs_tile("📶", _t("Wi-Fi"))
+        hs.append(self.h_usb[0])
+        hs.append(self.h_wifi[0])
+        i.append(hs)
+        self.h_note = Gtk.Label(xalign=0, wrap=True)
+        self.h_note.add_css_class("dim-label")
+        self.h_note.add_css_class("caption")
+        i.append(self.h_note)
+
         # ---- start ----
         c, i = card("Meta Quest 3", "Spill SteamVR-spill i Questen – trådløst eller med kabel. Kontrollsenter setter opp "
                                     "alt som trengs, starter det og holder det i gang.")
@@ -150,7 +164,81 @@ class VrPage(Gtk.ScrolledWindow):
             i.append(lab)
         self._update_how()
         self.refresh()
+        self._hs_busy = False
+        self._headset()
         GLib.timeout_add_seconds(6, lambda: (self.get_mapped() and not self._busy and self._quick(), True)[1])
+        GLib.timeout_add_seconds(5, lambda: (self.get_mapped() and self._headset(), True)[1])
+
+    # ---- hodesettet ----
+    def _hs_tile(self, icon, title):
+        b = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        b.add_css_class("card")
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=10, margin_bottom=10,
+                        margin_start=12, margin_end=12)
+        b.append(inner)
+        top = Gtk.Box(spacing=8)
+        ic = Gtk.Label(label=icon)
+        ic.add_css_class("title-2")
+        top.append(ic)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        t = Gtk.Label(label=title, xalign=0)
+        t.add_css_class("caption-heading")
+        t.add_css_class("dim-label")
+        col.append(t)
+        st = Gtk.Label(label="…", xalign=0)
+        st.add_css_class("heading")
+        col.append(st)
+        top.append(col)
+        inner.append(top)
+        sub = Gtk.Label(xalign=0, wrap=True)
+        sub.add_css_class("caption")
+        sub.add_css_class("dim-label")
+        inner.append(sub)
+        return b, st, sub
+
+    def _headset(self):
+        if self._hs_busy:
+            return False
+        self._hs_busy = True
+
+        def done(h):
+            self._hs_busy = False
+            if isinstance(h, Exception):
+                return
+            ub, ust, usub = self.h_usb
+            wb, wst, wsub = self.h_wifi
+            for w in (ub, wb):
+                w.remove_css_class("success")
+            if h["usb"]:
+                ust.set_label(_t("Tilkoblet"))
+                ub.add_css_class("success")
+                bits = [h.get("model") or "Meta Quest"]
+                if h.get("battery") is not None:
+                    bits.append(f"🔋 {h['battery']} %")
+                if h["adb"] == "unauthorized":
+                    bits.append(_t("godkjenn PC-en i brillene"))
+                elif h.get("via") == "Quest Link":
+                    bits.append("Quest Link")
+                usub.set_label(" · ".join(bits))
+            else:
+                ust.set_label(_t("Ikke tilkoblet"))
+                usub.set_label(_t("Koble til med USB-C-kabel"))
+            if h["streaming"]:
+                wst.set_label(_t("Strømmer nå"))
+                wb.add_css_class("success")
+                wsub.set_label(f"{h.get('via') or ''} · {h['wifi_ip']}".strip(" ·"))
+            elif h["wifi_online"]:
+                wst.set_label(_t("På Wi-Fi"))
+                wb.add_css_class("success")
+                wsub.set_label(f"{h['wifi_ip']} · " + _t("klar – start VR"))
+            else:
+                wst.set_label(_t("Ikke funnet"))
+                wsub.set_label(_t("Slå på brillene og koble til samme nett"))
+            known = h.get("wifi_ip") or vr.cfg().get("quest_ip")
+            self.h_note.set_label("" if known else _t("Tips: koble Questen til med kabel én gang, så husker "
+                                                      "Kontrollsenter Wi-Fi-adressen og ser den trådløst etterpå."))
+        _bg(vr.headset, done)
+        return False
 
     # ------------------------------------------------------------------
     def _mode(self):

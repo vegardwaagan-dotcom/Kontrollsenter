@@ -600,8 +600,11 @@ async function loadVr() {
   let st; try { st = await X("vr"); } catch (e) { vrCard.hidden = true; return; }
   vrCard.hidden = false;
   $$("#vr-mode button").forEach((b) => { b.classList.toggle("on", b.dataset.m === st.mode); b.onclick = async () => { await act({ a: "vr", do: "noop" }).catch(() => {}); st.mode = b.dataset.m; $$("#vr-mode button").forEach((x) => x.classList.toggle("on", x === b)); }; });
+  const h = st.headset || {};
+  const hsTxt = "🔌 Kabel: " + (h.usb ? "tilkoblet" + (h.battery != null ? " · 🔋 " + h.battery + " %" : "") : "ikke tilkoblet")
+    + "<br>📶 Wi-Fi: " + (h.streaming ? "strømmer nå" + (h.via ? " (" + esc(h.via) + ")" : "") : h.wifi_online ? "på nettet (" + esc(h.wifi_ip || "") + ")" : "ikke funnet");
   const bad = st.checks.filter((c) => !c.ok && !c.warn);
-  $("#vr-checks").innerHTML = (bad.length ? bad.map((c) => "❌ " + esc(c.title)).join("<br>") : "✅ Alt er klart")
+  $("#vr-checks").innerHTML = '<div style="margin-bottom:6px">' + hsTxt + '</div>' + (bad.length ? bad.map((c) => "❌ " + esc(c.title)).join("<br>") : "✅ Alt er klart")
     + (st.quest && st.quest.state === "device" ? "<br>🥽 Questen er koblet til" : "") + (st.vr_running ? "<br>▶ SteamVR kjører" : "");
   const mode = () => (($("#vr-mode .on") || {}).dataset || {}).m || st.mode;
   $("#vr-start").onclick = async () => { $("#vr-msg").textContent = "Starter …"; const r = await act({ a: "vr", do: "start", mode: mode() }); $("#vr-msg").textContent = (r && r.msg) || ""; loadVr(); };
