@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.51.0", "Velg skjermkort", [
+        ("Nytt", [
+            "GPU-innstillinger → «Hovedskjermkort» (når PC-en har flere skjermkort): velg Automatisk, integrert eller "
+            "dedikert – eller mellom flere dedikerte. Viser hvilket kort skjermen er koblet til",
+            "Advarsel om at skjermkabelen må sitte i kortet du velger, ellers blir skjermen svart",
+            "Linux (KDE): byttet skjer ved neste innlogging, og bare hvis det valgte kortet har en skjerm koblet til – "
+            "ellers starter skrivebordet som vanlig, så du aldri står uten bilde",
+            "Windows: de andre skjermkortene slås av, og byttet angres av seg selv hvis du ikke trykker «Behold» "
+            "innen 20 sekunder",
+        ]),
+    ]),
     ("0.50.0", "Velg program i hver funksjon", [
         ("Nytt", [
             "Øverst i hver funksjon: «Program» – velg hvilket av de installerte programmene du vil bruke, og bytt når du "

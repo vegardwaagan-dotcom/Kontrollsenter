@@ -120,6 +120,11 @@ class GpuPage(Gtk.ScrolledWindow):
             i.append(b)
             self.box.append(c)
         self.box.append(self.msg)
+        try:
+            self._switch_card()
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("gpu-bytte")
 
         if not self.gpus:
             c, i, _h = _card("Fant ingen skjermkort", "Kontrollsenter fant ingen NVIDIA-, AMD- eller Intel-skjermkort.")
@@ -144,6 +149,139 @@ class GpuPage(Gtk.ScrolledWindow):
             self.box.append(c)
         self.refresh()
         GLib.timeout_add_seconds(3, lambda: (self.get_mapped() and self.refresh(), True)[1])
+
+    # ------------------------------------------------------------------
+    # Hovedskjermkort: integrert / dedikert (eller flere dedikerte)
+    # ------------------------------------------------------------------
+    def _switch_card(self):
+        import gpuswitch as SW
+        gs = SW.gpus()
+        if len(gs) < 2:
+            return
+        c, i, _h = _card("Hovedskjermkort",
+                         "Velg hvilket skjermkort som skal drive skjermen og skrivebordet. "
+                         + ("Byttet skjer når du logger inn igjen." if not IS_WIN else
+                            "Bekreft innen 20 sekunder at du ser bildet – ellers angres byttet av seg selv."))
+        self.box.append(c)
+        warn = Gtk.Label(xalign=0, wrap=True, label="⚠️ " + _t(
+            "Skjermkabelen må sitte i skjermkortet du velger. Sitter den i et annet kort, blir skjermen svart. "
+            "Integrert skjermkort = kabelen i hovedkortet; dedikert = kabelen i skjermkortet."))
+        warn.add_css_class("warning")
+        i.append(warn)
+        if not SW.supported():
+            i.append(Gtk.Label(xalign=0, wrap=True, label=_t(
+                "Bytte støttes bare på KDE Plasma (Wayland) og Windows. Bruk BIOS-innstillingen «Primary display».")))
+            return
+        cur = SW.choice(gs)
+        opts = [(None, "Automatisk", "Standard – systemet velger selv", None)] + \
+            [(g["id"], g["name"], _t(SW.kind(g)) + (
+                "" if g["connected"] is None else
+                (" · 🖥️ " + _t("skjerm koblet til") if g["connected"] else " · " + _t("ingen skjerm koblet til"))),
+              g) for g in gs]
+        row = Gtk.Box(spacing=0, homogeneous=True)
+        row.add_css_class("linked")
+        btns = []
+        first = None
+        for gid, name, sub, g in opts:
+            b = Gtk.ToggleButton()
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6)
+            t = Gtk.Label(label=_t(name) if g is None else name, wrap=True, justify=Gtk.Justification.CENTER)
+            t.add_css_class("heading")
+            col.append(t)
+            st = Gtk.Label(label=_t(sub), wrap=True, justify=Gtk.Justification.CENTER)
+            st.add_css_class("caption")
+            col.append(st)
+            b.set_child(col)
+            if first is None:
+                first = b
+            else:
+                b.set_group(first)
+            b.set_active(gid == cur)
+            b._gid, b._g = gid, g
+            btns.append(b)
+            row.append(b)
+        i.append(row)
+        self.sw_msg = Gtk.Label(xalign=0, wrap=True)
+        self.sw_msg.add_css_class("ks-sub")
+        i.append(self.sw_msg)
+        if not IS_WIN and SW._kwin_devices():
+            self.sw_msg.set_label(_t("I bruk nå: {d}").format(d=SW._kwin_devices()))
+        self._sw_busy = False
+
+        def toggled(b):
+            if not b.get_active() or self._sw_busy or b._gid == SW.choice(gs):
+                return
+            g = b._g
+            if g is not None and g.get("connected") is False:
+                body = _t("Ingen skjerm er koblet til {n}. Flytt skjermkabelen til {n} før du logger inn igjen – "
+                          "ellers blir skjermen svart.").format(n=g["name"])
+                if not IS_WIN:
+                    body += " " + _t("(Kontrollsenter sjekker kabelen ved innlogging og bruker det vanlige "
+                                     "skjermkortet hvis ingen skjerm er koblet til, så du står ikke uten bilde.)")
+            elif g is not None:
+                body = _t("Skjermen må være koblet til {n}. Sitter kabelen i et annet skjermkort, blir skjermen "
+                          "svart.").format(n=g["name"])
+            else:
+                body = _t("Systemet velger skjermkort selv igjen.")
+            dlg = Adw.AlertDialog(heading=_t("Bytte hovedskjermkort?"), body=body)
+            dlg.add_response("no", _t("Avbryt"))
+            dlg.add_response("yes", _t("Bytt") if IS_WIN else _t("Bytt ved neste innlogging"))
+            dlg.set_response_appearance("yes", Adw.ResponseAppearance.DESTRUCTIVE if g is not None and
+                                        g.get("connected") is False else Adw.ResponseAppearance.SUGGESTED)
+
+            def resp(_d, r):
+                if r != "yes":
+                    self._sw_busy = True
+                    for x in btns:
+                        x.set_active(x._gid == SW.choice(gs))
+                    self._sw_busy = False
+                    return
+                self._apply_switch(SW, b._gid, gs)
+            dlg.connect("response", resp)
+            dlg.present(self.get_root())
+        for b in btns:
+            b.connect("toggled", toggled)
+
+    def _apply_switch(self, SW, gid, gs):
+        try:
+            need_ok = SW.set_choice(gid, gs)
+        except Exception as e:  # noqa: BLE001
+            self.sw_msg.set_label(str(e))
+            return
+        if IS_WIN:
+            if not need_ok:
+                self.sw_msg.set_label(_t("Alle skjermkortene er på igjen ✓"))
+                return
+            left = [20]
+            dlg = Adw.AlertDialog(heading=_t("Ser du bildet?"),
+                                  body=_t("Trykk «Behold» hvis skjermen virker. Ellers angres byttet om 20 sekunder."))
+            dlg.add_response("undo", _t("Angre"))
+            dlg.add_response("keep", _t("Behold"))
+            dlg.set_response_appearance("keep", Adw.ResponseAppearance.SUGGESTED)
+
+            def tick():
+                left[0] -= 1
+                dlg.set_body(_t("Trykk «Behold» hvis skjermen virker. Ellers angres byttet om {n} sekunder.")
+                             .format(n=max(0, left[0])))
+                return left[0] > 0
+
+            def resp(_d, r):
+                if r == "keep":
+                    SW.confirm_ok()
+                    self.sw_msg.set_label(_t("Skjermkortet er byttet ✓"))
+                else:
+                    self.sw_msg.set_label(_t("Byttet angres …"))
+            GLib.timeout_add_seconds(1, tick)
+            dlg.connect("response", resp)
+            dlg.present(self.get_root())
+            return
+        self.sw_msg.set_label(_t("Lagret ✓ – byttet skjer når du logger ut og inn igjen."))
+        lo = Gtk.Button(label=_t("Logg ut nå"), halign=Gtk.Align.START)
+        lo.connect("clicked", lambda *_: SW.logout_prompt())
+        par = self.sw_msg.get_parent()
+        if par is not None and not getattr(self, "_lo_added", False):
+            par.append(lo)
+            self._lo_added = True
 
     # ------------------------------------------------------------------
     def _do(self, fn, ok=None, rebuild=False, gid=None, key=None, cmd=None):
