@@ -1487,12 +1487,17 @@ class ToolsPage(TabbedPage, _Cards):
         else:
             self._try(self._info_card)
             self._try(self._health_card)
+        self._try(self._boot_card)
+        self._try(self._bench_card)
+        if not win:
+            self._try(self._noise_card)
         self.tab("rydd", "Rydd opp")
         self._try(self._autoclean_card)
         self._try(W._cleanup_card, self, card) if win else self._try(self._cleanup_card)
         self._try(diskusage.build_card, self, card)
         self.tab("gjenoppretting", "Gjenoppretting")
         self._try(W._restore_card, self, card) if win else self._try(self._restore_card)
+        self._try(self._nasbackup_card)
         self.tab("feilsoking", "Feilsøking")
         self._try(self._slow_card)
         self._syscheck_card()
@@ -1548,6 +1553,137 @@ class ToolsPage(TabbedPage, _Cards):
         b.connect("clicked", go)
         i.append(b)
         i.append(res)
+        self.box.append(c)
+
+    def _boot_card(self):
+        import pctools
+        c, i = card("Oppstart", "Hvor lang tid PC-en bruker på å starte, og hva som tar mest tid.")
+        res = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        i.append(res)
+
+        def show(r):
+            if r.get("error"):
+                res.append(dim(r["error"]))
+                return
+            nm = {"firmware": "BIOS", "loader": "Oppstartslaster", "kernel": "Kjerne", "initrd": "Initrd",
+                  "userspace": "System"}
+            h = Gtk.Label(label=f"PC-en brukte {r['total']:.0f} sekunder på å starte", xalign=0)
+            h.add_css_class("title-4")
+            res.append(h)
+            res.append(dim(" · ".join(f"{nm.get(k, k)} {v:.1f} s" for k, v in r["parts"].items())))
+            slow = sorted(r["system"] + r["user"], key=lambda x: -x["s"])[:5]
+            for x in slow:
+                row = Gtk.Box(spacing=8)
+                row.append(Gtk.Label(label=x["name"], xalign=0, hexpand=True, ellipsize=3))
+                row.append(Gtk.Label(label=f"{x['s']:.1f} s"))
+                res.append(row)
+            for t in r["tips"]:
+                res.append(Gtk.Label(label="💡 " + t, xalign=0, wrap=True))
+        self._bg(pctools.boot_report, show)
+        self.box.append(c)
+
+    def _bench_card(self):
+        import pctools
+        c, i = card("Ytelsestest", "Måler prosessor, minne og disk – og sammenligner med forrige gang. Endrer ingenting "
+                                   "på PC-en (trygt alternativ til overklokking). Tar rundt 15 sekunder.")
+        st = dim("")
+        out = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        b = Gtk.Button(label="Kjør ytelsestest", halign=Gtk.Align.START)
+        b.add_css_class("suggested-action")
+
+        def show(r):
+            b.set_sensitive(True)
+            st.set_label("")
+            while (ch := out.get_first_child()) is not None:
+                out.remove(ch)
+            vs = r.get("vs") or {}
+            for k, name, unit in (("cpu1", "Prosessor, én kjerne", "poeng"), ("cpuN", "Prosessor, alle kjerner", "poeng"),
+                                  ("mem_gbs", "Minne", "GB/s"), ("disk_w", "Disk (skriving)", "MB/s")):
+                row = Gtk.Box(spacing=8)
+                row.append(Gtk.Label(label=name, xalign=0, hexpand=True))
+                d = vs.get(k)
+                tail = "" if d is None else (f"  ({d:+d} % mot sist)")
+                lab = Gtk.Label(label=f"{r[k]} {unit}{tail}")
+                if d is not None and d <= -10:
+                    lab.add_css_class("error")
+                row.append(lab)
+                out.append(row)
+
+        def go(*_):
+            b.set_sensitive(False)
+            self._bg(lambda: pctools.benchmark(lambda t: GLib.idle_add(st.set_label, t)), show)
+        b.connect("clicked", go)
+        i.append(b)
+        i.append(st)
+        i.append(out)
+        last = (pctools.cfg().get("bench") or [None])[-1]
+        if last:
+            show(last)
+        self.box.append(c)
+
+    def _noise_card(self):
+        import pctools
+        c, i = card("Støymåler for viftene", "Mikrofonen lytter mens viftene går på 30, 50, 70 og 100 % (ca. 30 "
+                                             "sekunder, viftene settes tilbake til auto etterpå). Du får vite hvor "
+                                             "raskt viftene kan gå før de begynner å bråke. Lyden lagres ikke.")
+        st = dim((pctools.cfg().get("noise") or {}).get("text", ""))
+        b = Gtk.Button(label="Mål viftestøy", halign=Gtk.Align.START)
+
+        def show(r):
+            b.set_sensitive(True)
+            st.set_label(r["text"] + "  " + " · ".join(f"{x['pct']} %: {x['db']} dB" for x in r["steps"]))
+
+        def go(*_):
+            b.set_sensitive(False)
+            win = self.get_root()
+
+            def work():
+                try:
+                    return pctools.noise_test(win, lambda t: GLib.idle_add(st.set_label, t))
+                except Exception as e:  # noqa: BLE001
+                    return {"text": f"Fikk ikke målt: {e}", "steps": []}
+            self._bg(work, show)
+        b.connect("clicked", go)
+        i.append(b)
+        i.append(st)
+        self.box.append(c)
+
+    def _nasbackup_card(self):
+        import pctools
+        c, i = card("Sikkerhetskopi til NAS-en", "Skjermbilder, klipp og (om du vil) dokumentene dine kopieres til "
+                                                 "NAS-en – bare nye og endrede filer. Merk: de havner i fellesmappen "
+                                                 "på NAS-en, som alle i huset kan se.")
+        dirs = pctools.backup_dirs()
+        for d in dirs:
+            def toggle(w, _p, d=d):
+                cur = pctools.backup_dirs()
+                for x in cur:
+                    if x["path"] == d["path"]:
+                        x["on"] = w.get_active()
+                pctools.save_cfg(backup_dirs=cur)
+            self._switch_row(i, f"{d['name']}", d["path"], d.get("on"), toggle)
+        if not dirs:
+            i.append(dim("Fant ingen av mappene (Skjermbilder, klipp, Dokumenter)."))
+        self._switch_row(i, "Automatisk hver uke", "Kjøres når strømmen er billigst om natten.",
+                         bool(pctools.cfg().get("backup_auto")), lambda w, _p: pctools.save_cfg(backup_auto=w.get_active()))
+        last = pctools.cfg().get("backup_last")
+        st = dim(("Sist: " + time.strftime("%d.%m %H:%M", time.localtime(last["t"])) +
+                  f" – {last['sent']} nye filer") if last else "Ikke kjørt ennå.")
+        b = Gtk.Button(label="Ta sikkerhetskopi nå", halign=Gtk.Align.START)
+
+        def go(*_):
+            b.set_sensitive(False)
+
+            def work():
+                try:
+                    r = pctools.backup_run(lambda t: GLib.idle_add(st.set_label, t))
+                    return f"Ferdig ✓ – {r['sent']} nye filer ({human(r['bytes'])}), {r['skipped']} uendret"
+                except Exception as e:  # noqa: BLE001
+                    return f"Feilet: {e}"
+            self._bg(work, lambda t: (b.set_sensitive(True), st.set_label(t)))
+        b.connect("clicked", go)
+        i.append(b)
+        i.append(st)
         self.box.append(c)
 
     def _autoclean_card(self):

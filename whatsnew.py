@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.43.0", "PC-verktøy", [
+        ("Nytt", [
+            "Oppstartsrapport (Vedlikehold → System): hvor lang tid PC-en bruker på å starte, hva som tar mest tid, og "
+            "konkrete tips (f.eks. «Fast Boot» i BIOS eller utsette Sunshine)",
+            "Trygg ytelsestest: måler prosessor (én og alle kjerner), minne og disk og sammenligner med forrige gang – "
+            "endrer ingenting på maskinvaren (i stedet for overklokking)",
+            "Støymåler for viftene (Linux): mikrofonen lytter mens viftene går på 30–100 %, og du får vite hvor raskt "
+            "de kan gå før de bråker. Viftene settes tilbake til auto etterpå",
+            "Sikkerhetskopi til NAS-en (Vedlikehold → Gjenoppretting): skjermbilder, klipp og dokumenter – bare nye og "
+            "endrede filer, med automatikk hver uke",
+        ]),
+    ]),
     ("0.42.0", "Spill-launcher", [
         ("Nytt", [
             "Ny fane «Spillene» under Spill: alle spillene dine med cover-bilder – Steam, Heroic (Epic/GOG) og Lutris "
