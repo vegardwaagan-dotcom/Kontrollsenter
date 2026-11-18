@@ -44,7 +44,18 @@ def _upower():
     return out
 
 
+_HCB = {"t": 0, "v": None}
+
+
 def headsetcontrol_bin():
+    """Stien til HeadsetControl (husket et minutt – søket i WinGet-mappen er tregt på Windows)."""
+    if time.time() - _HCB["t"] < 60:
+        return _HCB["v"]
+    _HCB.update(t=time.time(), v=_headsetcontrol_bin())
+    return _HCB["v"]
+
+
+def _headsetcontrol_bin():
     for c in (shutil.which("headsetcontrol"), "/home/linuxbrew/.linuxbrew/bin/headsetcontrol",
               os.path.expanduser("~/.local/bin/headsetcontrol"), "/usr/local/bin/headsetcontrol",
               os.path.expandvars(r"%LOCALAPPDATA%\Kontrollsenter\headsetcontrol.exe"),

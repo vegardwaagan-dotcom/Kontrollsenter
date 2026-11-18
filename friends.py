@@ -153,6 +153,15 @@ def snapshot(win, full=False):
     except Exception:  # noqa: BLE001
         pass
     bg = getattr(win, "bg", None)
+    if full:                                               # hva Kontrollsenter selv bruker (PC-er hjemme)
+        try:
+            import perf
+            u = perf.usage()
+            if u.get("t"):
+                out["app"] = {k: u[k] for k in ("cpu", "rss", "read", "write", "threads")}
+            out["eco"] = perf.eco()
+        except Exception:  # noqa: BLE001
+            pass
     if show.get("game"):
         out["game"] = getattr(bg, "game_name", None) if bg else None
         try:
@@ -215,6 +224,24 @@ def _hw():
     if time.time() - _HW["t"] < 600:
         return _HW["d"]
     d = {}
+    if sys.platform == "win32":
+        try:
+            import wintools
+            rows = wintools.system_info()
+            one = {}
+            for k, v in rows:
+                one.setdefault(k, []).append(v)
+            gpus = [re.sub(r"\s*\([\d.]+\)$", "", g) for g in one.get("Grafikk", [])
+                    if not re.search(r"Basic Display|Virtual|Parsec|Remote", g)]
+            d = {"cpu": re.sub(r"\s*\(\d+ tråder\)|\(R\)|\(TM\)|\s*CPU @.*", "", (one.get("Prosessor") or [""])[0]).strip(),
+                 "gpu": " + ".join(gpus), "ram": (one.get("Minne") or [""])[0],
+                 "board": (one.get("Hovedkort") or [""])[0].replace("ASUSTeK COMPUTER INC. ", "ASUS "),
+                 "disks": " · ".join(one.get("Disk", [])[:4])}
+            d = {k: v for k, v in d.items() if v and v.strip()}
+        except Exception:  # noqa: BLE001
+            pass
+        _HW.update(t=time.time(), d=d)
+        return d
     try:
         import tools
         info = dict(tools.system_info())

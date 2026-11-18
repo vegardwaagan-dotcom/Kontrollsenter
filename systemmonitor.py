@@ -21,6 +21,9 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 import welcome  # noqa: E402,F401  – må sjekke «første gang» før noe lager konfig-mappen
 import i18n  # noqa: E402
 import applog  # noqa: E402
+if sys.platform == "win32" or os.environ.get("KS_WINPERF_TEST"):
+    import winperf  # noqa: E402  – PowerShell-kall skal aldri få vinduet til å stå stille
+    winperf.install()
 
 i18n.install()          # oversetter teksten hvis engelsk er valgt (må skje før vinduer lages)
 applog.setup()          # feillogg i ~/.cache/systemmonitor/logg.txt

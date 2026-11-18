@@ -13,6 +13,21 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.71.0", "Windows: raskere og jevnere", [
+        ("Raskere på Windows", [
+            "PowerShell-spørsmål får aldri vinduet til å stå stille: svar huskes, og vinduet får forrige svar "
+            "med en gang mens et nytt hentes i bakgrunnen – også etter omstart",
+            "Etter en reparasjon eller endring spør Kontrollsenter alltid på nytt",
+            "Lydsiden og batterikortet spør ikke Windows når de ikke vises",
+            "«Ytelse»-kortet viser hvor ofte vinduet har måttet vente",
+        ]),
+        ("Rettet", [
+            "Windows: den månedlige oppryddingen krasjet",
+            "Varsler mens du spiller kunne gi feil i bakgrunnen (og «Disken er nesten full» kom ikke)",
+            "PC-er hjemme / venner: Windows-PC-er viste feil prosessornavn og manglet skjermkort, minne, "
+            "hovedkort og disker",
+        ]),
+    ]),
     ("0.70.0", "Raskere og ryddigere", [
         ("Raskere", [
             "Spill-siden åpnes 7 ganger raskere (583 → 87 ms), Ny CPU-skjerm-siden 40 ganger (521 → 12 ms)",

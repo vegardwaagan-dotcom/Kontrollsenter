@@ -958,6 +958,16 @@ class _Cards:
                 labs["write"].set_label(perf.human(u["write"]) + "/s")
                 labs["threads"].set_label(str(u["threads"]))
             return True
+        if sys.platform == "win32":
+            import winperf
+            wl = dim(winperf.summary())
+            i.append(wl)
+            _old_tick = tick
+
+            def tick():
+                if c.get_mapped():
+                    wl.set_label(winperf.summary())
+                return _old_tick()
         perf.usage()
         GLib.timeout_add_seconds(2, tick)
         self._switch_row(i, "Minimal prosessbruk",

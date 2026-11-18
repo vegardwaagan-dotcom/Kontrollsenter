@@ -187,6 +187,19 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
         threading.Thread(target=_warm, daemon=True, name="varm-opp").start()
+        if sys.platform == "win32":                       # ytelsesrapport til NAS-en etter 10 min (finne treghet)
+            def _perf_report():
+                import time as _t
+                __import__("perf").usage()                # start målingen av eget forbruk
+                _t.sleep(600)
+                try:
+                    import winperf
+                    import applog
+                    winperf.report()
+                    applog.upload_errors(force=True)
+                except Exception:  # noqa: BLE001
+                    pass
+            threading.Thread(target=_perf_report, daemon=True, name="ytelse-rapport").start()
         # fjernstyring fra mobil/nettbrett (av til den slås på i Hjemme-fanen)
         try:
             import remote
@@ -348,7 +361,7 @@ class Background:
         # mens du spiller: hold varslene tilbake og vis dem samlet etterpå (ikke chat, spilletid eller personvern)
         if (self.cfg.get("game_hold", True) and getattr(self, "game_name", None) and key not in ALWAYS
                 and kind_of(key) not in ("playtime", "chat") and key not in ("game", "session", "held", "bg", "invite")):
-            held = self.__dict__.setdefault("held", [])
+            held = self.__dict__.setdefault("_game_held", [])
             if all(h[0] != key for h in held):
                 held.append((key, title, body))
             return
@@ -369,8 +382,8 @@ class Background:
 
     def flush_held(self):
         """Spillet er ferdig: ett varsel med det som skjedde mens du spilte."""
-        held = self.__dict__.get("held") or []
-        self.held = []
+        held = self.__dict__.get("_game_held") or []
+        self._game_held = []
         if not held:
             return
         titles = [t for _k, t, _b in held]

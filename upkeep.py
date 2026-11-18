@@ -57,9 +57,14 @@ def auto_clean(force=False):
     else:
         import tools as T
         safe = SAFE_LINUX
-    items = [it for it in T.cleanup_items() if it[0] in safe and not it[5]]
+    if IS_WIN:                                     # Windows-lista er ordbøker, Linux-lista er tupler
+        items = [it for it in T.cleanup_items() if it["key"] in safe]
+        what = [it["name"] for it in items if it["size"]]
+    else:
+        items = [it for it in T.cleanup_items() if it[0] in safe and not it[5]]
+        what = [it[1] for it in items if it[4]]
     freed, errors = T.do_cleanup(items)
-    rep = {"t": time.time(), "freed": freed, "what": [it[1] for it in items if it[4]], "errors": errors[:3]}
+    rep = {"t": time.time(), "freed": freed, "what": what, "errors": errors[:3]}
     hist = (c.get("history") or [])[-11:] + [rep]
     save_cfg(last=time.time(), history=hist)
     return rep

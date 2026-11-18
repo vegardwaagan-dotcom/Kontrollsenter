@@ -251,6 +251,8 @@ class AudioWinPage(Gtk.ScrolledWindow):
         GLib.timeout_add_seconds(3, self.refresh)
 
     def refresh(self):
+        if self._sig is not None and not self.get_mapped():    # siden vises ikke: ikke spør Windows
+            return True
         try:
             ss = sessions()
         except Exception:  # noqa: BLE001
