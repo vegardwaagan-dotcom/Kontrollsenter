@@ -16,4 +16,13 @@
     <string name="w_desc_family">Hva familien spiller – og «Middag!»</string>
     <string name="w_desc_battery">Batteri i mus, tastatur og hodesett</string>
     <string name="w_desc_playtime">Spilletid i dag og grensen</string>
+    <string name="w_desc_pick">Velg selv fire fliser: temperatur, strømpris, vær, ping, spilletid, batteri …</string>
+    <string name="sc_game">Spillmodus</string>
+    <string name="sc_game_long">Spillmodus av/på</string>
+    <string name="sc_mute">Demp PC-en</string>
+    <string name="sc_mute_long">Demp lyden på PC-en av/på</string>
+    <string name="sc_dinner">Middag!</string>
+    <string name="sc_dinner_long">Send «Middag!» til alle PC-ene</string>
+    <string name="sc_lock">Lås PC-en</string>
+    <string name="sc_lock_long">Lås skjermen på PC-en</string>
 </resources>

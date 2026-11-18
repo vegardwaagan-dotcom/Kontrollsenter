@@ -12,4 +12,28 @@
             android:targetPackage="no.waagan.kontrollsenter"
             android:targetClass="no.waagan.kontrollsenter.MainActivity" />
     </shortcut>
+    <shortcut android:shortcutId="spillmodus" android:enabled="true" android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_game" android:shortcutLongLabel="@string/sc_game_long">
+        <intent android:action="no.waagan.kontrollsenter.SPILLMODUS"
+            android:targetPackage="no.waagan.kontrollsenter"
+            android:targetClass="no.waagan.kontrollsenter.QuickAction" />
+    </shortcut>
+    <shortcut android:shortcutId="demp" android:enabled="true" android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_mute" android:shortcutLongLabel="@string/sc_mute_long">
+        <intent android:action="no.waagan.kontrollsenter.DEMP"
+            android:targetPackage="no.waagan.kontrollsenter"
+            android:targetClass="no.waagan.kontrollsenter.QuickAction" />
+    </shortcut>
+    <shortcut android:shortcutId="middag" android:enabled="true" android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_dinner" android:shortcutLongLabel="@string/sc_dinner_long">
+        <intent android:action="no.waagan.kontrollsenter.MIDDAG"
+            android:targetPackage="no.waagan.kontrollsenter"
+            android:targetClass="no.waagan.kontrollsenter.QuickAction" />
+    </shortcut>
+    <shortcut android:shortcutId="laas" android:enabled="true" android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_lock" android:shortcutLongLabel="@string/sc_lock_long">
+        <intent android:action="no.waagan.kontrollsenter.LAAS"
+            android:targetPackage="no.waagan.kontrollsenter"
+            android:targetClass="no.waagan.kontrollsenter.QuickAction" />
+    </shortcut>
 </shortcuts>

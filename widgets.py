@@ -90,6 +90,20 @@ def data(win):
                              "charging": d.get("charging"), "full": d.get("full")} for d in (s.get("batteries") or {}).get("devices", [])]
     except Exception:  # noqa: BLE001
         out["batteries"] = []
+    try:                                              # til «Velg selv»-widgeten på Android
+        info = s.get("info") or {}
+        out["ping_ms"] = (info.get("ping") or {}).get("ms")
+        out["price_now"] = (info.get("price") or {}).get("now")
+        w = info.get("weather") or {}
+        if w.get("temp") is not None:
+            out["weather"] = f"{w.get('icon', '')} {w['temp']}°"
+        ev = ((info.get("cal") or {}).get("events") or [None])[0]
+        if ev:
+            out["next_event"] = ev["title"] + " · " + ev["when"]
+        wh = win.energy.today_wh()
+        out["kwh"] = round(wh / 1000, 2)
+    except Exception:  # noqa: BLE001
+        pass
     try:
         import remote_extra as X
         pt = X.playtime_summary(1)

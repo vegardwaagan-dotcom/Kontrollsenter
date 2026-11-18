@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.36.0", "Mobilappen", [
+        ("Nytt", [
+            "Ny widget «Velg selv»: fire fliser du velger – CPU/GPU-temperatur, strømforbruk, ping, strømpris nå, været, "
+            "spilt i dag, kWh i dag, batteri eller neste avtale. Hold på widgeten → Innstillinger for å bytte",
+            "Nye hurtigfliser (sveip ned – virker også fra låseskjermen): «Demp PC-en» og «Middag!»",
+            "Nye snarveier på app-ikonet (hold fingeren på ikonet): Spillmodus, Demp PC-en, Middag! og Lås PC-en. Dra dem "
+            "ut på hjemskjermen, eller bruk dem i Bixby-rutiner",
+            "Klokka (Wear OS / Galaxy Watch): varslene fra Kontrollsenter – temperatur, batteri, chat og «Middag!» – "
+            "vises på klokka når telefonen viser dem",
+        ]),
+    ]),
     ("0.35.0", "Smartere varsler", [
         ("Nytt", [
             "«Musa er fulladet» – varsel når mus, headset eller tastatur er ferdig ladet, så du kan ta ut kabelen",
