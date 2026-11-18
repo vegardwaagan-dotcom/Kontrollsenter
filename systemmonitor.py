@@ -1346,6 +1346,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             pass
         import perf
         f = perf.interval_factor()
+        if not self.get_mapped() and f > 1 and self._tick_n % 2:
+            return True                                  # minimal + skjult: data hvert 2. sekund er nok
         if not self.get_mapped() or (not self.is_active() and self._tick_n % 2) or (f > 1 and self._tick_n % f):
             try:
                 self._update_quiet()

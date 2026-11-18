@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.71.1", "Enda mindre prosessorbruk", [
+        ("Raskere", [
+            "Minimal prosessbruk: sensorene på Windows leses hvert 3. sekund, og i bakgrunnen samles data "
+            "annethvert sekund",
+        ]),
+        ("Rettet", ["PC-er hjemme / venner: drivernummeret for NVIDIA på Windows vises igjen"]),
+    ]),
     ("0.71.0", "Windows: raskere og jevnere", [
         ("Raskere på Windows", [
             "PowerShell-spørsmål får aldri vinduet til å stå stille: svar huskes, og vinduet får forrige svar "

@@ -237,6 +237,10 @@ def _hw():
                  "gpu": " + ".join(gpus), "ram": (one.get("Minne") or [""])[0],
                  "board": (one.get("Hovedkort") or [""])[0].replace("ASUSTeK COMPUTER INC. ", "ASUS "),
                  "disks": " · ".join(one.get("Disk", [])[:4])}
+            m = re.search(r"NVIDIA.*\((\d+)\.(\d+)\.(\d+)\.(\d+)\)", " ".join(one.get("Grafikk", [])))
+            if m:                                          # 32.0.15.8278 → NVIDIA 582.78
+                n = (m.group(3) + m.group(4))[-5:]
+                d["driver"] = f"NVIDIA {n[:3]}.{n[3:]}"
             d = {k: v for k, v in d.items() if v and v.strip()}
         except Exception:  # noqa: BLE001
             pass

@@ -45,7 +45,11 @@ class Lhm:
                 out = []
                 cls._walk(tree, [], out)
                 cls._cache, cls.ok, cls._down_since = out, True, None
-                time.sleep(1)
+                try:                                       # minimal prosessbruk: les sensorene hvert 3. sekund
+                    import perf
+                    time.sleep(3 if perf.eco() else 1)
+                except Exception:  # noqa: BLE001
+                    time.sleep(1)
             except (OSError, ValueError):
                 cls._cache, cls.ok = [], False
                 now = time.monotonic()
