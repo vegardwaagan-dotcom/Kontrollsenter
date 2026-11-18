@@ -532,6 +532,43 @@ async function loadScenes() {
 }
 setInterval(() => tab === "kontroll" && !document.hidden && loadScenes(), 15000);
 
+// ---------- mål og belønning + ukesrapport (familie) ----------
+const goalCard = document.createElement("div");
+goalCard.className = "card"; goalCard.id = "c-goals";
+goalCard.innerHTML = '<h2>Mål og belønning</h2><p class="dim small">Ferdig med lekser? Trykk – foreldrene godkjenner fra telefonen, og ekstra spilletid kommer med en gang.</p>'
+  + '<div class="goals" id="goals"></div><div id="goal-pending"></div><div id="goal-msg" class="dim small"></div>';
+const weekCard = document.createElement("div");
+weekCard.className = "card"; weekCard.id = "c-week";
+weekCard.innerHTML = '<h2>Ukesrapport</h2><div id="weekly" class="dim small">Henter …</div>';
+{ const fg = $("#fam-grid"); if (fg) { const fc = $("#c-family"); fg.insertBefore(weekCard, fc ? fc.nextSibling : null); fg.insertBefore(goalCard, weekCard); } }
+async function loadGoals() {
+  let g; try { g = await X("goals"); } catch (e) { goalCard.hidden = true; return; }
+  goalCard.hidden = false;
+  $("#goals").innerHTML = g.goals.map((x) => '<button type="button" class="goal" data-g="' + esc(x.id) + '"><span class="gi">' + esc(x.icon)
+    + '</span><span>' + esc(x.name) + '</span><small>+' + x.minutes + ' min</small></button>').join("");
+  $$("#goals .goal").forEach((b) => (b.onclick = async () => { vibe(10); await act({ a: "goal_req", goal: b.dataset.g }); loadGoals(); }));
+  const full = !document.body.classList.contains("limited");
+  $("#goal-pending").innerHTML = g.pending.map((r) => '<div class="row between goal-req"><span>' + esc(r.icon) + ' <b>' + esc(r.name)
+    + '</b><br><small class="dim">' + esc(r.pc || "") + ' · ' + esc(r.by || "") + ' · +' + r.minutes + ' min</small></span>'
+    + (full ? '<span class="row"><button class="primary" data-ok="' + esc(r.id) + '">Godkjenn</button><button class="soft" data-no="' + esc(r.id) + '">Avslå</button></span>'
+      : '<span class="dim small">Venter …</span>') + '</div>').join("");
+  $$("#goal-pending [data-ok]").forEach((b) => (b.onclick = async () => { await act({ a: "goal_ok", id: b.dataset.ok, ok: true }); loadGoals(); }));
+  $$("#goal-pending [data-no]").forEach((b) => (b.onclick = async () => { await act({ a: "goal_ok", id: b.dataset.no, ok: false }); loadGoals(); }));
+}
+async function loadWeekly() {
+  try {
+    const r = await X("weekly");
+    const hm = (s) => Math.floor(s / 3600) + " t " + Math.floor(s % 3600 / 60) + " min";
+    const top = Math.max(1, ...r.rows.map((x) => x.play_s));
+    $("#weekly").innerHTML = r.rows.length ? r.rows.map((x) => '<div class="wk"><div class="row between"><b>' + esc(x.name) + '</b><span>' + hm(x.play_s)
+      + '</span></div><div class="det-track"><i style="width:' + Math.round(100 * x.play_s / top) + '%"></i></div><small class="dim">'
+      + [x.top ? "mest " + esc(x.top) : "", x.sessions ? x.sessions + " økter" : "", x.kwh ? x.kwh + " kWh" : ""].filter(Boolean).join(" · ")
+      + '</small></div>').join("")
+      + (r.top_games.length ? '<p class="small">Mest spilt i huset: ' + r.top_games.slice(0, 3).map(([g, v]) => esc(g) + " (" + hm(v) + ")").join(", ") + '</p>' : "")
+      : "Ingen tall ennå.";
+  } catch (e) { $("#weekly").textContent = e.message; }
+}
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
@@ -540,6 +577,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   dashSetTab(t);
   if (t === "system") loadNotify();
   if (t === "kontroll") loadScenes();
+  if (t === "spill") { loadGoals(); loadWeekly(); }
 };
 dashWire();
 if (tab === "system") loadNotify();

@@ -350,6 +350,99 @@ def give_bonus(minutes):
     _ev("playtime", f"{minutes} min ekstra spilletid i dag", "Belønning fra appen", "game")
 
 
+# --------------------------------------------------------------------------
+# Ukesrapport (søndag kveld) og mål og belønning
+# --------------------------------------------------------------------------
+def weekly_report():
+    """Spilletid per person, mest spilte spill og strøm – for hele huset (fra statusen PC-ene deler)."""
+    f = family()
+    rows, total = [], 0
+    for x in f["pcs"]:
+        s = x.get("play_week_s") or 0
+        total += s
+        top = max((x.get("week") or {}).items(), key=lambda kv: kv[1], default=(None, 0))[0]
+        rows.append({"name": x["name"], "play_s": s, "top": top, "sessions": x.get("sessions_week") or 0,
+                     "longest": x.get("longest_week") or 0, "kwh": x.get("kwh_week")})
+    rows.sort(key=lambda r: -r["play_s"])
+    games = {}
+    for x in f["pcs"]:
+        for g, v in (x.get("week") or {}).items():
+            games[g] = games.get(g, 0) + v
+    top_games = sorted(games.items(), key=lambda kv: -kv[1])[:5]
+    kwh = sum(r["kwh"] or 0 for r in rows)
+    return {"rows": rows, "total_s": total, "top_games": top_games, "kwh": round(kwh, 1),
+            "week": time.strftime("uke %V")}
+
+
+def weekly_text(r=None):
+    r = r or weekly_report()
+    hm = lambda s: f"{int(s) // 3600} t {int(s) % 3600 // 60} min"  # noqa: E731
+    lines = [f"{x['name']}: {hm(x['play_s'])}" + (f" (mest {x['top']})" if x["top"] else "") for x in r["rows"]]
+    return "; ".join(lines[:5]) + (f". Strøm: {r['kwh']} kWh" if r["kwh"] else "")
+
+
+def weekly_tick(notify):
+    lt = time.localtime()
+    key = time.strftime("%G-%V")
+    if lt.tm_wday == 6 and lt.tm_hour >= 19 and cfg().get("weekly_sent") != key and cfg().get("weekly", True):
+        c = cfg()
+        c["weekly_sent"] = key
+        save_cfg(c)
+        try:
+            r = weekly_report()
+            if r["rows"]:
+                notify("weekly", f"Ukesrapport {r['week']}", weekly_text(r))
+                _ev("weekly", f"Ukesrapport {r['week']}", weekly_text(r), "warn")
+        except Exception:  # noqa: BLE001
+            pass
+
+
+GOALS = [{"id": "lekser", "name": "Ferdig med lekser", "icon": "📚", "minutes": 30},
+         {"id": "rom", "name": "Ryddet rommet", "icon": "🧹", "minutes": 20},
+         {"id": "tur", "name": "Gått tur / trent", "icon": "🏃", "minutes": 20},
+         {"id": "hjelp", "name": "Hjulpet til hjemme", "icon": "🍽️", "minutes": 15}]
+
+
+def goals():
+    c = cfg()
+    return {"goals": c.get("goals") or GOALS, "pending": [r for r in c.get("goal_reqs", []) if r.get("state") == "venter"],
+            "done": [r for r in c.get("goal_reqs", []) if r.get("state") != "venter"][-8:]}
+
+
+def goal_request(goal_id, by="PC-en"):
+    g = next((x for x in goals()["goals"] if x["id"] == goal_id), None)
+    if not g:
+        raise ValueError("ukjent mål")
+    c = cfg()
+    reqs = c.setdefault("goal_reqs", [])
+    if any(r["goal"] == goal_id and r["state"] == "venter" for r in reqs):
+        return "Venter allerede på godkjenning"
+    import savegames
+    rid = f"{int(time.time())}-{goal_id}"
+    reqs.append({"id": rid, "goal": goal_id, "name": g["name"], "icon": g["icon"], "minutes": g["minutes"],
+                 "by": str(by)[:40], "pc": savegames.pc_name(), "t": time.time(), "state": "venter"})
+    c["goal_reqs"] = reqs[-40:]
+    save_cfg(c)
+    _ev("goal", f"{g['icon']} {savegames.pc_name()}: {g['name']}",
+        f"Ber om {g['minutes']} min ekstra spilletid – godkjenn i appen", "warn")
+    return f"Sendt til foreldrene – {g['minutes']} min når det er godkjent"
+
+
+def goal_answer(rid, ok):
+    c = cfg()
+    r = next((x for x in c.get("goal_reqs", []) if x["id"] == rid), None)
+    if not r or r["state"] != "venter":
+        raise ValueError("forespørselen finnes ikke lenger")
+    r["state"] = "godkjent" if ok else "avslått"
+    r["answered"] = time.time()
+    save_cfg(c)
+    if ok:
+        give_bonus(r["minutes"])
+    _ev("goal", f"{r['icon']} {r['name']}: " + ("godkjent ✓" if ok else "ikke godkjent"),
+        f"{r['minutes']} min ekstra spilletid i dag" if ok else "", "game")
+    return "Godkjent – " + str(r["minutes"]) + " min ekstra i dag" if ok else "Avslått"
+
+
 def bonus_today():
     return cfg()["bonus"].get(time.strftime("%Y-%m-%d"), 0)
 
@@ -366,7 +459,20 @@ def family():
                     "kd": p.get("cs2_kd"), "wow_levels": p.get("wow_levels"), "cpu_t": p.get("cpu_t"),
                     "game": p.get("game"), "time": p.get("time"), "off": p.get("off"),
                     "watch": bool(p.get("watch")) and time.time() - (p.get("time") or 0) < 900})
-    rank = {"Mest spilt i dag": sorted(((x["name"], round(x["today"] / 60)) for x in out), key=lambda y: -y[1]),
+    for x, p in zip(out, pcs):
+        x.update({k: p.get(k) for k in ("play_week_s", "sessions_week", "longest_week", "cs2_kills_week", "kwh_week")})
+        if not x.get("play_week_s"):                  # eldre versjoner deler bare spillene – summer dem
+            x["play_week_s"] = sum((x.get("week") or {}).values())
+    hm = lambda s: f"{int(s or 0) // 3600} t {int(s or 0) % 3600 // 60} min"  # noqa: E731
+    rank = {"Mest spilt denne uka": [(n, hm(v)) for n, v in sorted(((x["name"], x.get("play_week_s") or 0) for x in out),
+                                                                     key=lambda y: -y[1]) if v],
+            "Flest økter denne uka": sorted(((x["name"], x["sessions_week"]) for x in out if x.get("sessions_week")),
+                                            key=lambda y: -y[1]),
+            "Lengste økt denne uka": [(n, f"{v} min") for n, v in sorted(((x["name"], x.get("longest_week") or 0)
+                                                                            for x in out), key=lambda y: -y[1]) if v],
+            "Flest CS2-kills denne uka": sorted(((x["name"], x["cs2_kills_week"]) for x in out
+                                                 if x.get("cs2_kills_week")), key=lambda y: -y[1]),
+            "Mest spilt i dag": sorted(((x["name"], round(x["today"] / 60)) for x in out), key=lambda y: -y[1]),
             "Høyest CS2 K/D": sorted(((x["name"], x["kd"]) for x in out if x["kd"]), key=lambda y: -y[1]),
             "Flest WoW-levels": sorted(((x["name"], x["wow_levels"]) for x in out if x["wow_levels"]), key=lambda y: -y[1]),
             "Kaldeste CPU": sorted(((x["name"], x["cpu_t"]) for x in out if x["cpu_t"]), key=lambda y: y[1])}
@@ -381,6 +487,21 @@ def share_fields():
         pt = X.playtime_summary(7)
         out["play_today"] = pt["days"][-1]["total"]
         out["play_week"] = dict(pt["week"][:8])
+        out["play_week_s"] = sum(d["total"] for d in pt["days"][-7:])
+    except Exception:  # noqa: BLE001
+        pass
+    try:                                              # økter, lengste økt og CS2-kills siste 7 dager
+        import games_auto
+        wk = [x for x in games_auto.load_sessions() if time.time() - (x.get("start") or 0) < 7 * 86400]
+        out["sessions_week"] = len(wk)
+        out["longest_week"] = max((x.get("minutes", 0) for x in wk), default=0)
+        import remote_extra as X
+        ms = X._jload(X.CS2_MATCHES, [])
+        out["cs2_kills_week"] = sum(m.get("kills") or 0 for m in ms if time.time() - (m.get("t") or 0) < 7 * 86400)
+        if WIN is not None and getattr(WIN, "energy", None):
+            out["kwh_today"] = round(WIN.energy.today_wh() / 1000, 2)
+            out["kwh_week"] = round(sum(WIN.energy._get(time.strftime("%Y-%m-%d", time.localtime(time.time() - i * 86400)))[0]
+                                        for i in range(7)) / 1000, 1)
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -816,6 +937,7 @@ def tick(notify, win=None):
     try:
         if every("bed", 30):
             bedtime_tick(notify)
+            weekly_tick(notify)
         if every("upd", 50):
             auto_update_tick()
         if every("shader", 20):

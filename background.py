@@ -40,6 +40,8 @@ KINDS = [
      ["full*"]),
     ("health", "Diskhelse og rask oppvarming", "Disken nærmer seg slitt, eller temperaturen stiger unormalt raskt.",
      ["smart*", "temprise*"]),
+    ("goal", "Mål og belønning", "Når noen er ferdig med lekser e.l. og ber om ekstra spilletid – og svaret.", ["goal"]),
+    ("weekly", "Ukesrapport", "Søndag kveld: spilletid per person, mest spilte spill og strøm denne uka.", ["weekly"]),
     ("bg", "«Kjører i bakgrunnen»", "Beskjed første gang vinduet lukkes og programmet fortsetter i bakgrunnen.",
      ["bg"]),
 ]

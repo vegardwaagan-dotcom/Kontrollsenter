@@ -720,6 +720,12 @@ def _feature_action(win, kind, a):
                 B.save(cfg)
         _call_main(go)
         return True, "Varsler på PC-en: " + ("på" if on else "av")
+    if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
+        import features as F
+        return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "goal_ok":                        # foreldrene godkjenner eller avslår
+        import features as F
+        return True, F.goal_answer(str(a.get("id", "")), bool(a.get("ok")))
     if kind == "scene":                          # kjør en scene fra mobilappen
         import scenes
         name = scenes.run(win, str(a.get("id", "")))
@@ -807,7 +813,8 @@ WEB_TYPES = {".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js
              ".apk": "application/vnd.android.package-archive"}
 
 
-LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "uilog"}   # «begrenset» tilgang
+LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "uilog",
+              "goal_req"}   # «begrenset» tilgang
 
 
 class Remote:
@@ -1105,6 +1112,14 @@ def _handler(remote):
             if what == "me":
                 d = getattr(self, "device", {}) or {}
                 return self._send(200, {"name": d.get("name"), "role": d.get("role", "full")})
+            if what == "goals":
+                import features as F
+                return self._send(200, F.goals())
+            if what == "weekly":
+                import features as F
+                r = F.weekly_report()
+                r["text"] = F.weekly_text(r)
+                return self._send(200, r)
             if what == "scenes":
                 import scenes
                 d = scenes.load()

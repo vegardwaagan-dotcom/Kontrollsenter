@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.38.0", "Familie og spill", [
+        ("Nytt", [
+            "Ukesrapport søndag kveld: spilletid per person, mest spilte spill, antall økter, lengste økt og strøm – for "
+            "alle PC-ene i huset. Også som kort på Familie-siden og i appen (Spill)",
+            "Mål og belønning: «Ferdig med lekser», «Ryddet rommet», «Gått tur» og «Hjulpet til hjemme». Barna trykker, "
+            "foreldrene får varsel på telefonen og godkjenner – ekstra spilletid kommer med en gang. På PC-en krever "
+            "godkjenning familiekoden når familiekontroll er på",
+            "Ranking på tvers av PC-ene: mest spilt denne uka, flest økter, lengste økt og flest CS2-kills – i tillegg til "
+            "K/D og WoW-levels. Vises på Familie-siden og i appen",
+        ]),
+    ]),
     ("0.37.0", "Smart Hjem-automatikk", [
         ("Nytt", [
             "Hue-lysene følger spillet: når et spill starter, får lysene spillets farge – og settes tilbake slik de var "

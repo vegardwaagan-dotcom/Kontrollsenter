@@ -82,10 +82,50 @@ class FamilyPage(Gtk.ScrolledWindow):
             import applog
             applog.log.exception("familie-kort")
 
+        # ---- mål og belønning ----
+        c, i = _card("Mål og belønning",
+                     "Ferdig med lekser? Trykk, så får foreldrene beskjed på telefonen – godkjenner de, får du ekstra "
+                     "spilletid i dag med en gang.")
+        box.append(c)
+        gb = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=4, min_children_per_line=2,
+                         column_spacing=10, row_spacing=10, homogeneous=True)
+        import features as F
+        for g in F.goals()["goals"]:
+            b = Gtk.Button()
+            b.add_css_class("ks-goal")
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            ic = Gtk.Label(label=g["icon"])
+            ic.add_css_class("title-1")
+            col.append(ic)
+            col.append(Gtk.Label(label=i18n.tr(g["name"]), wrap=True, justify=Gtk.Justification.CENTER))
+            sub = Gtk.Label(label=f"+{g['minutes']} min")
+            sub.add_css_class("dim-label")
+            sub.add_css_class("caption")
+            col.append(sub)
+            b.set_child(col)
+            b.connect("clicked", lambda _b, gid=g["id"]: self._goal(gid))
+            gb.append(b)
+        i.append(gb)
+        self.goal_msg = Gtk.Label(xalign=0, wrap=True)
+        self.goal_msg.add_css_class("ks-sub")
+        i.append(self.goal_msg)
+        self.goal_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        i.append(self.goal_list)
+
+        # ---- ukesrapport og ranking ----
+        c, i = _card("Ukesrapport og ranking", "Spilletid per person, mest spilte spill og strøm denne uka – for alle "
+                                               "PC-ene i huset. Kommer også som varsel søndag kveld.")
+        box.append(c)
+        self.week_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.week_box.append(Gtk.Label(label=i18n.tr("Henter …"), xalign=0))
+        i.append(self.week_box)
+
         self._busy = False
         self._show_lock()
+        self._show_goals()
+        self._load_week()
         self.refresh()
-        GLib.timeout_add_seconds(30, lambda: (self.get_mapped() and self.refresh(), True)[1])
+        GLib.timeout_add_seconds(30, lambda: (self.get_mapped() and (self.refresh(), self._show_goals()), True)[1])
 
     # ---- familiekontroll ----
     def _show_lock(self):
@@ -115,6 +155,110 @@ class FamilyPage(Gtk.ScrolledWindow):
                            i18n.tr("Ny kode er lagret ✓") if ok else "")))
 
     # ---- se på ----
+    # ---- mål ----
+    def _goal(self, gid):
+        import features as F
+        try:
+            self.goal_msg.set_label(i18n.tr(F.goal_request(gid, "PC-en")))
+        except Exception as e:  # noqa: BLE001
+            self.goal_msg.set_label(str(e))
+        self._show_goals()
+
+    def _show_goals(self):
+        import features as F
+        while (ch := self.goal_list.get_first_child()) is not None:
+            self.goal_list.remove(ch)
+        g = F.goals()
+        for r in g["pending"]:
+            row = Gtk.Box(spacing=10)
+            row.append(Gtk.Label(label=f"{r['icon']} {r['name']} · +{r['minutes']} min · {r.get('by', '')}",
+                                 xalign=0, hexpand=True, wrap=True))
+            for lab, ok in (("Godkjenn", True), ("Avslå", False)):
+                b = Gtk.Button(label=i18n.tr(lab))
+                if ok:
+                    b.add_css_class("suggested-action")
+                b.connect("clicked", lambda _b, rid=r["id"], ok=ok: self._answer(rid, ok))
+                row.append(b)
+            self.goal_list.append(row)
+        for r in reversed(g["done"][-3:]):
+            lab = Gtk.Label(label=f"{r['icon']} {r['name']} – {r['state']}", xalign=0)
+            lab.add_css_class("dim-label")
+            self.goal_list.append(lab)
+        return False
+
+    def _answer(self, rid, ok):
+        import features as F
+
+        def do():
+            try:
+                self.goal_msg.set_label(i18n.tr(F.goal_answer(rid, ok)))
+            except Exception as e:  # noqa: BLE001
+                self.goal_msg.set_label(str(e))
+            self._show_goals()
+        if familylock.locked():                         # barna kan ikke godkjenne sine egne
+            familylock.ask(self.get_root(), "Skriv familiekoden for å svare.", do, lambda: None)
+        else:
+            do()
+
+    # ---- ukesrapport ----
+    def _load_week(self):
+        def work():
+            try:
+                import features as F
+                r, fam = F.weekly_report(), F.family()
+            except Exception as e:  # noqa: BLE001
+                r, fam = {"error": str(e)}, {}
+            GLib.idle_add(self._show_week, r, fam)
+        threading.Thread(target=work, daemon=True).start()
+        return False
+
+    def _show_week(self, r, fam):
+        while (ch := self.week_box.get_first_child()) is not None:
+            self.week_box.remove(ch)
+        if r.get("error") or not r.get("rows"):
+            self.week_box.append(Gtk.Label(label=i18n.tr("Ingen tall ennå – PC-ene deler status på hjemmenettet hvert "
+                                                         "5. minutt."), xalign=0, wrap=True))
+            return False
+        hm = lambda s: f"{int(s) // 3600} t {int(s) % 3600 // 60} min"  # noqa: E731
+        top = max(x["play_s"] for x in r["rows"]) or 1
+        for x in r["rows"]:
+            row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            head = Gtk.Box(spacing=8)
+            nm = Gtk.Label(label=x["name"], xalign=0, hexpand=True)
+            nm.add_css_class("heading")
+            head.append(nm)
+            head.append(Gtk.Label(label=hm(x["play_s"])))
+            row.append(head)
+            bar = Gtk.LevelBar(min_value=0, max_value=1, value=x["play_s"] / top)
+            bar.set_size_request(-1, 8)
+            row.append(bar)
+            extra = [f"mest {x['top']}" if x["top"] else None, f"{x['sessions']} økter" if x["sessions"] else None,
+                     f"lengste {x['longest']} min" if x["longest"] else None,
+                     f"{x['kwh']} kWh" if x.get("kwh") else None]
+            sub = Gtk.Label(label=" · ".join(e for e in extra if e), xalign=0)
+            sub.add_css_class("dim-label")
+            sub.add_css_class("caption")
+            row.append(sub)
+            self.week_box.append(row)
+        if r.get("top_games"):
+            lab = Gtk.Label(label=i18n.tr("Mest spilt i huset: ") + ", ".join(f"{g} ({hm(v)})" for g, v in r["top_games"][:3]),
+                            xalign=0, wrap=True)
+            self.week_box.append(lab)
+        grid = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=3, min_children_per_line=1,
+                           column_spacing=16, row_spacing=10)
+        for title, rows in (fam.get("ranking") or {}).items():
+            if not rows:
+                continue
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            t = Gtk.Label(label=i18n.tr(title), xalign=0)
+            t.add_css_class("caption-heading")
+            col.append(t)
+            for n, (name, v) in enumerate(rows[:3]):
+                col.append(Gtk.Label(label=f"{['🥇', '🥈', '🥉'][n]} {name}  ·  {v}", xalign=0))
+            grid.append(col)
+        self.week_box.append(grid)
+        return False
+
     def refresh(self):
         def work():
             try:
