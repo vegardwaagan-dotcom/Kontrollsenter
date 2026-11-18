@@ -38,6 +38,11 @@
     current = sel;
     back.querySelector("#sheet-t").textContent = titleFor(sel);
     const opts = Array.from(sel.options);
+    const plain = opts.filter((o) => !o.hidden && !(o.disabled && !o.value));
+    if (plain.length >= 2 && plain.length <= 60 && !opts.some((o) => o.dataset.img) && !sel.querySelector("optgroup")) {
+      return openWheel(sel, plain);
+    }
+    back.classList.remove("wheel-mode");
     q.hidden = opts.length < 9; q.value = "";
     let html = "";
     for (const node of sel.children) {
@@ -54,6 +59,46 @@
     back.hidden = false;
     requestAnimationFrame(() => back.classList.add("open"));
     const on = list.querySelector(".on"); if (on) on.scrollIntoView({ block: "center" });
+  }
+  // ---- rullehjul (som den gamle iPhone-velgeren, med glass) ----
+  const WH = 44;
+  function openWheel(sel, opts) {
+    back.classList.add("wheel-mode");
+    q.hidden = true;
+    let idx = Math.max(0, opts.findIndex((o) => o.selected));
+    list.innerHTML = '<div class="wheel"><div class="wband"></div><div class="wscroll">' + '<div class="wpad"></div>'
+      + opts.map((o, i) => '<div class="witem" data-i="' + i + '">' + ESC(o.textContent) + '</div>').join("")
+      + '<div class="wpad"></div></div></div><button type="button" class="wdone">Velg</button>';
+    const sc = list.querySelector(".wscroll"), items = Array.from(list.querySelectorAll(".witem"));
+    let last = idx, raf = 0, endT = 0;
+    const paint = () => {
+      raf = 0;
+      const mid = sc.scrollTop + sc.clientHeight / 2;
+      items.forEach((el, i) => {
+        const d = (i * WH + WH / 2 + sc.clientHeight / 2 - WH / 2 - mid) / WH;
+        const ang = Math.max(-80, Math.min(80, d * 21));
+        const op = Math.max(0.12, Math.cos(ang * Math.PI / 180) ** 2.2);
+        el.style.transform = "perspective(420px) rotateX(" + (-ang) + "deg) scale(" + (1 - Math.min(0.18, Math.abs(d) * 0.05)) + ")";
+        el.style.opacity = String(op);
+        el.classList.toggle("on", Math.abs(d) < 0.5);
+      });
+      const cur = Math.round(sc.scrollTop / WH);
+      if (cur !== last) { last = cur; try { if (window.KS && KS.vibrate) KS.vibrate(); else if (navigator.vibrate) navigator.vibrate(4); } catch (e) {} }
+    };
+    sc.onscroll = () => { if (!raf) raf = requestAnimationFrame(paint); clearTimeout(endT); endT = setTimeout(() => { idx = Math.round(sc.scrollTop / WH); }, 120); };
+    const commit = () => {
+      const i = Math.max(0, Math.min(opts.length - 1, Math.round(sc.scrollTop / WH)));
+      const v = opts[i].value;
+      if (v !== sel.value) { sel.value = v; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      close();
+    };
+    items.forEach((el) => (el.onclick = () => {
+      const i = +el.dataset.i;
+      if (Math.round(sc.scrollTop / WH) === i) commit(); else sc.scrollTo({ top: i * WH, behavior: "smooth" });
+    }));
+    list.querySelector(".wdone").onclick = commit;
+    back.hidden = false;
+    requestAnimationFrame(() => { back.classList.add("open"); sc.scrollTop = idx * WH; paint(); });
   }
   function row(o) {
     if (o.disabled && !o.value) return "";

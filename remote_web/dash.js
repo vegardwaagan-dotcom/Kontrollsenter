@@ -591,6 +591,56 @@ $("#slow-go").onclick = async () => {
   b.disabled = false; b.textContent = "Sjekk på nytt";
 };
 
+// ---------- Discord (Styr) ----------
+const dcCard = document.createElement("div");
+dcCard.className = "card"; dcCard.id = "c-discord"; dcCard.dataset.ord = "-5"; dcCard.hidden = true;
+dcCard.innerHTML = '<div class="row between"><h2>Discord</h2><span class="dim small" id="dc-st"></span></div>'
+  + '<div class="dc-big"><button type="button" id="dc-mic">🎙️<span>Mikrofon av</span></button><button type="button" id="dc-deaf">🎧<span>Lyd av</span></button>'
+  + '<button type="button" id="dc-leave" class="danger">📞<span>Forlat</span></button></div>'
+  + '<div id="dc-ch" class="dim small"></div>'
+  + '<div id="dc-full"><div class="row"><span>Mikrofonvolum</span><input type="range" id="dc-in" min="0" max="100"></div>'
+  + '<div class="row"><span>Volum på samtalen</span><input type="range" id="dc-out" min="0" max="200"></div>'
+  + '<div class="row"><span>Når snakker du?</span><select id="dc-mode" data-title="Når snakker du?"><option value="VOICE_ACTIVITY">Stemmeaktivering</option><option value="PUSH_TO_TALK">Trykk for å snakke</option></select></div>'
+  + '<div class="row"><span>Støydemping</span><label class="switch"><input type="checkbox" id="dc-noise"><i></i></label></div>'
+  + '<div class="row"><span>Ekkodemping</span><label class="switch"><input type="checkbox" id="dc-echo"><i></i></label></div>'
+  + '<div class="row"><span>Automatisk forsterkning</span><label class="switch"><input type="checkbox" id="dc-agc"><i></i></label></div></div>'
+  + '<div id="dc-sys" class="row"><span>Discord-volum</span><input type="range" id="dc-sysvol" min="0" max="150"></div>'
+  + '<p class="dim small" id="dc-note"></p>';
+{ const g = $("#kontroll .grid"); if (g) g.insertBefore(dcCard, g.children[1] || null); }
+let dcState = null, dcHold = 0;
+const dcAct = (body) => { dcHold = Date.now() + 2500; return act(Object.assign({ a: "discord" }, body), true).then(() => setTimeout(loadDiscord, 700)); };
+async function loadDiscord() {
+  let st; try { st = await X("discord"); } catch (e) { dcCard.hidden = true; return; }
+  dcState = st;
+  dcCard.hidden = !st.running && !st.linked;
+  if (Date.now() < dcHold) return;
+  const v = st.voice, a = st.audio || {};
+  $("#dc-st").textContent = !st.running ? "ikke startet" : v ? "koblet til" : "via lydsystemet";
+  const mic = v ? v.mute : !!(a.mic && a.mic[1]), deaf = v ? v.deaf : !!(a.out && a.out[1]);
+  $("#dc-mic").classList.toggle("on", !!mic); $("#dc-deaf").classList.toggle("on", !!deaf);
+  $("#dc-mic").disabled = !v && !a.mic; $("#dc-deaf").disabled = !v && !a.out; $("#dc-leave").disabled = !st.channel;
+  $("#dc-ch").innerHTML = st.channel ? "🔊 " + esc(st.channel.name || "Samtale") + " · " + st.channel.members.map((m) => esc(m.name || "?") + (m.mute ? " 🔇" : "")).join(", ")
+    : (v ? "Ikke i en samtale." : "Bli med i en samtale i Discord for å styre den her.");
+  $("#dc-full").hidden = !v; $("#dc-sys").hidden = !!v || !a.out;
+  if (v) {
+    $("#dc-in").value = v.in_vol; $("#dc-out").value = v.out_vol; $("#dc-mode").value = v.mode;
+    $("#dc-noise").checked = !!v.noise; $("#dc-echo").checked = !!v.echo; $("#dc-agc").checked = !!v.agc;
+  } else if (a.out) $("#dc-sysvol").value = a.out[0];
+  $("#dc-note").textContent = st.linked ? (st.error ? "Discord: " + st.error : "") :
+    "Volum, mikrofonmodus og demping: koble Kontrollsenter til Discord på PC-en (siden Discord, nederst).";
+}
+$("#dc-mic").onclick = () => { const on = !$("#dc-mic").classList.contains("on"); $("#dc-mic").classList.toggle("on", on); vibe(10);
+  dcAct(dcState && dcState.voice ? { do: "mute", on } : { do: "mic_mute_sys", on }); };
+$("#dc-deaf").onclick = () => { const on = !$("#dc-deaf").classList.contains("on"); $("#dc-deaf").classList.toggle("on", on); vibe(10);
+  dcAct(dcState && dcState.voice ? { do: "deaf", on } : { do: "out_mute_sys", on }); };
+$("#dc-leave").onclick = async () => { if (await confirmDlg("Forlate samtalen i Discord?")) dcAct({ do: "leave" }); };
+$("#dc-in").onchange = () => dcAct({ do: "in_vol", value: +$("#dc-in").value });
+$("#dc-out").onchange = () => dcAct({ do: "out_vol", value: +$("#dc-out").value });
+$("#dc-sysvol").onchange = () => dcAct({ do: "out_vol_sys", value: +$("#dc-sysvol").value });
+$("#dc-mode").onchange = () => dcAct({ do: "mode", value: $("#dc-mode").value });
+["noise", "echo", "agc"].forEach((k) => ($("#dc-" + k).onchange = () => dcAct({ do: k, on: $("#dc-" + k).checked })));
+setInterval(() => tab === "kontroll" && !document.hidden && loadDiscord(), 4000);
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
@@ -598,7 +648,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (detOpen) closeDetail();
   dashSetTab(t);
   if (t === "system") loadNotify();
-  if (t === "kontroll") loadScenes();
+  if (t === "kontroll") { loadScenes(); loadDiscord(); }
   if (t === "spill") { loadGoals(); loadWeekly(); }
 };
 dashWire();

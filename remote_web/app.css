@@ -755,3 +755,29 @@ body.eco.live-bg::before { animation: none; }
 .goal-req { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; }
 .wk { margin: 0 0 12px; } .wk .det-track { margin: 6px 0 4px; }
 .slow-row { padding: 8px 0; border-bottom: 1px solid var(--line); gap: 10px; }
+/* rullehjul i velgerne (liquid glass) */
+.sheet-back.wheel-mode .sheet { background: color-mix(in srgb, var(--card-solid) 88%, transparent) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.6); backdrop-filter: blur(28px) saturate(1.6);
+  background-image: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.02) 40%, transparent 65%, rgba(255,255,255,.05)),
+    radial-gradient(80% 60% at 0% 0%, color-mix(in srgb, var(--ga) 20%, transparent), transparent),
+    radial-gradient(70% 60% at 100% 100%, color-mix(in srgb, var(--gb) 18%, transparent), transparent) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.4), 0 -24px 60px -20px rgba(0,0,0,.6); }
+.wheel { position: relative; height: 264px; margin: 4px 0 10px; }
+.wscroll { position: absolute; inset: 0; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent); mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent); }
+.wscroll::-webkit-scrollbar { display: none; }
+.wpad { height: 110px; }
+.witem { height: 44px; line-height: 44px; text-align: center; scroll-snap-align: center; font-size: 18px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 16px; transform-origin: 50% 50% -60px; will-change: transform; }
+.witem.on { font-weight: 750; font-size: 20px; }
+.wband { position: absolute; left: 6px; right: 6px; top: 110px; height: 44px; border-radius: 14px; pointer-events: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ga) 26%, transparent), color-mix(in srgb, var(--gb) 22%, transparent)),
+    linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.02) 50%, rgba(255,255,255,.08));
+  box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--gb) 80%, transparent), inset 0 1px rgba(255,255,255,.45), 0 8px 22px -10px var(--gb); }
+.wdone { width: 100%; min-height: 50px; border-radius: 16px; background: var(--grad); color: #fff; font-weight: 800; border: 0; }
+/* Discord */
+.dc-big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 10px; }
+.dc-big button { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 76px; border-radius: 20px; font-size: 22px; }
+.dc-big button span { font-size: 12.5px; font-weight: 700; }
+.dc-big button.on { background: var(--grad); color: #fff; }
+#c-discord input[type=range] { flex: 1; max-width: 55%; }

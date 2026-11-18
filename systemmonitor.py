@@ -164,6 +164,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             GLib.idle_add(lambda: looks.start(self) and False)
             import smartauto
             GLib.idle_add(lambda: smartauto.start() and False)
+            import wheel                                 # rullehjul i alle valgmenyer
+            GLib.idle_add(lambda: wheel.install(self) and False)
         except Exception:  # noqa: BLE001
             applog.log.exception("temaer")
         try:                                             # lys som følger musa på knappene
@@ -501,6 +503,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("nettverk", "Nettverk", "ks-network-symbolic", "netpage", "NetworkPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
                 ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
+                ("discord", "Discord", "ks-discord-symbolic", "discord_ui", "DiscordPage"),
                 ("familie", "Familie", "ks-family-symbolic", "family_page", "FamilyPage"),
                 ("smarthjem", "Smart Hjem", "ks-smarthome-symbolic", "smarthome_ui", "SmartHomePage"),
                 ("scener", "Scener", "ks-scenes-symbolic", "scenes_ui", "ScenesPage"),

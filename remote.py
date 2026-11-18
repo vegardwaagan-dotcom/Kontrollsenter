@@ -720,6 +720,9 @@ def _feature_action(win, kind, a):
                 B.save(cfg)
         _call_main(go)
         return True, "Varsler på PC-en: " + ("på" if on else "av")
+    if kind == "discord":                        # Discord: mikrofon, lyd av, volum, enheter, demping …
+        import discord_ctl
+        return True, discord_ctl.action(a)
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
@@ -1112,6 +1115,9 @@ def _handler(remote):
             if what == "me":
                 d = getattr(self, "device", {}) or {}
                 return self._send(200, {"name": d.get("name"), "role": d.get("role", "full")})
+            if what == "discord":
+                import discord_ctl
+                return self._send(200, discord_ctl.state())
             if what == "slow":
                 import upkeep
                 return self._send(200, upkeep.analyze(remote.win))

@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.40.0", "Rullehjul og Discord", [
+        ("Nytt", [
+            "Alle valgmenyer er nå et rullehjul – som den gamle iPhone-velgeren, men med flytende glass: valgene ligger "
+            "på en sylinder som snurrer, det valgte står i et lysende glassbånd og hjulet snapper mykt på plass. Rull, "
+            "dra, trykk eller bruk piltastene. Også i mobilappen, med et lite tikk for hvert valg",
+            "Ny side «Discord» (under Spill) og et Discord-kort i appen (Styr): mikrofon av, lyd av og forlat samtalen "
+            "med ett trykk, og hvem som er i samtalen",
+            "Med full tilkobling til Discord: mikrofonvolum, volum på samtalen, valg av mikrofon og høyttalere, "
+            "stemmeaktivering eller trykk for å snakke, støydemping, ekkodemping og automatisk forsterkning",
+            "Uten oppsett styres Discord via lydsystemet: Discord-volum, mikrofon av og lyd av",
+            "Overlay: Discord har ikke eget overlay på Linux – knappen slår på spill-overlayet i Kontrollsenter i stedet",
+        ]),
+    ]),
     ("0.39.0", "Ytelse og vedlikehold", [
         ("Nytt", [
             "«Hvorfor er PC-en treg?» – én knapp (Vedlikehold → Feilsøking, og i appen under Verktøy) som ser på "
