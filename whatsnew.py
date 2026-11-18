@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.40.1", "Glød på flisene", [
+        ("Nytt", [
+            "Flisene og kortene i Oversikt, kortene på sidene og scenekortene gløder nå som knappene: en lysende kant "
+            "i temaets farger når musa er over, og et mykt lys som følger pekeren",
+            "I appen: flisene, snarveiene, scenene, Discord-knappene og målene lyser opp der fingeren trykker, med glød "
+            "rundt – og følger musa på nettbrett/PC",
+        ]),
+    ]),
     ("0.40.0", "Rullehjul og Discord", [
         ("Nytt", [
             "Alle valgmenyer er nå et rullehjul – som den gamle iPhone-velgeren, men med flytende glass: valgene ligger "

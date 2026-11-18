@@ -299,6 +299,18 @@ switch:checked:hover { box-shadow: 0 0 0 1px alpha(white, 0.35), 0 0 22px 4px al
 checkbutton:hover check, radiobutton:hover radio { box-shadow: 0 0 12px 2px alpha(#6a7bff, 0.65); }
 .navigation-sidebar > row:hover { box-shadow: 0 0 0 1px alpha(#8a9bff, 0.35), 0 0 16px alpha(#6a7bff, 0.30); }
 scale:hover slider { box-shadow: 0 0 14px 2px alpha(#6a7bff, 0.7); }
+/* flisene og kortene gløder som knappene */
+.ks-dash-item > .card, .ks-dash-item > .tile, .card.ks-scene { transition: box-shadow 260ms ease; }
+.ks-dash-item:hover > .card, .ks-dash-item:hover > .tile, .card.ks-scene:hover,
+window.ks-glass .ks-dash-item:hover > .card, window.ks-glass .ks-dash-item:hover > .tile,
+window.ks-glass .card.tile:hover, window.ks-glass .card.ks-scene:hover {
+  box-shadow: inset 0 1px alpha(white, 0.35), 0 0 0 1px alpha(#6a7bff, 0.95),
+              0 0 22px 4px alpha(#6a7bff, 0.70), 0 0 58px 14px alpha(#8a5cff, 0.40);
+}
+.ks-dash-item:active > .card, .ks-dash-item:active > .tile, .card.ks-scene:active {
+  box-shadow: inset 0 1px alpha(white, 0.55), 0 0 0 1px alpha(white, 0.45),
+              0 0 24px 5px alpha(#6a7bff, 0.85), 0 0 60px 14px alpha(#8a5cff, 0.45);
+}
 
 /* skrivebordswidgets */
 window.ks-desk { background: transparent; }

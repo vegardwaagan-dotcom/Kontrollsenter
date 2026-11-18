@@ -641,6 +641,35 @@ $("#dc-mode").onchange = () => dcAct({ do: "mode", value: $("#dc-mode").value })
 ["noise", "echo", "agc"].forEach((k) => ($("#dc-" + k).onchange = () => dcAct({ do: k, on: $("#dc-" + k).checked })));
 setInterval(() => tab === "kontroll" && !document.hidden && loadDiscord(), 4000);
 
+// ---------- glød på flisene: lys som følger fingeren / musa, og glød rundt ----------
+(() => {
+  const SEL = "#tiles > [data-k], .scene, .quick button[data-q], .dc-big button, .goal";
+  let cur = null, off = 0;
+  const place = (el, ev) => {
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--mx", (ev.clientX - r.left) + "px");
+    el.style.setProperty("--my", (ev.clientY - r.top) + "px");
+  };
+  const light = (el, ev) => {
+    if (cur && cur !== el) cur.classList.remove("glowing");
+    clearTimeout(off);
+    cur = el; place(el, ev); el.classList.add("glowing");
+  };
+  const dim = () => { const el = cur; off = setTimeout(() => { if (el) el.classList.remove("glowing"); if (cur === el) cur = null; }, 380); };
+  document.addEventListener("pointerdown", (ev) => {
+    if (dashEditing || document.body.classList.contains("eco")) return;
+    const el = ev.target.closest(SEL); if (el) light(el, ev);
+  }, true);
+  document.addEventListener("pointermove", (ev) => {
+    if (dashEditing) return;
+    const el = ev.target.closest && ev.target.closest(SEL);
+    if (ev.pointerType === "mouse") { if (el) light(el, ev); else if (cur) dim(); }
+    else if (cur && ev.buttons) place(cur, ev);
+  }, true);
+  document.addEventListener("pointerup", (ev) => { if (ev.pointerType !== "mouse") dim(); }, true);
+  document.addEventListener("pointercancel", dim, true);
+})();
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign

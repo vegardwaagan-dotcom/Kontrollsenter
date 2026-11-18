@@ -781,3 +781,22 @@ body.eco.live-bg::before { animation: none; }
 .dc-big button span { font-size: 12.5px; font-weight: 700; }
 .dc-big button.on { background: var(--grad); color: #fff; }
 #c-discord input[type=range] { flex: 1; max-width: 55%; }
+/* flisene gløder som knappene: lys som følger fingeren og glød rundt */
+#tiles > [data-k], .scene, .quick button[data-q], .dc-big button, .goal { position: relative; isolation: isolate; }
+#tiles > [data-k]::before, .scene::before, .quick button[data-q]::before, .dc-big button::before, .goal::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2; opacity: 0;
+  transition: opacity .35s ease;
+  background: radial-gradient(circle 150px at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.30),
+              color-mix(in srgb, var(--ga) 26%, transparent) 42%, transparent 72%);
+  mix-blend-mode: screen; }
+#tiles > [data-k].glowing::before, .scene.glowing::before, .quick button[data-q].glowing::before,
+.dc-big button.glowing::before, .goal.glowing::before { opacity: 1; transition: opacity .08s ease; }
+#tiles > [data-k].glowing, .scene.glowing, .quick button[data-q].glowing, .dc-big button.glowing, .goal.glowing {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 0 0 1px color-mix(in srgb, var(--acc) 85%, transparent),
+              0 0 20px 3px color-mix(in srgb, var(--acc) 60%, transparent), 0 0 52px 10px color-mix(in srgb, var(--gb) 38%, transparent) !important; }
+@media (hover: hover) {
+  #tiles > .card:hover, .scene:hover {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 0 0 1px rgba(138,155,255,.65),
+                0 0 16px 1px rgba(106,123,255,.55), 0 0 36px 6px color-mix(in srgb, var(--gb) 30%, transparent) !important; }
+}
+body.eco #tiles > [data-k]::before { display: none; }

@@ -77,6 +77,7 @@ class _Item(Gtk.Overlay):
         super().__init__(hexpand=True)
         self.dash, self.key, self.size, self.sizes = dash, key, size, sizes
         self.add_css_class("ks-dash-item")
+        self.set_overflow(Gtk.Overflow.VISIBLE)          # gløden rundt flisen skal ikke klippes
         widget.set_hexpand(True)
         widget.set_valign(Gtk.Align.FILL)
         self.set_child(widget)

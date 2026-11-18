@@ -15,15 +15,26 @@ PRIORITY = Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 3          # over glass- og
 _LIGHT = "radial-gradient(circle {r}px at {x}px {y}px, alpha(white, {a}), alpha(#8a9bff, {b}) 45%, transparent 75%)"
 
 
+def _is_tile(w):
+    """Et kort/flis som skal lyse: fliser og kort i rutenettet, og scenekortene."""
+    if not w.has_css_class("card"):
+        return False
+    p = w.get_parent()
+    return w.has_css_class("tile") or w.has_css_class("ks-scene") or (p is not None and p.has_css_class("ks-dash-item"))
+
+
 def _target(w):
-    """Knappen (eller raden i sidemenyen) under pekeren."""
+    """Knappen (eller raden i sidemenyen) under pekeren – ellers flisen/kortet den ligger i."""
+    tile = None
     while w is not None:
         if isinstance(w, (Gtk.Button, Gtk.ListBoxRow)) and w.get_sensitive():
             return w
+        if tile is None and isinstance(w, Gtk.Box) and _is_tile(w):
+            tile = w
         if isinstance(w, Gtk.Window):
-            return None
+            return tile
         w = w.get_parent()
-    return None
+    return tile
 
 
 def _base(w):
@@ -35,6 +46,12 @@ def _base(w):
     if w.has_css_class("destructive-action"):
         return "none"
     if w.has_css_class("flat"):
+        return "none"
+    if w.has_css_class("card"):                       # fliser: behold glass-skinnet om det er på
+        root = w.get_root()
+        if root is not None and root.has_css_class("ks-glass"):
+            return ("linear-gradient(160deg, alpha(white, 0.11), alpha(white, 0.02) 38%, transparent 62%, "
+                    "alpha(white, 0.05))")
         return "none"
     return "linear-gradient(180deg, alpha(white, 0.13), alpha(white, 0) 62%)"
 
@@ -83,9 +100,13 @@ class Spotlight:
             return
         self.last = (lx, ly)
         big = max(w.get_width(), w.get_height())
-        r = max(40, min(140, int(big * 0.9)))
+        card = w.has_css_class("card")
+        r = max(40, min(260 if card else 140, int(big * (0.55 if card else 0.9))))
         strong = w.has_css_class("suggested-action") or (isinstance(w, Gtk.ToggleButton) and w.get_active())
-        light = _LIGHT.format(r=r, x=lx, y=ly, a=0.42 if strong else 0.30, b=0.30 if strong else 0.22)
+        if card:                                      # mykere lys på store flater
+            light = _LIGHT.format(r=r, x=lx, y=ly, a=0.24, b=0.20)
+        else:
+            light = _LIGHT.format(r=r, x=lx, y=ly, a=0.42 if strong else 0.30, b=0.30 if strong else 0.22)
         base = _base(w)
         css = (f"* {{ background-image: {light}{', ' + base if base != 'none' else ''}; "
                f"background-size: 100% 100%; background-repeat: no-repeat; }}")
