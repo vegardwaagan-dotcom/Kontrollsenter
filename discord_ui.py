@@ -13,6 +13,8 @@ import i18n  # noqa: E402
 
 CSS = """
 togglebutton.ks-dc-big, button.ks-dc-big { min-height: 64px; border-radius: 20px; font-weight: 800; font-size: 1.05em; }
+label.ks-bubble { padding: 8px 12px; border-radius: 16px; background-color: alpha(currentColor, 0.08); }
+label.ks-bubble.mine { color: white; background-image: linear-gradient(135deg, #5b8cff, #8a5cff); }
 """
 _css = [False]
 
@@ -89,6 +91,21 @@ class DiscordPage(Gtk.ScrolledWindow):
             g.add(r)
             self.sw[key] = r
         self.mic_grp = g
+        pp.add(g)
+
+        # ---- servere og chat ----
+        g = Adw.PreferencesGroup(title=i18n.tr("Servere og chat"),
+                                 description=i18n.tr("Les chatten i kanalene dine her. Svar i Discord med «Åpne i "
+                                                     "Discord» – Discord tillater ikke at andre programmer sender "
+                                                     "meldinger eller viser vennelisten for deg."))
+        self.guild_box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        self.guild_box.add_css_class("boxed-list")
+        g.add(self.guild_box)
+        self.guild_msg = Gtk.Label(xalign=0, wrap=True, margin_top=6)
+        self.guild_msg.add_css_class("dim-label")
+        g.add(self.guild_msg)
+        self.chat_grp = g
+        self._guilds_loaded = False
         pp.add(g)
 
         # ---- overlay ----
@@ -221,6 +238,60 @@ class DiscordPage(Gtk.ScrolledWindow):
                                    False)[3])
         threading.Thread(target=work, daemon=True).start()
 
+    # ---- servere og chat ----
+    def _load_guilds(self):
+        if self._guilds_loaded:
+            return
+        self._guilds_loaded = True
+
+        def work():
+            try:
+                gs, err = D.guilds(), None
+            except Exception as e:  # noqa: BLE001
+                gs, err = [], str(e)
+            GLib.idle_add(self._show_guilds, gs, err)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_guilds(self, gs, err):
+        while (c := self.guild_box.get_first_child()) is not None:
+            self.guild_box.remove(c)
+        self.guild_msg.set_label(i18n.tr("Fikk ikke hentet serverne: ") + err if err else "")
+        for g in gs:
+            ex = Adw.ExpanderRow(title=GLib.markup_escape_text(g["name"] or "?"))
+            ex._gid, ex._loaded = g["id"], False
+            ex.connect("notify::expanded", self._expand)
+            self.guild_box.append(ex)
+        self.guild_box.set_visible(bool(gs))
+        return False
+
+    def _expand(self, ex, _p):
+        if not ex.get_expanded() or ex._loaded:
+            return
+        ex._loaded = True
+
+        def work():
+            try:
+                chs, err = D.channels(ex._gid), None
+            except Exception as e:  # noqa: BLE001
+                chs, err = [], str(e)
+            GLib.idle_add(self._show_channels, ex, chs, err)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_channels(self, ex, chs, err):
+        if err:
+            ex.add_row(Adw.ActionRow(title=GLib.markup_escape_text(err)))
+        icon = {"text": "#", "news": "📣", "forum": "💬", "voice": "🔊", "stage": "🎙️"}
+        for c in chs:
+            r = Adw.ActionRow(title=GLib.markup_escape_text(f"{icon[c['kind']]}  {c['name']}"), activatable=True)
+            if c["kind"] in ("text", "news"):
+                r.connect("activated", lambda _r, c=c, g=ex._gid: ChatDialog(g, c["id"], c["name"]).present(self.get_root()))
+                r.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+            else:
+                r.connect("activated", lambda _r, c=c, g=ex._gid: Gio.AppInfo.launch_default_for_uri(
+                    D.open_url(g, c["id"]), None))
+            ex.add_row(r)
+        return False
+
     # ---- oppdatering ----
     def refresh(self):
         def work():
@@ -288,7 +359,91 @@ class DiscordPage(Gtk.ScrolledWindow):
                     self.sw[k].set_active(bool(v.get(k)))
             self.ov.set_subtitle(i18n.tr(st.get("overlay_note") or ""))
             self.unlink_btn.set_visible(st["linked"])
+            ok = st["linked"] and st["running"] and not st.get("error")
+            self.chat_grp.set_visible(st["linked"])
+            if ok and D.can_read_chat():
+                self._load_guilds()
+            elif st["linked"] and not D.can_read_chat():
+                self.guild_msg.set_label(i18n.tr("Trykk «Koble til på nytt» nederst én gang til, så får Kontrollsenter "
+                                                 "lov til å lese chatten også."))
             self.link_btn.set_label(i18n.tr("Koble til på nytt") if st["linked"] else i18n.tr("Koble til"))
         finally:
             self._quiet = False
+        return False
+
+
+class ChatDialog(Adw.Dialog):
+    """Chatten i én kanal – oppdateres hvert 4. sekund. Svar i Discord."""
+
+    def __init__(self, guild_id, channel_id, name):
+        super().__init__(title="# " + (name or ""), content_width=560, content_height=720)
+        self.gid, self.cid = guild_id, channel_id
+        tv = Adw.ToolbarView()
+        hb = Adw.HeaderBar()
+        tv.add_top_bar(hb)
+        self.sc = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
+        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        for side in ("top", "bottom", "start", "end"):
+            getattr(self.box, f"set_margin_{side}")(14)
+        self.sc.set_child(self.box)
+        tv.set_content(self.sc)
+        bar = Gtk.Box(spacing=8, margin_top=8, margin_bottom=10, margin_start=12, margin_end=12)
+        hint = Gtk.Label(label=i18n.tr("Svar i Discord-appen"), xalign=0, hexpand=True)
+        hint.add_css_class("dim-label")
+        bar.append(hint)
+        ob = Gtk.Button(label=i18n.tr("Åpne i Discord"))
+        ob.add_css_class("suggested-action")
+        ob.connect("clicked", lambda *_: Gio.AppInfo.launch_default_for_uri(D.open_url(self.gid, self.cid), None))
+        bar.append(ob)
+        tv.add_bottom_bar(bar)
+        self.set_child(tv)
+        self._last = None
+        self._load()
+        self._tid = GLib.timeout_add_seconds(4, lambda: (self._load(), True)[1])
+        self.connect("closed", lambda *_: GLib.source_remove(self._tid))
+
+    def _load(self):
+        def work():
+            try:
+                d, err = D.messages(self.cid), None
+            except Exception as e:  # noqa: BLE001
+                d, err = None, str(e)
+            GLib.idle_add(self._show, d, err)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show(self, d, err):
+        if err:
+            if self._last is None:
+                self.box.append(Gtk.Label(label=err, wrap=True))
+                self._last = "err"
+            return False
+        ms = d["messages"]
+        sig = ms[-1]["id"] if ms else ""
+        if sig == self._last:
+            return False
+        at_bottom = self.sc.get_vadjustment().get_value() >= self.sc.get_vadjustment().get_upper() - \
+            self.sc.get_vadjustment().get_page_size() - 40
+        self._last = sig
+        while (c := self.box.get_first_child()) is not None:
+            self.box.remove(c)
+        prev = None
+        for m in ms:
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
+                          halign=Gtk.Align.END if m["mine"] else Gtk.Align.START)
+            if m["author"] != prev:
+                who = Gtk.Label(xalign=0)
+                c = m.get("color") or "#9aa8ff"
+                who.set_markup(f'<b><span foreground="{GLib.markup_escape_text(c)}">'
+                               f'{GLib.markup_escape_text(m["author"])}</span></b>  <small>'
+                               f'{time.strftime("%H:%M", time.localtime(m["t"]))}</small>')
+                col.append(who)
+            txt = Gtk.Label(label=m["content"], xalign=0, wrap=True, selectable=True, max_width_chars=60)
+            txt.add_css_class("ks-bubble")
+            if m["mine"]:
+                txt.add_css_class("mine")
+            col.append(txt)
+            self.box.append(col)
+            prev = m["author"]
+        if at_bottom or len(ms) and self._last == sig:
+            GLib.idle_add(lambda: self.sc.get_vadjustment().set_value(self.sc.get_vadjustment().get_upper()) or False)
         return False

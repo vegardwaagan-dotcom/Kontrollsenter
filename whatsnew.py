@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.41.0", "Discord: servere og chat", [
+        ("Nytt", [
+            "Discord-siden viser nå serverne du er med i og kanalene på hver server. Trykk på en tekstkanal for å lese "
+            "chatten – den oppdateres av seg selv, med navn i fargene fra Discord og dine egne meldinger til høyre",
+            "«Åpne i Discord» / «Svar i Discord» åpner kanalen rett i Discord-appen (på PC-en og telefonen)",
+            "I appen: «💬 Servere og chat» i Discord-kortet under Styr",
+            "Merk: Discord tillater ikke at andre programmer sender meldinger som deg eller viser vennelisten din – "
+            "det ville krevd innloggingsnøkkelen din og bryter vilkårene deres. Har du koblet til før: trykk «Koble "
+            "til på nytt» én gang, så får Kontrollsenter lov til å lese chatten",
+        ]),
+    ]),
     ("0.40.1", "Glød på flisene", [
         ("Nytt", [
             "Flisene og kortene i Oversikt, kortene på sidene og scenekortene gløder nå som knappene: en lysende kant "

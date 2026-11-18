@@ -1118,6 +1118,19 @@ def _handler(remote):
             if what == "discord":
                 import discord_ctl
                 return self._send(200, discord_ctl.state())
+            if what == "dc_guilds":
+                import discord_ctl as DC
+                if not DC.can_read_chat():
+                    return self._send(200, {"guilds": [], "need_relink": DC.linked()})
+                return self._send(200, {"guilds": DC.guilds()})
+            if what == "dc_channels":
+                import discord_ctl as DC
+                return self._send(200, {"channels": DC.channels(arg("g", ""))})
+            if what == "dc_chat":
+                import discord_ctl as DC
+                d = DC.messages(arg("c", ""))
+                d["url"] = DC.open_url(arg("g", ""), arg("c", ""), app=False)
+                return self._send(200, d)
             if what == "slow":
                 import upkeep
                 return self._send(200, upkeep.analyze(remote.win))

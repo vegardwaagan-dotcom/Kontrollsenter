@@ -640,6 +640,68 @@ $("#dc-sysvol").onchange = () => dcAct({ do: "out_vol_sys", value: +$("#dc-sysvo
 $("#dc-mode").onchange = () => dcAct({ do: "mode", value: $("#dc-mode").value });
 ["noise", "echo", "agc"].forEach((k) => ($("#dc-" + k).onchange = () => dcAct({ do: k, on: $("#dc-" + k).checked })));
 setInterval(() => tab === "kontroll" && !document.hidden && loadDiscord(), 4000);
+// servere, kanaler og chat (lesing – svar i Discord)
+{ const b = document.createElement("button"); b.type = "button"; b.className = "soft wide"; b.id = "dc-servers"; b.textContent = "💬 Servere og chat";
+  $("#dc-note").before(b); b.onclick = () => dcServers(); }
+const dcSheet = document.createElement("div");
+dcSheet.className = "sheet-back"; dcSheet.hidden = true;
+dcSheet.innerHTML = '<div class="sheet det-sheet dc-sheet" role="dialog"><div class="grab"></div><div class="sheet-head"><button class="icon" id="dcs-back" aria-label="Tilbake">‹</button>'
+  + '<b id="dcs-t">Discord</b><button class="icon" id="dcs-x" aria-label="Lukk">✕</button></div><div class="sheet-list" id="dcs-body"></div><div id="dcs-foot"></div></div>';
+document.body.appendChild(dcSheet);
+let dcView = null, dcTimer = 0;
+const dcOpen = () => { dcSheet.hidden = false; requestAnimationFrame(() => dcSheet.classList.add("open")); };
+const dcClose = () => { clearInterval(dcTimer); dcView = null; dcSheet.classList.remove("open"); setTimeout(() => { if (!dcView) dcSheet.hidden = true; }, 230); };
+dcSheet.onclick = (e) => { if (e.target === dcSheet) dcClose(); };
+$("#dcs-x").onclick = dcClose;
+$("#dcs-back").onclick = () => { if (dcView && dcView.c) dcChannels(dcView.g, dcView.gname); else if (dcView && dcView.g) dcServers(); else dcClose(); };
+const openOut = (u) => { if (KS && KS.openUrl) KS.openUrl(u); else if (KS && KS.openApp) KS.openApp("com.discord"); else window.open(u, "_blank"); };
+async function dcServers() {
+  clearInterval(dcTimer); dcView = {}; $("#dcs-t").textContent = "Servere"; $("#dcs-foot").innerHTML = ""; $("#dcs-back").hidden = true;
+  $("#dcs-body").innerHTML = '<p class="dim small" style="padding:16px">Henter …</p>'; dcOpen();
+  try {
+    const r = await X("dc_guilds");
+    if (r.need_relink) { $("#dcs-body").innerHTML = '<p class="dim" style="padding:16px">Trykk «Koble til på nytt» på Discord-siden på PC-en én gang til, så får Kontrollsenter lov til å lese chatten.</p>'; return; }
+    $("#dcs-body").innerHTML = r.guilds.map((g) => '<button class="sheet-row" data-g="' + esc(g.id) + '" data-n="' + esc(g.name) + '">'
+      + (g.icon ? '<span class="pk-ic"><img src="' + esc(g.icon) + '" alt="" style="width:36px;height:36px;border-radius:12px"></span>' : '<span class="pk-ic">💬</span>')
+      + '<span class="pk-t"><b>' + esc(g.name) + '</b></span></button>').join("") || '<p class="dim" style="padding:16px">Ingen servere – er Kontrollsenter koblet til Discord på PC-en?</p>';
+    $$("#dcs-body [data-g]").forEach((b) => (b.onclick = () => dcChannels(b.dataset.g, b.dataset.n)));
+  } catch (e) { $("#dcs-body").innerHTML = '<p class="dim" style="padding:16px">' + esc(e.message) + '</p>'; }
+}
+async function dcChannels(g, name) {
+  clearInterval(dcTimer); dcView = { g, gname: name }; $("#dcs-t").textContent = name; $("#dcs-back").hidden = false; $("#dcs-foot").innerHTML = "";
+  $("#dcs-body").innerHTML = '<p class="dim small" style="padding:16px">Henter kanaler …</p>';
+  try {
+    const r = await X("dc_channels", "g=" + encodeURIComponent(g));
+    const ic = { text: "#", news: "📣", forum: "💬", voice: "🔊", stage: "🎙️" };
+    $("#dcs-body").innerHTML = r.channels.map((c) => '<button class="sheet-row" data-c="' + esc(c.id) + '" data-k="' + c.kind + '" data-n="' + esc(c.name) + '"><span class="pk-ic">'
+      + ic[c.kind] + '</span><span class="pk-t"><b>' + esc(c.name) + '</b></span></button>').join("");
+    $$("#dcs-body [data-c]").forEach((b) => (b.onclick = () => (b.dataset.k === "text" || b.dataset.k === "news")
+      ? dcChat(g, name, b.dataset.c, b.dataset.n) : openOut("https://discord.com/channels/" + g + "/" + b.dataset.c)));
+  } catch (e) { $("#dcs-body").innerHTML = '<p class="dim" style="padding:16px">' + esc(e.message) + '</p>'; }
+}
+async function dcChat(g, gname, c, name) {
+  dcView = { g, gname, c }; $("#dcs-t").textContent = "# " + name;
+  $("#dcs-body").innerHTML = '<p class="dim small" style="padding:16px">Henter chatten …</p>';
+  $("#dcs-foot").innerHTML = '<button class="primary wide" id="dcs-open">Svar i Discord</button>';
+  $("#dcs-open").onclick = () => openOut("https://discord.com/channels/" + g + "/" + c);
+  let lastId = null;
+  const load = async () => {
+    try {
+      const d = await X("dc_chat", "g=" + encodeURIComponent(g) + "&c=" + encodeURIComponent(c));
+      const ms = d.messages; const id = ms.length ? ms[ms.length - 1].id : "";
+      if (id === lastId) return; lastId = id;
+      const body = $("#dcs-body"), atEnd = body.scrollTop + body.clientHeight >= body.scrollHeight - 40;
+      let prev = null;
+      body.innerHTML = ms.map((m) => { const head = m.author !== prev; prev = m.author;
+        const t = new Date(m.t * 1000).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+        return '<div class="dc-msg' + (m.mine ? " mine" : "") + '">' + (head ? '<div class="dc-who"><b style="color:' + esc(m.color || "var(--acc)") + '">' + esc(m.author) + '</b> <small class="dim">' + t + '</small></div>' : "")
+          + '<div class="dc-bub">' + esc(m.content) + '</div></div>'; }).join("") || '<p class="dim" style="padding:16px">Ingen meldinger ennå.</p>';
+      if (atEnd || lastId === id) body.scrollTop = body.scrollHeight;
+    } catch (e) { $("#dcs-body").innerHTML = '<p class="dim" style="padding:16px">' + esc(e.message) + '</p>'; }
+  };
+  await load();
+  clearInterval(dcTimer); dcTimer = setInterval(() => !document.hidden && dcView && dcView.c === c && load(), 4000);
+}
 
 // ---------- glød på flisene: lys som følger fingeren / musa, og glød rundt ----------
 (() => {

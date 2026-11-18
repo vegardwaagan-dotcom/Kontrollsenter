@@ -629,6 +629,19 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Åpne en https-lenke i riktig app (f.eks. en Discord-kanal i Discord-appen). */
+        @JavascriptInterface
+        public void openUrl(String url) {
+            if (url == null || !url.startsWith("https://")) return;
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception e) {
+                    // ingen app kan åpne lenken
+                }
+            });
+        }
+
         /** Fargetema (Nordlys, Synthwave …) – samme på startskjermen og for alle PC-ene. */
         @JavascriptInterface
         public String getLook() {

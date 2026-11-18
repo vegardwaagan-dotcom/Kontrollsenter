@@ -26,7 +26,7 @@ import uuid
 
 IS_WIN = sys.platform == "win32"
 CFG = os.path.expanduser("~/.config/systemmonitor/discord.json")
-SCOPES = ["rpc", "rpc.voice.read", "rpc.voice.write", "identify"]
+SCOPES = ["rpc", "rpc.voice.read", "rpc.voice.write", "identify", "messages.read"]
 _LOCK = threading.Lock()
 
 
@@ -229,8 +229,10 @@ def connect_app(client_id, client_secret):
         tok = _token_request({"client_id": client_id, "client_secret": client_secret, "grant_type": "authorization_code",
                               "code": code, "redirect_uri": "http://localhost"})
         save_cfg(client_id=str(client_id), client_secret=client_secret, access_token=tok["access_token"],
+                 scopes=SCOPES,
                  refresh_token=tok.get("refresh_token"), expires=time.time() + int(tok.get("expires_in", 604800)) - 60)
         rpc.cmd("AUTHENTICATE", {"access_token": tok["access_token"]})
+        save_cfg(me_id=rpc.user.get("id"))
         return rpc.user.get("global_name") or rpc.user.get("username") or "Discord"
     finally:
         rpc.close()
@@ -349,3 +351,80 @@ def action(a):
         finally:
             rpc.close()
     return "OK"
+
+
+# --------------------------------------------------------------------------
+# Servere, kanaler og chat (lesing). Discord har ingen godkjent måte å sende meldinger som deg selv eller å lese
+# vennelisten for vanlige apper – da måtte vi brukt innloggingsnøkkelen din, som bryter vilkårene. Svar skjer i
+# Discord: open_url() gir en lenke rett til kanalen.
+# --------------------------------------------------------------------------
+_GUILDS = {"t": 0, "v": None}
+
+
+def can_read_chat():
+    return "messages.read" in (cfg().get("scopes") or [])
+
+
+def _call(name, args=None):
+    with _LOCK:
+        rpc = _authed()
+        try:
+            return rpc.cmd(name, args or {})
+        finally:
+            rpc.close()
+
+
+def guilds():
+    """[{id, name, icon_url}] – serverne du er med i (mellomlagret 5 min)."""
+    if _GUILDS["v"] is not None and time.time() - _GUILDS["t"] < 300:
+        return _GUILDS["v"]
+    g = (_call("GET_GUILDS") or {}).get("guilds", [])
+    _GUILDS["v"] = [{"id": x["id"], "name": x.get("name"), "icon": x.get("icon_url")} for x in g]
+    _GUILDS["t"] = time.time()
+    return _GUILDS["v"]
+
+
+def channels(guild_id):
+    """Tekst- og talekanalene på en server, sortert slik Discord viser dem."""
+    ch = (_call("GET_CHANNELS", {"guild_id": str(guild_id)}) or {}).get("channels", [])
+    out = []
+    for c in ch:
+        kind = {0: "text", 2: "voice", 5: "news", 13: "stage", 15: "forum"}.get(c.get("type"))
+        if kind:
+            out.append({"id": c["id"], "name": c.get("name"), "kind": kind})
+    order = {"text": 0, "news": 0, "forum": 1, "voice": 2, "stage": 2}
+    return sorted(out, key=lambda c: (order[c["kind"]], (c["name"] or "").lower()))
+
+
+def _author(m):
+    a = m.get("author") or {}
+    return m.get("nick") or a.get("global_name") or a.get("username") or "?"
+
+
+def messages(channel_id, limit=50):
+    """Siste meldinger i en tekstkanal: [{id, author, content, t, color, mine}]."""
+    c = _call("GET_CHANNEL", {"channel_id": str(channel_id)}) or {}
+    me = cfg().get("me_id")
+    out = []
+    for m in (c.get("messages") or [])[-limit:]:
+        txt = m.get("content") or ""
+        if not txt and m.get("attachments"):
+            txt = "📎 " + ", ".join(x.get("filename", "vedlegg") for x in m["attachments"])
+        if not txt and m.get("embeds"):
+            e = m["embeds"][0]
+            txt = "🔗 " + (e.get("title") or e.get("description") or e.get("url") or "innebygd innhold")
+        ts = m.get("timestamp") or ""
+        try:
+            from datetime import datetime
+            t = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            t = time.time()
+        out.append({"id": m.get("id"), "author": _author(m), "content": txt, "t": t,
+                    "color": m.get("author_color"), "mine": (m.get("author") or {}).get("id") == me})
+    return {"name": c.get("name"), "guild": c.get("guild_id"), "messages": out}
+
+
+def open_url(guild_id, channel_id, app=True):
+    """Lenke som åpner kanalen i Discord (for å svare der)."""
+    g = guild_id or "@me"
+    return f"discord://-/channels/{g}/{channel_id}" if app else f"https://discord.com/channels/{g}/{channel_id}"
