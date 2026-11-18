@@ -726,6 +726,20 @@ def _feature_action(win, kind, a):
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "avprofile":                      # lyd-/skjermprofil (mobilen og scener)
+        import avprofiles as P
+        k, pid = str(a.get("kind", "")), str(a.get("id", ""))
+        if k == "audio":
+            return True, P.apply_audio(pid)
+        if k == "display":
+            return True, P.apply_display(pid)
+        raise ValueError("ukjent profiltype")
+    if kind == "nightlight":
+        import avprofiles as P
+        return True, P.set_night(bool(a.get("on")), a.get("temp"))
+    if kind == "brightness":
+        import avprofiles as P
+        return True, P.set_brightness(int(a.get("value", 50)))
     if kind == "plan_add":                       # ny avtale i familiens ukeplan
         import familyplus
         return True, familyplus.plan_add(a.get("day", 0), str(a.get("at", "")), str(a.get("text", "")),
@@ -1165,6 +1179,9 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "avprofiles":
+                import avprofiles as P
+                return self._send(200, P.state())
             if what == "plan":
                 import familyplus
                 import savegames

@@ -818,6 +818,28 @@ function liveCheck(s) {                                     // levende varsel me
 }
 { const _ro = window.renderOverview; if (_ro) window.renderOverview = function (s) { _ro(s); liveCheck(s); }; }
 
+// ---------- lyd- og skjermprofiler, nattlys og lysstyrke (Styr) ----------
+const avCard = document.createElement("div");
+avCard.className = "card"; avCard.id = "c-avprof"; avCard.hidden = true;
+avCard.innerHTML = '<h2>Lyd og skjerm</h2><div class="dim small">Lydprofil</div><div class="seg wrap" id="av-audio"></div>'
+  + '<div class="dim small" style="margin-top:8px">Skjermprofil</div><div class="seg wrap" id="av-display"></div>'
+  + '<div class="row between" id="av-nrow" style="margin-top:10px"><span>🌙 Nattlys</span><label class="switch"><input type="checkbox" id="av-night"><i></i></label></div>'
+  + '<div class="row between" id="av-brow"><span>☀️ Lysstyrke</span><input type="range" min="1" max="100" id="av-bri" style="flex:1;margin-left:12px"></div>';
+{ const g = $("#kontroll .grid"); if (g) g.insertBefore(avCard, $("#c-power") ? $("#c-power").nextSibling : null); }
+async function loadAv() {
+  let st; try { st = await X("avprofiles"); } catch (e) { avCard.hidden = true; return; }
+  avCard.hidden = false;
+  const btns = (list, cur, kind) => list.length ? list.map((p) => '<button data-av="' + kind + '" data-id="' + esc(p.id) + '" class="'
+    + (p.id === cur ? "on" : "") + '">' + esc((p.icon || "") + " " + p.name) + '</button>').join("") : '<span class="dim small">Lag profiler på PC-en</span>';
+  $("#av-audio").innerHTML = btns(st.audio, st.audio_active, "audio");
+  $("#av-display").innerHTML = btns(st.display, st.display_active, "display");
+  $$("[data-av]").forEach((b) => (b.onclick = async () => { vibe(10); await act({ a: "avprofile", kind: b.dataset.av, id: b.dataset.id }); loadAv(); }));
+  const n = $("#av-night"); n.checked = !!(st.night && st.night.on); $("#av-nrow").hidden = !st.night;
+  n.onchange = () => act({ a: "nightlight", on: n.checked, temp: 3400 });
+  const r = $("#av-bri"); $("#av-brow").hidden = st.brightness == null; if (st.brightness != null) r.value = st.brightness;
+  r.onchange = () => act({ a: "brightness", value: +r.value });
+}
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
@@ -825,7 +847,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (detOpen) closeDetail();
   dashSetTab(t);
   if (t === "system") loadNotify();
-  if (t === "kontroll") { loadScenes(); loadDiscord(); }
+  if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); }
   if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); }
 };
 dashWire();

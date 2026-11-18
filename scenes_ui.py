@@ -270,6 +270,28 @@ class SceneEditor(Adw.Dialog):
         self.vol.set_title(i18n.tr("Volum (%)"))
         self.vol.set_value(s.get("volume") if s.get("volume") is not None else 40)
         g.add(self.vol)
+        import avprofiles as AP
+        apc = AP.cfg()
+        self.aprof = _combo("Lydprofil", [(None, "Ikke endre")] + [(p["id"], p["name"]) for p in apc["audio"]],
+                            s.get("audio_profile"))
+        g.add(self.aprof)
+        pp.add(g)
+
+        g = Adw.PreferencesGroup(title=i18n.tr("Skjermen"),
+                                 description=i18n.tr("Skjermprofiler lages under GPU-innstillinger."))
+        self.dprof = _combo("Skjermprofil", [(None, "Ikke endre")] + [(p["id"], p["name"]) for p in apc["display"]],
+                            s.get("display_profile"))
+        g.add(self.dprof)
+        self.night = _combo("Nattlys", [(None, "Ikke endre"), (True, "På"), (False, "Av")], s.get("night"))
+        g.add(self.night)
+        bri = s.get("brightness")
+        self.sbri_on = _combo("Lysstyrke på skjermen", [(None, "Ikke endre"), ("set", "Sett")],
+                              None if bri is None else "set")
+        g.add(self.sbri_on)
+        self.sbri = Adw.SpinRow.new_with_range(1, 100, 5)
+        self.sbri.set_title(i18n.tr("Lysstyrke (%)"))
+        self.sbri.set_value(bri if bri is not None else 60)
+        g.add(self.sbri)
         pp.add(g)
 
         t = s.get("trigger") or {}
@@ -297,7 +319,8 @@ class SceneEditor(Adw.Dialog):
             row.append(dl)
         g.add(row)
         pp.add(g)
-        for w, fn in ((self.hue, self._sync), (self.sound, self._sync), (self.trig, self._sync), (self.rgb, self._sync)):
+        for w, fn in ((self.hue, self._sync), (self.sound, self._sync), (self.trig, self._sync), (self.rgb, self._sync),
+                      (self.sbri_on, self._sync)):
             w.connect("notify::selected", fn)
         self._sync()
 
@@ -312,6 +335,7 @@ class SceneEditor(Adw.Dialog):
         self.at.set_visible(self._val(self.trig) == "time")
         self.auto.set_visible(self._val(self.trig) != "manual")
         self.rgb_col.set_visible(self._val(self.rgb) == "color")
+        self.sbri.set_visible(self._val(self.sbri_on) == "set")
 
     def _save(self, _b, run=False):
         s = self.s
@@ -331,6 +355,10 @@ class SceneEditor(Adw.Dialog):
         sv = self._val(self.sound)
         s["mute"] = True if sv == "mute" else (False if sv == "vol" else None)
         s["volume"] = int(self.vol.get_value()) if sv == "vol" else None
+        s["audio_profile"] = self._val(self.aprof)
+        s["display_profile"] = self._val(self.dprof)
+        s["night"] = self._val(self.night)
+        s["brightness"] = int(self.sbri.get_value()) if self._val(self.sbri_on) == "set" else None
         at = self.at.get_text().strip()
         if self._val(self.trig) == "time":
             try:

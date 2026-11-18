@@ -156,6 +156,14 @@ def _steps(s):
             if h.get("color"):
                 body["color"] = h["color"]
         steps.append(("Hue-lys", body))
+    if s.get("audio_profile"):
+        steps.append(("Lydprofil", {"a": "avprofile", "kind": "audio", "id": s["audio_profile"]}))
+    if s.get("display_profile"):
+        steps.append(("Skjermprofil", {"a": "avprofile", "kind": "display", "id": s["display_profile"]}))
+    if s.get("night") is not None:
+        steps.append(("Nattlys", {"a": "nightlight", "on": bool(s["night"]), "temp": s.get("night_temp", 3400)}))
+    if s.get("brightness") is not None:
+        steps.append(("Lysstyrke", {"a": "brightness", "value": int(s["brightness"])}))
     if s.get("mute") is not None or s.get("volume") is not None:
         v = {"a": "volume"}
         if s.get("volume") is not None:

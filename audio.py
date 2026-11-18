@@ -168,6 +168,12 @@ class AudioPage(Gtk.ScrolledWindow):
         self.box = box
         self._sig = None
         self._pending = False
+        try:                                                  # lydprofiler øverst
+            import avprofiles_ui
+            box.append(avprofiles_ui.ProfileCard("audio", card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("lydprofiler")
 
         # Utgang
         c, i = card("Utgang", "Hvor lyden spilles: høyttalere, hodetelefoner eller skjerm (HDMI).")

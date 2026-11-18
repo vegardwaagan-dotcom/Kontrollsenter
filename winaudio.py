@@ -203,6 +203,12 @@ class AudioWinPage(Gtk.ScrolledWindow):
         self.set_child(box)
         self.box = box
         self.ends = {}
+        try:
+            import avprofiles_ui
+            box.append(avprofiles_ui.ProfileCard("audio", lambda t, d=None: automation.card(t, d)[:2]))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("lydprofiler")
         for flow, title, icon in ((E_RENDER, "Høyttalere", "ks-sound-symbolic"),
                                   (E_CAPTURE, "Mikrofon", "audio-input-microphone-symbolic")):
             c, i, head = automation.card(title, None, icon)

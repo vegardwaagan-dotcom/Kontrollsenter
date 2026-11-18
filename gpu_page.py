@@ -125,6 +125,14 @@ class GpuPage(Gtk.ScrolledWindow):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("gpu-bytte")
+        try:                                                 # skjermprofiler, nattlys og lysstyrke
+            import avprofiles_ui
+            cf = lambda t, d=None: _card(t, d)[:2]  # noqa: E731
+            self.box.append(avprofiles_ui.ProfileCard("display", cf))
+            self.box.append(avprofiles_ui.NightCard(cf))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("skjermprofiler")
 
         if not self.gpus:
             c, i, _h = _card("Fant ingen skjermkort", "Kontrollsenter fant ingen NVIDIA-, AMD- eller Intel-skjermkort.")

@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.54.0", "Lyd- og skjermprofiler", [
+        ("Nytt", [
+            "Lydprofiler (Lyd-siden): lagre utgang (høyttalere, hodesett, TV), mikrofon og volum – bytt med ett trykk. "
+            "Det som spiller nå flyttes med",
+            "Skjermprofiler (GPU-innstillinger): oppløsning, Hz, HDR og VRR – f.eks. «Spill» og «Film». Windows: "
+            "oppløsning og Hz",
+            "Nattlys og lysstyrke (GPU-innstillinger) – også eksterne skjermer via KDE (DDC/CI)",
+            "Alt kan styres fra mobilen (Styr → «Lyd og skjerm») og brukes i scener: lydprofil, skjermprofil, nattlys "
+            "og lysstyrke – f.eks. automatisk når et spill starter eller kl. 22",
+        ]),
+    ]),
     ("0.53.0", "Skjermkort og ytelse per spill", [
         ("Nytt", [
             "Spill → Bibliotek: velg skjermkort per spill (integrert eller dedikert) når PC-en har flere. Linux: "
