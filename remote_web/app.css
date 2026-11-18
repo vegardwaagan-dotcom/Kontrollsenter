@@ -827,3 +827,10 @@ body.fx #tabs button.on svg { animation: fx-pop .35s cubic-bezier(.3,1.6,.6,1); 
 @keyframes fx-pop { 0% { transform: scale(.7); } 100% { transform: scale(1); } }
 body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s ease-in-out infinite alternate; }
 @media (prefers-reduced-motion: reduce) { body.fx *, body.fx *::before { animation: none !important; transition: none !important; } }
+
+.today-big { font-size: 22px; font-weight: 800; margin: 2px 0 4px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 6px; }
+.ach { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px 6px;
+  border-radius: 16px; background: var(--card2); opacity: .5; }
+.ach.on { opacity: 1; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ga) 45%, transparent); }
+.ach span { font-size: 26px; } .ach small { color: var(--dim); font-size: 11px; }

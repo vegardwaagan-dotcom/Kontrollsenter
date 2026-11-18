@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.62.0", "Hurtigkommandoer, prestasjoner og stue-modus", [
+        ("Nytt", [
+            "Hurtigkommandoer i søket (Ctrl+K): skriv «spillmodus», «klipp», «skjermbilde», «VR», «nattlys», «middag», "
+            "en scene, et tema eller en lyd-/skjermprofil – og trykk Enter. Over 40 kommandoer",
+            "«Dagen i dag» på Oversikt og i mobilappen: spilletid, mest spilte spill, klipp, strøm i kWh og kroner og "
+            "varmeste temperatur",
+            "🏆 Prestasjoner (Spill → Prestasjoner og i appen): 15 merker å låse opp – maraton, nattugle, 100 timer, "
+            "kald hjerne, stilikon, inn i VR, lekse-helt m.fl. Du får varsel når du låser opp et nytt",
+            "📺 Stue-modus (F11 eller menyen): fullskjerm til TV/andreskjerm med stor klokke, vær, temperaturer, dagens "
+            "spilletid og hvem i huset som spiller – med levende bakgrunn",
+        ]),
+    ]),
     ("0.61.0", "18 nye temaer", [
         ("Nytt", [
             "Nå 28 temaer på PC (Linux og Windows) og i mobilappen: Cyberpunk, Galakse, Matrix, OLED-sort, Ametyst, "

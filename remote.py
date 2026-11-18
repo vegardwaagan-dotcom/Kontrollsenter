@@ -1226,6 +1226,10 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "today":
+                import today
+                s = today.summary()
+                return self._send(200, {**s, "text": today.text(s), "achievements": today.achievements()})
             if what == "vr":
                 import vr
                 return self._send(200, vr.state())

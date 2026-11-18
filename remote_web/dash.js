@@ -611,6 +611,28 @@ async function loadVr() {
   $("#vr-fix").onclick = async () => { $("#vr-msg").textContent = "Retter … (kan ta noen minutter)"; const r = await act({ a: "vr", do: "fixall", mode: mode() }); $("#vr-msg").textContent = (r && r.msg) || ""; loadVr(); };
   $("#vr-stop").onclick = async () => { const r = await act({ a: "vr", do: "stop" }); $("#vr-msg").textContent = (r && r.msg) || ""; };
 }
+// ---------- «Dagen i dag» (Hjem) og prestasjoner (Spill) ----------
+const todayCard = document.createElement("div");
+todayCard.className = "card"; todayCard.id = "c-today"; todayCard.hidden = true;
+todayCard.innerHTML = '<h2>Dagen i dag</h2><div class="today-big" id="today-big"></div><div class="dim small" id="today-sub"></div>';
+{ const g = $("#oversikt .grid") || $("#tiles"); if (g && g.parentElement) g.parentElement.insertBefore(todayCard, g.nextSibling); }
+const achCard = document.createElement("div");
+achCard.className = "card"; achCard.id = "c-ach"; achCard.hidden = true;
+achCard.innerHTML = '<h2>🏆 Prestasjoner <span class="chip" id="ach-n"></span></h2><div class="ach-grid" id="ach-grid"></div>';
+{ const sp = $("#spill .grid") || $("#fam-grid"); if (sp) sp.appendChild(achCard); }
+async function loadToday() {
+  let d; try { d = await X("today"); } catch (e) { return; }
+  todayCard.hidden = false;
+  $("#today-big").textContent = Math.floor(d.play_s / 3600) + " t " + Math.floor(d.play_s % 3600 / 60) + " min spilt" + (d.kr != null ? " · " + d.kr.toFixed(2) + " kr" : "");
+  $("#today-sub").textContent = (d.text || "").split(" · ").slice(1).join(" · ") || "Ingen spill i dag ennå";
+  const got = d.achievements.filter((a) => a.unlocked);
+  achCard.hidden = false;
+  $("#ach-n").textContent = got.length + " / " + d.achievements.length;
+  $("#ach-grid").innerHTML = d.achievements.sort((a, b) => (!!b.unlocked) - (!!a.unlocked)).map((a) =>
+    '<div class="ach' + (a.unlocked ? " on" : "") + '"><span>' + (a.unlocked ? a.icon : "🔒") + '</span><b>' + esc(a.name)
+    + '</b><small>' + esc(a.desc) + '</small></div>').join("");
+}
+setTimeout(loadToday, 2500);
 async function loadPlan() {
   let p; try { p = await X("plan"); } catch (e) { planCard.hidden = true; return; }
   planCard.hidden = false;
@@ -945,7 +967,8 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (t === "system") loadNotify();
   if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); pushScenesToPhone(); }
   if (t === "system") loadPush();
-  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadVr(); }
+  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadVr(); loadToday(); }
+  if (t === "oversikt") loadToday();
 };
 dashWire();
 if (tab === "system") loadNotify();

@@ -399,6 +399,11 @@ class GamesPage(TabbedPage):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("spill-launcher")
+        self.tab("prestasjoner", "Prestasjoner")
+        try:
+            self._achievements()
+        except Exception:  # noqa: BLE001
+            applog.log.exception("prestasjoner")
         self.tab("statistikk", "Statistikk")
         try:
             import gamestats_ui
@@ -442,6 +447,52 @@ class GamesPage(TabbedPage):
         self.finish()
 
     # --- Alle spillene med cover (launcher) --------------------------------------
+    def _achievements(self):
+        import today
+        head = Gtk.Label(xalign=0, wrap=True)
+        head.add_css_class("dim-label")
+        self.box.append(head)
+        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, min_children_per_line=2,
+                           max_children_per_line=5, column_spacing=12, row_spacing=12)
+        self.box.append(flow)
+
+        def fill():
+            while (c := flow.get_first_child()) is not None:
+                flow.remove(c)
+            ach = today.achievements()
+            got = [a for a in ach if a["unlocked"]]
+            head.set_label(f"🏆 {len(got)} av {len(ach)} " + i18n.tr("prestasjoner låst opp") +
+                           " – " + i18n.tr("spill, lag klipp, prøv temaer og scener for å låse opp flere."))
+            for a in sorted(ach, key=lambda x: (not x["unlocked"], -(x["unlocked"] or 0))):
+                card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+                card.add_css_class("card")
+                inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_top=14, margin_bottom=14,
+                                margin_start=12, margin_end=12)
+                card.append(inner)
+                ic = Gtk.Label(label=a["icon"] if a["unlocked"] else "🔒")
+                ic.add_css_class("title-1")
+                inner.append(ic)
+                n = Gtk.Label(label=i18n.tr(a["name"]), wrap=True, justify=Gtk.Justification.CENTER)
+                n.add_css_class("heading")
+                inner.append(n)
+                d = Gtk.Label(label=i18n.tr(a["desc"]), wrap=True, justify=Gtk.Justification.CENTER)
+                d.add_css_class("caption")
+                d.add_css_class("dim-label")
+                inner.append(d)
+                if a["unlocked"]:
+                    when = Gtk.Label(label=time.strftime("%d.%m.%Y", time.localtime(a["unlocked"])))
+                    when.add_css_class("caption")
+                    inner.append(when)
+                else:
+                    card.set_opacity(0.55)
+                flow.append(card)
+            return False
+
+        def work():
+            today.check()
+            GLib.idle_add(fill)
+        threading.Thread(target=work, daemon=True).start()
+
     def _reload_launcher(self):
         import launcher
 

@@ -470,6 +470,17 @@ class Background:
                     except Exception:  # noqa: BLE001
                         pass
                 _th.Thread(target=school, daemon=True).start()
+        if time.time() - getattr(self, "_ach_t", time.time() - 240) > 300:          # prestasjoner
+            self._ach_t = time.time()
+            import threading as _th
+
+            def ach():
+                try:
+                    import today
+                    today.check(lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k, force=True), False)[1]))
+                except Exception:  # noqa: BLE001
+                    pass
+            _th.Thread(target=ach, daemon=True).start()
         if time.time() - getattr(self, "_vr_t", 0) > 20:              # VR-vakten: hold VR i gang
             self._vr_t = time.time()
             import threading as _th

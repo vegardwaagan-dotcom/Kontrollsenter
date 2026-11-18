@@ -222,6 +222,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         sec = Gio.Menu()
         sec.append(i18n.tr("Systemsjekk …"), "win.syscheck")
         sec.append(i18n.tr("Mini-vindu"), "win.mini")
+        sec.append(i18n.tr("Stue-modus (F11)"), "win.ambient")
         sec.append(i18n.tr("Innstillinger"), "win.settings")
         menu.append_section(None, sec)
         sec = Gio.Menu()
@@ -351,6 +352,9 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.t_price = Tile("Strømpris nå", icon="ks-power-symbolic")
         self.t_weather = Tile("Været", icon="ks-overview-symbolic")
         self.t_cal = Tile("Neste avtale", icon="ks-history-symbolic")
+        self.t_today = Tile("Dagen i dag", icon="ks-overview-symbolic")
+        self.t_today.value.set_ellipsize(0)
+        self.t_today.sub.set_wrap(True)
         for key, t, click, hid in (
                 ("ping", self.t_ping, lambda: self.open_details("net"), False),
                 ("down", self.t_down, lambda: self.open_details("net"), True),
@@ -359,6 +363,9 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("weather", self.t_weather, self._open_info_settings, False),
                 ("cal", self.t_cal, self._show_calendar, True)):
             tiles.add("flis-" + key, t, 1, on_click=click, hidden=hid)
+        tiles.add("flis-today", self.t_today, 2, on_click=lambda: self.stack.set_visible_child_name("spill"))
+        GLib.timeout_add_seconds(3, lambda: (self._update_today(), False)[1])
+        GLib.timeout_add_seconds(60, lambda: (self.get_mapped() and self._update_today(), True)[1])
         try:
             import details as _det
             import infotiles as _it
@@ -373,7 +380,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         tiles.titles = {"flis-cpu": "Prosessor", "flis-gpu": "Skjermkort", "flis-watt": "Strømforbruk",
                         "flis-mode": "Strømmodus", "flis-ping": "Ping", "flis-down": "Nedlasting",
                         "flis-play": "Spilletid i dag", "flis-price": "Strømpris nå", "flis-weather": "Været",
-                        "flis-cal": "Neste avtale", "batterier": "Batterier", "strommodus": "Strømmodus (kort)",
+                        "flis-cal": "Neste avtale", "flis-today": "Dagen i dag", "batterier": "Batterier", "strommodus": "Strømmodus (kort)",
                         "vifter": "Vifter", "cpu": "CPU-graf", "mem": "Minne", "gpu": "GPU-graf", "disk": "Disk",
                         "net": "Nettverk", "space": "Diskplass", "temps": "Temperaturer", "bat": "Batteri"}
         hero = Gtk.Box(spacing=16)
@@ -849,6 +856,10 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.audio_holder.append(self.audio_page)
         return self.audio_page
 
+    def open_ambient(self, *_):
+        import ambient
+        ambient.open_ambient(self)
+
     def open_search(self, *_):
         import search
         search.SearchDialog(self).present(self)
@@ -1090,6 +1101,25 @@ class MonitorWindow(Adw.ApplicationWindow):
         d.add_response("ok", "OK")
         d.present(self)
 
+    def _update_today(self):
+        def work():
+            try:
+                import today
+                s = today.summary()
+                GLib.idle_add(show, s, today.text(s))
+            except Exception:  # noqa: BLE001
+                pass
+
+        def show(s, txt):
+            self.t_today.value.set_label(f"{s['play_s'] // 3600} t {s['play_s'] % 3600 // 60} min "
+                                         + i18n.tr("spilt") + (f" · {s['kr']:.2f} kr" if s.get("kr") is not None else ""))
+            rest = txt.split(" · ", 1)[1] if " · " in txt else ""
+            self.t_today.sub.set_label(rest or i18n.tr("Ingen spill i dag ennå"))
+            return False
+        import threading
+        threading.Thread(target=work, daemon=True).start()
+        return False
+
     def _update_info_tiles(self):
         import infotiles as I
         p = I.ping() or {}
@@ -1139,6 +1169,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         for name, fn in (("syscheck", lambda *_: self._open_syscheck(None)),
                          ("mini", self._open_mini), ("welcome", self._open_welcome),
                          ("whatsnew", lambda *_: self._open_whatsnew()),
+                         ("ambient", lambda *_: self.open_ambient()),
                          ("about", lambda *_: self._open_about()),
                          ("settings", lambda *_: self._on_sidebar(None, self._rows["innstillinger"]))):
             act = Gio.SimpleAction.new(name, None)
@@ -1546,6 +1577,10 @@ class MonitorApp(Adw.Application):
         sa.connect("activate", lambda *_: getattr(self, "win", None) and self.win.open_search())
         self.add_action(sa)
         self.set_accels_for_action("app.search", ["<Control>k", "<Control>f"])
+        am = Gio.SimpleAction.new("ambient", None)
+        am.connect("activate", lambda *_: getattr(self, "win", None) and self.win.open_ambient())
+        self.add_action(am)
+        self.set_accels_for_action("app.ambient", ["F11"])
 
     def do_activate(self):
         win = getattr(self, "win", None)

@@ -160,6 +160,77 @@ def _reveal(w):
     GLib.timeout_add(1800, lambda: (target.remove_css_class("ks-found"), False)[1])
 
 
+def _act(win, body, label):
+    """Kjør en handling (samme som fra mobilen) og vis svaret som toast."""
+    import threading
+
+    def work():
+        try:
+            import remote
+            b = body
+            if b is None:                                    # spillmodus: bytt fra det den er nå
+                b = {"a": "gamemode", "on": not bool(remote.build_status(win).get("gamemode"))}
+            ok, msg = remote.do_action(win, b)
+            txt = msg if isinstance(msg, str) and msg else (label + " ✓")
+        except Exception as e:  # noqa: BLE001
+            txt = f"{label}: {e}"
+        GLib.idle_add(lambda: (win.toast(txt) if hasattr(win, "toast") else None, False)[1])
+    threading.Thread(target=work, daemon=True).start()
+
+
+def actions(win):
+    """Hurtigkommandoer: (tekst, søkeord, funksjon)."""
+    out = []
+
+    def a(text, words, fn):
+        out.append((text, words, fn))
+    st = getattr(win, "bg", None)
+    a("🎮 Spillmodus på/av", "spillmodus gamemode ytelse", lambda: _act(win, None, "Spillmodus"))
+    a("🎬 Lagre klipp nå", "klipp clip lagre opptak", lambda: _act(win, {"a": "clip"}, "Klipp"))
+    a("📸 Ta skjermbilde", "skjermbilde screenshot", lambda: _act(win, {"a": "clipshot"}, "Skjermbilde"))
+    a("🔇 Demp lyden", "demp mute lyd stille", lambda: _act(win, {"a": "volume", "mute": True}, "Demp"))
+    a("🔈 Slå på lyden", "lyd på unmute", lambda: _act(win, {"a": "volume", "mute": False}, "Lyd"))
+    a("🍽️ Middag! til alle", "middag mat familie", lambda: _act(win, {"a": "dinner"}, "Middag"))
+    a("🔒 Lås PC-en", "lås lock", lambda: _act(win, {"a": "system", "do": "lock"}, "Lås"))
+    a("🥽 Start VR", "vr quest steamvr alvr", lambda: _act(win, {"a": "vr", "do": "start"}, "VR"))
+    a("🌙 Nattlys på", "nattlys night", lambda: _act(win, {"a": "nightlight", "on": True, "temp": 3400}, "Nattlys"))
+    a("☀️ Nattlys av", "nattlys av night", lambda: _act(win, {"a": "nightlight", "on": False}, "Nattlys"))
+    a("📺 Stue-modus", "stue tv ambient andreskjerm klokke", lambda: win.open_ambient())
+    try:
+        import scenes
+        for sc in scenes.load()["scenes"]:
+            a(f"✨ Kjør scene «{sc['name']}»", "scene " + sc["name"], lambda sid=sc["id"], n=sc["name"]:
+              _act(win, {"a": "scene", "id": sid}, n))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import theme
+        for k, t in theme.THEMES.items():
+            a(f"🎨 Tema: {t['name']}", "tema theme farge " + t["name"], lambda k=k: theme.set_theme(k))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import avprofiles as AP
+        c = AP.cfg()
+        for p in c["audio"]:
+            a(f"🎧 Lydprofil «{p['name']}»", "lyd profil " + p["name"],
+              lambda pid=p["id"], n=p["name"]: _act(win, {"a": "avprofile", "kind": "audio", "id": pid}, n))
+        for p in c["display"]:
+            a(f"🖥️ Skjermprofil «{p['name']}»", "skjerm profil " + p["name"],
+              lambda pid=p["id"], n=p["name"]: _act(win, {"a": "avprofile", "kind": "display", "id": pid}, n))
+    except Exception:  # noqa: BLE001
+        pass
+    _ = st
+    return out
+
+
+def search_actions(acts, q):
+    nq = _norm(q).split()
+    if not nq:
+        return []
+    return [x for x in acts if all(w in _norm(x[0] + " " + x[1]) for w in nq)][:8]
+
+
 class SearchDialog(Adw.Dialog):
     def __init__(self, win):
         super().__init__(title=i18n.tr("Søk"), content_width=620, content_height=560)
@@ -174,7 +245,7 @@ class SearchDialog(Adw.Dialog):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         for side in ("top", "bottom", "start", "end"):
             getattr(box, f"set_margin_{side}")(14)
-        self.entry = Gtk.SearchEntry(placeholder_text=i18n.tr("Søk etter en innstilling, f.eks. «vifte», «HDR», «leggetid»"))
+        self.entry = Gtk.SearchEntry(placeholder_text=i18n.tr("Søk eller gi en kommando – «vifte», «spillmodus», «klipp», «tema»"))
         box.append(self.entry)
         self.status = Gtk.Label(xalign=0)
         self.status.add_css_class("dim-label")
@@ -187,6 +258,7 @@ class SearchDialog(Adw.Dialog):
         tv.set_content(box)
         self.set_child(tv)
         self.rows = []
+        self.acts = actions(win)
         self.entry.connect("search-changed", lambda *_: self._update())
         self.entry.connect("activate", lambda *_: self._open(0))
         self.list.connect("row-activated", lambda _l, r: self._open(r.get_index()))
@@ -224,8 +296,23 @@ class SearchDialog(Adw.Dialog):
     def _update(self):
         while (r := self.list.get_first_child()) is not None:
             self.list.remove(r)
-        self.rows = search(self.idx, self.entry.get_text()) if self.idx else []
-        for name, title, _tab, ttitle, text, _w in self.rows:
+        q = self.entry.get_text()
+        acts = search_actions(self.acts, q)
+        self.rows = [("act", a) for a in acts] + (search(self.idx, q) if self.idx else [])
+        for row in self.rows:
+            if row[0] == "act":
+                r = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+                r.add_css_class("ks-search-hit")
+                t = Gtk.Label(label=row[1][0], xalign=0)
+                t.add_css_class("heading")
+                r.append(t)
+                s2 = Gtk.Label(label=i18n.tr("Hurtigkommando – trykk Enter"), xalign=0)
+                s2.add_css_class("dim-label")
+                s2.add_css_class("caption")
+                r.append(s2)
+                self.list.append(r)
+                continue
+            name, title, _tab, ttitle, text, _w = row
             lines = text.splitlines()
             r = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             r.add_css_class("ks-search-hit")
@@ -248,4 +335,7 @@ class SearchDialog(Adw.Dialog):
         if 0 <= i < len(self.rows):
             row = self.rows[i]
             self.close()
-            go_to(self.win, row)
+            if row[0] == "act":
+                row[1][2]()
+            else:
+                go_to(self.win, row)

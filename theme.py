@@ -715,7 +715,8 @@ def set_theme(name):
     """Bytt tema med en gang i hele programmet, og husk valget."""
     if name not in THEMES:
         return
-    _save_look(theme=name)
+    tried = list(dict.fromkeys((look().get("themes_tried") or []) + [name]))
+    _save_look(theme=name, themes_tried=tried)
     show(name)
     try:
         import looks
