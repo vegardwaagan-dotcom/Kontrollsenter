@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.59.1", "VR: brannmur-rettingen virker", [
+        ("Rettet", [
+            "VR → «Fiks alt»: brannmur-rettingen feilet fordi sonenavnet ble lest feil («FedoraWorkstation (default)»)",
+            "Brannmur-sjekken forstår nå portområder – på Bazzite/Fedora er VR-portene allerede åpne (1025–65535), så "
+            "det trengs ingen endring",
+            "Tydeligere feilmeldinger: avbrutt passord og feil fra firewall-cmd vises hver for seg",
+        ]),
+    ]),
     ("0.59.0", "Fremdriftslinje", [
         ("Nytt", [
             "Når Kontrollsenter installerer, laster ned, rydder, sjekker eller retter noe, vises en enkel fremdriftslinje "
