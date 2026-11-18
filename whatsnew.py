@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.53.0", "Skjermkort og ytelse per spill", [
+        ("Nytt", [
+            "Spill → Bibliotek: velg skjermkort per spill (integrert eller dedikert) når PC-en har flere. Linux: "
+            "legges i spillets oppstartsvalg; Windows: Windows' egen GPU-preferanse for spillets programfiler",
+            "FPS-tak per spill (30–240) – sparer strøm og varme i lette spill (Linux, Windows-spill via Proton)",
+            "Spillprofiler: «GPU-strøm» per spill (60–100 % av standard strømgrense) – settes når spillet starter og "
+            "tilbake når det avsluttes. NVIDIA og AMD",
+        ]),
+    ]),
     ("0.52.0", "Tryggere oppdateringer", [
         ("Nytt", [
             "Selvtest før hver ny versjon: alle sider, faner og mobilappen åpnes automatisk, og versjonen legges ikke "

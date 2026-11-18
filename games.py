@@ -125,7 +125,8 @@ def installed_games():
             if not aid or aid in seen or re.search(r"Proton|Steam Linux Runtime|Steamworks Common", name):
                 continue
             seen.add(aid)
-            games.append({"appid": aid, "name": name})
+            inst = st.get("installdir")
+            games.append({"appid": aid, "name": name, "dir": str(lib / "common" / inst) if inst else None})
     return sorted(games, key=lambda g: g["name"].lower())
 
 
@@ -654,7 +655,9 @@ class GamesPage(TabbedPage):
         aid = g["appid"]
         cur = (vdf.get(self.apps, aid, "LaunchOptions") or "")
         on, unknown, args = parse_options(cur)
-        base = build_options(on, unknown, args)        # slik programmet leser dagens valg
+        import gamegpu
+        g_gpu, g_fps, unknown = gamegpu.split(unknown)     # skjermkort og FPS-tak velges for seg
+        base = build_options(on, unknown + gamegpu.tokens(g_gpu, g_fps), args)   # slik programmet leser dagens valg
         prot = (vdf.get(self.mapping, aid, "name") or "")
         exp = Gtk.Expander()
         head = Gtk.Box(spacing=12)
@@ -704,6 +707,42 @@ class GamesPage(TabbedPage):
         prow.append(dd)
         prow.set_visible(not IS_WIN)                    # Proton finnes bare på Linux
         body.append(prow)
+        # ---- skjermkort og FPS-tak for dette spillet ----
+        gs = gamegpu.gpus()
+        grow = Gtk.Box(spacing=8)
+        gdd = fdd = None
+        gkeys = [None] + [x["id"] for x in gs]
+        if gs and not IS_WIN:
+            grow.append(Gtk.Label(label="Skjermkort"))
+            gdd = Gtk.DropDown.new_from_strings(["Standard"] + [f"{x['name']} ({'integrert' if x['integrated'] else 'dedikert'})"
+                                                                for x in gs])
+            gdd.set_selected(gkeys.index(g_gpu) if g_gpu in gkeys else 0)
+            grow.append(gdd)
+        elif gs and IS_WIN:
+            grow.append(Gtk.Label(label="Skjermkort"))
+            wopts = ["La Windows velge", "Strømsparing (integrert)", "Høy ytelse (dedikert)"]
+            wdd = Gtk.DropDown.new_from_strings(wopts)
+            try:
+                wdd.set_selected(gamegpu.win_get(g.get("dir")))
+            except Exception:  # noqa: BLE001
+                pass
+
+            def wset(d, _p, gdir=g.get("dir")):
+                try:
+                    n = gamegpu.win_set(gdir, d.get_selected())
+                    self.steam_status.set_label(f"{g['name']}: skjermkortvalg satt for {n} programfiler ✓")
+                except Exception as e:  # noqa: BLE001
+                    self.steam_status.set_label(f"Kunne ikke sette skjermkort: {e}")
+            wdd.connect("notify::selected", wset)
+            grow.append(wdd)
+        if not IS_WIN:
+            grow.append(Gtk.Label(label="FPS-tak", margin_start=12))
+            fdd = Gtk.DropDown.new_from_strings(["Av"] + [f"{n} FPS" for n in gamegpu.FPS_CHOICES[1:]])
+            fdd.set_selected(gamegpu.FPS_CHOICES.index(g_fps) if g_fps in gamegpu.FPS_CHOICES else 0)
+            fdd.set_tooltip_text("Sparer strøm og varme i lette spill (virker i Windows-spill via Proton)")
+            grow.append(fdd)
+        if grow.get_first_child() is not None:
+            body.append(grow)
         arow = Gtk.Box(spacing=8)
         arow.append(Gtk.Label(label="Egne argumenter"))
         entry = Gtk.Entry(text=args, hexpand=True, placeholder_text="f.eks. -dx11 -skipintro")
@@ -717,7 +756,9 @@ class GamesPage(TabbedPage):
 
         def recompute(*_):
             new_on = {k for k, cb in checks.items() if cb.get_active()}
-            s = build_options(new_on, unknown, entry.get_text().strip())
+            ours = gamegpu.tokens(gkeys[gdd.get_selected()] if gdd else g_gpu,
+                                  gamegpu.FPS_CHOICES[fdd.get_selected()] if fdd else g_fps)
+            s = build_options(new_on, unknown + ours, entry.get_text().strip())
             p = keys[dd.get_selected()] if dd.get_selected() < len(keys) else ""
             prev.set_label("Startvalg: " + (s or "(ingen)"))
             names = [n for k, n, *_ in OPTIONS if k in new_on]
@@ -735,6 +776,9 @@ class GamesPage(TabbedPage):
             self._update_steam_state()
         for cb in checks.values():
             cb.connect("toggled", recompute)
+        for x in (gdd, fdd):
+            if x is not None:
+                x.connect("notify::selected", recompute)
         dd.connect("notify::selected", recompute)
         entry.connect("changed", recompute)
         recompute()

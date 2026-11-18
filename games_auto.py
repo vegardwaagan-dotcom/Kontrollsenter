@@ -335,6 +335,17 @@ def tick(auto):
             auto.game_snap = A.snapshot(win)
             A.apply(win, p["power"], p["fans"], p["rgb"], p.get("color"))
             auto.game_snap["rgb"] = p["rgb"] not in ("keep", None)
+            if p.get("gpu_pl"):                                    # strømgrense på skjermkortet for spillet
+                import threading
+
+                def pl(pct=p["gpu_pl"]):
+                    try:
+                        import gamegpu
+                        auto.gpu_pl_back = gamegpu.pl_apply(pct)
+                    except Exception as e:  # noqa: BLE001
+                        import applog
+                        applog.log.warning("GPU-strøm for spill: %s", e)
+                threading.Thread(target=pl, daemon=True).start()
             auto.notify("game", f"Spillprofil: {g[1]}", "Strømmodus, vifter og RGB er satt for spill.")
     elif g and auto.session:
         auto.session.sample(win)
@@ -348,6 +359,18 @@ def tick(auto):
         if auto.game_snap is not None:
             A.restore(win, auto.game_snap, auto.game_snap.get("rgb"))
             auto.game_snap = None
+        back = getattr(auto, "gpu_pl_back", None)
+        if back:
+            auto.gpu_pl_back = None
+            import threading
+
+            def pl_back(b=back):
+                try:
+                    import gamegpu
+                    gamegpu.pl_restore(b)
+                except Exception:  # noqa: BLE001
+                    pass
+            threading.Thread(target=pl_back, daemon=True).start()
         if auto.night_snap is not None:                           # tilbake til natt om det fortsatt er natt
             auto.night_snap = None
             auto._last_night_check = 0
@@ -441,6 +464,9 @@ def build_cards(page):
             r.append(A.dropdown(A.FAN_CHOICES, p.get("fans", c2["fans"]), lambda v, s=set_g: s("fans", v)))
             r.append(A.dropdown(A.RGB_CHOICES_GAME[:2], p.get("rgb", "keep") if p.get("rgb") != "color" else "keep",
                                 lambda v, s=set_g: s("rgb", v)))
+            import gamegpu
+            plc = [(v, i18n.tr("GPU-strøm: standard") if not v else f"GPU-strøm {v} %") for v in gamegpu.PL_CHOICES]
+            r.append(A.dropdown(plc, p.get("gpu_pl", 0), lambda v, s=set_g: s("gpu_pl", v)))
             rm = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=i18n.tr("Fjern"))
             rm.add_css_class("flat")
 
