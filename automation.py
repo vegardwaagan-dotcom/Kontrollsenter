@@ -73,8 +73,14 @@ def _rgb_client():
     return OpenRGBClient("127.0.0.1", 6742, "Kontrollsenter-auto")
 
 
-def rgb_set(color):
+def rgb_set(color, _from_sync=False):
     """color = (r, g, b), eller None for «av». Kjøres i bakgrunnen; stille hvis OpenRGB ikke svarer."""
+    if not _from_sync:
+        try:
+            import smartauto
+            smartauto.rgb_changed(color)              # synk RGB og Hue (hvis slått på)
+        except Exception:  # noqa: BLE001
+            pass
     def work():
         try:
             from openrgb.utils import RGBColor

@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.37.0", "Smart Hjem-automatikk", [
+        ("Nytt", [
+            "Hue-lysene følger spillet: når et spill starter, får lysene spillets farge – og settes tilbake slik de var "
+            "når du avslutter",
+            "TV-en slås av når PC-en går i hvilemodus eller slås av (Linux) – Kontrollsenter ber om et par sekunder "
+            "så den rekker det",
+            "Synk RGB og Hue: lysene i rommet og i PC-en har alltid samme farge, enten du endrer i Kontrollsenter "
+            "eller i Hue-appen",
+            "Slås på øverst på siden Smart Hjem. Scenene fra forrige versjon kan fortsatt gjøre alt på én gang",
+        ]),
+    ]),
     ("0.36.0", "Mobilappen", [
         ("Nytt", [
             "Ny widget «Velg selv»: fire fliser du velger – CPU/GPU-temperatur, strømforbruk, ping, strømpris nå, været, "

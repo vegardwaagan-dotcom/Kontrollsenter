@@ -162,6 +162,8 @@ class MonitorWindow(Adw.ApplicationWindow):
         try:                                             # tid på døgnet, spilltema, levende bakgrunn
             import looks
             GLib.idle_add(lambda: looks.start(self) and False)
+            import smartauto
+            GLib.idle_add(lambda: smartauto.start() and False)
         except Exception:  # noqa: BLE001
             applog.log.exception("temaer")
         try:                                             # lys som følger musa på knappene

@@ -58,6 +58,7 @@ class SmartHomePage(Gtk.ScrolledWindow):
         self.status = Gtk.Label(xalign=0, wrap=True)
         self.status.add_css_class("dim-label")
         outer.append(self.status)
+        outer.append(self._auto_card())
         self.body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
         self.body.set_margin_top(6)
         outer.append(self.body)
@@ -66,6 +67,24 @@ class SmartHomePage(Gtk.ScrolledWindow):
                                   "Første søk tar 5–10 sekunder.", compact=False))
         self.load()
         GLib.timeout_add_seconds(10, self._tick)
+
+    def _auto_card(self):
+        import smartauto
+        grp = Adw.PreferencesGroup(title=i18n.tr("Automatikk"))
+        grp.set_margin_top(6)
+        for key, title, sub in (
+                ("game_hue", "Hue-lysene følger spillet",
+                 "Når et spill starter, får lysene spillets farge (temaet du har valgt for spillet). Tilbake etterpå."),
+                ("tv_off_sleep", "Slå av TV-en når PC-en går i hvilemodus",
+                 "Også når PC-en slås av. Gjelder Samsung-TV-er Kontrollsenter har funnet."),
+                ("sync_rgb_hue", "Synk RGB og Hue",
+                 "Lysene i rommet og i PC-en har alltid samme farge – uansett om du endrer i Kontrollsenter eller "
+                 "i Hue-appen.")):
+            row = Adw.SwitchRow(title=i18n.tr(title), subtitle=i18n.tr(sub), active=smartauto.opt(key))
+            row.set_subtitle_lines(3)
+            row.connect("notify::active", lambda r, _p, k=key: smartauto.set_opt(k, r.get_active()))
+            grp.add(row)
+        return grp
 
     # ---------- henting ----------
     def _tick(self):

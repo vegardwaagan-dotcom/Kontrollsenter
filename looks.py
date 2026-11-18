@@ -87,6 +87,12 @@ def on_game(name):
             _STATE["rgb_set"] = th in theme.THEMES
         except Exception:  # noqa: BLE001
             pass
+    try:                                                      # Hue-lysene følger spillet
+        import smartauto
+        col = theme.THEMES[th]["a"] if th in theme.THEMES else theme._t(theme.current_theme()).get("a", "#8a5cff")
+        smartauto.on_game(name, col if name else None)
+    except Exception:  # noqa: BLE001
+        pass
     GLib.idle_add(lambda: refresh() and False)
 
 
