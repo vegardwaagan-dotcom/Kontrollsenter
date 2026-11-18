@@ -36,6 +36,10 @@ KINDS = [
     ("night", "Stille om natten", "Når PC-en går over til stille nattmodus.", ["night"]),
     ("playtime", "Spilletid og leggetid", "Snart tom for spilletid, og leggetid om 10 minutter. "
      "Kan ikke slås av mens familiekontroll er på.", ["playlimit", "bedtime"]),
+    ("batfull", "Fulladet batteri", "Når musa, headsettet eller tastaturet er ferdig ladet – så du kan ta ut kabelen.",
+     ["full*"]),
+    ("health", "Diskhelse og rask oppvarming", "Disken nærmer seg slitt, eller temperaturen stiger unormalt raskt.",
+     ["smart*", "temprise*"]),
     ("bg", "«Kjører i bakgrunnen»", "Beskjed første gang vinduet lukkes og programmet fortsetter i bakgrunnen.",
      ["bg"]),
 ]
@@ -320,6 +324,13 @@ class Background:
             pass
         if not wants(self.cfg, key):
             return
+        # mens du spiller: hold varslene tilbake og vis dem samlet etterpå (ikke chat, spilletid eller personvern)
+        if (self.cfg.get("game_hold", True) and getattr(self, "game_name", None) and key not in ALWAYS
+                and kind_of(key) not in ("playtime", "chat") and key not in ("game", "session", "held", "bg")):
+            held = self.__dict__.setdefault("held", [])
+            if all(h[0] != key for h in held):
+                held.append((key, title, body))
+            return
         now = time.time()
         if not force and now - self.sent.get(key, 0) < REPEAT:
             return
@@ -335,8 +346,85 @@ class Background:
         n.set_default_action(action or "app.show")
         self.app.send_notification(key, n)
 
+    def flush_held(self):
+        """Spillet er ferdig: ett varsel med det som skjedde mens du spilte."""
+        held = self.__dict__.get("held") or []
+        self.held = []
+        if not held:
+            return
+        titles = [t for _k, t, _b in held]
+        body = "; ".join(titles[:5]) + (f" og {len(titles) - 5} til" if len(titles) > 5 else "")
+        self.notify("held", f"Mens du spilte: {len(held)} varsel" + ("" if len(held) == 1 else "er"), body, force=True)
+
+    def _watch_extra(self):
+        """Fulladet batteri og temperatur som stiger unormalt raskt (kalles hvert tick)."""
+        try:
+            import batteries
+            seen = self.__dict__.setdefault("_full_seen", set())
+            for d in batteries.cached():
+                full = d.get("full") or (d.get("plugged") and d.get("pct") is not None and d["pct"] >= 100)
+                if full and d["id"] not in seen:
+                    seen.add(d["id"])
+                    if getattr(self, "_full_ready", False):           # ikke ved oppstart
+                        self.notify("full" + d["id"], f"{d['name']} er fulladet",
+                                    "Ferdig ladet – du kan ta ut kabelen.")
+                elif not (d.get("plugged") or d.get("charging") or full):
+                    seen.discard(d["id"])
+            self._full_ready = True
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from collections import deque
+            hist = self.__dict__.setdefault("_temp_hist", deque(maxlen=40))
+            w = self.win
+            nv = w.nvidia.data if w.nvidia.available else None
+            now = time.time()
+            hist.append((now, w.cpu_temp_now(), w.gpu_temp_now(), getattr(w, "_cpu_load", 0) or 0,
+                         (nv or {}).get("util") or 0))
+            recent = [h for h in hist if now - h[0] <= 40]
+            for idx, util_idx, name, key in ((1, 3, "Prosessoren", "cpu"), (2, 4, "Skjermkortet", "gpu")):
+                vals = [h[idx] for h in recent if h[idx] is not None]
+                if len(vals) < 4:
+                    continue
+                rise = vals[-1] - min(vals)
+                busy = max(h[util_idx] for h in recent)
+                if rise >= 15 and busy < 35 and vals[-1] >= 60:   # varmere uten at noe jobber: vifte? støv?
+                    self.notify("temprise-" + key, "Temperaturen stiger raskt",
+                                f"{name} gikk fra {min(vals):.0f} til {vals[-1]:.0f} °C på under ett minutt uten "
+                                "at noe jobber hardt. Sjekk at viftene går.")
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _smart_check(self):
+        """Diskhelse (SMART) én gang i døgnet – i bakgrunnen."""
+        if time.time() - self.sent.get("_smart", 0) < 24 * 3600 or sys.platform == "win32":
+            return
+        self.sent["_smart"] = time.time()
+
+        def work():
+            try:
+                import tools
+                for d in tools.disk_health():
+                    rows = dict(d.get("rows") or [])
+                    used = 0
+                    try:
+                        used = int(str(rows.get("Slitasje", "0")).split()[0])
+                    except (ValueError, IndexError):
+                        pass
+                    if d.get("ok") is False or used >= 80:
+                        txt = (f"{d['name']}: " + ", ".join(f"{k.lower()} {v}" for k, v in
+                                                             list(rows.items())[:3]))
+                        GLib.idle_add(lambda t=txt, n=d["name"]: self.notify(
+                            "smart" + n, "Disken bør sjekkes", t + ". Ta sikkerhetskopi av det viktigste.") and False)
+            except Exception:  # noqa: BLE001
+                pass
+        import threading
+        threading.Thread(target=work, daemon=True).start()
+
     def _tick(self):
         c = self.cfg
+        self._watch_extra()
+        self._smart_check()
         try:                                              # spilletid per dag (grenser og oversikt)
             now = time.monotonic()
             dt = min(30.0, now - getattr(self, "_play_t", now))

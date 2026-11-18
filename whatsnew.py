@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.35.0", "Smartere varsler", [
+        ("Nytt", [
+            "«Musa er fulladet» – varsel når mus, headset eller tastatur er ferdig ladet, så du kan ta ut kabelen",
+            "Øktrapporten etter et spill sier fra når du har satt rekord: «🏆 lengste økt denne uka» eller "
+            "«🏆 beste FPS denne uka»",
+            "Diskhelse: én gang i døgnet sjekkes SMART – du får varsel hvis disken nærmer seg slitt eller har feil",
+            "Varsel hvis prosessoren eller skjermkortet blir mye varmere på under ett minutt uten at noe jobber "
+            "(vifte som har stoppet, støv …)",
+            "Mens du spiller holdes varslene tilbake – du får ett samlet varsel når spillet er ferdig. Familie-chat og "
+            "spilletid kommer likevel. Kan slås av i Innstillinger → Varsler",
+        ]),
+    ]),
     ("0.34.0", "Flere fliser", [
         ("Nytt", [
             "Nye fliser i Oversikt: ping, nedlasting, spilletid i dag, strømpris nå (med billigste time), været og neste "

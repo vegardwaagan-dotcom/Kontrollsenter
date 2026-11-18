@@ -206,6 +206,25 @@ class Session:
         return s
 
 
+def best_of_week(s):
+    """«🏆 Lengste økt denne uka» / «🏆 Beste FPS denne uka» – sammenlignet med de siste 7 dagene i samme spill."""
+    import time as _t
+    week = [x for x in load_sessions() if x.get("name") == s.get("name") and x.get("start") != s.get("start")
+            and _t.time() - (x.get("start") or 0) < 7 * 86400]
+    if not week:
+        return ""
+    out = []
+    if s.get("minutes", 0) > max(x.get("minutes", 0) for x in week):
+        out.append("🏆 lengste økt denne uka")
+    fps = [x.get("fps") for x in week if x.get("fps")]
+    if s.get("fps") and fps and s["fps"] > max(fps):
+        out.append("🏆 beste FPS denne uka")
+    if not out:
+        best = max(week, key=lambda x: x.get("minutes", 0))
+        out.append(f"beste denne uka: {best.get('minutes', 0)} min")
+    return " · " + " · ".join(out)
+
+
 def summary(s):
     parts = [f"{s['minutes']} min"]
     if s.get("fps"):
@@ -280,7 +299,12 @@ def tick(auto):
             s = auto.session.finish()
             auto.session = None
             if s["minutes"] >= 1:
-                auto.notify("session", f"Spilløkt: {name}", summary(s))
+                auto.notify("session", f"Spilløkt: {name}", summary(s) + best_of_week(s))
+            try:
+                if bg:
+                    bg.flush_held()                       # varslene som ble holdt tilbake mens du spilte
+            except Exception:  # noqa: BLE001
+                pass
             try:
                 import savegames
                 if savegames.load_cfg().get("auto") and __import__("sys").platform != "win32":

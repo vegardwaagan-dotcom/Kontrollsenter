@@ -1294,6 +1294,9 @@ class _Cards:
             lim.set_sensitive(w.get_active())
         self._switch_row(i, "Vis varsler", "Hovedbryter for alle varsler fra Kontrollsenter på denne PC-en.",
                          cfg["notify"], master)
+        self._switch_row(i, "Hold varsler tilbake mens du spiller",
+                         "Du får ett samlet varsel når spillet er ferdig. Familie-chat og spilletid kommer likevel.",
+                         cfg.get("game_hold", True), lambda w, p: self._notify_set_val("game_hold", w.get_active()))
         self._switch_row(i, "Sjekk systemet og oppdateringer hver 6. time",
                          "Kjører Systemsjekk i bakgrunnen og sier fra om den finner noe.", cfg["periodic"],
                          lambda w, p: self._notify_set(w, p, "periodic"))

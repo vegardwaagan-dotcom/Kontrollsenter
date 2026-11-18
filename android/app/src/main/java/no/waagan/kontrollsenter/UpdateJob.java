@@ -167,6 +167,8 @@ public class UpdateJob extends JobService {
         if (key.equals("cpu") || key.equals("gpu")) return "temp";
         if (key.startsWith("disk")) return "disk";
         if (key.startsWith("bat")) return "battery";
+        if (key.startsWith("full")) return "batfull";
+        if (key.startsWith("smart") || key.startsWith("temprise")) return "health";
         if (key.equals("lanupdate") || key.equals("lanpublish") || key.equals("restart")) return "updates";
         if (key.equals("playlimit") || key.equals("bedtime")) return "playtime";
         return key;
