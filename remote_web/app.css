@@ -838,3 +838,39 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s ease-i
 .fr { padding: 10px 2px; border-top: 1px solid var(--line); cursor: pointer; }
 .fr:first-child { border-top: 0; }
 .fr-det { margin-top: 8px; padding: 10px 12px; border-radius: 14px; background: var(--card2); display: grid; gap: 4px; font-size: 13px; }
+
+/* ---- «Alt fra PC-en» ---- */
+.sec-h { margin: 6px 4px 10px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.pn { padding-top: 12px; padding-bottom: 12px; }
+.pn-h { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.pn-h b { flex: 1; } .pn-i { font-size: 20px; } .pn-c { color: var(--dim); }
+.pn.open .pn-h { margin-bottom: 8px; }
+.pn-q { width: 100%; margin: 4px 0 8px; }
+.pn-rows { display: grid; gap: 4px; margin: 6px 0; }
+.pn-items { display: grid; gap: 8px; margin-top: 6px; }
+.pn-items.grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.pn-it { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 14px; background: var(--card2); cursor: pointer; }
+.pn-it img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px; }
+.pn-items:not(.grid) .pn-it img { display: none; }
+.pn-t { display: flex; flex-direction: column; gap: 2px; } .pn-t small { font-size: 12px; }
+.pn-b, .pn-bb { display: flex; flex-wrap: wrap; gap: 6px; } .pn-bb { margin-top: 10px; }
+.pn-sheet { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; }
+.pn-sheet-in { width: 100%; max-height: 85vh; overflow: auto; background: var(--card-solid); border-radius: 22px 22px 0 0; padding: 16px 18px 28px; }
+.pn-sec { margin: 10px 0; display: grid; gap: 4px; }
+/* fremdrift fra PC-en */
+.pc-tasks { position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 40; display: grid; gap: 8px; }
+.pt { padding: 10px 14px; border-radius: 16px; background: var(--card-solid); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.pt-bar { height: 6px; border-radius: 99px; background: var(--card2); overflow: hidden; margin: 6px 0; }
+.pt-bar i { display: block; height: 100%; border-radius: 99px; background: var(--grad); transition: width .4s; }
+.pt-bar i.pulse { width: 30% !important; animation: pt-pulse 1.2s ease-in-out infinite alternate; }
+@keyframes pt-pulse { from { margin-left: 0; } to { margin-left: 70%; } }
+.pt.ok .pt-bar i { background: linear-gradient(90deg, #2ec27e, #57e389); } .pt.bad .pt-bar i { background: #e01b24; }
+/* stue-modus */
+.amb { position: fixed; inset: 0; z-index: 80; padding: 8vh 7vw; background: #05060a; color: white; display: flex; flex-direction: column; gap: 3vh; }
+.amb::before { content: ""; position: absolute; inset: 0; background: var(--aurora); background-size: 170% 170%; animation: ks-aurora 30s ease-in-out infinite alternate; z-index: -1; }
+.amb-clock { font-size: min(28vw, 22vh); font-weight: 200; letter-spacing: -.04em; line-height: 1; }
+.amb-date { font-size: min(6vw, 4vh); color: rgba(255,255,255,.75); }
+.amb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vw; }
+.amb-card { padding: 2.2vh 2.4vw; border-radius: 22px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); display: flex; flex-direction: column; gap: 6px; }
+.amb-card small { letter-spacing: .12em; font-weight: 800; color: rgba(255,255,255,.55); }
+.amb-card b { font-size: min(7vw, 5vh); } .amb-fam div { font-size: min(4.5vw, 3vh); }

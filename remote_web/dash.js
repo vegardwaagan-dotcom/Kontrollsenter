@@ -972,6 +972,145 @@ async function loadAv() {
   r.onchange = () => act({ a: "brightness", value: +r.value });
 }
 
+
+// ================================================================================================
+// «Alt fra PC-en»: PC-funksjonene som kort – tegnes automatisk ut fra det PC-en beskriver (apppanels.py)
+// ================================================================================================
+const pnWrap = document.createElement("div");
+pnWrap.id = "pc-panels";
+pnWrap.innerHTML = '<h2 class="sec-h">Alt fra PC-en</h2><div id="pn-list"></div>';
+{ const m = $("#mer"); if (m) m.insertBefore(pnWrap, m.firstChild); }
+const pnOpen = new Set(JSON.parse(localStorage.getItem("ks_pn_open") || '["commands","games"]'));
+function pnSave() { try { localStorage.setItem("ks_pn_open", JSON.stringify([...pnOpen])); } catch (e) {} }
+async function pnRun(act_, confirmText) {
+  if (confirmText && !confirm(confirmText)) return;
+  vibe(10);
+  const r = await act(act_);
+  if (r && r.msg) toast(r.msg);
+  setTimeout(loadPanels, 1500);
+}
+function pnBtn(b) {
+  return '<button class="' + (b.primary ? "primary" : "soft") + ' small" data-pa=\'' + esc(JSON.stringify(b.action)) + '\''
+    + (b.confirm ? ' data-pc="' + esc(b.confirm) + '"' : "") + '>' + esc(b.label) + '</button>';
+}
+function pnImg(src) {
+  if (!src) return "";
+  const u = src.startsWith("/api/") ? src + (src.includes("?") ? "&" : "?") + "k=" + encodeURIComponent(token) : src;
+  return '<img loading="lazy" src="' + esc(u) + '" onerror="this.remove()">';
+}
+function pnRender(p) {
+  const open = pnOpen.has(p.id);
+  let h = '<div class="card pn' + (open ? " open" : "") + '" data-pn="' + esc(p.id) + '"><div class="pn-h"><span class="pn-i">' + esc(p.icon || "•")
+    + '</span><b>' + esc(p.title) + '</b><span class="pn-c">' + (open ? "▾" : "▸") + '</span></div>';
+  if (open) {
+    if (p.desc) h += '<p class="dim small">' + esc(p.desc) + '</p>';
+    if (p.search) h += '<input class="pn-q" placeholder="Søk …" data-pq="' + esc(p.id) + '">';
+    if (p.rows && p.rows.length) h += '<div class="pn-rows">' + p.rows.map(([k, v]) => '<div class="row between"><span class="dim">' + esc(k) + '</span><b>' + esc(String(v)) + '</b></div>').join("") + '</div>';
+    if (p.select) h += '<div class="row between"><span>' + esc(p.select.label) + '</span><select data-ps=\'' + esc(JSON.stringify(p.select.action)) + '\''
+      + (p.select.confirm ? ' data-pc="' + esc(p.select.confirm) + '"' : "") + '>' + p.select.options.map(([v, t]) => '<option value="' + esc(v) + '"' + (v === p.select.value ? " selected" : "") + '>' + esc(t) + '</option>').join("") + '</select></div>';
+    if (p.items && p.items.length) h += '<div class="pn-items' + (p.grid ? " grid" : "") + '">' + p.items.map((it) =>
+      '<div class="pn-it" data-q="' + esc((it.title + " " + (it.sub || "")).toLowerCase()) + '"' + (it.detail ? ' data-pd=\'' + esc(JSON.stringify(it.detail)) + '\'' : "")
+      + (it.tap ? ' data-pa=\'' + esc(JSON.stringify(it.tap)) + '\'' : "") + '>' + pnImg(it.img)
+      + '<div class="pn-t"><b>' + esc(it.title) + '</b>' + (it.badge ? ' <span class="chip">' + esc(it.badge) + '</span>' : "")
+      + (it.sub ? '<small class="dim">' + esc(it.sub) + '</small>' : "") + '</div>'
+      + (it.buttons && it.buttons.length ? '<div class="pn-b">' + it.buttons.map(pnBtn).join("") + '</div>' : "") + '</div>').join("") + '</div>';
+    if (p.buttons && p.buttons.length) h += '<div class="row wrap pn-bb">' + p.buttons.map(pnBtn).join("") + '</div>';
+  }
+  return h + '</div>';
+}
+let pnData = [];
+async function loadPanels() {
+  if (document.body.classList.contains("limited")) { pnWrap.hidden = true; return; }
+  let d; try { d = await X("panels"); } catch (e) { return; }
+  pnData = d.panels || [];
+  $("#pn-list").innerHTML = pnData.map(pnRender).join("");
+  $$("#pn-list .pn-h").forEach((el) => (el.onclick = () => { const id = el.parentElement.dataset.pn; pnOpen.has(id) ? pnOpen.delete(id) : pnOpen.add(id); pnSave(); $("#pn-list").innerHTML = pnData.map(pnRender).join(""); pnWire(); }));
+  pnWire();
+}
+function pnWire() {
+  $$("#pn-list .pn-h").forEach((el) => (el.onclick = () => { const id = el.parentElement.dataset.pn; pnOpen.has(id) ? pnOpen.delete(id) : pnOpen.add(id); pnSave(); $("#pn-list").innerHTML = pnData.map(pnRender).join(""); pnWire(); }));
+  $$("#pn-list [data-pa]").forEach((el) => (el.onclick = (e) => { e.stopPropagation(); pnRun(JSON.parse(el.dataset.pa), el.dataset.pc); }));
+  $$("#pn-list [data-ps]").forEach((el) => (el.onchange = () => pnRun({ ...JSON.parse(el.dataset.ps), value: el.value }, el.dataset.pc)));
+  $$("#pn-list [data-pd]").forEach((el) => (el.onclick = () => pnDetail(JSON.parse(el.dataset.pd))));
+  $$("#pn-list [data-pq]").forEach((el) => (el.oninput = () => {
+    const q = el.value.toLowerCase(); el.parentElement.querySelectorAll(".pn-it").forEach((it) => (it.hidden = q && !it.dataset.q.includes(q)));
+  }));
+}
+// detaljvindu (f.eks. «Alt om PC-en»)
+const pnSheet = h(`<div id="pn-sheet" class="pn-sheet" hidden><div class="pn-sheet-in"><div class="row between"><h2 id="pn-st"></h2><button class="icon" id="pn-x">✕</button></div><div id="pn-sb"></div></div></div>`);
+document.body.appendChild(pnSheet);
+$("#pn-x").onclick = () => { pnSheet.hidden = true; clearInterval(pnSheet._t); };
+pnSheet.onclick = (e) => { if (e.target === pnSheet) $("#pn-x").onclick(); };
+async function pnDetail(det) {
+  pnSheet.hidden = false;
+  const draw = async () => {
+    const qs = new URLSearchParams(det.q || {}).toString();
+    let d; try { d = await X(det.what, qs); } catch (e) { $("#pn-sb").textContent = e.message; return; }
+    $("#pn-st").textContent = (d.online ? "🟢 " : "⚫ ") + d.title;
+    $("#pn-sb").innerHTML = d.sections.map(([t, rows]) => '<div class="pn-sec"><div class="dim small">' + esc(t) + '</div>'
+      + rows.map(([k, v]) => '<div class="row between"><span>' + esc(k) + '</span><b>' + esc(String(v)) + '</b></div>').join("") + '</div>').join("");
+  };
+  $("#pn-sb").textContent = "Henter …";
+  await draw();
+  clearInterval(pnSheet._t); pnSheet._t = setInterval(() => { if (!pnSheet.hidden) draw(); }, 5000);
+}
+
+// ---------- fremdrift fra PC-en (installasjoner, opprydding, sjekker …) ----------
+const tasksBar = h('<div id="pc-tasks" class="pc-tasks" hidden></div>');
+document.body.appendChild(tasksBar);
+function renderTasks(s) {
+  const ts = (s && s.tasks) || [];
+  tasksBar.hidden = !ts.length;
+  tasksBar.innerHTML = ts.map((t) => '<div class="pt' + (t.done ? (t.ok ? " ok" : " bad") : "") + '"><div class="row between"><b>' + esc(t.title)
+    + '</b><b>' + (t.done ? (t.ok ? "✓" : "✗") : (t.pct != null ? t.pct + " %" : "")) + '</b></div><div class="pt-bar"><i style="width:'
+    + (t.done ? 100 : (t.pct || 0)) + '%"' + (t.pct == null && !t.done ? ' class="pulse"' : "") + '></i></div><div class="row between dim small"><span>'
+    + esc(t.done ? (t.result || "") : (t.detail || "")) + '</span><span>' + esc(t.eta || "") + '</span></div></div>').join("");
+}
+{ const _ro2 = window.renderOverview; if (_ro2) window.renderOverview = function (s) { _ro2(s); renderTasks(s); }; }
+
+// ---------- stue-modus på telefonen/nettbrettet ----------
+const amb = h(`<div id="amb" class="amb" hidden><div class="amb-clock" id="amb-c"></div><div class="amb-date" id="amb-d"></div>
+  <div class="amb-grid"><div class="amb-card"><small>VÆRET</small><b id="amb-w">–</b></div><div class="amb-card"><small>PC-EN</small><b id="amb-t">–</b></div>
+  <div class="amb-card"><small>I DAG</small><b id="amb-p">–</b></div></div><div class="amb-card amb-fam" id="amb-f"></div></div>`);
+document.body.appendChild(amb);
+const DAGER = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+const MND = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
+function ambTick() {
+  const d = new Date();
+  $("#amb-c").textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  $("#amb-d").textContent = DAGER[d.getDay()][0].toUpperCase() + DAGER[d.getDay()].slice(1) + " " + d.getDate() + ". " + MND[d.getMonth()];
+  if (last) $("#amb-t").textContent = (last.cpu && last.cpu.temp != null ? Math.round(last.cpu.temp) + "°" : "–") + " / " + (last.gpu && last.gpu.temp != null ? Math.round(last.gpu.temp) + "°" : "–");
+}
+async function ambData() {
+  try { const t = await X("today"); $("#amb-p").textContent = Math.floor(t.play_s / 3600) + " t " + Math.floor(t.play_s % 3600 / 60) + " min"; } catch (e) {}
+  try { const w = last && last.info && last.info.weather; if (w && w.temp != null) $("#amb-w").textContent = (w.icon || "") + " " + w.temp + "°"; } catch (e) {}
+  try { const f = await X("family"); const now = Date.now() / 1000;
+    $("#amb-f").innerHTML = '<small>HJEMME</small>' + f.pcs.map((p) => { const on = !p.off && now - (p.time || 0) < 900; return '<div>' + (on ? "🟢 " : "⚫ ") + esc(p.name) + (on && p.game ? " · 🎮 " + esc(p.game) : "") + '</div>'; }).join(""); } catch (e) {}
+}
+function openAmbient() {
+  amb.hidden = false; ambTick(); ambData();
+  amb._t1 = setInterval(ambTick, 1000); amb._t2 = setInterval(ambData, 20000);
+  try { amb.requestFullscreen && amb.requestFullscreen(); } catch (e) {}
+  try { if (window.KS && KS.keepScreenOn) KS.keepScreenOn(true); } catch (e) {}
+}
+amb.onclick = () => { amb.hidden = true; clearInterval(amb._t1); clearInterval(amb._t2); try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} };
+{ const q = $("#quick"); if (q) { const b = document.createElement("button"); b.dataset.q = "ambient";
+  b.innerHTML = '<span class="qi">📺</span><span class="ql">Stue-modus</span><span class="qs">Klokke og status</span>'; b.onclick = openAmbient; q.appendChild(b); } }
+
+// ---------- nytt tema hver dag (appen) ----------
+function dailyTheme() {
+  if (!pref("daily_theme", false) || !window.KS_THEMES) return;
+  const d = new Date().toISOString().slice(0, 10);
+  const list = KS_THEMES.filter((t) => t.k !== "standard" && (t.dark !== false) === pref("daily_dark", true));
+  let hsh = 0; for (const c of d) hsh = (hsh * 31 + c.charCodeAt(0)) >>> 0;
+  const pick = list[hsh % list.length];
+  if (pick && window.setLook) window.setLook(pick.k);
+  else if (pick) { document.documentElement.setAttribute("data-ks", pick.k); try { localStorage.setItem("ks_look", pick.k); } catch (e) {} }
+}
+dailyTheme();
+{ const fx = $("#c-fx"); if (fx) { const r = h('<div class="row between" style="margin-top:8px"><span>Nytt tema hver dag</span><label class="switch"><input type="checkbox" id="dt-on"><i></i></label></div>');
+  fx.appendChild(r); $("#dt-on").checked = pref("daily_theme", false); $("#dt-on").onchange = () => { setPref("daily_theme", $("#dt-on").checked); dailyTheme(); }; } }
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 // effekter: kortene glir inn ved fanebytte (Innstillinger → Utseende → Effekter)
@@ -996,6 +1135,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (t === "system") loadNotify();
   if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); pushScenesToPhone(); }
   if (t === "system") loadPush();
+  if (t === "mer") loadPanels();
   if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadVr(); loadToday(); loadFriends(); }
   if (t === "oversikt") loadToday();
 };

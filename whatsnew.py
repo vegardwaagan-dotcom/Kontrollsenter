@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.65.0", "Mobilappen: alt fra PC-en", [
+        ("Nytt", [
+            "Ny seksjon «Alt fra PC-en» øverst i Verktøy i appen: hurtigkommandoer (samme som Ctrl+K), spillene med "
+            "cover (start dem eller «Spill sammen»), PC-er hjemme med «Alt om PC-en» og «Oppdater alle PC-ene», "
+            "PC-verktøy (ytelsestest, sikkerhetskopi, støymåler, oppstart), topp 5 programmer med installering og "
+            "valg, hovedskjermkort, nettradio, hjemme/borte og versjon med «Gå tilbake»",
+            "Fremdriftslinjen fra PC-en vises også i appen – prosent og tid igjen når PC-en installerer, rydder eller sjekker",
+            "Stue-modus på telefonen/nettbrettet (hurtigknapp på Hjem): stor klokke, vær, temperaturer, dagens spilletid "
+            "og hvem som spiller",
+            "«Nytt tema hver dag» også i appen (Innstillinger → Effekter)",
+            "Nye PC-funksjoner kommer automatisk i appen – PC-en beskriver kortene, appen tegner dem",
+        ]),
+    ]),
     ("0.64.0", "PC-er hjemme: alt om PC-en og oppdater alle", [
         ("Nytt", [
             "PC-er hjemme: «Alt om PC-en» på hver PC – live temperaturer, CPU, minne, skjermkort, hva som spilles, "

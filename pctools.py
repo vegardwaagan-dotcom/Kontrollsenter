@@ -62,7 +62,18 @@ NICE = {"NetworkManager-wait-online.service": "Venter på nettverket",
         "systemd-suspend.service": "Hvilemodus (ikke oppstart)"}
 
 
+_BOOT = {"t": 0, "r": None}
+
+
 def boot_report():
+    if _BOOT["r"] is not None and time.time() - _BOOT["t"] < 600:     # endres bare ved omstart
+        return _BOOT["r"]
+    _BOOT["r"] = _boot_report()
+    _BOOT["t"] = time.time()
+    return _BOOT["r"]
+
+
+def _boot_report():
     if IS_WIN:
         return {"error": "Oppstartsrapporten finnes foreløpig bare på Linux."}
     head = _run(["systemd-analyze"])

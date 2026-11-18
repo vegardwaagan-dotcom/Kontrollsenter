@@ -176,7 +176,7 @@ def build_status(win):
                 "model": getattr(win, "cpu_name", None)},
         "mem": r.get("mem"), "disk": r.get("disk"), "home": du, "net": r.get("net"),
         "temps": [[a, b, round(c, 1)] for a, b, c in r.get("temps", [])],
-        "gpu": gpu, "power": power, "fans": fans, "info": _info(), "fps": _live_fps(win),
+        "gpu": gpu, "power": power, "fans": fans, "info": _info(), "fps": _live_fps(win), "tasks": _tasks(),
         "overlay": ov.get_active() if ov and ov.get_visible() else None,
         "msi": _is_msi(),
         "cs2": _cs2_live(),
@@ -726,6 +726,9 @@ def _feature_action(win, kind, a):
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "panel":                          # PC-funksjoner fra appen (apppanels)
+        import apppanels
+        return True, apppanels.run(win, a)
     if kind == "friend":                         # legg til / fjern venn, del av/på (bare full tilgang)
         import friends
         do = str(a.get("do", ""))
@@ -846,6 +849,17 @@ def house_update(win):
         return {"ok": True, "msg": f"starter på nytt med {applog.needs_restart()}", "version": applog.needs_restart(),
                 "restart": True}
     return {"ok": True, "msg": "har allerede nyeste versjon", "version": applog.RUNNING}
+
+
+def _tasks():
+    """Det PC-en holder på med akkurat nå (fremdriftslinjen) – vises også i appen."""
+    try:
+        import progress
+        return [{"title": t.title, "detail": t.detail, "pct": None if t.frac is None else round(t.frac * 100),
+                 "eta": t.eta_text(), "done": bool(t.finished), "ok": t.ok, "result": t.result}
+                for t in progress.active()]
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _info():
@@ -1114,6 +1128,16 @@ def _handler(remote):
                     except (BrokenPipeError, ConnectionResetError, OSError):
                         pass
                     return
+                if p == "/api/cover":                    # spill-cover til appen (nøkkel i adressen)
+                    q = parse_qs(u.query)
+                    if not remote.check((q.get("k") or [""])[0]):
+                        return self._send(401, {"error": "ikke paret"})
+                    import apppanels
+                    cp = apppanels.cover_path((q.get("id") or [""])[0])
+                    if not cp or not os.path.exists(cp):
+                        return self._send(404, {"error": "finnes ikke"})
+                    with open(cp, "rb") as f:
+                        return self._send(200, f.read(), "image/jpeg", {"Cache-Control": "max-age=86400"})
                 if p in ("/api/house/status", "/api/house/update"):   # PC-ene hjemme (felles husnøkkel)
                     import watch as W
                     if not W.check_house_key((parse_qs(u.query).get("fk") or [""])[0]):
@@ -1276,6 +1300,15 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "panels":
+                import apppanels
+                q = parse_qs(urlparse(self.path).query)
+                only = [x for x in (q.get("only") or [""])[0].split(",") if x] or None
+                return self._send(200, {"panels": apppanels.all_panels(remote.win, only)})
+            if what == "pclive":
+                import apppanels
+                q = parse_qs(urlparse(self.path).query)
+                return self._send(200, apppanels.pc_live((q.get("name") or [""])[0]))
             if what == "friends":
                 import friends
                 return self._send(200, friends.state())

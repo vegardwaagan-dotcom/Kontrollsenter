@@ -6,6 +6,7 @@ kjører. «Spill sammen» sender en invitasjon til de andre PC-ene i huset; de k
 import glob
 import json
 import os
+import re
 import sqlite3
 import time
 import urllib.request
@@ -92,6 +93,8 @@ def all_games():
             out.append({"id": g["appid"], "name": g["name"], "store": "steam", "cover": _steam_cover(g["appid"])})
     except Exception:  # noqa: BLE001
         pass
+    out = [g for g in out if not re.search(r"Steam Linux Runtime|Legacy Steam Runtime|Steamworks|Proton|"
+                                           r"Redistributable|SteamVR", g["name"] or "")]
     out += _heroic() + _lutris()
     last, week = {}, {}
     try:
