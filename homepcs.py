@@ -153,15 +153,37 @@ def update_pc(p, timeout=180):
             last = str(e)
             if "403" in last:
                 return False, "husnøkkelen stemmer ikke (start Kontrollsenter på nytt der)"
+            if "401" in last or "404" in last:            # svarer, men kjenner ikke kommandoen (eldre enn 0.64)
+                return False, _too_old(p)
             continue
     return False, "svarer ikke" + (f" ({last[:60]})" if p.get("ips") else " (ingen adresse)")
+
+
+def _too_old(p):
+    """PC-en har en versjon fra før fjernoppdatering fantes: si fra til den som sitter der (familie-chatten)."""
+    import applog
+    import savegames
+    ver = p.get("version", "?")
+    try:
+        import features
+        features.send_to(p.get("name"), savegames.pc_name(),
+                         f"🔄 Ny versjon av Kontrollsenter ({applog.RUNNING}) er klar på NAS-en. Åpne Kontrollsenter "
+                         f"og trykk «Oppdater» (Innstillinger → Oppdatering) – etter det kan PC-ene oppdateres "
+                         f"herfra med ett trykk.")
+        sent = " – beskjed er sendt til PC-en"
+    except Exception:  # noqa: BLE001
+        sent = ""
+    return f"har {ver} – for gammel til å oppdateres herfra. Oppdater én gang på PC-en selv{sent}"
 
 
 def update_all(pcs, progress=None):
     """Oppdater alle PC-ene som er på (ikke denne). [(navn, ok, melding)]"""
     import savegames
     me = savegames.pc_name()
-    todo = [p for p in pcs if p.get("name") != me and time.time() - p.get("time", 0) < STALE]
+    import applog
+    from lanupdate import newer
+    todo = [p for p in pcs if p.get("name") != me and time.time() - p.get("time", 0) < STALE
+            and (not p.get("version") or newer(applog.RUNNING, p["version"]) or p["version"] != applog.RUNNING)]
     out = []
     import progress as P
     pt = P.begin("Oppdaterer PC-ene hjemme", f"{len(todo)} PC-er")

@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.68.2", "Tydelig beskjed om gamle PC-er", [
+        ("Rettet", [
+            "«Oppdater» på PC-er hjemme ga «svarer ikke (HTTP Error 401)» for PC-er med en versjon eldre enn 0.64. Nå står "
+            "det at PC-en er for gammel til å oppdateres herfra, og den får en melding (familie-chatten) om å trykke "
+            "«Oppdater» én gang – etter det virker knappen herfra",
+            "«Oppdater alle PC-ene» hopper over PC-er som allerede har nyeste versjon",
+        ]),
+    ]),
     ("0.68.1", "Volumrullen på headsettet virker", [
         ("Rettet", [
             "Volumrullen på headsettet (og volumtastene) viste volumvinduet, men lyden endret seg ikke: standardutgangen "
