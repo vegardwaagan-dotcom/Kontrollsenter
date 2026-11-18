@@ -470,7 +470,8 @@ class Background:
                     except Exception:  # noqa: BLE001
                         pass
                 _th.Thread(target=school, daemon=True).start()
-        if time.time() - getattr(self, "_ach_t", time.time() - 240) > 300:          # prestasjoner
+        import perf
+        if time.time() - getattr(self, "_ach_t", time.time() - 240) > (1800 if perf.eco() else 300):  # prestasjoner
             self._ach_t = time.time()
             import threading as _th
 

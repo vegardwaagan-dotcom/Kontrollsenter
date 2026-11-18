@@ -13,6 +13,22 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.69.0", "Raskere, særlig på Windows", [
+        ("Nytt", [
+            "Innstillinger → Generelt → «Ytelse»: se hvor mye prosessor, minne og lesing/skriving til disk "
+            "Kontrollsenter selv bruker – live",
+            "Bryter «Minimal prosessbruk»: ingen effekter, vinduet oppdateres hvert 3. sekund og valgfrie ting går "
+            "sjeldnere – mer enn halverer prosessorbruken. Varsler, vifter og mobilappen virker som før",
+            "«Åpne vinduet når PC-en starter» (på som standard) – av: bare ikon i statusfeltet",
+        ]),
+        ("Rettet", [
+            "Windows: vinduet kom ikke tilbake etter en oppdatering (den nye trodde den gamle fortsatt kjørte). Nå "
+            "venter den nye til den gamle er borte, og vinduet åpnes",
+            "Windows: vinduet åpnes ved innlogging i stedet for bare ikon i statusfeltet",
+            "Hakking: VR-siden og GPU-siden ventet på PowerShell i vinduet – nå i bakgrunnen",
+            "Windows: effektene står på «Rolig» som standard (levende bakgrunn er tung for GTK på Windows)",
+        ]),
+    ]),
     ("0.68.2", "Tydelig beskjed om gamle PC-er", [
         ("Rettet", [
             "«Oppdater» på PC-er hjemme ga «svarer ikke (HTTP Error 401)» for PC-er med en versjon eldre enn 0.64. Nå står "

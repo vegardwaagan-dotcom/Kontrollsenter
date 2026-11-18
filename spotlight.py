@@ -85,6 +85,12 @@ class Spotlight:
 
     def _motion(self, _c, x, y):
         try:
+            import perf
+            if perf.eco():
+                return
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             picked = self.win.pick(x, y, Gtk.PickFlags.DEFAULT)
         except Exception:  # noqa: BLE001
             return

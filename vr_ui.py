@@ -284,11 +284,17 @@ class VrPage(Gtk.ScrolledWindow):
         _bg(lambda: vr.checks(self._mode()), self._show)
 
     def _quick(self):
-        """Oppdater bare når Questen kobles til/fra (billig sjekk)."""
-        q = vr._quest_usb()
-        if q != getattr(self, "_last_usb", None):
-            self._last_usb = q
-            self.refresh()
+        """Oppdater bare når Questen kobles til/fra – sjekket i en tråd (på Windows er det PowerShell)."""
+        if getattr(self, "_q_busy", False):
+            return False
+        self._q_busy = True
+
+        def done(q):
+            self._q_busy = False
+            if not isinstance(q, Exception) and q != getattr(self, "_last_usb", None):
+                self._last_usb = q
+                self.refresh()
+        _bg(vr._quest_usb, done)
         return False
 
     def _show(self, rows):

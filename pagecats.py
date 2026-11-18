@@ -117,6 +117,8 @@ class CatBar(Gtk.Box):
 # --------------------------------------------------------------------------
 def _title(w, d=0):
     from gi.repository import Adw
+    if getattr(w, "_ks_title", None):
+        return w._ks_title
     if isinstance(w, Adw.PreferencesGroup):
         return "G:" + (w.get_title() or "")
     if isinstance(w, Gtk.Label) and (w.has_css_class("heading") or w.has_css_class("title-4") or

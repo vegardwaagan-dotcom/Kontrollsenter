@@ -105,6 +105,12 @@ _LIVE = [None]
 
 
 def _live_tick():
+    try:
+        import perf
+        if perf.eco():
+            return
+    except Exception:  # noqa: BLE001
+        pass
     lk = theme.look()
     disp = Gdk.Display.get_default()
     if not lk.get("live"):

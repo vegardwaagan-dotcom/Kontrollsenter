@@ -743,6 +743,18 @@ class MonitorWindow(Adw.ApplicationWindow):
             except Exception:  # noqa: BLE001
                 pass
             extra = ["-X", "utf8"] if IS_WIN else []
+            if IS_WIN:
+                # os.execv på Windows starter den nye før den gamle er borte: den nye tror da at Kontrollsenter
+                # allerede kjører og avslutter seg – og ingen vindu vises. Start ny prosess som venter på at
+                # denne er ferdig, og avslutt så denne.
+                exe = sys.executable
+                pyw = os.path.join(os.path.dirname(exe), "pythonw.exe")
+                if os.path.exists(pyw):
+                    exe = pyw
+                import subprocess as _sp
+                _sp.Popen([exe, *extra, os.path.abspath(__file__), "--restarted"],
+                          creationflags=0x00000008 | 0x00000200, close_fds=True)   # DETACHED | NEW_PROCESS_GROUP
+                os._exit(0)
             os.execv(sys.executable, [sys.executable, *extra, os.path.abspath(__file__)])
         GLib.timeout_add(400, restart)
 
@@ -1329,7 +1341,9 @@ class MonitorWindow(Adw.ApplicationWindow):
             details.record(self)
         except Exception:  # noqa: BLE001
             pass
-        if not self.get_mapped() or (not self.is_active() and self._tick_n % 2):
+        import perf
+        f = perf.interval_factor()
+        if not self.get_mapped() or (not self.is_active() and self._tick_n % 2) or (f > 1 and self._tick_n % f):
             try:
                 self._update_quiet()
             except Exception:  # noqa: BLE001
@@ -1668,7 +1682,7 @@ class MonitorApp(Adw.Application):
             if IS_WIN:
                 import winsupport
                 winsupport.listen_for_show(win.bg.show)
-            if "--hidden" in sys.argv and win.bg.cfg["background"]:
+            if "--hidden" in sys.argv and win.bg.cfg["background"] and not win.bg.cfg.get("show_on_login", True):
                 return                      # startet ved innlogging: bare ikon i statusfeltet
             win.present()
             import welcome
@@ -1692,6 +1706,8 @@ if __name__ == "__main__":
         except OSError:
             pass
         import winsupport
-        if winsupport.already_running():           # vis vinduet til den som kjører, og avslutt
+        if "--restarted" in sys.argv:              # omstart: vent til den gamle har lukket seg
+            winsupport.wait_until_free(15)
+        elif winsupport.already_running():         # vis vinduet til den som kjører, og avslutt
             sys.exit(0)
     MonitorApp().run(None)

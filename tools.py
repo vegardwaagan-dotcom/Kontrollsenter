@@ -929,6 +929,43 @@ class _Cards:
         box.append(r)
         return sw
 
+    def _perf_card(self):
+        import perf
+        c, i = card("Ytelse – hva Kontrollsenter bruker",
+                    "Prosessor, minne og lesing/skriving til disk for Kontrollsenter selv (målt hvert 2. sekund).")
+        grid = Gtk.Grid(column_spacing=24, row_spacing=6)
+        labs = {}
+        for n, (k, name) in enumerate((("cpu", "Prosessor"), ("rss", "Minne"), ("read", "Leser fra disk"),
+                                       ("write", "Skriver til disk"), ("threads", "Tråder"))):
+            a = Gtk.Label(label=name, xalign=0)
+            a.add_css_class("dim-label")
+            b = Gtk.Label(label="…", xalign=0)
+            b.add_css_class("numeric")
+            b.add_css_class("heading")
+            grid.attach(a, (n % 3) * 2, n // 3, 1, 1)
+            grid.attach(b, (n % 3) * 2 + 1, n // 3, 1, 1)
+            labs[k] = b
+        i.append(grid)
+
+        def tick():
+            if not c.get_mapped():
+                return True
+            u = perf.usage()
+            if u.get("t"):
+                labs["cpu"].set_label(f"{u['cpu']:.1f} %")
+                labs["rss"].set_label(perf.human(u["rss"]))
+                labs["read"].set_label(perf.human(u["read"]) + "/s")
+                labs["write"].set_label(perf.human(u["write"]) + "/s")
+                labs["threads"].set_label(str(u["threads"]))
+            return True
+        perf.usage()
+        GLib.timeout_add_seconds(2, tick)
+        self._switch_row(i, "Minimal prosessbruk",
+                         "Ingen effekter, vinduet oppdateres hvert 3. sekund, og valgfrie ting i bakgrunnen går "
+                         "sjeldnere. Varsler, vifter og mobilappen virker som før. Fint på eldre eller tregere PC-er.",
+                         perf.eco(), lambda w, _p: perf.set_eco(w.get_active(), self.get_root()))
+        self.box.append(c)
+
     def _simple_card(self):
         c, i = card("Enkel modus", "Viser bare det viktigste i sidemenyen: Oversikt, Lyd, Spill, Discord, Scener, "
                                    "Smart Hjem, Familie og Innstillinger. Fint på barnas PC-er – alt annet er "
@@ -1080,6 +1117,9 @@ class _Cards:
                                  "Avslutt fra ikonet i statusfeltet."),
                                 ("tray", "Ikon i systemstatusfeltet", "Viser temperaturer, strømmodus, overlay og Avslutt.")):
             self._switch_row(i, title, sub, cfg[key], lambda w, p, k=key: self._notify_set(w, p, k))
+        self._switch_row(i, "Åpne vinduet når PC-en starter", "Av: Kontrollsenter starter bare som ikon i "
+                                                              "statusfeltet ved innlogging.",
+                         cfg.get("show_on_login", True), lambda w, _p: self._notify_set_val("show_on_login", w.get_active()))
         if sys.platform == "win32":
             import winsupport
 
@@ -1939,6 +1979,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)
+        self._try(self._perf_card)
         self._try(self._simple_card)
         self._try(self._apps_card)
         self._try(self._infotiles_card)

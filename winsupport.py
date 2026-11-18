@@ -248,6 +248,21 @@ def already_running():
         return False
 
 
+def wait_until_free(timeout=15):
+    """Vent til den forrige Kontrollsenter har sluppet porten (ved omstart etter oppdatering)."""
+    import socket
+    import time
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            with socket.create_connection(("127.0.0.1", SINGLE_PORT), timeout=0.5):
+                pass
+        except OSError:
+            return True
+        time.sleep(0.3)
+    return False
+
+
 def listen_for_show(on_show):
     """Lytt etter «vis vinduet» fra nye oppstarter (kalles i programmet som allerede kjører)."""
     import socket

@@ -18,6 +18,9 @@ LEVELS = [("full", "Full – levende bakgrunn og animasjoner"), ("rolig", "Rolig
           ("av", "Av – ingen effekter")]
 
 FX_CSS = """
+/* minimal prosessbruk: ingen store skygger/glød (tunge å tegne) */
+window.ks-eco .ks-dash-item:hover > .card, window.ks-eco .ks-dash-item:hover > .tile, window.ks-eco .card.ks-scene:hover,
+window.ks-eco .navigation-sidebar > row:hover, window.ks-eco button:hover { box-shadow: none; }
 @keyframes ks-rise { from { opacity: 0; transform: translateY(18px) scale(0.985); } to { opacity: 1; transform: none; } }
 @keyframes ks-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ks-drift {
@@ -69,9 +72,16 @@ _DONE = []
 
 def level():
     try:
-        v = json.load(open(LOOK)).get("effects", "full")
+        import perf
+        if perf.eco():
+            return "av"
+    except Exception:  # noqa: BLE001
+        pass
+    dflt = "rolig" if os.name == "nt" else "full"
+    try:
+        v = json.load(open(LOOK)).get("effects", dflt)
     except (OSError, ValueError):
-        v = "full"
+        v = dflt
     return v if v in ("full", "rolig", "av") else "full"
 
 
@@ -95,6 +105,11 @@ def apply(window):
         import theme
         theme.add_css(FX_CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 3)
     lv = level()
+    try:
+        import perf
+        (window.add_css_class if perf.eco() else window.remove_css_class)("ks-eco")
+    except Exception:  # noqa: BLE001
+        pass
     for c, on in (("ks-fx", lv in ("full", "rolig")), ("ks-fx-bg", lv == "full")):
         (window.add_css_class if on else window.remove_css_class)(c)
 

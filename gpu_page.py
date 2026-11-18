@@ -162,15 +162,28 @@ class GpuPage(Gtk.ScrolledWindow):
     # Hovedskjermkort: integrert / dedikert (eller flere dedikerte)
     # ------------------------------------------------------------------
     def _switch_card(self):
+        """Bygges når skjermkortlista er hentet (i en tråd – på Windows tar det et par sekunder)."""
         import gpuswitch as SW
-        gs = SW.gpus()
+        holder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        holder._ks_title = "Hovedskjermkort"               # kategorien vet hva som kommer (bygges i en tråd)
+        self.box.append(holder)
+
+        def work():
+            try:
+                gs = SW.gpus()
+            except Exception:  # noqa: BLE001
+                gs = []
+            GLib.idle_add(lambda: (self._switch_card_build(SW, gs, holder), False)[1])
+        threading.Thread(target=work, daemon=True).start()
+
+    def _switch_card_build(self, SW, gs, holder):
         if len(gs) < 2:
             return
         c, i, _h = _card("Hovedskjermkort",
                          "Velg hvilket skjermkort som skal drive skjermen og skrivebordet. "
                          + ("Byttet skjer når du logger inn igjen." if not IS_WIN else
                             "Bekreft innen 20 sekunder at du ser bildet – ellers angres byttet av seg selv."))
-        self.box.append(c)
+        holder.append(c)
         warn = Gtk.Label(xalign=0, wrap=True, label="⚠️ " + _t(
             "Skjermkabelen må sitte i skjermkortet du velger. Sitter den i et annet kort, blir skjermen svart. "
             "Integrert skjermkort = kabelen i hovedkortet; dedikert = kabelen i skjermkortet."))
