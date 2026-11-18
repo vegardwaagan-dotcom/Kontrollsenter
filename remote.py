@@ -176,7 +176,7 @@ def build_status(win):
                 "model": getattr(win, "cpu_name", None)},
         "mem": r.get("mem"), "disk": r.get("disk"), "home": du, "net": r.get("net"),
         "temps": [[a, b, round(c, 1)] for a, b, c in r.get("temps", [])],
-        "gpu": gpu, "power": power, "fans": fans, "info": _info(),
+        "gpu": gpu, "power": power, "fans": fans, "info": _info(), "fps": _live_fps(win),
         "overlay": ov.get_active() if ov and ov.get_visible() else None,
         "msi": _is_msi(),
         "cs2": _cs2_live(),
@@ -746,6 +746,15 @@ def _feature_action(win, kind, a):
         F.hue_set(a.get("on"), col, a.get("ids"))
         return True, "OK"
     raise ValueError("ukjent kommando")
+
+
+def _live_fps(win):
+    """Siste FPS fra spillet som kjører (MangoHud), eller None."""
+    try:
+        ses = win.bg.auto.session
+        return round(ses.fps_hist[-1]) if ses and ses.fps_hist else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _info():

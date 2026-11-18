@@ -732,6 +732,36 @@ async function dcChat(g, gname, c, name) {
   document.addEventListener("pointercancel", dim, true);
 })();
 
+// ---------- snarveier på Hjem: del siste klipp, fjernstyr (RustDesk) og live-status mens du spiller ----------
+(() => {
+  const q = $("#quick"); if (!q) return;
+  const mk = (key, icon, label, sub) => { const b = document.createElement("button"); b.dataset.q = key;
+    b.innerHTML = '<span class="qi">' + icon + '</span><span class="ql">' + label + '</span><span class="qs">' + sub + '</span>'; q.appendChild(b); return b; };
+  mk("shareclip", "📤", "Del klipp", "Siste klipp").onclick = async () => {
+    try {
+      const c = await X("clips");
+      const list = (c.clips || []).slice().sort((a, b) => (b.t || 0) - (a.t || 0));
+      if (!list.length) { toast("Ingen klipp ennå"); return; }
+      if (typeof shareFile === "function") shareFile(list[0].name, list[0].pc);
+    } catch (e) { toast(e.message); }
+  };
+  mk("remote", "🖥️", "Fjernstyr", "RustDesk").onclick = async () => {
+    try {
+      const st = await X("stream");
+      const id = st.rustdesk && st.rustdesk.id;
+      if (id) { try { await navigator.clipboard.writeText(id); } catch (e) {} toast("RustDesk-ID " + id + " er kopiert"); }
+      else toast("RustDesk er ikke satt opp på PC-en (Strømming)");
+      if (KS && KS.openApp && !KS.openApp("com.carriez.flutter_hbb")) toast("Installer RustDesk på telefonen først");
+    } catch (e) { toast(e.message); }
+  };
+})();
+let liveAsked = false;
+function liveCheck(s) {                                     // levende varsel med FPS og temperatur mens du spiller
+  if (!s || !KS || !KS.startLive || liveAsked || !pref("live_note", true)) return;
+  if (s.game) { liveAsked = true; try { KS.startLive(); } catch (e) {} }
+}
+{ const _ro = window.renderOverview; if (_ro) window.renderOverview = function (s) { _ro(s); liveCheck(s); }; }
+
 // ---------- kobling ----------
 const dashSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign

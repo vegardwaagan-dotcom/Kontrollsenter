@@ -89,6 +89,29 @@ public class UpdateJob extends JobService {
                 continue;
             }
             p.edit().putBoolean(upKey, true).apply();
+            try {                                              // spiller noen? tilby levende varsel (trykk = start)
+                JSONObject st = new JSONObject(Net.request(base + "/api/status", Net.token(c, name), null, 4000));
+                String g = st.isNull("game") ? "" : st.optString("game", "");
+                String key = "live_offer:" + name;
+                if (!g.isEmpty() && !g.equals(p.getString(key, "")) && wants(c, "live")) {
+                    p.edit().putString(key, g).apply();
+                    NotificationManager nm = c.getSystemService(NotificationManager.class);
+                    if (nm != null) {
+                        channel(nm, CH_EVENTS, "Hendelser fra PC-ene", NotificationManager.IMPORTANCE_DEFAULT);
+                        PendingIntent pi = Build.VERSION.SDK_INT >= 26
+                                ? PendingIntent.getForegroundService(c, 11, new Intent(c, LiveService.class), PendingIntent.FLAG_IMMUTABLE)
+                                : PendingIntent.getService(c, 11, new Intent(c, LiveService.class), PendingIntent.FLAG_IMMUTABLE);
+                        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CH_EVENTS) : new Notification.Builder(c);
+                        b.setSmallIcon(android.R.drawable.ic_media_play).setContentTitle("🎮 " + name + " spiller " + g)
+                                .setContentText("Trykk for live-status med FPS og temperatur").setContentIntent(pi).setAutoCancel(true);
+                        try { nm.notify(5000 + Math.abs(name.hashCode() % 1000), b.build()); } catch (SecurityException e) { /* av */ }
+                    }
+                } else if (g.isEmpty()) {
+                    p.edit().remove(key).apply();
+                }
+            } catch (Exception e) {
+                // neste gang
+            }
             anyBase = base;
             anyName = name;
             String tok = Net.token(c, name);

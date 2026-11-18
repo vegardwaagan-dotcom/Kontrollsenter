@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- for å se om Moonlight og RustDesk er installert, og åpne dem -->
     <queries>
@@ -130,6 +132,7 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+        <service android:name=".LiveService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service
             android:name=".UpdateJob"
             android:permission="android.permission.BIND_JOB_SERVICE"

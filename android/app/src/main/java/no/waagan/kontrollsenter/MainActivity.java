@@ -629,6 +629,16 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Start det levende varselet (spillet, FPS, temperaturer) – appen kaller dette når et spill kjører. */
+        @JavascriptInterface
+        public void startLive() {
+            try {
+                LiveService.start(MainActivity.this);
+            } catch (Exception e) {
+                // ikke tillatt akkurat nå (f.eks. varsler er slått av)
+            }
+        }
+
         /** Åpne en https-lenke i riktig app (f.eks. en Discord-kanal i Discord-appen). */
         @JavascriptInterface
         public void openUrl(String url) {

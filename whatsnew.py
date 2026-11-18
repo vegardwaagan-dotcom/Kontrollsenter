@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.44.0", "Mobilen mens du spiller", [
+        ("Nytt", [
+            "Levende varsel på telefonen mens et spill kjører: spillet, FPS, CPU-/GPU-temperatur og spilletid i dag – "
+            "også på låseskjermen, med knapp for «Lagre klipp». Stopper av seg selv når spillet avsluttes",
+            "Får du ikke varselet med en gang, kommer et «Trykk for live-status»-varsel når PC-en begynner å spille",
+            "Ny hurtigknapp «Del klipp» på Hjem: deler det siste klippet med ett trykk (Snap, Messenger osv.)",
+            "Ny hurtigknapp «Fjernstyr»: kopierer PC-ens RustDesk-ID og åpner RustDesk-appen på telefonen",
+        ]),
+    ]),
     ("0.43.0", "PC-verktøy", [
         ("Nytt", [
             "Oppstartsrapport (Vedlikehold → System): hvor lang tid PC-en bruker på å starte, hva som tar mest tid, og "
