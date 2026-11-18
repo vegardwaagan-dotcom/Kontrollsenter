@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.68.1", "Volumrullen på headsettet virker", [
+        ("Rettet", [
+            "Volumrullen på headsettet (og volumtastene) viste volumvinduet, men lyden endret seg ikke: standardutgangen "
+            "var en annen enn den spillet og Discord brukte. Nå følger volumtastene utgangen der lyden faktisk spilles",
+            "Ny bryter på Lyd-siden: «Volumtastene følger lyden» (på som standard)",
+        ]),
+    ]),
     ("0.68.0", "VR: WiVRn som alternativ til ALVR", [
         ("Nytt", [
             "VR-siden (Linux): velg mellom ALVR (gjennom SteamVR) og WiVRn (OpenXR rett til brillene – ofte lavere "

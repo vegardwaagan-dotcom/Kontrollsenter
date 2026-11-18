@@ -481,6 +481,10 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
             _th.Thread(target=ach, daemon=True).start()
+        if sys.platform != "win32" and time.time() - getattr(self, "_af_t", 0) > 4:   # volumtastene følger lyden
+            self._af_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("audiofollow").tick(), daemon=True).start()
         if time.time() - getattr(self, "_vr_t", 0) > 20:              # VR-vakten: hold VR i gang
             self._vr_t = time.time()
             import threading as _th

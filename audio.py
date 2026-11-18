@@ -177,6 +177,24 @@ class AudioPage(Gtk.ScrolledWindow):
 
         # Utgang
         c, i = card("Utgang", "Hvor lyden spilles: høyttalere, hodetelefoner eller skjerm (HDMI).")
+        try:
+            import audiofollow
+            fr = Gtk.Box(spacing=10)
+            fcol = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            fcol.append(Gtk.Label(label="Volumtastene følger lyden", xalign=0))
+            fs = Gtk.Label(label="Volumrullen på headsettet og volumtastene styrer utgangen som faktisk spiller – "
+                                 "også når et spill eller Discord bruker en annen utgang enn standard.",
+                           xalign=0, wrap=True)
+            fs.add_css_class("caption")
+            fs.add_css_class("dim-label")
+            fcol.append(fs)
+            fr.append(fcol)
+            fsw = Gtk.Switch(active=audiofollow.enabled(), valign=Gtk.Align.CENTER)
+            fsw.connect("notify::active", lambda s, _p: audiofollow.set_enabled(s.get_active()))
+            fr.append(fsw)
+            i.append(fr)
+        except Exception:  # noqa: BLE001
+            pass
         row = Gtk.Box(spacing=8)
         self.out_dd = Gtk.DropDown.new_from_strings(["…"])
         self.out_dd.set_hexpand(True)
