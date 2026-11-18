@@ -919,6 +919,34 @@ class _Cards:
         box.append(r)
         return sw
 
+    def _push_card(self):
+        import push
+        import socket
+        c, i = card("Pushvarsler til mobilen (ntfy)",
+                    "Varslene kommer på telefonen med en gang – uten at Kontrollsenter-appen er åpen og uten "
+                    "skytjenester. Installer ntfy-appen, og trykk «Legg til i ntfy» i Kontrollsenter-appen "
+                    "(Innstillinger) – eller legg inn adressen under for hånd.")
+        st = dim("")
+
+        def show():
+            try:
+                ip = socket.gethostbyname(socket.gethostname())
+            except OSError:
+                ip = "PC-ens IP"
+            import remote
+            st.set_label((f"Server: http://{ip}:{remote.PORT}   ·   Emne: {push.topic()}") if push.enabled() else "Av")
+        self._switch_row(i, "Send varsler til ntfy", "Bare telefoner som kjenner emnet (nøkkelen) får dem.",
+                         push.enabled(), lambda w, _p: (push.set_enabled(w.get_active()), show()))
+        st.set_selectable(True)
+        st.set_wrap(True)
+        i.append(st)
+        b = Gtk.Button(label="Ny nøkkel", halign=Gtk.Align.START,
+                       tooltip_text="Lag nytt emne – telefoner som har det gamle, slutter å få varsler")
+        b.connect("clicked", lambda *_: (push.new_topic(), show()))
+        i.append(b)
+        show()
+        self.box.append(c)
+
     def _rollback_card(self):
         import lanupdate as L
         if L.is_source_pc():
@@ -1818,6 +1846,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._infotiles_card)
         self.tab("varsler", "Varsler")
         self._try(self._notify_card)
+        self._try(self._push_card)
         self.tab("automatikk", "Automatikk")
         try:
             import automation

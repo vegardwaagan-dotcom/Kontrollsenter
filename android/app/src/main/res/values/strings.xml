@@ -11,6 +11,8 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
     <string name="w_desc_status">Temperatur, strøm og spillet som kjører</string>
+    <string name="w_desc_game">Hva som spilles nå, FPS og temperaturer – og hva de andre spiller</string>
+    <string name="sc_scene">Scene</string>
     <string name="w_desc_temp">CPU, GPU og strøm i store tall</string>
     <string name="w_desc_quick">Spillmodus, lagre klipp, lås og demp</string>
     <string name="w_desc_family">Hva familien spiller – og «Middag!»</string>

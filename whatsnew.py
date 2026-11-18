@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.56.0", "Mobilen: widget, snarveier og push", [
+        ("Nytt", [
+            "Ny widget «Spillstatus» på Android-hjemskjermen: hva som spilles nå, FPS, CPU- og GPU-temperatur, "
+            "spilletid i dag – og hva de andre i huset spiller",
+            "Scenene blir snarveier på app-ikonet (hold inne) – og kan brukes i Google Assistant- og Bixby-rutiner. "
+            "«Hey Google, åpne Spillmodus i Kontrollsenter» virker også",
+            "Pushvarsler med ntfy: varslene kommer med en gang, uten at appen er åpen og uten skytjenester – ntfy "
+            "kobler seg direkte til PC-en. Slå på i Innstillinger → Varsler, og trykk «Legg til i ntfy» i appen",
+        ]),
+    ]),
     ("0.55.0", "Trygg på nettet og leksetid", [
         ("Nytt", [
             "Nettfilter (Familie-siden og mobilen): Cloudflare Family, CleanBrowsing eller AdGuard Family blokkerer "

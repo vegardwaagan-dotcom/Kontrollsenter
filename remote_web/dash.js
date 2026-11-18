@@ -846,6 +846,35 @@ avCard.innerHTML = '<h2>Lyd og skjerm</h2><div class="dim small">Lydprofil</div>
   + '<div class="row between" id="av-nrow" style="margin-top:10px"><span>🌙 Nattlys</span><label class="switch"><input type="checkbox" id="av-night"><i></i></label></div>'
   + '<div class="row between" id="av-brow"><span>☀️ Lysstyrke</span><input type="range" min="1" max="100" id="av-bri" style="flex:1;margin-left:12px"></div>';
 { const g = $("#kontroll .grid"); if (g) g.insertBefore(avCard, $("#c-power") ? $("#c-power").nextSibling : null); }
+async function pushScenesToPhone() {
+  try { if (KS && KS.setScenes) { const sc = await X("scenes"); KS.setScenes(JSON.stringify((sc.scenes || []).map((x) => ({ id: x.id, name: x.name, icon: x.icon })))); } } catch (e) {}
+}
+setTimeout(pushScenesToPhone, 4000);
+const pushCard = document.createElement("div");
+pushCard.className = "card full-only"; pushCard.id = "c-push"; pushCard.hidden = true;
+pushCard.innerHTML = '<h2>Pushvarsler med ntfy</h2><p class="dim small">Varsler fra PC-en med en gang – uten at appen er åpen, '
+  + 'og uten skytjenester. ntfy-appen kobler seg direkte til PC-en og bruker nesten ikke batteri.</p>'
+  + '<div class="row between"><span>Send varsler til ntfy</span><label class="switch"><input type="checkbox" id="push-on"><i></i></label></div>'
+  + '<div class="row" style="margin-top:8px"><button class="primary" id="push-add">Legg til i ntfy</button><button class="soft" id="push-get">Hent ntfy</button></div>'
+  + '<div class="dim small" id="push-url" style="margin-top:6px;word-break:break-all"></div>';
+{ const g = $("#system .grid"); if (g) g.appendChild(pushCard); }
+async function loadPush() {
+  if (document.body.classList.contains("limited")) return;
+  let st; try { st = await X("push"); } catch (e) { return; }
+  pushCard.hidden = false;
+  const host = location.hostname, url = "http://" + host + ":" + st.port + "/" + st.topic;
+  $("#push-on").checked = st.enabled;
+  $("#push-on").onchange = async () => { await act({ a: "push", on: $("#push-on").checked }); loadPush(); };
+  $("#push-url").textContent = st.enabled ? "Server: http://" + host + ":" + st.port + " · emne: " + st.topic : "";
+  $("#push-add").onclick = async () => {
+    if (!$("#push-on").checked) { await act({ a: "push", on: true }); }
+    const deep = "ntfy://" + host + ":" + st.port + "/" + st.topic + "?secure=false";
+    if (KS && KS.openUrl) KS.openUrl(deep); else location.href = deep;
+    try { await navigator.clipboard.writeText(url); } catch (e) {}
+    toast("Åpner ntfy – trykk «Abonner». Adressen er også kopiert.");
+  };
+  $("#push-get").onclick = () => { if (KS && KS.openApp) KS.openApp("io.heckel.ntfy"); else window.open("https://ntfy.sh/docs/subscribe/phone/"); };
+}
 async function loadAv() {
   let st; try { st = await X("avprofiles"); } catch (e) { avCard.hidden = true; return; }
   avCard.hidden = false;
@@ -867,7 +896,8 @@ setTab = function (t) {                              // eslint-disable-line no-g
   if (detOpen) closeDetail();
   dashSetTab(t);
   if (t === "system") loadNotify();
-  if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); }
+  if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); pushScenesToPhone(); }
+  if (t === "system") loadPush();
   if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); }
 };
 dashWire();

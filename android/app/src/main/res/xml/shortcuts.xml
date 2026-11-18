@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Google Assistant: «Hey Google, åpne Spillmodus i Kontrollsenter» -->
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent android:action="no.waagan.kontrollsenter.SPILLMODUS"
+            android:targetPackage="no.waagan.kontrollsenter"
+            android:targetClass="no.waagan.kontrollsenter.QuickAction">
+            <parameter android:name="feature" android:key="feature" />
+        </intent>
+    </capability>
     <shortcut android:shortcutId="lagre_klipp" android:enabled="true" android:icon="@mipmap/ic_launcher"
         android:shortcutShortLabel="@string/sc_clip" android:shortcutLongLabel="@string/sc_clip_long">
         <intent android:action="no.waagan.kontrollsenter.KLIPP"

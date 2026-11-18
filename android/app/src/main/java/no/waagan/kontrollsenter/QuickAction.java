@@ -36,6 +36,12 @@ public class QuickAction extends Activity {
                         body = new JSONObject().put("a", "dinner");
                         msg = "🍽️ «Middag!» er sendt";
                         break;
+                    case "no.waagan.kontrollsenter.SCENE": {
+                        String id = i.getStringExtra("id");
+                        body = new JSONObject().put("a", "scene").put("id", id == null ? "" : id);
+                        msg = "✨ «" + i.getStringExtra("name") + "» settes";
+                        break;
+                    }
                     case "no.waagan.kontrollsenter.LAAS":
                         body = new JSONObject().put("a", "system").put("do", "lock");
                         msg = "PC-en er låst";

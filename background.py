@@ -330,6 +330,11 @@ class Background:
             pass
         if not wants(self.cfg, key):
             return
+        try:                                              # push til mobilen (ntfy) – også mens du spiller
+            import push
+            push.publish(key, __import__("i18n").tr(title), __import__("i18n").tr(body))
+        except Exception:  # noqa: BLE001
+            pass
         # mens du spiller: hold varslene tilbake og vis dem samlet etterpå (ikke chat, spilletid eller personvern)
         if (self.cfg.get("game_hold", True) and getattr(self, "game_name", None) and key not in ALWAYS
                 and kind_of(key) not in ("playtime", "chat") and key not in ("game", "session", "held", "bg", "invite")):

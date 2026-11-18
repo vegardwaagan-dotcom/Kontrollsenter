@@ -78,7 +78,7 @@ def data(win):
     cpu, gpu = s.get("cpu") or {}, s.get("gpu") or {}
     out = {"name": s.get("name"), "cpu_t": cpu.get("temp"), "cpu_l": cpu.get("load"),
            "gpu_t": gpu.get("temp"), "gpu_l": gpu.get("util"), "watts": s.get("watts"),
-           "game": s.get("game"), "gamemode": bool(s.get("gamemode")),
+           "game": s.get("game"), "gamemode": bool(s.get("gamemode")), "fps": s.get("fps"),
            "mode": ((s.get("power") or {}).get("active")), "time": time.time()}
     try:
         from cards import MODE_NAMES

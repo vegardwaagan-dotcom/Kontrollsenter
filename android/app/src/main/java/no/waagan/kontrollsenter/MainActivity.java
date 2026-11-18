@@ -642,7 +642,7 @@ public class MainActivity extends Activity {
         /** Åpne en https-lenke i riktig app (f.eks. en Discord-kanal i Discord-appen). */
         @JavascriptInterface
         public void openUrl(String url) {
-            if (url == null || !url.startsWith("https://")) return;
+            if (url == null || !(url.startsWith("https://") || url.startsWith("ntfy://"))) return;
             runOnUiThread(() -> {
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -650,6 +650,33 @@ public class MainActivity extends Activity {
                     // ingen app kan åpne lenken
                 }
             });
+        }
+
+        /** Scenene som snarveier på app-ikonet (hold inne) – og for Google Assistant / Bixby-rutiner. */
+        @JavascriptInterface
+        public void setScenes(String json) {
+            try {
+                android.content.pm.ShortcutManager sm = getSystemService(android.content.pm.ShortcutManager.class);
+                if (sm == null) return;
+                org.json.JSONArray a = new org.json.JSONArray(json);
+                java.util.List<android.content.pm.ShortcutInfo> list = new java.util.ArrayList<>();
+                int max = Math.min(a.length(), Math.max(0, sm.getMaxShortcutCountPerActivity() - 6));
+                for (int i = 0; i < max; i++) {
+                    org.json.JSONObject s = a.getJSONObject(i);
+                    String id = s.optString("id"), name = s.optString("name");
+                    if (!id.matches("[\\w-]{1,40}") || name.isEmpty()) continue;
+                    Intent it = new Intent("no.waagan.kontrollsenter.SCENE")
+                            .setClass(MainActivity.this, QuickAction.class).putExtra("id", id).putExtra("name", name);
+                    list.add(new android.content.pm.ShortcutInfo.Builder(MainActivity.this, "scene-" + id)
+                            .setShortLabel((s.optString("icon", "") + " " + name).trim())
+                            .setLongLabel("Scene: " + name)
+                            .setIcon(android.graphics.drawable.Icon.createWithResource(MainActivity.this, R.mipmap.ic_launcher))
+                            .setIntent(it).build());
+                }
+                sm.setDynamicShortcuts(list);
+            } catch (Exception e) {
+                // ikke støttet på denne telefonen
+            }
         }
 
         /** Fargetema (Nordlys, Synthwave …) – samme på startskjermen og for alle PC-ene. */

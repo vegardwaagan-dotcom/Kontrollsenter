@@ -726,6 +726,13 @@ def _feature_action(win, kind, a):
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
         import features as F
         return True, F.goal_request(str(a.get("goal", "")), a.get("_dev") or "Mobil")
+    if kind == "push":                           # slå ntfy-push av/på (bare full tilgang)
+        import push
+        if a.get("new_topic"):
+            push.new_topic()
+        if "on" in a:
+            push.set_enabled(bool(a["on"]))
+        return True, "Pushvarsler " + ("på ✓" if push.enabled() else "av")
     if kind == "dnsfilter":                      # nettfilter (familie-DNS) – bare full tilgang
         import familysafe
         return True, familysafe.set_dns(a.get("provider") or None)
@@ -1038,6 +1045,26 @@ def _handler(remote):
                     with open(path, "rb") as f:
                         return self._send(200, f.read(), "application/vnd.android.package-archive",
                                           {"Content-Disposition": 'attachment; filename="Kontrollsenter.apk"'})
+                m_ntfy = re.fullmatch(r"/(ks[A-Za-z0-9]{20,60})/(json|raw)", p)
+                if m_ntfy:                                # ntfy-appen på telefonen (pushvarsler)
+                    import push
+                    if not push.enabled() or m_ntfy.group(1) != push.topic():
+                        return self._send(404, {"error": "finnes ikke"})
+                    q = parse_qs(u.query)
+                    sp = (q.get("since") or [""])[0]
+                    if (q.get("poll") or ["0"])[0] in ("1", "true", "yes"):
+                        body = "".join(json.dumps(push._clean(m), ensure_ascii=False) + "\n"
+                                       for m in push.since(sp or "all")).encode()
+                        return self._send(200, body, "application/x-ndjson; charset=utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.end_headers()
+                    try:
+                        push.stream(self.wfile, m_ntfy.group(1), sp or None)
+                    except (BrokenPipeError, ConnectionResetError, OSError):
+                        pass
+                    return
                 if p == "/api/watch":                    # «Se på»: MJPEG-strøm av skjermen (bare visning)
                     return self._watch(parse_qs(u.query))
                 if p in ("/api/clipfile", "/api/clipthumb"):   # nøkkel i adressen – <video>/<img> kan ikke sende den
@@ -1187,6 +1214,9 @@ def _handler(remote):
             if what == "goals":
                 import features as F
                 return self._send(200, F.goals())
+            if what == "push":
+                import push
+                return self._send(200, {"enabled": push.enabled(), "topic": push.topic(), "port": PORT})
             if what == "familysafe":
                 import familysafe
                 return self._send(200, familysafe.state())
