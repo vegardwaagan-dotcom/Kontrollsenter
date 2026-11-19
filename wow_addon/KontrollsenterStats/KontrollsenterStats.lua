@@ -104,27 +104,55 @@ end
 -- «blocked from an action only available to the Blizzard UI»). WoW sender TIME_PLAYED_MSG selv ved
 -- innlogging og når du skriver /played – mellom svarene regnes tiden videre her.
 
--- distanse: fart (yards/s) × tid, sortert etter hvordan du beveger deg
+-- distanse: fart (yards/s) × tid, sortert etter hvordan du beveger deg.
+-- Når WoW skjuler farten (secret value), brukes hvor langt posisjonen har flyttet seg i stedet.
+-- C.dist_src teller sekunder per kilde (speed/pos/none), så Kontrollsenter kan se hva som virker.
 local acc = 0
+local lastX, lastY, lastInst
+local function flag(fn)                       -- true/false fra IsFlying o.l., aldri en skjult verdi
+  if not fn then return false end
+  local v = fn("player")
+  if secret(v) then return false end
+  return v and true or false
+end
+local function position()
+  if not UnitPosition then return nil end
+  local y, x, _, inst = UnitPosition("player")
+  if secret(x) or secret(y) or secret(inst) or type(x) ~= "number" or type(y) ~= "number" then return nil end
+  return x, y, inst
+end
 f:SetScript("OnUpdate", function(_, elapsed)
   acc = acc + elapsed
   if acc < 0.25 or not C then return end
   local dt = acc; acc = 0
-  local speed = GetUnitSpeed("player") or 0
-  if secret(speed) or type(speed) ~= "number" or speed <= 0 then return end
-  local yards = speed * dt
+  local x, y, inst = position()
+  local speed = GetUnitSpeed and GetUnitSpeed("player") or 0
+  local yards, src
+  if not secret(speed) and type(speed) == "number" then
+    yards, src = speed, "speed"
+    yards = yards * dt
+  elseif x and lastX and inst == lastInst then
+    local d = math.sqrt((x - lastX) ^ 2 + (y - lastY) ^ 2)
+    if d < 120 * dt then yards, src = d, "pos" else yards, src = 0, "pos" end   -- hopp = teleport/lasting
+  else
+    yards, src = 0, "none"
+  end
+  lastX, lastY, lastInst = x, y, inst
+  C.dist_src = C.dist_src or {}
+  C.dist_src[src] = (C.dist_src[src] or 0) + dt
+  if yards <= 0.01 then return end
   local kind = "walk"
-  if UnitOnTaxi and UnitOnTaxi("player") then kind = "taxi"
-  elseif IsFlying and IsFlying() then kind = "fly"
-  elseif IsSwimming and IsSwimming() then kind = "swim"
-  elseif IsMounted and IsMounted() then kind = "mount" end
+  if flag(UnitOnTaxi) then kind = "taxi"
+  elseif flag(IsFlying) then kind = "fly"
+  elseif flag(IsSwimming) then kind = "swim"
+  elseif flag(IsMounted) then kind = "mount" end
   C.dist[kind] = (C.dist[kind] or 0) + yards
   if session then session.dist = session.dist + yards end
 end)
 
 if hooksecurefunc and JumpOrAscendStart then
   hooksecurefunc("JumpOrAscendStart", function()
-    if C and not (UnitOnTaxi and UnitOnTaxi("player")) then C.jumps = C.jumps + 1 end
+    if C and not flag(UnitOnTaxi) then C.jumps = C.jumps + 1 end
   end)
 end
 
