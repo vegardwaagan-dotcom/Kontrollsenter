@@ -47,7 +47,7 @@ class Lhm:
                 cls._cache, cls.ok, cls._down_since = out, True, None
                 try:                                       # minimal prosessbruk: les sensorene hvert 3. sekund
                     import perf
-                    time.sleep(3 if perf.eco() else 1)
+                    time.sleep(3 if perf.eco() else 2 if perf.lowend() else 1)
                 except Exception:  # noqa: BLE001
                     time.sleep(1)
             except (OSError, ValueError):

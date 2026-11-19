@@ -999,6 +999,11 @@ class _Cards:
                               "vifter, mobilappen og familiekontroll virker som før.",
                               perf.save_all(), save_all)
         sa.get_parent().add_css_class("ks-strong")
+        self._switch_row(i, "Eldre PC – lett grafikk" + ("  ·  anbefalt for denne PC-en" if perf.looks_old() else ""),
+                         "Slår av alt det grafiske som tar ytelse: animasjoner, overganger, skygger, glød, levende "
+                         "bakgrunn, lys som følger musa og minigrafene i flisene. Vinduet oppdateres hvert 2. sekund, "
+                         "og minne frigjøres når vinduet har vært lukket en stund. Alle funksjonene virker som før.",
+                         perf.lowend(), lambda w, _p: perf.set_lowend(w.get_active(), self.get_root()))
         sws["eco"] = self._switch_row(i, "Minimal prosessbruk",
                          "Ingen effekter, vinduet oppdateres hvert 3. sekund, og valgfrie ting i bakgrunnen går "
                          "sjeldnere. Varsler, vifter og mobilappen virker som før. Fint på eldre eller tregere PC-er.",

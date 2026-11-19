@@ -209,7 +209,7 @@ levelbar.disk-ok block.filled { background-color: var(--accent-bg-color); }
 levelbar.disk-warn block.filled { background-color: var(--warning-bg-color); }
 levelbar.disk-crit block.filled { background-color: var(--error-bg-color); }
 /* enheter som lader: grønt, pulserende lyn */
-image.ks-charging { color: #2ec27e; animation: ks-charge-pulse 1.6s ease-in-out infinite; }
+image.ks-charging { color: #2ec27e; animation: ks-charge-pulse 1.6s steps(4) infinite; }
 label.ks-charging { color: #26a269; font-weight: 700; }
 levelbar.ks-charging block.filled { background: linear-gradient(90deg, #2ec27e, #57e389); }
 @keyframes ks-charge-pulse { 0% { opacity: 1; } 50% { opacity: .35; } 100% { opacity: 1; } }

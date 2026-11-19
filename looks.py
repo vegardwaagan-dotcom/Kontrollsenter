@@ -107,7 +107,7 @@ _LIVE = [None]
 def _live_tick():
     try:
         import perf
-        if perf.eco():
+        if perf.light():
             return
     except Exception:  # noqa: BLE001
         pass

@@ -176,6 +176,9 @@ class MonitorWindow(Adw.ApplicationWindow):
             spotlight.attach(self)
             import effects
             effects.apply(self)
+            import perf
+            if perf.lowend():                            # «Eldre PC»: animasjoner av fra start
+                perf.apply_graphics(self)
         except Exception:  # noqa: BLE001
             pass
         icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())

@@ -86,7 +86,7 @@ class Spotlight:
     def _motion(self, _c, x, y):
         try:
             import perf
-            if perf.eco():
+            if perf.light():
                 return
         except Exception:  # noqa: BLE001
             pass

@@ -253,9 +253,61 @@ def save_every(seconds):
     return max(seconds, 900) if flag("ssd") else seconds
 
 
+def lowend():
+    """«Eldre PC»: alt det grafiske som tar ytelse er av."""
+    return bool(flag("lowend"))
+
+
+def light():
+    """Skal effekter, animasjoner og lys som følger musa være av?"""
+    return eco() or lowend()
+
+
+def set_lowend(on, window=None):
+    d = _cfg()
+    if on and not d.get("lowend"):
+        d["lowend_before"] = {"mem": flag("mem")}
+        _save_cfg(d)
+        set_flag("mem", True)                              # mindre minne når vinduet har vært lukket en stund
+    elif not on and d.get("lowend"):
+        set_flag("mem", bool((d.get("lowend_before") or {}).get("mem")))
+    set_flag("lowend", bool(on))
+    apply_graphics(window)
+
+
+_ANIM = {}
+
+
+def apply_graphics(window=None):
+    """Animasjoner, effekter og minigrafer av/på etter bryterne (kan kalles når som helst)."""
+    try:
+        from gi.repository import Gtk
+        st = Gtk.Settings.get_default()
+        if st is not None:
+            if "orig" not in _ANIM:
+                _ANIM["orig"] = st.get_property("gtk-enable-animations")
+            st.set_property("gtk-enable-animations", False if lowend() else _ANIM["orig"])
+        import effects
+        for w in ([window] if window else Gtk.Window.list_toplevels()):
+            if w is not None:
+                effects.apply(w)
+                (w.add_css_class if lowend() else w.remove_css_class)("ks-lowend")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def looks_old():
+    """Grovt anslag: få kjerner eller lite minne → «Eldre PC» anbefales."""
+    try:
+        import psutil
+        return (psutil.cpu_count() or 8) <= 8 or psutil.virtual_memory().total < 12 * 2 ** 30
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def interval_factor():
     """Hvor mange sekunder mellom hver oppdatering av vinduet."""
-    return 3 if eco() else 1
+    return 3 if eco() else 2 if lowend() else 1
 
 
 # --------------------------------------------------------------------------

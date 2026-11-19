@@ -731,7 +731,7 @@ html.ks-fade, html.ks-fade body, html.ks-fade .card, html.ks-fade .tile, html.ks
 @keyframes ks-scene-fire { 0% { transform: scale(.94); box-shadow: 0 0 0 0 var(--sc); } 40% { transform: scale(1.03); box-shadow: 0 0 0 10px color-mix(in srgb, var(--sc) 30%, transparent); }
   100% { transform: none; } }
 /* levende bakgrunn */
-body.live-bg::before { background-size: 160% 160%; animation: ks-aurora 22s ease-in-out infinite alternate; opacity: var(--live, .8); transition: opacity 2s; }
+body.live-bg::before { background-size: 160% 160%; animation: ks-aurora 22s steps(40) infinite alternate; opacity: var(--live, .8); transition: opacity 2s; }
 @keyframes ks-aurora { 0% { background-position: 0% 0%; transform: scale(1); } 50% { background-position: 60% 30%; transform: scale(1.08); }
   100% { background-position: 100% 10%; transform: scale(1); } }
 body.eco.live-bg::before { animation: none; }
@@ -825,7 +825,7 @@ body.fx button:active { transform: scale(.955); }
 body.fx .tiles > [data-k]:active, body.fx .quick > button:active { transform: scale(.97); }
 body.fx #tabs button.on svg { animation: fx-pop .35s cubic-bezier(.3,1.6,.6,1); }
 @keyframes fx-pop { 0% { transform: scale(.7); } 100% { transform: scale(1); } }
-body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s ease-in-out infinite alternate; }
+body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(45) infinite alternate; }
 @media (prefers-reduced-motion: reduce) { body.fx *, body.fx *::before { animation: none !important; transition: none !important; } }
 
 .today-big { font-size: 22px; font-weight: 800; margin: 2px 0 4px; }
@@ -867,7 +867,7 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s ease-i
 .pt.ok .pt-bar i { background: linear-gradient(90deg, #2ec27e, #57e389); } .pt.bad .pt-bar i { background: #e01b24; }
 /* stue-modus */
 .amb { position: fixed; inset: 0; z-index: 80; padding: 8vh 7vw; background: #05060a; color: white; display: flex; flex-direction: column; gap: 3vh; }
-.amb::before { content: ""; position: absolute; inset: 0; background: var(--aurora); background-size: 170% 170%; animation: ks-aurora 30s ease-in-out infinite alternate; z-index: -1; }
+.amb::before { content: ""; position: absolute; inset: 0; background: var(--aurora); background-size: 170% 170%; animation: ks-aurora 30s steps(50) infinite alternate; z-index: -1; }
 .amb-clock { font-size: min(28vw, 22vh); font-weight: 200; letter-spacing: -.04em; line-height: 1; }
 .amb-date { font-size: min(6vw, 4vh); color: rgba(255,255,255,.75); }
 .amb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vw; }

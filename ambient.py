@@ -20,7 +20,7 @@ window.ks-ambient { background-color: #05060a; }
 .ks-amb { background-image: radial-gradient(ellipse 60% 50% at 15% 10%, alpha(@accent_bg_color, .38), transparent),
                             radial-gradient(ellipse 55% 45% at 90% 20%, alpha(@accent_color, .25), transparent),
                             radial-gradient(ellipse 70% 50% at 50% 110%, alpha(@accent_bg_color, .22), transparent);
-  background-size: 180% 180%, 180% 180%, 180% 180%; animation: ks-amb-drift 40s ease-in-out infinite alternate; }
+  background-size: 180% 180%, 180% 180%, 180% 180%; animation: ks-amb-drift 40s steps(60) infinite alternate; }
 @keyframes ks-amb-drift { 0% { background-position: 0% 0%, 100% 0%, 50% 100%; }
   100% { background-position: 30% 40%, 70% 30%, 60% 70%; } }
 .ks-amb-clock { font-size: 150px; font-weight: 200; letter-spacing: -4px; color: white; }

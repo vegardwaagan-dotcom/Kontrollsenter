@@ -245,6 +245,12 @@ class Tile(Gtk.Box):
         self._spark_col = color
 
         def draw(_a, cr, w, h):
+            try:
+                import perf
+                if perf.lowend():
+                    return
+            except Exception:  # noqa: BLE001
+                pass
             vals = list(self._spark_src)[-60:]
             if len(vals) < 2:
                 return

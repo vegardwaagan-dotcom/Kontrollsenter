@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.75.0", "Eldre PC – lett grafikk", [
+        ("Nytt (Innstillinger → Generelt → Ytelse)", [
+            "«Eldre PC – lett grafikk»: ingen animasjoner, overganger, skygger, glød, levende bakgrunn eller "
+            "minigrafer, vinduet oppdateres hvert 2. sekund og minne frigjøres når vinduet er lukket. Alle "
+            "funksjonene virker. Står «anbefalt» på PC-er med få kjerner eller lite minne",
+        ]),
+        ("Raskere for alle", [
+            "Effektnivå «Full» tegnet hele vinduet på nytt i full skjermfrekvens (179 ganger i sekundet) for den "
+            "levende bakgrunnen – nå i små trinn: 6 ganger mindre tegning og 12 ganger mindre prosessor, nesten likt "
+            "utseende",
+            "Stue-modus, ladeikonet og bakgrunnen i mobilappen animeres på samme sparsomme måte (sparer batteri)",
+        ]),
+    ]),
     ("0.74.0", "Full kontroll over disk, prosessor og minne", [
         ("Nytt (Innstillinger → Generelt)", [
             "«Lagring på disk»: egen bryter for historikk, strøm, spilletid, hendelser, logg og toppverdier – av = "

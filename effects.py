@@ -18,6 +18,10 @@ LEVELS = [("full", "Full – levende bakgrunn og animasjoner"), ("rolig", "Rolig
           ("av", "Av – ingen effekter")]
 
 FX_CSS = """
+/* Eldre PC: ingen animasjoner, overganger, skygger eller glød – det tyngste å tegne */
+window.ks-lowend, window.ks-lowend * { transition: none; animation: none; box-shadow: none; text-shadow: none;
+  -gtk-icon-shadow: none; filter: none; }
+window.ks-lowend .tile-spark { opacity: 0; min-height: 0; }
 /* minimal prosessbruk: ingen store skygger/glød (tunge å tegne) */
 window.ks-eco .ks-dash-item:hover > .card, window.ks-eco .ks-dash-item:hover > .tile, window.ks-eco .card.ks-scene:hover,
 window.ks-eco .navigation-sidebar > row:hover, window.ks-eco button:hover { box-shadow: none; }
@@ -32,9 +36,9 @@ window.ks-eco .navigation-sidebar > row:hover, window.ks-eco button:hover { box-
 
 /* levende bakgrunn – står stille når vinduet ikke er i fokus */
 window.ks-fx-bg .ks-content { background-size: 170% 170%, 170% 170%, 170% 170%;
-  animation: ks-drift 30s ease-in-out infinite alternate; }
+  animation: ks-drift 30s steps(45) infinite alternate; }   /* i små trinn: ~1,5 tegninger/s i stedet for full fps */
 window.ks-fx-bg:backdrop .ks-content { animation-play-state: paused; }
-window.ks-fx-bg .ks-brand-logo { animation: ks-breathe 3.2s ease-in-out infinite alternate; }
+window.ks-fx-bg .ks-brand-logo { animation: ks-breathe 3.2s steps(6) infinite alternate; }
 window.ks-fx-bg:backdrop .ks-brand-logo { animation-play-state: paused; }
 
 /* kortene glir inn når du bytter side */
@@ -73,7 +77,7 @@ _DONE = []
 def level():
     try:
         import perf
-        if perf.eco():
+        if perf.light():
             return "av"
     except Exception:  # noqa: BLE001
         pass
@@ -107,7 +111,8 @@ def apply(window):
     lv = level()
     try:
         import perf
-        (window.add_css_class if perf.eco() else window.remove_css_class)("ks-eco")
+        (window.add_css_class if perf.light() else window.remove_css_class)("ks-eco")
+        (window.add_css_class if perf.lowend() else window.remove_css_class)("ks-lowend")
     except Exception:  # noqa: BLE001
         pass
     for c, on in (("ks-fx", lv in ("full", "rolig")), ("ks-fx-bg", lv == "full")):
