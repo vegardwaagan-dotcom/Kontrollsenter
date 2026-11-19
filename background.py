@@ -181,6 +181,8 @@ class Background:
         def _warm():
             import time as _t
             _t.sleep(45)
+            if not __import__("updates").auto_on():        # manuelt: ingen automatisk disk-/helsesjekk
+                return
             for fn in (lambda: __import__("remote_extra").health(), lambda: __import__("apppanels").all_panels(win)):
                 try:
                     fn()
@@ -646,7 +648,7 @@ class Background:
                     GLib.idle_add(lambda: self.notify(
                         "lanpublish", "Ny versjon lagt på hjemmenettet",
                         f"Kontrollsenter {pub} ligger nå på NAS-en, og de andre PC-ene får varsel.") and False)
-                else:
+                elif __import__("updates").auto_on():
                     _txt, new = lanupdate.check()
             except Exception:  # noqa: BLE001
                 new = None
@@ -666,6 +668,9 @@ class Background:
         if not (self.cfg["periodic"] and self.cfg["notify"]):
             return True
         self._lan_check()
+        import updates
+        if not updates.auto_on():                  # manuelt: ingen automatiske sjekker av disk og oppdateringer
+            return True
 
         def work():
             found, upd = 0, 0
@@ -674,7 +679,10 @@ class Background:
                 found = len([r for r in syscheck.run_all() if r.level in ("warn", "error")])
             except Exception:  # noqa: BLE001
                 pass
-            upd = flatpak_updates()
+            try:
+                upd = sum(max(0, s["count"]) for s in updates.status(refresh=True, only=("apps", "ks")))
+            except Exception:  # noqa: BLE001
+                upd = 0
             GLib.idle_add(done, found, upd)
 
         def done(found, upd):
@@ -683,7 +691,7 @@ class Background:
                             f"{found} ting bør sjekkes. Klikk for å åpne Systemsjekk.", action="app.syscheck")
             if upd:
                 self.notify("updates", "Oppdateringer tilgjengelig",
-                            f"{upd} Flatpak-programmer kan oppdateres.")
+                            f"{upd} oppdateringer er klare. Trykk «Oppdater alt» på Oversikt.", action="app.show")
             return False
 
         threading.Thread(target=work, daemon=True).start()

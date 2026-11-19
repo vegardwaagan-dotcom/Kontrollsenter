@@ -83,6 +83,9 @@ def monthly_tick(notify):
     """Kalles fra bakgrunnen; sjekker én gang i timen og rydder i en egen tråd."""
     if time.time() - cfg().get("checked", 0) < 3600:
         return
+    import updates
+    if not updates.auto_on():                       # manuelt: ingen automatisk opprydding
+        return
     save_cfg(checked=time.time())
 
     def work():

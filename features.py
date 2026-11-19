@@ -166,7 +166,7 @@ ROLLBACK = os.path.join(DATA, "oppdatering-sjekk.json")
 
 def auto_update_tick():
     c = cfg()
-    if not c["auto_update"] or IS_WIN:
+    if not c["auto_update"] or IS_WIN or not __import__("updates").auto_on():
         return
     now = time.strftime("%H:%M")
     if now != c["update_at"] or time.time() - c.get("_last_upd", 0) < 3600:

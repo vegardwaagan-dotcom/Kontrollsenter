@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.73.0", "Oppdater alt med ett trykk", [
+        ("Nytt", [
+            "«Oppdater alt»: Kontrollsenter, programmene (Flatpak/winget), systemet med drivere, fastvare og de "
+            "andre PC-ene – på Oversikt, i Innstillinger → Oppdatering og i mobilappen",
+            "Bryter «Automatisk oppdatering og opprydding»: av = ingen automatiske sjekker, oppdateringer eller "
+            "diskopprydding – du gjør alt selv",
+            "PC-er: «Oppdater alt» og automatikk av/på for hver PC, og «Oppdater alt på alle»",
+            "Funksjonene (Discord, klipp, VR, RGB, strømming, spill …) viser «Oppdatering klar» for programmet de "
+            "bruker, med egen Oppdater-knapp",
+        ]),
+    ]),
     ("0.72.1", "WoW-addonen krasjer ikke lenger", [
         ("Rettet", [
             "WoW: Kontrollsenter Stats-addonen ga Lua-feil flere ganger i sekundet i WoW Forever, fordi nyere WoW "

@@ -1145,13 +1145,26 @@ def _handler(remote):
                         return self._send(404, {"error": "finnes ikke"})
                     with open(cp, "rb") as f:
                         return self._send(200, f.read(), "image/jpeg", {"Cache-Control": "max-age=86400"})
-                if p in ("/api/house/status", "/api/house/update"):   # PC-ene hjemme (felles husnøkkel)
+                if p in ("/api/house/status", "/api/house/update", "/api/house/updates", "/api/house/updateall",
+                         "/api/house/auto"):            # PC-ene hjemme (felles husnøkkel)
                     import watch as W
-                    if not W.check_house_key((parse_qs(u.query).get("fk") or [""])[0]):
+                    q = parse_qs(u.query)
+                    if not W.check_house_key((q.get("fk") or [""])[0]):
                         return self._send(403, {"error": "feil husnøkkel"})
                     if p == "/api/house/status":
                         import friends
                         return self._send(200, friends.snapshot(remote.win, full=True))
+                    import updates as UPD
+                    if p == "/api/house/updates":       # oppdateringer på denne PC-en (r=1: sjekk på nytt)
+                        if (q.get("r") or [""])[0] == "1":
+                            UPD.status(refresh=True)
+                        return self._send(200, UPD.summary_json())
+                    if p == "/api/house/updateall":     # «Oppdater alt» her, startet fra en annen PC
+                        started = UPD.update_all(remote.win)
+                        return self._send(200, {"ok": started, "msg": "startet" if started else "pågår allerede"})
+                    if p == "/api/house/auto":          # automatikk av/på herfra
+                        UPD.set_auto((q.get("on") or ["1"])[0] == "1")
+                        return self._send(200, {"ok": True, "auto": UPD.auto_on()})
                     return self._send(200, house_update(remote.win))
                 if p == "/api/friend":                   # venner utenfor huset (Tailscale): bare lesing, egen kode
                     import friends

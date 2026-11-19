@@ -929,6 +929,13 @@ class _Cards:
         box.append(r)
         return sw
 
+    def _updates_card(self):
+        import updates_ui
+        c, i = card("Oppdater alt", "Kontrollsenter, programmene, systemet, fastvaren og de andre PC-ene – med ett "
+                                    "trykk. Slå av automatikken hvis du vil gjøre alt selv.")
+        i.append(updates_ui.UpdatesCard(lambda: self.get_root()))
+        self.box.append(c)
+
     def _perf_card(self):
         import perf
         c, i = card("Ytelse – hva Kontrollsenter bruker",
@@ -2021,6 +2028,7 @@ class SettingsPage(TabbedPage, _Cards):
             import applog
             applog.log.exception("fjernstyring-kort")
         self.tab("oppdatering", "Oppdatering")
+        self._try(self._updates_card)
         self._try(self._app_card)
         self._try(self._rollback_card)
         if sys.platform != "win32":

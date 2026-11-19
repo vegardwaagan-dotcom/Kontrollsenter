@@ -105,6 +105,13 @@ def status(win):
 
 def _extra():
     out = {}
+    try:                                                   # oppdateringer og automatikk (PC-er-siden)
+        import updates
+        out["upd_auto"] = updates.auto_on()
+        out["upd_n"] = updates.total() if updates.cached() else None
+        out["upd_running"] = updates.running()
+    except Exception:  # noqa: BLE001
+        pass
     try:
         import features
         out.update(features.share_fields())
@@ -157,6 +164,27 @@ def update_pc(p, timeout=180):
                 return False, _too_old(p)
             continue
     return False, "svarer ikke" + (f" ({last[:60]})" if p.get("ips") else " (ingen adresse)")
+
+
+def house_call(p, what, timeout=60, **q):
+    """Kall /api/house/<what> på en annen PC hjemme. Returnerer (ok, svar eller feilmelding)."""
+    import json as _j
+    import urllib.parse
+    import urllib.request
+    import watch
+    last = "ingen adresse"
+    qs = urllib.parse.urlencode({"fk": watch.house_key(), **q})
+    for ip in (p.get("ips") or [])[:2]:
+        try:
+            with urllib.request.urlopen(f"http://{ip}:27100/api/house/{what}?{qs}", timeout=timeout) as r:
+                return True, _j.load(r)
+        except Exception as e:  # noqa: BLE001
+            last = str(e)
+            if "403" in last:
+                return False, "husnøkkelen stemmer ikke"
+            if "401" in last or "404" in last:
+                return False, f"har {p.get('version', '?')} – oppdater Kontrollsenter der først"
+    return False, "svarer ikke" if "timed out" in last or "refused" in last else last[:80]
 
 
 def _too_old(p):
@@ -291,6 +319,12 @@ class HomePage(Gtk.ScrolledWindow):
                                               "Kontrollsenter på nytt der"))
         self.upd_btn.connect("clicked", self._update_all)
         ur.append(self.upd_btn)
+        self.all_btn = Gtk.Button(label=i18n.tr("Oppdater alt på alle"))
+        self.all_btn.add_css_class("pill")
+        self.all_btn.set_tooltip_text(i18n.tr("«Oppdater alt» på hver PC som er på: Kontrollsenter, programmer, "
+                                              "system og fastvare"))
+        self.all_btn.connect("clicked", self._update_everything)
+        ur.append(self.all_btn)
         self.upd_msg = Gtk.Label(xalign=0, wrap=True, hexpand=True)
         self.upd_msg.add_css_class("ks-sub")
         ur.append(self.upd_msg)
@@ -330,6 +364,104 @@ class HomePage(Gtk.ScrolledWindow):
             GLib.timeout_add_seconds(25, lambda: (self.refresh(), False)[1])     # se nye versjoner etter omstart
             return False
         threading.Thread(target=work, daemon=True).start()
+
+    def _update_everything(self, *_):
+        """«Oppdater alt» her og på alle de andre PC-ene som er på."""
+        import savegames
+        import updates
+        self.all_btn.set_sensitive(False)
+        self.upd_msg.set_label(i18n.tr("Starter «Oppdater alt» på alle PC-ene …"))
+        me = savegames.pc_name()
+
+        def work():
+            out = []
+            for p in self._pcs or fetch() or []:
+                if time.time() - p.get("time", 0) >= STALE:
+                    continue
+                if p.get("name") == me:
+                    ok = updates.update_all(self.get_root(), include_pcs=False)
+                    out.append((me, True, "startet" if ok else "pågår allerede"))
+                else:
+                    ok, d = house_call(p, "updateall", 20)
+                    out.append((p.get("name"), ok, d.get("msg", "startet") if ok else d))
+            GLib.idle_add(done, out)
+
+        def done(out):
+            self.all_btn.set_sensitive(True)
+            self.upd_msg.set_label("  ·  ".join(f"{'✓' if ok else '✗'} {n}: {m}" for n, ok, m in out)
+                                   or i18n.tr("Ingen PC-er er på akkurat nå"))
+            GLib.timeout_add_seconds(60, lambda: (self.refresh(publish_first=True), False)[1])
+            return False
+        threading.Thread(target=work, daemon=True).start()
+
+    def _pc_updates(self, p, me, inner):
+        """Per PC: «Oppdater alt» og automatikk av/på (denne PC-en direkte, de andre via hjemmenettet)."""
+        import updates
+        mine = p.get("name") == me
+        row = Gtk.Box(spacing=8)
+        n = updates.total() if mine and updates.cached() else p.get("upd_n")
+        auto = updates.auto_on() if mine else p.get("upd_auto")
+        lab = Gtk.Label(xalign=0, hexpand=True, wrap=True)
+        lab.add_css_class("caption")
+        if p.get("upd_running") or (mine and updates.running()):
+            lab.set_label("🔄 " + i18n.tr("Oppdaterer …"))
+        elif n is None:
+            lab.set_label(i18n.tr("Oppdateringer: ikke sjekket"))
+        else:
+            lab.set_label("✅ " + i18n.tr("Alt oppdatert") if n == 0 else
+                          "🔄 " + i18n.tr("{n} oppdateringer").replace("{n}", str(n)))
+        row.append(lab)
+        b = Gtk.Button(label=i18n.tr("Oppdater alt"), valign=Gtk.Align.CENTER)
+        b.add_css_class("pill")
+        if n:
+            b.add_css_class("suggested-action")
+
+        def go(btn):
+            btn.set_sensitive(False)
+            btn.set_label(i18n.tr("Starter …"))
+
+            def work():
+                if mine:
+                    ok = updates.update_all(self.get_root())
+                    msg = "startet" if ok else "pågår allerede"
+                else:
+                    ok, d = house_call(p, "updateall", 20)
+                    msg = d.get("msg", "startet") if ok else d
+                GLib.idle_add(lambda: (btn.set_label(("✓ " if ok else "✗ ") + str(msg)[:40]), False)[1])
+            threading.Thread(target=work, daemon=True).start()
+        b.connect("clicked", go)
+        row.append(b)
+        inner.append(row)
+        if auto is None and not mine:                      # eldre versjon: vet ikke
+            return
+        ar = Gtk.Box(spacing=8)
+        al = Gtk.Label(label=i18n.tr("Automatisk oppdatering og opprydding"), xalign=0, hexpand=True, wrap=True)
+        al.add_css_class("caption")
+        ar.append(al)
+        sw = Gtk.Switch(active=bool(auto), valign=Gtk.Align.CENTER)
+
+        def toggled(w, _p):
+            on = w.get_active()
+            if mine:
+                if on != updates.auto_on():
+                    updates.set_auto(on)
+                return
+            if getattr(w, "_rev", False):
+                w._rev = False
+                return
+
+            def work():
+                ok, d = house_call(p, "auto", 15, on="1" if on else "0")
+                if not ok:
+                    def back():
+                        w._rev = True
+                        w.set_active(not on)
+                        al.set_label(i18n.tr("Automatisk oppdatering og opprydding") + f" – ✗ {d}")
+                    GLib.idle_add(lambda: (back(), False)[1])
+            threading.Thread(target=work, daemon=True).start()
+        sw.connect("notify::active", toggled)
+        ar.append(sw)
+        inner.append(ar)
 
     def _open(self, p):
         import friends_ui
@@ -404,6 +536,11 @@ class HomePage(Gtk.ScrolledWindow):
                     wb.connect("clicked", lambda _b, pp=p: __import__("watch_ui").WatchWindow(
                         self.get_root(), pp["name"], pp["ips"][0], pp.get("game")).present())
                     inner.append(wb)
+            if on:
+                try:
+                    self._pc_updates(p, me, inner)
+                except Exception:  # noqa: BLE001
+                    applog.log.exception("oppdateringer per PC")
             ver = p.get("version", "?")
             from lanupdate import newer
             old = newer(applog.RUNNING, ver) if ver != "?" else False

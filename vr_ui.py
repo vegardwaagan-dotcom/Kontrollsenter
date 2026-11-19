@@ -67,6 +67,11 @@ class VrPage(Gtk.ScrolledWindow):
             getattr(box, f"set_margin_{side}")(18)
         self.set_child(Adw.Clamp(maximum_size=theme.PAGE_WIDTH, child=box))
         self._busy = False
+        try:                                               # «Oppdatering klar for ALVR/WiVRn/Steam»
+            import updates_ui
+            box.append(updates_ui.AppStrip("vr"))
+        except Exception:  # noqa: BLE001
+            pass
 
         # ---- hodesettet ----
         c, i = card("Hodesettet", "Ser om Questen er koblet til med kabel eller er på Wi-Fi – og om den strømmer nå.")

@@ -439,6 +439,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.edit_bar.set_child(eb)
         page.append(hero)
         page.append(self.edit_bar)
+        try:                                  # «Oppdater alt» og automatikk av/på
+            import updates_ui
+            page.append(updates_ui.OverviewBar(self))
+        except Exception:  # noqa: BLE001
+            applog.log.exception("oppdateringslinje")
         try:                                  # batteri i mus, tastatur og hodesett
             import battery_ui
             flow.add("batterier", battery_ui.BatteryCard(), 9, on_click=lambda: self.open_details("bat"))

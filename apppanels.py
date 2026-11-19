@@ -106,6 +106,15 @@ def p_homepcs(win):
         b = [_btn("Alt om PC-en", {"do": "noop"})]
         if old and on and p.get("name") != me:
             b.append(_btn("Oppdater", {"do": "houseupdate", "name": p.get("name")}, primary=True))
+        if on:                                             # «Oppdater alt» og automatikk per PC
+            b.append(_btn("Oppdater alt", {"do": "pc_updateall", "name": p.get("name")},
+                          f"Oppdatere alt på {p.get('name')}?", primary=bool(p.get("upd_n"))))
+            if p.get("upd_auto") is not None or p.get("name") == me:
+                au = p.get("upd_auto") if p.get("name") != me else __import__("updates").auto_on()
+                b.append(_btn("Automatikk: på → slå av" if au else "Automatikk: av → slå på",
+                              {"do": "pc_auto", "name": p.get("name"), "on": "0" if au else "1"}))
+            if p.get("upd_n"):
+                bits.append(f"🔄 {p['upd_n']} oppdateringer")
         items.append({"title": ("🟢 " if on else "⚫ ") + p.get("name", "?") + (" (denne)" if p.get("name") == me else ""),
                       "sub": " · ".join(x for x in bits if x) or ("på" if on else "av"),
                       "badge": f"v{p.get('version', '?')}" + (" – kan oppdateres" if old else ""),
@@ -263,7 +272,26 @@ def p_version(win):
             "buttons": [_btn("Oppdater denne PC-en", {"do": "selfupdate"}, primary=True)] + b}
 
 
-PANELS = [p_commands, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_radio, p_presence, p_version]
+def p_updates(win):
+    """Oppdater alt"""
+    import updates
+    st = updates.cached()
+    n = updates.total(st)
+    rows = [[s["name"], ("✅ " if s["count"] == 0 else "🔄 " if s["count"] > 0 else "❔ ") + s["detail"]] for s in st]
+    if updates.running():
+        rows.insert(0, ["Nå", "🔄 Oppdaterer …"])
+    au = updates.auto_on()
+    return {"id": "updates", "icon": "🔄", "title": "Oppdater alt" + (f" · {n} klare" if n else ""),
+            "desc": ("Automatisk oppdatering og opprydding er på." if au else
+                     "Manuelt: ingen automatiske sjekker, oppdateringer eller diskopprydding."),
+            "rows": rows or [["Status", "Ikke sjekket ennå – trykk «Se etter»"]],
+            "buttons": [_btn("Oppdater alt", {"do": "updateall"}, "Oppdatere alt på denne PC-en?", primary=n > 0),
+                        _btn("Se etter", {"do": "updatecheck"}),
+                        _btn("Automatikk: på → slå av" if au else "Automatikk: av → slå på",
+                             {"do": "updateauto", "on": "0" if au else "1"})]}
+
+
+PANELS = [p_commands, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_radio, p_presence, p_version]
 
 
 _CACHE = {}
@@ -316,6 +344,36 @@ def run(win, a):
     if do == "invite":
         import launcher
         return launcher.invite(_game(str(a.get("id", ""))))
+    if do == "updateall":
+        import updates
+        return "Oppdater alt er startet – følg fremdriften øverst" if updates.update_all(win) else "Pågår allerede"
+    if do == "updatecheck":
+        import updates
+        st = updates.status(refresh=True)
+        n = updates.total(st)
+        return "Alt er oppdatert ✓" if n == 0 else f"{n} oppdateringer er klare"
+    if do == "updateauto":
+        import updates
+        updates.set_auto(str(a.get("on")) == "1")
+        return "Automatikk på" if updates.auto_on() else "Automatikk av – gjør alt manuelt"
+    if do in ("pc_updateall", "pc_auto"):
+        import homepcs
+        import savegames
+        import updates
+        name = a.get("name")
+        if name == savegames.pc_name():
+            if do == "pc_auto":
+                updates.set_auto(str(a.get("on")) == "1")
+                return "Automatikk " + ("på" if updates.auto_on() else "av")
+            return "Startet" if updates.update_all(win) else "Pågår allerede"
+        p = next((x for x in homepcs.fetch() or [] if x.get("name") == name), None)
+        if not p:
+            raise ValueError("fant ikke PC-en")
+        if do == "pc_auto":
+            ok, d = homepcs.house_call(p, "auto", 15, on=str(a.get("on")))
+            return (f"✓ Automatikk {'på' if d.get('auto') else 'av'} på {name}" if ok else f"✗ {d}")
+        ok, d = homepcs.house_call(p, "updateall", 20)
+        return f"✓ Oppdater alt startet på {name}" if ok else f"✗ {d}"
     if do == "houseupdate_all":
         import homepcs
         res = homepcs.update_all(homepcs.fetch() or [])

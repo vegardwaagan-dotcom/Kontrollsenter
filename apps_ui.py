@@ -50,6 +50,11 @@ class Need(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         _css()
         self.feature, self.on_done, self.text, self.on_change, self.picker = feature, on_done, text, on_change, picker
+        self._body_vis = False
+        import updates_ui                                  # «Oppdatering klar for …» for programmene funksjonen bruker
+        self.strip = updates_ui.AppStrip(feature)
+        self.strip.connect("notify::visible", lambda *_: self._vis(self._body_vis))
+        self.append(self.strip)
         self.set_visible(False)
         self.check()
 
@@ -65,9 +70,17 @@ class Need(Gtk.Box):
         threading.Thread(target=work, daemon=True).start()
         return False
 
+    def _vis(self, body):
+        self._body_vis = body
+        self.set_visible(body or self.strip.get_visible())
+
     def _clear(self):
-        while (ch := self.get_first_child()) is not None:
-            self.remove(ch)
+        ch = self.get_first_child()
+        while ch is not None:
+            nxt = ch.get_next_sibling()
+            if ch is not self.strip:
+                self.remove(ch)
+            ch = nxt
         for c in ("ks-needapp", "ks-useapp"):
             self.remove_css_class(c)
 
@@ -79,9 +92,9 @@ class Need(Gtk.Box):
         elif self.picker and (len(ch) >= 2 or (ch and not apps.APPS[ch[0]].get("ks"))):
             self._show_picker(ch, use, multi)
         else:
-            self.set_visible(False)
+            self._vis(False)
             return False
-        self.set_visible(True)
+        self._vis(True)
         return False
 
     def _show_missing(self, miss):
