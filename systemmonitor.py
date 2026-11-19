@@ -262,6 +262,11 @@ class MonitorWindow(Adw.ApplicationWindow):
                 self.fans.all_auto_now()
             if getattr(self, "energy", None):
                 self.energy.save()
+            try:                                          # vanlig avslutning – ikke et krasj
+                import crashlog
+                crashlog.pulse(self, clean=True)
+            except Exception:  # noqa: BLE001
+                pass
 
         atexit.register(_cleanup)
         signal.signal(signal.SIGTERM, lambda *_: (_cleanup(), os._exit(0)))

@@ -106,6 +106,11 @@ def p_homepcs(win):
         b = [_btn("Alt om PC-en", {"do": "noop"})]
         if old and on and p.get("name") != me:
             b.append(_btn("Oppdater", {"do": "houseupdate", "name": p.get("name")}, primary=True))
+        if p.get("name") != me:
+            if not on and p.get("mac"):
+                b.append(_btn("⏻ Vekk", {"do": "pc_wake", "name": p.get("name")}))
+            elif on:
+                b.append(_btn("😴 Sov", {"do": "pc_sleep", "name": p.get("name")}, f"Legge {p.get('name')} i dvale?"))
         if on:                                             # «Oppdater alt» og automatikk per PC
             b.append(_btn("Oppdater alt", {"do": "pc_updateall", "name": p.get("name")},
                           f"Oppdatere alt på {p.get('name')}?", primary=bool(p.get("upd_n"))))
@@ -387,6 +392,19 @@ def run(win, a):
         import updates
         updates.set_auto(str(a.get("on")) == "1")
         return "Automatikk på" if updates.auto_on() else "Automatikk av – gjør alt manuelt"
+    if do in ("pc_wake", "pc_sleep"):
+        import homepcs
+        import house
+        p = next((x for x in homepcs.fetch() or [] if x.get("name") == a.get("name")), None)
+        if not p:
+            raise ValueError("fant ikke PC-en")
+        if do == "pc_wake":
+            if not p.get("mac"):
+                raise ValueError("kjenner ikke MAC-adressen – start Kontrollsenter på den PC-en én gang")
+            house.wake(p["mac"], p.get("ips"))
+            return f"⏻ Vekker {p['name']} – tar et minutt"
+        ok, d = house.system(p, "sleep")
+        return f"😴 {p['name']} sover" if ok else f"✗ {d}"
     if do in ("pc_updateall", "pc_auto"):
         import homepcs
         import savegames

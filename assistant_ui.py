@@ -67,7 +67,8 @@ class AssistantDialog(Adw.Dialog):
         self.set_child(tv)
         self.sections = {}
         for key, title in (("slow", "Hvorfor er PC-en treg akkurat nå?"), ("disk", "Diskvakt"),
-                           ("ssd", "Levetid for diskene"), ("week", "Ukens helserapport")):
+                           ("ssd", "Levetid for diskene"), ("week", "Ukens helserapport"),
+                           ("crash", "Krasj og strømbrudd"), ("tm", "Tidsmaskin for innstillingene")):
             h = Gtk.Box(spacing=8)
             lab = Gtk.Label(label=i18n.tr(title), xalign=0, hexpand=True)
             lab.add_css_class("title-4")
@@ -91,23 +92,77 @@ class AssistantDialog(Adw.Dialog):
         sp = Gtk.Spinner(spinning=True, halign=Gtk.Align.START)
         holder.append(sp)
         fn = {"slow": lambda: A.why_slow(self.win), "disk": A.disk_watch, "ssd": A.ssd_life,
-              "week": lambda: A.weekly_report(self.win)}[key]
+              "week": lambda: A.weekly_report(self.win), "crash": _crashes,
+              "tm": lambda: __import__("timemachine").snapshots()}[key]
 
         def done(res):
             holder.remove(sp)
             if isinstance(res, Exception):
                 holder.append(Gtk.Label(label=f"Feil: {res}", xalign=0, wrap=True))
+            elif key == "tm":
+                holder.append(_tm_box(self.win, res))
             elif isinstance(res, str):
                 lab = Gtk.Label(label=res, xalign=0, wrap=True)
                 holder.append(lab)
             elif not res:
                 ok = Gtk.Label(label="✅ " + i18n.tr({"disk": "Alle diskene har god plass",
-                                                     "ssd": "Fant ingen SSD-er med levetidsmåling"}.get(key, "Alt i orden")),
+                                                     "ssd": "Fant ingen SSD-er med levetidsmåling",
+                                                     "crash": "Ingen krasj eller strømbrudd registrert"}.get(key,
+                                                                                                          "Alt i orden")),
                                xalign=0)
                 holder.append(ok)
             else:
                 holder.append(findings_box(res))
         _bg(fn, done)
+
+
+def _crashes():
+    import crashlog
+    evs = crashlog.history()[-10:][::-1]
+    return "\n".join("• " + crashlog.text(e) for e in evs) if evs else []
+
+
+def _tm_box(win, snaps):
+    import time as _t
+    import timemachine as TM
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    if not snaps:
+        box.append(Gtk.Label(label=i18n.tr("Ingen kopier ennå – det tas en når innstillingene endres."), xalign=0,
+                             wrap=True))
+        return box
+    for t, name, changed, why in snaps[:12]:
+        r = Gtk.Box(spacing=10)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        col.append(Gtk.Label(label=_t.strftime("%d.%m kl. %H:%M", _t.localtime(t)), xalign=0))
+        d = Gtk.Label(label=(i18n.tr("Endret: ") + TM.nice(changed)) if changed else (why or i18n.tr("Første kopi")),
+                      xalign=0, wrap=True)
+        d.add_css_class("dim-label")
+        d.add_css_class("caption")
+        col.append(d)
+        r.append(col)
+        b = Gtk.Button(label=i18n.tr("Gå tilbake hit"), valign=Gtk.Align.CENTER)
+        b.add_css_class("pill")
+
+        def go(btn, n=name):
+            def ok():
+                try:
+                    k = TM.restore(n)
+                    btn.set_label(f"✓ {k} filer – starter på nytt")
+                    GLib.timeout_add(1500, lambda: (win.restart_app(), False)[1])
+                except Exception as e:  # noqa: BLE001
+                    btn.set_label(f"✗ {e}")
+            dlg = Adw.AlertDialog(heading=i18n.tr("Gå tilbake til denne innstillingen?"),
+                                  body=i18n.tr("Innstillingene settes slik de var da, og Kontrollsenter starter på "
+                                               "nytt. Det tas en kopi av slik det er nå først, så du kan angre."))
+            dlg.add_response("nei", i18n.tr("Avbryt"))
+            dlg.add_response("ja", i18n.tr("Gå tilbake"))
+            dlg.set_response_appearance("ja", Adw.ResponseAppearance.SUGGESTED)
+            dlg.connect("response", lambda _d, r: r == "ja" and ok())
+            dlg.present(btn.get_root())
+        b.connect("clicked", go)
+        r.append(b)
+        box.append(r)
+    return box
 
 
 def open_dialog(win):

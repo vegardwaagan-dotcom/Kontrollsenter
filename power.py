@@ -7,6 +7,7 @@ import glob
 import json
 import os
 import sys
+import threading
 import time
 
 CFG = os.path.expanduser("~/.config/systemmonitor/strom.json")
@@ -99,6 +100,14 @@ class PowerMeter:
         self.last = {"cpu": cpu, "gpu": gpu if (nvidia_w is not None or self.igpu) else None,
                      "measured": measured if (cpu is not None or gpu) else None,
                      "total": measured + cfg["extra_w"] if (cpu is not None or gpu) else None}
+        if cfg.get("shelly"):                              # ekte måling fra smartplugg: hele PC-en (og skjermen)
+            try:
+                import shelly
+                w = shelly.watts()
+                if w is not None:
+                    self.last["total"], self.last["plug"] = w, True
+            except Exception:  # noqa: BLE001
+                pass
         return self.last
 
 
@@ -248,6 +257,36 @@ def dialog(win):
     note.add_css_class("caption")
     note.add_css_class("dim-label")
     sets.append(note)
+    sh = Gtk.Box(spacing=12)                             # 73: ekte måling fra en Shelly-plugg
+    sh.append(Gtk.Label(label=i18n.tr("Shelly-smartplugg (IP-adresse)"), xalign=0, hexpand=True))
+    she = Gtk.Entry(text=cfg.get("shelly", ""), placeholder_text="192.168.1.50", width_chars=16)
+    sh.append(she)
+    shl = Gtk.Label(xalign=0, wrap=True)
+    shl.add_css_class("caption")
+    shl.add_css_class("dim-label")
+
+    def sh_save(*_):
+        c = load()
+        c["shelly"] = she.get_text().strip()
+        save(c)
+
+        def test():
+            import shelly
+            try:
+                msg = f"✓ Måler {shelly.read_once(c['shelly']):.0f} W – brukes i stedet for beregnet strøm" if \
+                    c["shelly"] else "Av – strømmen beregnes"
+            except Exception as e:  # noqa: BLE001
+                msg = f"✗ {e}"
+            GLib.idle_add(shl.set_label, msg)
+        threading.Thread(target=test, daemon=True).start()
+    she.connect("activate", sh_save)
+    shb = Gtk.Button(label=i18n.tr("Lagre"))
+    shb.connect("clicked", sh_save)
+    sh.append(shb)
+    sets.append(sh)
+    shl.set_label(i18n.tr("Måler hele PC-en (og det som står i samme plugg) i stedet for å beregne. Shelly Plug S / "
+                          "Plus Plug S – lokalt, uten sky."))
+    sets.append(shl)
     try:                                                  # lagre strømforbruket per dag på disk av/på
         import perf_ui
         sets.append(perf_ui.disk_switch("strom"))

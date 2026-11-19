@@ -105,6 +105,11 @@ def status(win):
 
 def _extra():
     out = {}
+    try:                                                   # huset: WoL, inaktiv tid, strøm per måned
+        import house
+        out.update(house.status_fields())
+    except Exception:  # noqa: BLE001
+        pass
     try:                                                   # oppdateringer og automatikk (PC-er-siden)
         import updates
         out["upd_auto"] = updates.auto_on()
@@ -536,6 +541,40 @@ class HomePage(Gtk.ScrolledWindow):
                     wb.connect("clicked", lambda _b, pp=p: __import__("watch_ui").WatchWindow(
                         self.get_root(), pp["name"], pp["ips"][0], pp.get("game")).present())
                     inner.append(wb)
+            if p.get("name") != me:                      # vekk (WoL) eller legg i dvale
+                pb = Gtk.Box(spacing=6)
+                if not on and p.get("mac"):
+                    wk = Gtk.Button(label="⏻ " + i18n.tr("Vekk"))
+                    wk.add_css_class("pill")
+                    wk.set_tooltip_text(i18n.tr("Wake-on-LAN – PC-en må ha det slått på (Nettverk i Kontrollsenter)"))
+
+                    def do_wake(b, pp=p):
+                        import house
+                        try:
+                            house.wake(pp["mac"], pp.get("ips"))
+                            b.set_label("✓ " + i18n.tr("Vekket – tar et minutt"))
+                        except Exception as e:  # noqa: BLE001
+                            b.set_label(f"✗ {e}")
+                        GLib.timeout_add_seconds(70, lambda: (self.refresh(), False)[1])
+                    wk.connect("clicked", do_wake)
+                    pb.append(wk)
+                if on:
+                    sl = Gtk.Button(label="😴 " + i18n.tr("Sov"))
+                    sl.add_css_class("pill")
+
+                    def do_sleep(b, pp=p):
+                        b.set_sensitive(False)
+
+                        def work():
+                            import house
+                            ok, d = house.system(pp, "sleep")
+                            GLib.idle_add(lambda: (b.set_label(("✓ " if ok else "✗ ") + (i18n.tr("Sover") if ok
+                                                                                          else str(d)[:30])), False)[1])
+                        threading.Thread(target=work, daemon=True).start()
+                    sl.connect("clicked", do_sleep)
+                    pb.append(sl)
+                if pb.get_first_child() is not None:
+                    inner.append(pb)
             if on:
                 try:
                     self._pc_updates(p, me, inner)

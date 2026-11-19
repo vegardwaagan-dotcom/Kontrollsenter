@@ -28,7 +28,7 @@ KINDS = [
     ("battery", "Lavt batteri", "Mus, tastatur, hodesett eller kontroller må lades.", ["bat*"]),
     ("syscheck", "Systemsjekk", "Systemsjekken i bakgrunnen fant noe som bør fikses.", ["syscheck"]),
     ("assistant", "PC-assistent", "Spillsjekk, ukens helserapport, varmere enn vanlig (støv) og tips når vinduet hakker.",
-     ["gamecheck", "weekly", "anomaly", "lowend"]),
+     ["gamecheck", "weekly", "anomaly", "lowend", "crash", "house", "price"]),
     ("updates", "Oppdateringer", "Nye programoppdateringer og nye versjoner av Kontrollsenter.",
      ["updates", "lanupdate", "lanpublish", "restart"]),
     ("chat", "Familie-chat og «Middag!»", "Meldinger fra de andre i huset – og «Spill sammen»-invitasjoner.",
@@ -194,6 +194,20 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
         threading.Thread(target=_warm, daemon=True, name="varm-opp").start()
+
+        def _crash_check():                                # stoppet PC-en uten å avslutte sist?
+            try:
+                import crashlog
+                ev = crashlog.check_at_start()
+                if ev:
+                    import remote_extra
+                    txt = crashlog.text(ev)
+                    remote_extra.event("crash", "PC-en stoppet uventet", txt, "error")
+                    GLib.idle_add(lambda: (self.notify("crash", "PC-en stoppet uventet sist", txt, force=True,
+                                                       action="app.assistant"), False)[1])
+            except Exception:  # noqa: BLE001
+                pass
+        threading.Thread(target=_crash_check, daemon=True, name="krasjsjekk").start()
         if sys.platform == "win32":                       # ytelsesrapport til NAS-en etter 10 min (finne treghet)
             def _perf_report():
                 import time as _t
@@ -513,6 +527,23 @@ class Background:
         if time.time() - getattr(self, "_mem_t", 0) > 30:                         # mindre minnebruk
             self._mem_t = time.time()
             perf.mem_tick(self.win)
+        if time.time() - getattr(self, "_pulse_t", 0) > 60:                      # livstegn (krasjlogg) + tidsmaskin
+            self._pulse_t = time.time()
+            import threading as _th
+
+            def _pt():
+                try:
+                    __import__("crashlog").pulse(self.win)
+                    if time.time() - getattr(self, "_tm_t", 0) > 900:
+                        self._tm_t = time.time()
+                        __import__("timemachine").snapshot()
+                except Exception:  # noqa: BLE001
+                    pass
+            _th.Thread(target=_pt, daemon=True).start()
+        if time.time() - getattr(self, "_house_t", 0) > 55:                      # huset: kveld, pris, glemte, sov
+            self._house_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("house").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_assist_t", 0) > 60:                     # PC-assistenten lærer og varsler
             self._assist_t = time.time()
             import threading as _th

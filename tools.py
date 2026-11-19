@@ -2044,6 +2044,15 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._push_card)
         self.tab("automatikk", "Automatikk")
         try:
+            import house_ui
+            c, i = card("Huset – natt, strøm og nye versjoner", "Oppdateringskveld, strømsparing, glemte PC-er, "
+                                                                "sovemodus og testmodus.")
+            i.append(house_ui.house_card(lambda: self.get_root()))
+            self.box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("huset-kort")
+        try:
             import automation
             automation.night_card(self)
         except Exception:  # noqa: BLE001

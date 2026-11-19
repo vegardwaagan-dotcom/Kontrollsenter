@@ -13,6 +13,23 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.77.0", "Huset: natt, strøm og trygghet", [
+        ("Nytt (Innstillinger → Automatikk → Huset)", [
+            "Oppdateringskveld: én natt i uka vekkes PC-ene (Wake-on-LAN), alt oppdateres, de går i dvale igjen – "
+            "rapport på mobilen",
+            "Strømsparing når strømmen er dyr og PC-en står ubrukt",
+            "Glemte PC-er om natten: beskjed, eller dvale automatisk",
+            "Sovemodus for huset: 10 min varsel, så dvale på alle (og vekking om morgenen om du vil)",
+            "Testmodus: nye versjoner prøves på én PC i 24 timer først – rulles den tilbake, får ingen andre den",
+            "Strøm denne måneden per PC",
+        ]),
+        ("Også nytt", [
+            "PC-er og mobilappen: ⏻ Vekk og 😴 Sov for hver PC",
+            "Shelly-smartplugg: ekte strømmåling av hele PC-en (strøminnstillingene)",
+            "Krasj og strømbrudd: Kontrollsenter merker når PC-en stoppet uten å avslutte, og hva som skjedde rett før",
+            "Tidsmaskin for innstillingene: se hva som ble endret og gå tilbake (PC-assistenten)",
+        ]),
+    ]),
     ("0.76.0", "PC-assistenten", [
         ("Nytt", [
             "🩺 «Hvorfor treg?» på Oversikt, i søket (Ctrl+K) og i mobilappen: ser på varme, minne, prosessor, full "

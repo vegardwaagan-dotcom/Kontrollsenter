@@ -1146,7 +1146,7 @@ def _handler(remote):
                     with open(cp, "rb") as f:
                         return self._send(200, f.read(), "image/jpeg", {"Cache-Control": "max-age=86400"})
                 if p in ("/api/house/status", "/api/house/update", "/api/house/updates", "/api/house/updateall",
-                         "/api/house/auto"):            # PC-ene hjemme (felles husnøkkel)
+                         "/api/house/auto", "/api/house/system"):            # PC-ene hjemme (felles husnøkkel)
                     import watch as W
                     q = parse_qs(u.query)
                     if not W.check_house_key((q.get("fk") or [""])[0]):
@@ -1154,6 +1154,12 @@ def _handler(remote):
                     if p == "/api/house/status":
                         import friends
                         return self._send(200, friends.snapshot(remote.win, full=True))
+                    if p == "/api/house/system":           # dvale / slå av / omstart (sovemodus, glemte PC-er)
+                        what = (q.get("do") or [""])[0]
+                        if what not in ("sleep", "shutdown", "restart", "lock"):
+                            return self._send(400, {"error": "ukjent"})
+                        ok, msg = _system(what)
+                        return self._send(200, {"ok": ok, "msg": msg})
                     import updates as UPD
                     if p == "/api/house/updates":       # oppdateringer på denne PC-en (r=1: sjekk på nytt)
                         if (q.get("r") or [""])[0] == "1":

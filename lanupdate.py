@@ -17,6 +17,7 @@ import socket
 import sys
 import subprocess
 import tarfile
+import threading
 import time
 import tempfile
 from pathlib import Path
@@ -205,6 +206,37 @@ def local_version():
         return "?"
 
 
+def pilot_info():
+    """Testmodus: {"version", "pc", "until", "failed"} fra NAS-en, eller None."""
+    import json as _j
+    tmp = tempfile.mkdtemp()
+    try:
+        _smb(f'get PILOT.json "{tmp}/PILOT.json"', 30)
+        return _j.loads(Path(tmp, "PILOT.json").read_text())
+    except Exception:  # noqa: BLE001
+        return None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def pilot_failed(version):
+    """Testmaskinen rullet tilbake: merk versjonen som feilet, så de andre ikke får den."""
+    import json as _j
+    import savegames
+    pil = pilot_info()
+    if not pil or pil.get("version") != version or pil.get("pc") != savegames.pc_name():
+        return
+    pil["failed"] = True
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        (tmp / "PILOT.json").write_text(_j.dumps(pil))
+        _smb(f'put "{tmp}/PILOT.json" PILOT.json', 30)
+    except Exception:  # noqa: BLE001
+        pass
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def check():
     """(status-tekst, ny_versjon eller None). Kaster ikke feil – sier fra i teksten."""
     import applog
@@ -220,6 +252,14 @@ def check():
             return "Hjemmenettet: ingen versjon er lagt ut ennå", None
         return f"Hjemmenettet: fant ingen oppdatering ({e})", None
     if newer(rv, local_version()):
+        pil = pilot_info()
+        if pil and pil.get("version") == rv and pil.get("pc"):
+            import savegames
+            if pil.get("failed"):
+                return f"Versjon {rv} feilet på {pil['pc']} under testing – den hoppes over", None
+            if savegames.pc_name() != pil["pc"] and time.time() < pil.get("until", 0):
+                return (f"Versjon {rv} testes først på {pil['pc']} (til "
+                        f"{time.strftime('%d.%m kl. %H:%M', time.localtime(pil['until']))})"), None
         return f"Versjon {rv} er tilgjengelig på hjemmenettet (du har {local_version()})", rv
     return f"Du har nyeste versjon (hjemmenettet har {rv})", None
 
@@ -321,11 +361,16 @@ def rollback():
     if not BACKUP.exists():
         raise RuntimeError("det finnes ingen forrige versjon å gå tilbake til")
     prev = backup_version() or "forrige versjon"
+    bad = local_version()
     with tarfile.open(BACKUP) as t:
         t.extractall(APP_DIR, filter="data")
     try:
         ROLLBACK.unlink()
     except FileNotFoundError:
+        pass
+    try:                                                   # testmodus: stopp de andre PC-ene
+        pilot_failed(bad)
+    except Exception:  # noqa: BLE001
         pass
     return f"Tilbake på {prev} ✓ – start Kontrollsenter på nytt"
 
@@ -378,6 +423,16 @@ def publish(make_package, selftest=True):
         # lag mappen hvis den mangler (feiler stille hvis den finnes)
         smb_mkdir(folder)
         _smb(f'put "{archive}" {PKG}; put "{tmp}/SHA256SUMS" SHA256SUMS; put "{tmp}/VERSION" VERSION', 300)
+        try:                                               # testmodus: én PC prøver versjonen først
+            import json as _j
+            import house
+            pc = house.cfg()["pilot"]
+            pil = {"version": local_version(), "pc": pc["pc"], "until": time.time() + pc["hours"] * 3600,
+                   "failed": False} if pc["on"] and pc["pc"] else {"version": local_version(), "pc": ""}
+            (tmp / "PILOT.json").write_text(_j.dumps(pil))
+            _smb(f'put "{tmp}/PILOT.json" PILOT.json', 30)
+        except Exception:  # noqa: BLE001
+            pass
         # Windows-installasjonen ved siden av: \\NAS\Public\Kontrollsenter\Windows\Installer Kontrollsenter.cmd
         win = Path(APP_DIR) / "pakke-windows"
         if win.is_dir():

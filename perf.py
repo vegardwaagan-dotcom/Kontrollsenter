@@ -158,6 +158,7 @@ DISK_ITEMS = [
     ("hendelser", "Hendelser", "Tidslinjen og varslene i mobilappen."),
     ("logg", "Logg", "Feilloggen – brukes når noe skal feilsøkes."),
     ("topp", "Toppverdier", "Høyeste klokkefrekvens målt i hver strømmodus."),
+    ("tidsmaskin", "Tidsmaskin", "Kopi av innstillingene når de endres, så du kan gå tilbake (bare små filer)."),
 ] + ([("pssvar", "Windows-svar", "Husker svar fra Windows mellom omstarter, så vinduet åpner raskere.")]
      if IS_WIN else [])
 
