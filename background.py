@@ -192,13 +192,19 @@ class Background:
                 import time as _t
                 __import__("perf").usage()                # start målingen av eget forbruk
                 _t.sleep(600)
-                try:
-                    import winperf
-                    import applog
-                    winperf.report()
-                    applog.upload_errors(force=True)
-                except Exception:  # noqa: BLE001
-                    pass
+                last = None
+                while True:                               # 10 min etter start, så hver time når noe er nytt
+                    try:
+                        import winperf
+                        import applog
+                        now = (winperf.STATS["waits"], winperf.STATS["hits"] + winperf.STATS["stale"], winperf.HAKK["n"])
+                        if now != last:
+                            last = now
+                            winperf.report()
+                            applog.upload_errors(force=True)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    _t.sleep(3600)
             threading.Thread(target=_perf_report, daemon=True, name="ytelse-rapport").start()
         # fjernstyring fra mobil/nettbrett (av til den slås på i Hjemme-fanen)
         try:

@@ -88,6 +88,9 @@ def monthly_tick(notify):
     def work():
         try:
             rep = auto_clean()
+            if rep:
+                import applog
+                applog.log.info("Månedlig opprydding: %s", report_text(rep))
             if rep and rep["freed"] > 0:
                 from gi.repository import GLib
                 GLib.idle_add(lambda: notify("cleanup", "Månedlig opprydding er gjort",

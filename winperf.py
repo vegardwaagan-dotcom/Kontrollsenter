@@ -203,13 +203,61 @@ def run(args, *a, **kw):
     return cp
 
 
+# --------------------------------------------------------------------------
+# Hakk-vakt: merker når vinduet står stille, og hvilken kodelinje som holdt det
+# --------------------------------------------------------------------------
+_BEAT = [0.0]
+HAKK = {"n": 0, "ms": 0, "max": 0}
+_WHERE = {}                # kodelinje -> ms
+
+
+def _beat():
+    now = time.monotonic()
+    gap = (now - _BEAT[0]) * 1000 if _BEAT[0] else 0
+    _BEAT[0] = now
+    if gap > 400:          # 100 ms forventet – over 0,4 s er et hakk du merker
+        HAKK["n"] += 1
+        HAKK["ms"] += round(gap)
+        HAKK["max"] = max(HAKK["max"], round(gap))
+    return True
+
+
+def _watch():
+    import sys as _s
+    main_id = threading.main_thread().ident
+    while True:
+        time.sleep(0.1)
+        if not _BEAT[0] or time.monotonic() - _BEAT[0] < 0.35:
+            continue
+        fr = _s._current_frames().get(main_id)
+        if fr is None:
+            continue
+        here = os.path.dirname(os.path.abspath(__file__))
+        own = [f for f in traceback.extract_stack(fr) if os.path.dirname(os.path.abspath(f.filename)) == here
+               and not f.filename.endswith(("winperf.py", "systemmonitor.py"))]
+        if not own:
+            own = [f for f in traceback.extract_stack(fr) if os.path.dirname(os.path.abspath(f.filename)) == here]
+        if own:
+            f = own[-1]
+            k = f"{os.path.basename(f.filename)}:{f.lineno} {f.name}"
+            _WHERE[k] = _WHERE.get(k, 0) + 100
+
+
+def start_watch():
+    from gi.repository import GLib
+    GLib.timeout_add(100, _beat)
+    threading.Thread(target=_watch, daemon=True, name="hakk-vakt").start()
+
+
 def summary():
     """Kort tekst til «Ytelse»-kortet."""
     s = STATS
+    hk = (f" Vinduet hakket {HAKK['n']} ganger (lengst {HAKK['max'] / 1000:.1f} s)." if HAKK["n"]
+          else " Ingen hakk over 0,4 s.")
     if not s["waits"]:
-        return f"Vinduet har ikke ventet på Windows-kommandoer ({s['hits'] + s['stale']} svar fra minnet)."
-    return (f"Vinduet ventet {s['waits']} ganger, til sammen {s['wait_ms'] / 1000:.1f} s (lengst {s['max_ms']} ms). "
-            f"{s['hits'] + s['stale']} svar kom fra minnet.")
+        return f"Vinduet har ikke ventet på Windows-kommandoer ({s['hits'] + s['stale']} svar fra minnet)." + hk
+    return (f"Vinduet ventet {s['waits']} ganger på Windows, til sammen {s['wait_ms'] / 1000:.1f} s (lengst "
+            f"{s['max_ms']} ms). {s['hits'] + s['stale']} svar kom fra minnet." + hk)
 
 
 def report():
@@ -217,6 +265,8 @@ def report():
     log.warning("Ytelse: %s", summary())
     for cmd, (n, tot) in sorted(_WAITED.items(), key=lambda kv: -kv[1][1])[:10]:
         log.warning("Ytelse:   %5d ms (%d×) %s", tot, n, cmd)
+    for k, ms in sorted(_WHERE.items(), key=lambda kv: -kv[1])[:12]:
+        log.warning("Ytelse: hakk %5d ms i %s", ms, k)
     try:
         import perf
         u = perf.usage()
@@ -241,4 +291,8 @@ def install():
     _INSTALLED.append(True)
     _load_disk()
     subprocess.run = run
+    try:
+        start_watch()
+    except Exception:  # noqa: BLE001
+        pass
     threading.Thread(target=_saver, daemon=True, name="ps-lagre").start()

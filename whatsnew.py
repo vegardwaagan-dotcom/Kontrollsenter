@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.71.2", "Finner hakking av seg selv", [
+        ("Nytt", [
+            "Windows: Kontrollsenter merker når vinduet hakker og hva som holdt det, og viser det i «Ytelse»-kortet",
+            "Den månedlige oppryddingen skriver i loggen hvor mye plass den frigjorde",
+        ]),
+    ]),
     ("0.71.1", "Enda mindre prosessorbruk", [
         ("Raskere", [
             "Minimal prosessbruk: sensorene på Windows leses hvert 3. sekund, og i bakgrunnen samles data "
