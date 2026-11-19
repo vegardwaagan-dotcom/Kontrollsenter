@@ -974,6 +974,16 @@ class _Cards:
                          "Ingen effekter, vinduet oppdateres hvert 3. sekund, og valgfrie ting i bakgrunnen går "
                          "sjeldnere. Varsler, vifter og mobilappen virker som før. Fint på eldre eller tregere PC-er.",
                          perf.eco(), lambda w, _p: perf.set_eco(w.get_active(), self.get_root()))
+        self._switch_row(i, "Mindre minnebruk",
+                         "Sider du har åpnet blir liggende i minnet. Når vinduet har vært lukket i 3 minutter, "
+                         "starter Kontrollsenter stille på nytt i statusfeltet og bruker bare en tredjedel så mye "
+                         "minne. Aldri mens du spiller eller noe installeres.",
+                         perf.flag("mem"), lambda w, _p: perf.set_flag("mem", w.get_active()))
+        self._switch_row(i, "Mindre skriving til disk",
+                         "Skåner SSD/M.2: historikk, strøm og spilletid lagres samlet hvert 5.–15. minutt i stedet "
+                         "for hvert 10. sekund/minutt, og loggen får bare advarsler og feil. Historikken kan mangle "
+                         "de siste minuttene til den lagres.",
+                         perf.flag("ssd"), lambda w, _p: perf.set_flag("ssd", w.get_active()))
         self.box.append(c)
 
     def _simple_card(self):

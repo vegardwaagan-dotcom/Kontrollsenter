@@ -736,8 +736,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.toast("Programmet starter på nytt med nytt språk …")
         self.restart_app()
 
-    def restart_app(self, *_):
-        """Start programmet på nytt (ny versjon eller nytt språk). Vinduet kommer tilbake av seg selv."""
+    def restart_app(self, *_, hidden=False):
+        """Start programmet på nytt (ny versjon eller nytt språk). Vinduet kommer tilbake av seg selv
+        – med hidden=True blir det i statusfeltet (stille omstart for å frigjøre minne)."""
+        tray = ["--tray"] if hidden else []
+
         def restart():
             try:
                 set_overlay(False)
@@ -745,6 +748,13 @@ class MonitorWindow(Adw.ApplicationWindow):
                 self.power.flush_peaks()
             except Exception:  # noqa: BLE001
                 pass
+            for fn in (lambda: self.energy.save(), lambda: self.bg.history.flush(),     # det som er samlet opp
+                       lambda: self.bg.play.save() if getattr(self.bg, "play", None) else None,
+                       lambda: __import__("winperf")._save_disk() if IS_WIN else None):
+                try:
+                    fn()
+                except Exception:  # noqa: BLE001
+                    pass
             extra = ["-X", "utf8"] if IS_WIN else []
             if IS_WIN:
                 # os.execv på Windows starter den nye før den gamle er borte: den nye tror da at Kontrollsenter
@@ -755,10 +765,10 @@ class MonitorWindow(Adw.ApplicationWindow):
                 if os.path.exists(pyw):
                     exe = pyw
                 import subprocess as _sp
-                _sp.Popen([exe, *extra, os.path.abspath(__file__), "--restarted"],
+                _sp.Popen([exe, *extra, os.path.abspath(__file__), "--restarted", *tray],
                           creationflags=0x00000008 | 0x00000200, close_fds=True)   # DETACHED | NEW_PROCESS_GROUP
                 os._exit(0)
-            os.execv(sys.executable, [sys.executable, *extra, os.path.abspath(__file__)])
+            os.execv(sys.executable, [sys.executable, *extra, os.path.abspath(__file__), *tray])
         GLib.timeout_add(400, restart)
 
     def check_installed_version(self):
@@ -1689,6 +1699,8 @@ class MonitorApp(Adw.Application):
                 winsupport.listen_for_show(win.bg.show)
             if "--hidden" in sys.argv and win.bg.cfg["background"] and not win.bg.cfg.get("show_on_login", True):
                 return                      # startet ved innlogging: bare ikon i statusfeltet
+            if "--tray" in sys.argv and win.bg.cfg["background"]:
+                return                      # stille omstart (mindre minnebruk): vinduet var lukket
             win.present()
             import welcome
             import whatsnew

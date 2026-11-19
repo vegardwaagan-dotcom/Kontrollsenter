@@ -91,7 +91,7 @@ class PlayTracker:
         day = time.strftime("%Y-%m-%d")
         d = self.data.setdefault(day, {})
         d[game] = d.get(game, 0) + dt
-        if time.time() - self.saved > 60:
+        if time.time() - self.saved > __import__("perf").save_every(60):
             self.save()
         lim = limit_today()
         if lim:

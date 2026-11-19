@@ -132,7 +132,8 @@ class EnergyLog:
             wh, secs = self._get(day)
             self.days[day] = [wh + watts * dt / 3600, secs + dt]
         self.last = now
-        if now - self.saved > 60:
+        import perf
+        if now - self.saved > perf.save_every(60):
             self.save()
 
     def _get(self, day):

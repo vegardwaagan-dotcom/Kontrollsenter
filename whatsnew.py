@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.72.0", "Mindre minne og skåning av SSD", [
+        ("Nytt (Innstillinger → Generelt → Ytelse)", [
+            "«Mindre minnebruk»: når vinduet har vært lukket i 3 minutter, starter Kontrollsenter stille på nytt i "
+            "statusfeltet – fra rundt 350 MB til rundt 120 MB. Aldri mens du spiller eller noe installeres",
+            "«Mindre skriving til disk»: historikk, strøm og spilletid lagres samlet, og loggen får bare advarsler "
+            "og feil – halverer det Kontrollsenter skriver til SSD/M.2",
+        ]),
+        ("Raskere", ["Historikken lagres uten å tvinge disken til å skrive hver gang (gjelder alle)"]),
+    ]),
     ("0.71.2", "Finner hakking av seg selv", [
         ("Nytt", [
             "Windows: Kontrollsenter merker når vinduet hakker og hva som holdt det, og viser det i «Ytelse»-kortet",

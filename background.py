@@ -499,6 +499,9 @@ class Background:
                         pass
                 _th.Thread(target=school, daemon=True).start()
         import perf
+        if time.time() - getattr(self, "_mem_t", 0) > 30:                         # mindre minnebruk
+            self._mem_t = time.time()
+            perf.mem_tick(self.win)
         if time.time() - getattr(self, "_ach_t", time.time() - 240) > (1800 if perf.eco() else 300):  # prestasjoner
             self._ach_t = time.time()
             import threading as _th

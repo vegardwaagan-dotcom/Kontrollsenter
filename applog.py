@@ -38,6 +38,13 @@ def needs_restart():
     return disk if disk not in ("?", RUNNING) else None
 
 
+def set_quiet(on):
+    """Mindre skriving til disk: bare advarsler og feil i loggfila (ikke vanlig info)."""
+    h = getattr(setup, "handler", None)
+    if h is not None:
+        h.setLevel(logging.WARNING if on else logging.NOTSET)
+
+
 def setup():
     if getattr(setup, "done", False):
         return
@@ -51,6 +58,12 @@ def setup():
     root = logging.getLogger()
     root.setLevel(logging.INFO)
     root.addHandler(h)
+    setup.handler = h
+    try:
+        import json as _j
+        set_quiet(bool(_j.load(open(os.path.expanduser("~/.config/systemmonitor/ytelse.json"))).get("ssd")))
+    except (OSError, ValueError):
+        pass
 
     def hook(t, v, tb):
         log.error("Uventet feil", exc_info=(t, v, tb))

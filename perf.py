@@ -49,6 +49,112 @@ def set_eco(on, window=None):
         pass
 
 
+def _flag(key):
+    try:
+        return bool(json.load(open(CFG)).get(key, False))
+    except (OSError, ValueError):
+        return False
+
+
+_FLAGS = {}
+
+
+def flag(key):
+    """«mem» (mindre minnebruk) eller «ssd» (mindre skriving til disk)."""
+    if key not in _FLAGS:
+        _FLAGS[key] = _flag(key)
+    return _FLAGS[key]
+
+
+def set_flag(key, on):
+    _FLAGS[key] = bool(on)
+    try:
+        d = json.load(open(CFG))
+    except (OSError, ValueError):
+        d = {}
+    d[key] = bool(on)
+    os.makedirs(os.path.dirname(CFG), exist_ok=True)
+    json.dump(d, open(CFG, "w"))
+    if key == "ssd":
+        try:
+            import applog
+            applog.set_quiet(bool(on))
+        except Exception:  # noqa: BLE001
+            pass
+
+
+# --------------------------------------------------------------------------
+# Mindre minnebruk
+# --------------------------------------------------------------------------
+# GTK holder på sidene du har åpnet så lenge programmet kjører (de kan ikke tas ut av minnet trygt). Med
+# «Mindre minnebruk» startes Kontrollsenter derfor stille på nytt i statusfeltet når vinduet har vært lukket en
+# stund og det bruker mye minne – en fersk start bruker bare en tredjedel. Aldri mens du spiller eller noe pågår.
+HIDDEN_FOR = 180          # sekunder vinduet må ha vært lukket
+MEM_LIMIT = 200 * 2 ** 20  # bare når Kontrollsenter bruker mer enn dette
+MIN_GAP = 1800            # høyst hver halvtime
+
+
+def trim():
+    """Gi ubrukt minne tilbake til systemet (Windows: tøm arbeidsminnet)."""
+    import gc
+    gc.collect()
+    try:
+        import ctypes
+        if IS_WIN:
+            ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+        else:
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+_MEM = {"hidden": None, "trim": 0, "started": time.monotonic()}
+
+
+def mem_tick(win):
+    """Kalles hvert 30. sekund fra bakgrunnen."""
+    if not flag("mem"):
+        return
+    try:
+        now = time.monotonic()
+        if win.get_mapped():
+            _MEM["hidden"] = None
+            return
+        _MEM["hidden"] = _MEM["hidden"] or now
+        if now - _MEM["trim"] > 300:
+            _MEM["trim"] = now
+            trim()
+        if now - _MEM["hidden"] < HIDDEN_FOR or now - _MEM["started"] < MIN_GAP:
+            return
+        import psutil
+        if psutil.Process().memory_info().rss < MEM_LIMIT:
+            return
+        bg = getattr(win, "bg", None)
+        if getattr(bg, "game_name", None):
+            return
+        try:
+            import progress
+            if progress.active():
+                return
+        except Exception:  # noqa: BLE001
+            pass
+        import applog
+        applog.log.info("Mindre minnebruk: starter stille på nytt (%s brukt)",
+                        human(psutil.Process().memory_info().rss))
+        win.restart_app(hidden=True)
+    except Exception:  # noqa: BLE001
+        import applog
+        applog.log.exception("mindre minnebruk")
+
+
+# --------------------------------------------------------------------------
+# Mindre skriving til disk (skåner SSD/M.2)
+# --------------------------------------------------------------------------
+def save_every(seconds):
+    """Hvor ofte noe lagres: vanlig, eller sjeldnere (maks 15 min) med «Mindre skriving til disk»."""
+    return max(seconds, 900) if flag("ssd") else seconds
+
+
 def interval_factor():
     """Hvor mange sekunder mellom hver oppdatering av vinduet."""
     return 3 if eco() else 1

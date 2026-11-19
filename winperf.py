@@ -279,10 +279,18 @@ def report():
 def _saver():
     while True:
         time.sleep(30)
+        try:
+            import perf
+            if perf.flag("ssd") and time.time() - _SAVED[0] < 900:
+                continue
+        except Exception:  # noqa: BLE001
+            pass
+        _SAVED[0] = time.time()
         _save_disk()
 
 
 _INSTALLED = []
+_SAVED = [0.0]
 
 
 def install():

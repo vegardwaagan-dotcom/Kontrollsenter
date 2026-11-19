@@ -26,8 +26,10 @@ class Recorder:
         self.db = sqlite3.connect(path, check_same_thread=False, timeout=0.5)
         try:
             self.db.execute("PRAGMA journal_mode=WAL")
+            self.db.execute("PRAGMA synchronous=NORMAL")    # trygt med WAL, og ingen fsync for hver måling
         except sqlite3.Error:
             pass
+        self.pending = []
         self.db.execute("CREATE TABLE IF NOT EXISTS s (ts INTEGER PRIMARY KEY, cpu_t REAL, gpu_t REAL, "
                         "cpu_l REAL, gpu_l REAL, watts REAL)")
         self.db.commit()
@@ -40,9 +42,16 @@ class Recorder:
         if now - self.last < every:
             return
         self.last = now
+        self.pending.append((int(now), cpu_t, gpu_t, cpu_l, gpu_l, watts))
         try:
-            self.db.execute("INSERT OR REPLACE INTO s VALUES (?,?,?,?,?,?)",
-                            (int(now), cpu_t, gpu_t, cpu_l, gpu_l, watts))
+            import perf
+            if perf.flag("ssd") and now - self.last_commit < 300 and len(self.pending) < 60:
+                return                                # mindre skriving: lagre samlet hvert 5. minutt
+        except Exception:  # noqa: BLE001
+            pass
+        rows, self.pending = self.pending, []
+        try:
+            self.db.executemany("INSERT OR REPLACE INTO s VALUES (?,?,?,?,?,?)", rows)
             if now - self.last_prune > 3600:
                 self.last_prune = now
                 self.db.execute("DELETE FROM s WHERE ts < ?", (int(now - KEEP_DAYS * 86400),))
@@ -53,6 +62,9 @@ class Recorder:
     def flush(self):
         self.last_commit = time.time()
         try:
+            if self.pending:                          # avslutter/lagrer: skriv det som er samlet opp
+                rows, self.pending = self.pending, []
+                self.db.executemany("INSERT OR REPLACE INTO s VALUES (?,?,?,?,?,?)", rows)
             self.db.commit()
         except sqlite3.Error:
             pass
