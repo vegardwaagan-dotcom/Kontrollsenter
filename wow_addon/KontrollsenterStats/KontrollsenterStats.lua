@@ -13,8 +13,17 @@ local MAXNAMES = 250
 
 local function now() return time() end
 
+-- Nyere WoW gir «secret values» (skjulte tall/tekster) fra enkelte API-er i kamp og instanser.
+-- Addons kan ikke sammenligne, regne med eller bruke dem som tabellnøkler – da kommer Lua-feil.
+local function secret(v) return issecretvalue ~= nil and issecretvalue(v) == true end
+local function plainName(v)
+  if v == nil or secret(v) or type(v) ~= "string" or v == "" then return nil end
+  return v
+end
+
 local function bump(t, key, n)
-  if not key or key == "" then return end
+  key = plainName(key)
+  if not key then return end
   t[key] = (t[key] or 0) + (n or 1)
   -- hold tabellen liten: fjern de minste når den blir for stor
   local count = 0
@@ -102,7 +111,7 @@ f:SetScript("OnUpdate", function(_, elapsed)
   if acc < 0.25 or not C then return end
   local dt = acc; acc = 0
   local speed = GetUnitSpeed("player") or 0
-  if speed <= 0 then return end
+  if secret(speed) or type(speed) ~= "number" or speed <= 0 then return end
   local yards = speed * dt
   local kind = "walk"
   if UnitOnTaxi and UnitOnTaxi("player") then kind = "taxi"
@@ -155,15 +164,15 @@ f:SetScript("OnEvent", function(_, event, ...)
     C.deaths = C.deaths + 1
     if session then session.deaths = session.deaths + 1 end
     local killer = (UnitExists and UnitExists("target") and UnitCanAttack and UnitCanAttack("player", "target"))
-      and UnitName("target") or lastAttacker
+      and plainName(UnitName("target")) or lastAttacker
     bump(C.killers, killer or "Ukjent")
   elseif event == "PLAYER_TARGET_CHANGED" then
     if UnitExists and UnitExists("target") and UnitCanAttack and UnitCanAttack("player", "target") then
-      lastAttacker = UnitName("target")
+      lastAttacker = plainName(UnitName("target")) or lastAttacker
     end
   elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
     local msg = ...
-    local victim = type(msg) == "string" and msg:match(xpPattern)
+    local victim = plainName(msg) and msg:match(xpPattern)
     if victim and victim ~= "" then
       C.kills = C.kills + 1
       bump(C.kills_by, victim)
