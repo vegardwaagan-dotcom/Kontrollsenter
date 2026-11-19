@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.72.1", "WoW-addonen krasjer ikke lenger", [
+        ("Rettet", [
+            "WoW: Kontrollsenter Stats-addonen ga Lua-feil flere ganger i sekundet i WoW Forever, fordi nyere WoW "
+            "skjuler farten («secret values») for addons. Addonen tåler nå skjulte verdier",
+            "WoW: når farten er skjult, regnes distansen ut fra hvor langt du har flyttet deg i stedet",
+        ]),
+    ]),
     ("0.72.0", "Mindre minne og skåning av SSD", [
         ("Nytt (Innstillinger → Generelt → Ytelse)", [
             "«Mindre minnebruk»: når vinduet har vært lukket i 3 minutter, starter Kontrollsenter stille på nytt i "
