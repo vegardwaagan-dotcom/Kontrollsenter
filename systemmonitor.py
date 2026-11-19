@@ -338,6 +338,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         import power as power_mod
         self.meter = power_mod.PowerMeter()
         self.energy = power_mod.EnergyLog()
+        power_mod._CURRENT[:] = [self.energy]
         self._power = {"cpu": None, "gpu": None, "measured": None, "total": None}
         self._cpu_load = 0.0
         tiles = flow

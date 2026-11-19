@@ -47,6 +47,10 @@ def event(kind, title, body="", level="info"):
     """Legg til en hendelse. level: info | warn | error | game."""
     e = {"t": time.time(), "kind": kind, "title": title, "body": body, "level": level}
     with _LOCK:
+        _MEM_EV.append(e)
+        del _MEM_EV[:-2000]
+        if not __import__("perf").disk_ok("hendelser"):              # lagring av: bare i minnet
+            return e
         try:
             os.makedirs(DATA, exist_ok=True)
             with open(EVENTS, "a", encoding="utf-8") as f:
@@ -59,8 +63,13 @@ def event(kind, title, body="", level="info"):
     return e
 
 
+_MEM_EV = []
+
+
 def events(since=0, limit=300):
     out = []
+    if not __import__("perf").disk_ok("hendelser"):
+        return [e for e in _MEM_EV if e.get("t", 0) > since][-limit:]
     try:
         with open(EVENTS, encoding="utf-8") as f:
             for ln in f:
@@ -78,10 +87,14 @@ def events(since=0, limit=300):
 # --------------------------------------------------------------------------
 # 7 – spilltid per dag, med grenser
 # --------------------------------------------------------------------------
+_LIVE_PLAY = []
+
+
 class PlayTracker:
     def __init__(self, notify):
         self.notify = notify
-        self.data = _jload(PLAYTIME, {})
+        self.data = _jload(PLAYTIME, {}) if __import__("perf").disk_ok("spilltid") else {}
+        _LIVE_PLAY[:] = [self]
         self.saved = time.time()
         self.warned = {}
 
@@ -116,7 +129,8 @@ class PlayTracker:
         self.saved = time.time()
         keep = sorted(self.data)[-120:]
         self.data = {k: self.data[k] for k in keep}
-        _jsave(PLAYTIME, self.data)
+        if __import__("perf").disk_ok("spilltid"):
+            _jsave(PLAYTIME, self.data)
 
 
 def _ingame(text, secs=25):
@@ -143,8 +157,14 @@ def limit_today():
         return base
 
 
+def _play_data():
+    if not __import__("perf").disk_ok("spilltid") and _LIVE_PLAY:
+        return _LIVE_PLAY[0].data
+    return _jload(PLAYTIME, {})
+
+
 def playtime_summary(days=14):
-    data = _jload(PLAYTIME, {})
+    data = _play_data()
     out = []
     for i in range(days - 1, -1, -1):
         day = time.strftime("%Y-%m-%d", time.localtime(time.time() - i * 86400))

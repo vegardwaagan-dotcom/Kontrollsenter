@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.74.0", "Full kontroll over disk, prosessor og minne", [
+        ("Nytt (Innstillinger → Generelt)", [
+            "«Lagring på disk»: egen bryter for historikk, strøm, spilletid, hendelser, logg og toppverdier – av = "
+            "verken skrives eller leses, bare i minnet mens programmet kjører. Bryteren finnes også på Historikk, "
+            "i strøminnstillingene, på Familie og i feilloggen",
+            "«Ingen lesing og skriving til disk»: slår av alt over, og oppdateringer og diskopprydding blir manuelle",
+            "«Spar alt – minst mulig prosessor og minne»: minimal prosessbruk og mindre minnebruk, og alt ekstra i "
+            "bakgrunnen stoppes. Slås den av, blir alt som før",
+        ]),
+    ]),
     ("0.73.0", "Oppdater alt med ett trykk", [
         ("Nytt", [
             "«Oppdater alt»: Kontrollsenter, programmene (Flatpak/winget), systemet med drivere, fastvare og de "

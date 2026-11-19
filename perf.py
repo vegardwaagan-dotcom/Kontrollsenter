@@ -148,6 +148,104 @@ def mem_tick(win):
 
 
 # --------------------------------------------------------------------------
+# Lagring på disk – én bryter per ting (av = verken skrives eller leses; holdes bare i minnet mens programmet kjører)
+# --------------------------------------------------------------------------
+DISK_ITEMS = [
+    ("historikk", "Historikk", "Temperatur, last og strøm hvert 10. sekund (Historikk-siden)."),
+    ("strom", "Strømforbruk per dag", "kWh og kroner per dag og uke."),
+    ("spilltid", "Spilletid", "Spilletid per dag. Av: telles bare mens Kontrollsenter kjører – grensene "
+                              "nullstilles ved omstart."),
+    ("hendelser", "Hendelser", "Tidslinjen og varslene i mobilappen."),
+    ("logg", "Logg", "Feilloggen – brukes når noe skal feilsøkes."),
+    ("topp", "Toppverdier", "Høyeste klokkefrekvens målt i hver strømmodus."),
+] + ([("pssvar", "Windows-svar", "Husker svar fra Windows mellom omstarter, så vinduet åpner raskere.")]
+     if IS_WIN else [])
+
+
+def _cfg():
+    try:
+        return json.load(open(CFG))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_cfg(d):
+    os.makedirs(os.path.dirname(CFG), exist_ok=True)
+    json.dump(d, open(CFG, "w"))
+
+
+_DISK = {}
+
+
+def disk_ok(key):
+    """Skal denne tingen skrives til og leses fra disk?"""
+    if not _DISK:
+        d = _cfg()
+        _DISK.update(nodisk=bool(d.get("nodisk")), off=set(d.get("disk_off") or []))
+    return not _DISK["nodisk"] and key not in _DISK["off"]
+
+
+def set_disk(key, on):
+    d = _cfg()
+    off = set(d.get("disk_off") or [])
+    (off.discard if on else off.add)(key)
+    d["disk_off"] = sorted(off)
+    _save_cfg(d)
+    _DISK.clear()
+    _disk_changed()
+
+
+def no_disk():
+    disk_ok("x")
+    return _DISK["nodisk"]
+
+
+def set_no_disk(on):
+    """Hovedbryteren: ingen lesing og skriving til disk, og oppdateringer bare manuelt."""
+    import updates
+    d = _cfg()
+    if on and not d.get("nodisk"):
+        d["auto_before"] = updates.auto_on()
+        updates.set_auto(False)
+    elif not on and d.get("nodisk"):
+        updates.set_auto(d.get("auto_before", True))
+    d["nodisk"] = bool(on)
+    _save_cfg(d)
+    _DISK.clear()
+    _disk_changed()
+
+
+def _disk_changed():
+    try:
+        import applog
+        applog.apply_level()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+# --------------------------------------------------------------------------
+# Spar alt: minst mulig prosessor og minne (slår på alle sparemodusene og stopper ekstra ting i bakgrunnen)
+# Varsler, vifter, mobilappen, spilletidsgrenser og familiekontroll virker som før.
+# --------------------------------------------------------------------------
+def save_all():
+    return bool(flag("saveall"))
+
+
+def set_save_all(on, window=None):
+    d = _cfg()
+    if on and not d.get("saveall"):
+        d["before"] = {"eco": eco(), "mem": flag("mem")}
+        _save_cfg(d)
+        set_eco(True, window)
+        set_flag("mem", True)
+    elif not on and d.get("saveall"):
+        b = d.get("before") or {}
+        set_eco(bool(b.get("eco")), window)
+        set_flag("mem", bool(b.get("mem")))
+    set_flag("saveall", bool(on))
+
+
+# --------------------------------------------------------------------------
 # Mindre skriving til disk (skåner SSD/M.2)
 # --------------------------------------------------------------------------
 def save_every(seconds):

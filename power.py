@@ -113,9 +113,20 @@ def cost(watts, hours, price=None):
 DAYS = os.path.expanduser("~/.config/systemmonitor/strom-dager.json")
 
 
+_CURRENT = []
+
+
+def current():
+    """Den som teller nå (i vinduet) – ellers les fra fila."""
+    return _CURRENT[0] if _CURRENT else EnergyLog()
+
+
 class EnergyLog:
     def __init__(self):
         try:
+            import perf
+            if not perf.disk_ok("strom"):
+                raise OSError("lagring av")
             with open(DAYS) as f:
                 self.days = json.load(f)
         except (OSError, ValueError):
@@ -142,6 +153,8 @@ class EnergyLog:
 
     def save(self):
         self.saved = time.monotonic()
+        if not __import__("perf").disk_ok("strom"):
+            return
         keep = sorted(self.days)[-62:]
         self.days = {k: self.days[k] for k in keep}
         try:
@@ -235,6 +248,11 @@ def dialog(win):
     note.add_css_class("caption")
     note.add_css_class("dim-label")
     sets.append(note)
+    try:                                                  # lagre strømforbruket per dag på disk av/på
+        import perf_ui
+        sets.append(perf_ui.disk_switch("strom"))
+    except Exception:  # noqa: BLE001
+        pass
     box.append(sets)
     tv.set_content(box)
     d.set_child(tv)

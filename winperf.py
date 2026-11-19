@@ -94,7 +94,17 @@ def _dec(v):
     return v
 
 
+def _disk():
+    try:
+        import perf
+        return perf.disk_ok("pssvar")
+    except Exception:  # noqa: BLE001
+        return True
+
+
 def _load_disk():
+    if not _disk():
+        return
     try:
         d = json.load(open(CACHE_FILE, encoding="utf-8"))
         now = time.time()
@@ -106,7 +116,7 @@ def _load_disk():
 
 
 def _save_disk():
-    if not _DIRTY[0]:
+    if not _DIRTY[0] or not _disk():
         return
     _DIRTY[0] = False
     try:

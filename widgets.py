@@ -114,7 +114,7 @@ def data(win):
         pass
     try:
         import power
-        log = power.EnergyLog()
+        log = power.current()
         wh = log._get(time.strftime("%Y-%m-%d"))[0]
         out["kwh"] = round(wh / 1000, 2)
         out["kr"] = round(wh / 1000 * power.load()["price"], 2)

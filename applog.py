@@ -40,9 +40,21 @@ def needs_restart():
 
 def set_quiet(on):
     """Mindre skriving til disk: bare advarsler og feil i loggfila (ikke vanlig info)."""
+    setup.quiet = bool(on)
+    apply_level()
+
+
+def apply_level():
+    """Loggfila: av (bryteren «Logg» eller «Ingen disk»), bare advarsler (mindre skriving) eller alt."""
     h = getattr(setup, "handler", None)
-    if h is not None:
-        h.setLevel(logging.WARNING if on else logging.NOTSET)
+    if h is None:
+        return
+    try:
+        import perf
+        off = not perf.disk_ok("logg")
+    except Exception:  # noqa: BLE001
+        off = False
+    h.setLevel(100 if off else logging.WARNING if getattr(setup, "quiet", False) else logging.NOTSET)
 
 
 def setup():
@@ -64,6 +76,7 @@ def setup():
         set_quiet(bool(_j.load(open(os.path.expanduser("~/.config/systemmonitor/ytelse.json"))).get("ssd")))
     except (OSError, ValueError):
         pass
+    apply_level()
 
     def hook(t, v, tb):
         log.error("Uventet feil", exc_info=(t, v, tb))

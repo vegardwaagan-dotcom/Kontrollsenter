@@ -902,7 +902,7 @@ def wrapped(month=None):
     out = {"month": month}
     try:
         import remote_extra as X
-        data = X._jload(X.PLAYTIME, {})
+        data = X._play_data()
         per = {}
         for day, g in data.items():
             if day.startswith(month):
@@ -922,7 +922,7 @@ def wrapped(month=None):
         pass
     try:
         import power
-        log = power.EnergyLog()
+        log = power.current()
         wh = sum(log._get(d)[0] for d in log.days if d.startswith(month))
         out["kwh"] = round(wh / 1000, 1)
         out["kr"] = round(wh / 1000 * power.load()["price"], 2)

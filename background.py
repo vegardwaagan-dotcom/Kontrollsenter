@@ -181,7 +181,7 @@ class Background:
         def _warm():
             import time as _t
             _t.sleep(45)
-            if not __import__("updates").auto_on():        # manuelt: ingen automatisk disk-/helsesjekk
+            if not __import__("updates").auto_on() or __import__("perf").save_all():   # manuelt / spar alt
                 return
             for fn in (lambda: __import__("remote_extra").health(), lambda: __import__("apppanels").all_panels(win)):
                 try:
@@ -441,6 +441,10 @@ class Background:
         """Diskhelse (SMART) én gang i døgnet – i bakgrunnen."""
         if time.time() - self.sent.get("_smart", 0) < 24 * 3600 or sys.platform == "win32":
             return
+        import perf
+        import updates
+        if not updates.auto_on() or perf.no_disk():          # manuelt: ingen automatisk disksjekk
+            return
         self.sent["_smart"] = time.time()
 
         def work():
@@ -504,7 +508,8 @@ class Background:
         if time.time() - getattr(self, "_mem_t", 0) > 30:                         # mindre minnebruk
             self._mem_t = time.time()
             perf.mem_tick(self.win)
-        if time.time() - getattr(self, "_ach_t", time.time() - 240) > (1800 if perf.eco() else 300):  # prestasjoner
+        lite = perf.save_all()                           # «Spar alt»: hopp over det som ikke er nødvendig
+        if not lite and time.time() - getattr(self, "_ach_t", time.time() - 240) > (1800 if perf.eco() else 300):
             self._ach_t = time.time()
             import threading as _th
 
@@ -515,11 +520,11 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
             _th.Thread(target=ach, daemon=True).start()
-        if sys.platform != "win32" and time.time() - getattr(self, "_af_t", 0) > 4:   # volumtastene følger lyden
+        if sys.platform != "win32" and time.time() - getattr(self, "_af_t", 0) > (15 if lite else 4):  # volumtastene
             self._af_t = time.time()
             import threading as _th
             _th.Thread(target=lambda: __import__("audiofollow").tick(), daemon=True).start()
-        if time.time() - getattr(self, "_vr_t", 0) > 20:              # VR-vakten: hold VR i gang
+        if not lite and time.time() - getattr(self, "_vr_t", 0) > 20:  # VR-vakten: hold VR i gang
             self._vr_t = time.time()
             import threading as _th
 
@@ -530,7 +535,7 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
             _th.Thread(target=vrw, daemon=True).start()
-        for mod in ("presence", "pricejobs"):
+        for mod in (() if lite else ("presence", "pricejobs")):
             try:
                 m = __import__(mod)
                 m.tick(self.win, self.notify) if mod == "pricejobs" else m.tick(self.win)

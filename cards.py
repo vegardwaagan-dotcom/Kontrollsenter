@@ -454,6 +454,8 @@ class PowerCard(Gtk.Box):
     def _load_peaks(self):
         import json
         try:
+            if not __import__("perf").disk_ok("topp"):
+                return {}
             with open(self.PEAKS_FILE) as f:
                 return json.load(f)
         except (OSError, ValueError):
@@ -462,6 +464,8 @@ class PowerCard(Gtk.Box):
     def _save_peaks(self):
         import json
         try:
+            if not __import__("perf").disk_ok("topp"):
+                return
             os.makedirs(os.path.dirname(self.PEAKS_FILE), exist_ok=True)
             with open(self.PEAKS_FILE, "w") as f:
                 json.dump(self.peaks, f)

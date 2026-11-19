@@ -19,8 +19,34 @@ KEEP_DAYS = 8
 COLS = ("cpu_t", "gpu_t", "cpu_l", "gpu_l", "watts")
 
 
+_MEMDB = []                 # historikk i minnet når lagring på disk er av
+
+
+def _disk():
+    try:
+        import perf
+        return perf.disk_ok("historikk")
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _memdb():
+    if not _MEMDB:
+        db = sqlite3.connect(":memory:", check_same_thread=False)
+        db.execute("CREATE TABLE IF NOT EXISTS s (ts INTEGER PRIMARY KEY, cpu_t REAL, gpu_t REAL, "
+                   "cpu_l REAL, gpu_l REAL, watts REAL)")
+        _MEMDB.append(db)
+    return _MEMDB[0]
+
+
 class Recorder:
     def __init__(self, path=DB):
+        self.path = path
+        self.on_disk = _disk()
+        if not self.on_disk:
+            self.db = _memdb()
+            self.last, self.last_commit, self.last_prune, self.pending = 0, time.time(), 0, []
+            return
         os.makedirs(os.path.dirname(path), exist_ok=True)
         # timeout + WAL: flere Kontrollsenter-prosesser (vindu, bakgrunn, test) kan skrive uten «database is locked»
         self.db = sqlite3.connect(path, check_same_thread=False, timeout=0.5)
@@ -42,6 +68,23 @@ class Recorder:
         if now - self.last < every:
             return
         self.last = now
+        if _disk() != self.on_disk:                   # bryteren er endret: bytt mellom disk og minne
+            self.flush()
+            if self.on_disk:
+                try:
+                    self.db.close()
+                except sqlite3.Error:
+                    pass
+            self.__init__(self.path)
+            self.last = now
+        if not self.on_disk:                          # bare i minnet (de siste 24 timene)
+            try:
+                self.db.execute("INSERT OR REPLACE INTO s VALUES (?,?,?,?,?,?)",
+                                (int(now), cpu_t, gpu_t, cpu_l, gpu_l, watts))
+                self.db.execute("DELETE FROM s WHERE ts < ?", (int(now - 86400),))
+            except sqlite3.Error:
+                pass
+            return
         self.pending.append((int(now), cpu_t, gpu_t, cpu_l, gpu_l, watts))
         try:
             import perf
@@ -61,6 +104,8 @@ class Recorder:
 
     def flush(self):
         self.last_commit = time.time()
+        if not getattr(self, "on_disk", True):
+            return
         try:
             if self.pending:                          # avslutter/lagrer: skriv det som er samlet opp
                 rows, self.pending = self.pending, []
@@ -72,26 +117,30 @@ class Recorder:
 
 def query(seconds, buckets=360, path=DB):
     """[(ts, cpu_t, gpu_t, cpu_l, gpu_l, watts)] slått sammen i like lange biter (maks for temperatur, snitt ellers)."""
-    if not os.path.exists(path):
+    mem = not _disk() and path == DB
+    if not mem and not os.path.exists(path):
         return []
-    db = sqlite3.connect(path)
+    db = _memdb() if mem else sqlite3.connect(path)
     now = time.time()
     start = now - seconds
     size = max(10, seconds / buckets)
     rows = db.execute(
         "SELECT CAST((ts - ?) / ? AS INTEGER) AS b, MAX(ts), MAX(cpu_t), MAX(gpu_t), AVG(cpu_l), AVG(gpu_l), AVG(watts) "
         "FROM s WHERE ts >= ? GROUP BY b ORDER BY b", (start, size, start)).fetchall()
-    db.close()
+    if not mem:
+        db.close()
     return [r[1:] for r in rows]
 
 
 def stats(seconds, path=DB):
-    if not os.path.exists(path):
+    mem = not _disk() and path == DB
+    if not mem and not os.path.exists(path):
         return None
-    db = sqlite3.connect(path)
+    db = _memdb() if mem else sqlite3.connect(path)
     r = db.execute("SELECT MAX(cpu_t), MAX(gpu_t), AVG(cpu_l), AVG(watts), COUNT(*), MIN(ts) FROM s WHERE ts >= ?",
                    (time.time() - seconds,)).fetchone()
-    db.close()
+    if not mem:
+        db.close()
     return r
 
 
@@ -226,6 +275,11 @@ class HistoryPage(Gtk.ScrolledWindow):
             seg.append(b)
         top.append(seg)
         box.append(top)
+        try:                                              # lagre historikken på disk av/på
+            import perf_ui
+            box.append(perf_ui.disk_switch("historikk"))
+        except Exception:  # noqa: BLE001
+            pass
         self.charts = {}
         for key, title, unit, mx in (("temp", "Temperaturer", "°", None), ("load", "Last", "%", 100),
                                      ("watts", "Strømforbruk", " W", None)):

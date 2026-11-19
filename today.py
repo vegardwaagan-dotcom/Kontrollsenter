@@ -26,7 +26,7 @@ def _sessions():
 def _playtime():
     try:
         import remote_extra
-        return json.load(open(remote_extra.PLAYTIME))
+        return remote_extra._play_data()
     except (OSError, ValueError, ImportError):
         return {}
 
@@ -52,7 +52,7 @@ def summary():
            "kwh": None, "kr": None, "max_cpu": None, "max_gpu": None, "avg_w": None}
     try:
         import power
-        wh = power.EnergyLog()._get(day)[0]
+        wh = power.current()._get(day)[0]
         out["kwh"] = round(wh / 1000, 2)
         out["kr"] = round(wh / 1000 * power.load()["price"], 2)
     except Exception:  # noqa: BLE001

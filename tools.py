@@ -936,6 +936,13 @@ class _Cards:
         i.append(updates_ui.UpdatesCard(lambda: self.get_root()))
         self.box.append(c)
 
+    def _disk_card(self):
+        import perf_ui
+        c, i = card("Lagring på disk", "Hva Kontrollsenter skriver til og leser fra disken. Av = bare i minnet mens "
+                                       "programmet kjører (forsvinner ved omstart).")
+        i.append(perf_ui.disk_card_body())
+        self.box.append(c)
+
     def _perf_card(self):
         import perf
         c, i = card("Ytelse – hva Kontrollsenter bruker",
@@ -977,15 +984,32 @@ class _Cards:
                 return _old_tick()
         perf.usage()
         GLib.timeout_add_seconds(2, tick)
-        self._switch_row(i, "Minimal prosessbruk",
+        sws = {}
+
+        def save_all(w, _p):
+            perf.set_save_all(w.get_active(), self.get_root())
+            for k, s in sws.items():                      # vis de enkelte bryterne slik de nå er
+                want = perf.eco() if k == "eco" else perf.flag(k)
+                if s.get_active() != want:
+                    s.set_active(want)
+                s.set_sensitive(not w.get_active())
+        sa = self._switch_row(i, "Spar alt – minst mulig prosessor og minne",
+                              "Slår på minimal prosessbruk og mindre minnebruk, og stopper alt ekstra i "
+                              "bakgrunnen (prestasjoner, strømpris, hjemme/borte, VR-vakt, oppvarming). Varsler, "
+                              "vifter, mobilappen og familiekontroll virker som før.",
+                              perf.save_all(), save_all)
+        sa.get_parent().add_css_class("ks-strong")
+        sws["eco"] = self._switch_row(i, "Minimal prosessbruk",
                          "Ingen effekter, vinduet oppdateres hvert 3. sekund, og valgfrie ting i bakgrunnen går "
                          "sjeldnere. Varsler, vifter og mobilappen virker som før. Fint på eldre eller tregere PC-er.",
                          perf.eco(), lambda w, _p: perf.set_eco(w.get_active(), self.get_root()))
-        self._switch_row(i, "Mindre minnebruk",
+        sws["mem"] = self._switch_row(i, "Mindre minnebruk",
                          "Sider du har åpnet blir liggende i minnet. Når vinduet har vært lukket i 3 minutter, "
                          "starter Kontrollsenter stille på nytt i statusfeltet og bruker bare en tredjedel så mye "
                          "minne. Aldri mens du spiller eller noe installeres.",
                          perf.flag("mem"), lambda w, _p: perf.set_flag("mem", w.get_active()))
+        for s in sws.values():
+            s.set_sensitive(not perf.save_all())
         self._switch_row(i, "Mindre skriving til disk",
                          "Skåner SSD/M.2: historikk, strøm og spilletid lagres samlet hvert 5.–15. minutt i stedet "
                          "for hvert 10. sekund/minutt, og loggen får bare advarsler og feil. Historikken kan mangle "
@@ -1719,6 +1743,8 @@ class _Cards:
     def _log_card(self):
         import applog
         c, i = card("Feillogg", applog.LOG_FILE)
+        import perf_ui
+        i.append(perf_ui.disk_switch("logg", compact=True))
         tv = Gtk.TextView(editable=False, monospace=True, wrap_mode=Gtk.WrapMode.WORD_CHAR)
         tv.get_buffer().set_text(applog.tail(60) or "(tom)")
         sc = Gtk.ScrolledWindow(min_content_height=160, max_content_height=260, propagate_natural_height=True)
@@ -2004,6 +2030,7 @@ class SettingsPage(TabbedPage, _Cards):
         self.tab("generelt", "Generelt")
         self._try(self._general_card)
         self._try(self._perf_card)
+        self._try(self._disk_card)
         self._try(self._simple_card)
         self._try(self._apps_card)
         self._try(self._infotiles_card)

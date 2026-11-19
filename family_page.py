@@ -266,6 +266,11 @@ class FamilyPage(Gtk.ScrolledWindow):
         self.week_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         self.week_box.append(Gtk.Label(label=i18n.tr("Henter …"), xalign=0))
         i.append(self.week_box)
+        try:                                              # lagre spilletiden på disk av/på
+            import perf_ui
+            i.append(perf_ui.disk_switch("spilltid"))
+        except Exception:  # noqa: BLE001
+            pass
 
         self._busy = False
         self._show_lock()
