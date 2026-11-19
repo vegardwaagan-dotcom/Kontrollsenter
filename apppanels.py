@@ -291,11 +291,31 @@ def p_updates(win):
                              {"do": "updateauto", "on": "0" if au else "1"})]}
 
 
-PANELS = [p_commands, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_radio, p_presence, p_version]
+_ASSIST = {}
+
+
+def p_assistant(win):
+    """PC-assistent"""
+    import assistant as A
+    fs = _ASSIST.get("f")
+    if fs is None or time.time() - _ASSIST.get("t", 0) > 120:
+        fs = A.why_slow(win) if win is not None else []
+        _ASSIST.update(f=fs, t=time.time())
+    items = []
+    for i, f in enumerate(fs):
+        b = [_btn(f.fix[0], {"do": "assistfix", "key": f.key}, f"{f.fix[0]}?", primary=True)] if f.fix else []
+        items.append({"title": {"ok": "✅", "info": "ℹ️", "warn": "⚠️", "error": "❌"}.get(f.level, "•") + " " + f.title,
+                      "sub": f.detail, "buttons": b})
+    return {"id": "assistant", "icon": "🩺", "title": "Hvorfor er PC-en treg?",
+            "desc": "PC-assistenten ser på varme, minne, prosessor, disk og det som jobber i bakgrunnen.",
+            "items": items, "buttons": [_btn("Sjekk nå", {"do": "assistcheck"}, primary=not items)]}
+
+
+PANELS = [p_commands, p_assistant, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_radio, p_presence, p_version]
 
 
 _CACHE = {}
-TTL = {"pctools": 120, "apps": 60, "games": 120, "radio": 300, "gpu": 60}
+TTL = {"assistant": 60, "pctools": 120, "apps": 60, "games": 120, "radio": 300, "gpu": 60}
 
 
 def all_panels(win, only=None):
@@ -344,6 +364,17 @@ def run(win, a):
     if do == "invite":
         import launcher
         return launcher.invite(_game(str(a.get("id", ""))))
+    if do == "assistcheck":
+        _ASSIST.clear()
+        return "Sjekket"
+    if do == "assistfix":
+        import assistant as A
+        fs = _ASSIST.get("f") or A.why_slow(win)
+        f = next((x for x in fs if x.key == a.get("key") and x.fix), None)
+        if not f:
+            raise ValueError("fant ikke funnet – sjekk på nytt")
+        _ASSIST.clear()
+        return str(f.fix[1]())
     if do == "updateall":
         import updates
         return "Oppdater alt er startet – følg fremdriften øverst" if updates.update_all(win) else "Pågår allerede"

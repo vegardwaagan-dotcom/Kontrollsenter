@@ -13,6 +13,20 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.76.0", "PC-assistenten", [
+        ("Nytt", [
+            "🩺 «Hvorfor treg?» på Oversikt, i søket (Ctrl+K) og i mobilappen: ser på varme, minne, prosessor, full "
+            "disk, oppdateringer og skanning i bakgrunnen, strømmodus og oppetid – med fiks-knapp",
+            "Spillsjekk: 20 sekunder etter at et spill starter sjekkes strømmodus, minne, disk og bakgrunnsjobber – "
+            "ett varsel bare hvis noe bør fikses",
+            "Lærer hva som er normalt: varsel når CPU/GPU går varmere enn vanlig ved samme last (støv) eller er "
+            "varm selv i ro (kjølepasta)",
+            "Diskvakt: hva som tar plass – store spill du ikke har spilt på 3 måneder, klipp og nedlastinger",
+            "Levetid for SSD-ene i klartekst",
+            "Ukens helserapport søndag kveld (også på mobilen)",
+            "Foreslår «Eldre PC» av seg selv når vinduet hakker mye",
+        ]),
+    ]),
     ("0.75.0", "Eldre PC – lett grafikk", [
         ("Nytt (Innstillinger → Generelt → Ytelse)", [
             "«Eldre PC – lett grafikk»: ingen animasjoner, overganger, skygger, glød, levende bakgrunn eller "

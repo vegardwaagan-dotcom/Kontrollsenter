@@ -323,6 +323,8 @@ def tick(auto):
         try:
             import scenes
             scenes.on_event(win, "game_start", g[1])
+            import assistant
+            assistant.on_game_start(win, g[1])
             import looks
             looks.on_game(g[1])
             win.layout_for_game(True)

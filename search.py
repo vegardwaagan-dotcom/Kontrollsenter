@@ -186,6 +186,8 @@ def actions(win):
     def a(text, words, fn):
         out.append((text, words, fn))
     st = getattr(win, "bg", None)
+    a("🩺 Hvorfor er PC-en treg?", "treg hakker sakte assistent hjelp lag",
+      lambda: __import__("assistant_ui").open_dialog(win))
     a("🎮 Spillmodus på/av", "spillmodus gamemode ytelse", lambda: _act(win, None, "Spillmodus"))
     a("🎬 Lagre klipp nå", "klipp clip lagre opptak", lambda: _act(win, {"a": "clip"}, "Klipp"))
     a("📸 Ta skjermbilde", "skjermbilde screenshot", lambda: _act(win, {"a": "clipshot"}, "Skjermbilde"))

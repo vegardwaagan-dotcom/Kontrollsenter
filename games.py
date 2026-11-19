@@ -126,7 +126,12 @@ def installed_games():
                 continue
             seen.add(aid)
             inst = st.get("installdir")
-            games.append({"appid": aid, "name": name, "dir": str(lib / "common" / inst) if inst else None})
+            try:
+                size, last = int(st.get("SizeOnDisk") or 0), int(st.get("LastPlayed") or 0)
+            except ValueError:
+                size, last = 0, 0
+            games.append({"appid": aid, "name": name, "dir": str(lib / "common" / inst) if inst else None,
+                          "size": size, "last_played": last})
     return sorted(games, key=lambda g: g["name"].lower())
 
 

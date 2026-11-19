@@ -27,6 +27,8 @@ KINDS = [
     ("disk", "Nesten full disk", "En disk har lite ledig plass igjen.", ["disk*"]),
     ("battery", "Lavt batteri", "Mus, tastatur, hodesett eller kontroller må lades.", ["bat*"]),
     ("syscheck", "Systemsjekk", "Systemsjekken i bakgrunnen fant noe som bør fikses.", ["syscheck"]),
+    ("assistant", "PC-assistent", "Spillsjekk, ukens helserapport, varmere enn vanlig (støv) og tips når vinduet hakker.",
+     ["gamecheck", "weekly", "anomaly", "lowend"]),
     ("updates", "Oppdateringer", "Nye programoppdateringer og nye versjoner av Kontrollsenter.",
      ["updates", "lanupdate", "lanpublish", "restart"]),
     ("chat", "Familie-chat og «Middag!»", "Meldinger fra de andre i huset – og «Spill sammen»-invitasjoner.",
@@ -145,6 +147,9 @@ class Background:
         app.add_action(act)
         act = Gio.SimpleAction.new("syscheck", None)
         act.connect("activate", lambda *_: (self.show(), win._open_syscheck()))
+        app.add_action(act)
+        act = Gio.SimpleAction.new("assistant", None)
+        act.connect("activate", lambda *_: (self.show(), __import__("assistant_ui").open_dialog(win)))
         app.add_action(act)
         self.apply()
         import automation
@@ -508,6 +513,10 @@ class Background:
         if time.time() - getattr(self, "_mem_t", 0) > 30:                         # mindre minnebruk
             self._mem_t = time.time()
             perf.mem_tick(self.win)
+        if time.time() - getattr(self, "_assist_t", 0) > 60:                     # PC-assistenten lærer og varsler
+            self._assist_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("assistant").tick(self.win), daemon=True).start()
         lite = perf.save_all()                           # «Spar alt»: hopp over det som ikke er nødvendig
         if not lite and time.time() - getattr(self, "_ach_t", time.time() - 240) > (1800 if perf.eco() else 300):
             self._ach_t = time.time()

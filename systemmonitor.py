@@ -404,6 +404,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.hello_chip = Gtk.Label(valign=Gtk.Align.CENTER)
         self.hello_chip.add_css_class("ks-chip")
         hero.append(self.hello_chip)
+        try:
+            import assistant_ui
+            hero.append(assistant_ui.quick_button(self))
+        except Exception:  # noqa: BLE001
+            applog.log.exception("assistent-knapp")
         import dashboard as _db
         self.presets = ["standard", "spill", "jobb", "natt"]
         self.preset_dd = Gtk.DropDown.new_from_strings([i18n.tr(x) for x in ("Standard", "Spill", "Jobb", "Natt")])
