@@ -63,8 +63,8 @@ def _when(t):
     return time.strftime("%d.%m.%Y", lt)
 
 
-def _bubble_content(text, mine):
-    """Tekst og ```kode``` hver for seg (kode i egen boks med fast bredde)."""
+def _bubble_content(text, mine, width=70):
+    """Tekst og ```kode``` hver for seg (kode i egen boks med fast bredde). width: tegn per linje i boblene."""
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
     parts = text.split("```")
     for i, part in enumerate(parts):
@@ -76,7 +76,7 @@ def _bubble_content(text, mine):
             first, rest = part.split("\n", 1)                # «```python» – språknavnet
             part = rest if first.strip().isidentifier() else part
         lab = Gtk.Label(label=part, xalign=0, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, selectable=True,
-                        max_width_chars=70 if not code else 90)
+                        max_width_chars=width if not code else int(width * 1.3))
         if code:
             lab.add_css_class("ks-code")
         box.append(lab)
@@ -101,7 +101,8 @@ class AiPage(Gtk.Box):
         self._live = None
 
         # ======== venstre: samtalene
-        side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, width_request=250)
+        side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, width_request=170)
+        self.side = side
         side.add_css_class("ks-ai-side")
         for s_, v in (("top", 12), ("bottom", 10), ("start", 10), ("end", 10)):
             getattr(side, f"set_margin_{s_}")(v)
@@ -132,8 +133,14 @@ class AiPage(Gtk.Box):
         ob.connect("clicked", lambda *_: Gtk.FileLauncher.new(Gio.File.new_for_path(S.workdir())).launch(
             self.get_root(), None, None))
         side.append(ob)
-        self.append(side)
-        self.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
+        # dra i skillet for å gjøre lista smalere/bredere (huskes), ☰ skjuler den helt
+        self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, hexpand=True, wide_handle=True,
+                               shrink_start_child=False, resize_start_child=False, shrink_end_child=False)
+        self.paned.set_start_child(side)
+        self.paned.set_position(int(c.get("list_width", 260)))
+        self.paned.connect("notify::position", self._paned_moved)
+        side.set_visible(c.get("list_visible", True))
+        self.append(self.paned)
 
         # ======== høyre: samtalen
         right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, hexpand=True)
@@ -141,6 +148,12 @@ class AiPage(Gtk.Box):
             getattr(right, f"set_margin_{s_}")(v)
         top = Gtk.Box(spacing=8)
         self.icon = Gtk.Image(pixel_size=28)
+        self.list_btn = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", active=c.get("list_visible", True),
+                                         valign=Gtk.Align.CENTER, tooltip_text=i18n.tr("Vis/skjul samtalene"))
+        self.list_btn.add_css_class("flat")
+        self.list_btn.connect("toggled", lambda w: (self.side.set_visible(w.get_active()),
+                                                    ai.set_(list_visible=w.get_active())))
+        top.append(self.list_btn)
         top.append(self.icon)
         self.dd = Gtk.DropDown.new_from_strings([ai.TOOLS[t]["name"] for t in self.tools])
         self.dd.set_selected(self.tools.index(self.tool))
@@ -198,7 +211,8 @@ class AiPage(Gtk.Box):
         inrow.append(self.send_btn)
         right.append(inrow)
         right.append(_dim("Enter sender · Shift+Enter gir ny linje", small=True))
-        self.append(right)
+        self.paned.set_end_child(right)
+        self._apply_look()
 
         self._show_tool()
         self.connect("map", lambda *_: self._on_map())
@@ -340,10 +354,11 @@ class AiPage(Gtk.Box):
             wrap.append(who)
         b = Gtk.Box()
         b.add_css_class("ks-bub-me" if mine else "ks-bub-ai")
-        b.append(_bubble_content(text, mine))
+        b.append(_bubble_content(text, mine, self._width()))
         wrap.append(b)
-        wrap.set_margin_start(0 if mine is False else 80)
-        wrap.set_margin_end(80 if mine is False else 0)
+        gap = 40 if self._width() > 90 else 80
+        wrap.set_margin_start(0 if mine is False else gap)
+        wrap.set_margin_end(gap if mine is False else 0)
         self.msgs.append(wrap)
         return b
 
@@ -401,9 +416,82 @@ class AiPage(Gtk.Box):
             b.connect("clicked", lambda _b, f=fn, lab=label: (pop.popdown(), self._confirm_uninstall() if f is None
                                                               else self._run(lab, f)))
             box.append(b)
+        if items:
+            box.append(Gtk.Separator(margin_top=4, margin_bottom=4))
+        box.append(self._look_box(pop))
         pop.set_child(box)
         self.more.set_popover(pop)
-        self.more.set_visible(bool(items))
+        self.more.set_visible(True)
+
+    # ================= utseende: listebredde, tekststørrelse, boblebredde
+    def _paned_moved(self, paned, _p):
+        pos = paned.get_position()
+        if self.side.get_visible() and 140 <= pos <= 700:
+            if abs(pos - int(ai.cfg().get("list_width", 260))) >= 10:
+                GLib.timeout_add(400, self._save_width, pos)
+
+    def _save_width(self, pos):
+        if self.paned.get_position() == pos:
+            ai.set_(list_width=pos)
+        return False
+
+    def _width(self):
+        return int(ai.cfg().get("bubble_width", 70))
+
+    def _apply_look(self):
+        size = int(ai.cfg().get("text_size", 100))
+        if not hasattr(self, "_size_css"):
+            self._size_css = Gtk.CssProvider()
+            Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self._size_css,
+                                                      Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 2)
+        css = (f".ks-bub-me label, .ks-bub-ai label {{ font-size: {size / 100:.2f}em; }} "
+               f".ks-code {{ font-size: {size * 0.92 / 100:.2f}em; }} "
+               f".ks-ai-input textview {{ font-size: {size / 100:.2f}em; }}")
+        if hasattr(self._size_css, "load_from_string"):
+            self._size_css.load_from_string(css)
+        else:
+            self._size_css.load_from_data(css.encode())
+
+    def _look_box(self, pop):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_top=4)
+        c = ai.cfg()
+        box.append(Gtk.Label(label=i18n.tr("Tekststørrelse"), xalign=0))
+        tr = Gtk.Box(spacing=6)
+        lab = Gtk.Label(label=f"{c.get('text_size', 100)} %", hexpand=True)
+
+        def size(d):
+            v = max(70, min(200, int(ai.cfg().get("text_size", 100)) + d))
+            ai.set_(text_size=v)
+            lab.set_label(f"{v} %")
+            self._apply_look()
+        for t, d in (("A−", -10), ("A+", 10)):
+            b = Gtk.Button(label=t)
+            b.connect("clicked", lambda _b, dd=d: size(dd))
+            tr.append(b)
+            if d < 0:
+                tr.append(lab)
+        box.append(tr)
+        box.append(Gtk.Label(label=i18n.tr("Bredde på boblene"), xalign=0))
+        sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 40, 160, 5)
+        sc.set_value(self._width())
+        sc.set_size_request(220, -1)
+        sc.set_format_value_func(lambda _s, v: f"{v:.0f} tegn")
+
+        def width(s_):
+            ai.set_(bubble_width=int(s_.get_value()))
+            if getattr(self, "_wt", None):
+                GLib.source_remove(self._wt)
+            self._wt = GLib.timeout_add(250, lambda: (setattr(self, "_wt", None), self._render_conv(), False)[2])
+        sc.connect("value-changed", width)
+        box.append(sc)
+        rs = Gtk.Button(label=i18n.tr("Tilbakestill utseendet"))
+        rs.add_css_class("flat")
+        rs.connect("clicked", lambda *_: (ai.set_(text_size=100, bubble_width=70, list_width=260, list_visible=True),
+                                          pop.popdown(), self._apply_look(), sc.set_value(70),
+                                          self.paned.set_position(260), self.list_btn.set_active(True),
+                                          self._render_conv()))
+        box.append(rs)
+        return box
 
     def _main_action(self):
         self._run(*self._main)
@@ -488,7 +576,7 @@ class AiPage(Gtk.Box):
         if self._live is not None:
             while (ch := self._live.get_first_child()) is not None:
                 self._live.remove(ch)
-            self._live.append(_bubble_content(self._live_text.strip() or "• • •", False))
+            self._live.append(_bubble_content(self._live_text.strip() or "• • •", False, self._width()))
             self._scroll_end()
         return False
 
@@ -511,7 +599,7 @@ class AiPage(Gtk.Box):
         if self._live is not None:
             while (ch := self._live.get_first_child()) is not None:
                 self._live.remove(ch)
-            self._live.append(_bubble_content(text or "…", False))
+            self._live.append(_bubble_content(text or "…", False, self._width()))
         self._live = None
         self.status.set_label("" if code == 0 else (i18n.tr("Stoppet") if code else ""))
         self._reload_list()

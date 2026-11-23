@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.1", "Juster AI-siden", [
+        ("AI", [
+            "Dra i skillet mellom samtalelista og samtalen for å gjøre lista smalere eller bredere (huskes)",
+            "Knapp øverst til venstre skjuler eller viser samtalelista – da får samtalen hele bredden",
+            "⋯ → tekststørrelse (A−/A+, 70–200 %) og bredde på boblene, og «Tilbakestill utseendet»",
+        ]),
+    ]),
     ("0.99.0", "AI som styrer Kontrollsenter – med samtaler på NAS-en", [
         ("AI", [
             "Ser ut som iMessage: samtalene til venstre, blå og grå bobler, rundt skrivefelt med ↑",
