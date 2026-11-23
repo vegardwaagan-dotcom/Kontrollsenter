@@ -212,14 +212,29 @@ def _send_video_desc(c):
             f"multiudpsink name=out sync=false async=false")
 
 
+def camera_choice(c=None):
+    """Kameraet som faktisk brukes: «Første kamera» hopper over virtuelle kameraer (OBS) og tar mobilkameraet
+    når det sender og det ikke finnes noe ekte webkamera."""
+    c = c or cfg()
+    if c.get("camera"):
+        return c["camera"]
+    import phonecam
+    virt = {d for d, _n in phonecam.loopback_devices()}
+    real = [d for d, _n in devices()["camera"] if d and d != "phone" and d not in virt]
+    if real:
+        return real[0]
+    return "phone" if phonecam.live() else ""
+
+
 def _cam_src(c):
     """Kamerakilden: testbilde, mobilkameraet (Android-appen) eller et vanlig webkamera."""
-    if TEST and c.get("camera") != "phone":
+    cam = camera_choice(c)
+    if TEST and cam != "phone":
         return "videotestsrc is-live=true pattern=ball"
-    if c.get("camera") == "phone":
+    if cam == "phone":
         import phonecam
         return phonecam.SRC_DESC
-    return "v4l2src" + (f' device="{c["camera"]}"' if c["camera"] else "") + " ! decodebin"
+    return "v4l2src" + (f' device="{cam}"' if cam else "") + " ! decodebin"
 
 
 def _attach_phone(p, key):
@@ -546,12 +561,13 @@ def toggle_camera():
         _S["cam"] = False
         _FRAMES.pop("me", None)
     else:
-        if cfg()["camera"] == "phone":
+        cam = camera_choice()
+        if cam == "phone":
             import phonecam
             if not phonecam.live():
-                raise RuntimeError("mobilkameraet sender ikke – åpne Chat i Android-appen og trykk «📷 Mobilkamera»")
-        elif not TEST and not any(d for d, _n in devices()["camera"] if d and d != "phone"):
-            raise RuntimeError("fant ikke noe webkamera – velg «📱 Mobilkamera» under Lyd og video for å bruke mobilen")
+                raise RuntimeError("mobilkameraet sender ikke – åpne Chat i Android-appen og trykk «📷 Kamera»")
+        elif not TEST and not cam:
+            raise RuntimeError("fant ikke noe webkamera – bruk mobilen: Chat i Android-appen → «📷 Kamera»")
         _start_camera()
         _S["cam"] = True
     _broadcast_state()

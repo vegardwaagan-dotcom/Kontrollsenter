@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.90.1", "Mobilkameraet er lettere å finne", [
+        ("Mobilkamera", [
+            "Ny 📱-knapp i chatten på PC-en (venstre stripe og ⋯-menyen) med veiledning, «Vis i vindu», «Bruk i "
+            "talekanalen» og webkamera for andre programmer",
+            "Når mobilen sender, vises en linje øverst i chatten med «Vis» og «Bruk i talekanalen»",
+            "«Første kamera» hopper over OBS sitt virtuelle kamera og bruker mobilen når det ikke finnes et ekte webkamera",
+            "Mobilappen: «📷 Kamera» i Chat sier tydelig fra om appen eller PC-en må oppdateres, og spør om "
+            "kameratilgang med en gang",
+        ]),
+    ]),
     ("0.90.0", "Velg funksjoner og bruk mobilen som webkamera", [
         ("Velg funksjoner", [
             "Velkomstveiviseren spør første gang: Fullstendig, Medium (uten Discord, Scener, Smart Hjem og CPU-skjerm), "

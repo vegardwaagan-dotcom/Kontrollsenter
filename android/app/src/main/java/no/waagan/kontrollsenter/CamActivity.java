@@ -99,6 +99,10 @@ public class CamActivity extends Activity {
             status.setText("Åpne mobilkameraet fra Chat i appen");
             return;
         }
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Gi appen lov til å bruke kameraet …");
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, 7);
+        }
         netThread = new HandlerThread("ks-kamera-nett");
         netThread.start();
         netHandler = new Handler(netThread.getLooper());
@@ -108,17 +112,15 @@ public class CamActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (base == null) return;
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.CAMERA}, 7);
-            return;
-        }
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return;   // spurt i onCreate
         start();
     }
 
     @Override
     public void onRequestPermissionsResult(int code, String[] p, int[] r) {
         if (code == 7 && r.length > 0 && r[0] == PackageManager.PERMISSION_GRANTED) start();
-        else status.setText("Appen fikk ikke bruke kameraet – gi tillatelse under Innstillinger → Apper");
+        else status.setText("Appen fikk ikke bruke kameraet – gi tillatelse under Innstillinger → Apper → "
+                + "Kontrollsenter → Tillatelser");
     }
 
     @Override
@@ -310,8 +312,16 @@ public class CamActivity extends Activity {
             c.setFixedLengthStreamingMode(data.length);
             try (OutputStream o = c.getOutputStream()) { o.write(data); }
             int code = c.getResponseCode();
-            c.getInputStream().close();
-            if (code == 200) sent++; else failed++;
+            if (code == 200) {
+                c.getInputStream().close();
+                sent++;
+            } else {
+                failed++;
+                if (failed % 10 == 1) say(code == 404 || code == 405
+                        ? "PC-en kjører en eldre Kontrollsenter – start Kontrollsenter på nytt på PC-en"
+                        : code == 401 ? "Appen er ikke koblet til denne PC-en – koble til på nytt"
+                        : "PC-en svarte " + code);
+            }
         } catch (Exception e) {
             failed++;
             if (failed % 10 == 1) say("PC-en svarer ikke (" + e.getClass().getSimpleName() + ") – prøver igjen …");

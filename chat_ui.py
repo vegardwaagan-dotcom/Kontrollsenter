@@ -171,6 +171,13 @@ class ChatPage(Gtk.Box):
         self.callbar.append(self.call_ans)
         self.callbar.append(_btn("Legg på", lambda *_: self._call_do(CV.call_end)))
         right.append(self.callbar)
+        self.phonebar = Gtk.Box(spacing=8, visible=False)
+        self.phonebar.add_css_class("card")
+        self.phone_lab = Gtk.Label(xalign=0, hexpand=True, margin_start=12, ellipsize=3)
+        self.phonebar.append(self.phone_lab)
+        self.phonebar.append(_btn("Vis", lambda *_: __import__("phonecam").open_window(self.get_root()), flat=True))
+        self.phonebar.append(_btn("Bruk i talekanalen", lambda *_: self._phone_to_voice(), flat=True))
+        right.append(self.phonebar)
         self.video = chatvc_ui.VideoGrid()
         right.append(self.video)
         self.gamebar = Gtk.Box(spacing=8, visible=False)
@@ -326,6 +333,7 @@ class ChatPage(Gtk.Box):
         add("🔍", "Søk i alle samtalene", self._search)
         add("👤", "Profil, status og chat-innstillinger", self._profile)
         add("🎛️", "Lyd og video: mikrofon, høyttaler og webkamera", self._av_settings)
+        add("📱", "Mobilkamera: bruk mobilen som webkamera", self._phonecam)
         return False
 
     def _open(self, view):
@@ -489,6 +497,44 @@ class ChatPage(Gtk.Box):
             box.append(b)
         pop.set_child(box)
         return pop
+
+    def _phone_to_voice(self):
+        import chatvc
+        chatvc.set_(camera="phone")
+        if chatvc.current() and not chatvc.state()["cam"]:
+            _bg(chatvc.toggle_camera, lambda r: (self.status.set_label(
+                ("✗ " + str(r)) if isinstance(r, Exception) else "📷 Mobilkameraet vises nå i talekanalen"),
+                self.vcbar.refresh()))
+        else:
+            self.status.set_label(i18n.tr("📱 Mobilkameraet er valgt – trykk 📷 i talelinjen når du er i en talekanal"))
+
+    def _phonecam(self):
+        import phonecam
+        dlg = Adw.AlertDialog(heading=i18n.tr("📱 Mobilen som webkamera"))
+        dlg.set_body(i18n.tr("1. Åpne Kontrollsenter-appen på mobilen (Android, versjon 0.90 eller nyere).\n"
+                             "2. Gå til Chat og trykk «📷 Kamera».\n"
+                             "3. Gi appen lov til å bruke kameraet – bildet kommer hit.\n\n") + phonecam.status())
+        dlg.add_response("lukk", i18n.tr("Lukk"))
+        dlg.add_response("vindu", i18n.tr("Vis i vindu"))
+        dlg.add_response("tale", i18n.tr("Bruk i talekanalen"))
+        import sys as _sys
+        if _sys.platform != "win32" and phonecam.loopback_devices():
+            dlg.add_response("virt", i18n.tr("Slå av webkamera for andre programmer") if phonecam.virtual_on()
+                             else i18n.tr("Webkamera for andre programmer"))
+        dlg.set_response_appearance("tale", Adw.ResponseAppearance.SUGGESTED)
+
+        def resp(_d, r):
+            if r == "vindu":
+                phonecam.open_window(self.get_root())
+            elif r == "tale":
+                self._phone_to_voice()
+            elif r == "virt":
+                try:
+                    self.status.set_label(phonecam.set_virtual(not phonecam.virtual_on()))
+                except Exception as e:  # noqa: BLE001
+                    self.status.set_label(f"✗ {e}")
+        dlg.connect("response", resp)
+        dlg.present(self.get_root())
 
     def _av_settings(self):
         import chatvc_ui
@@ -780,6 +826,11 @@ class ChatPage(Gtk.Box):
         GLib.timeout_add_seconds(4, lambda: (self.typing_lab.set_label(""), False)[1])
 
     def _bars(self):
+        import phonecam
+        live = phonecam.live()
+        self.phonebar.set_visible(live)
+        if live:
+            self.phone_lab.set_label(phonecam.status())
         st = CV.call_state()
         self.callbar.set_visible(bool(st))
         if st:
@@ -937,7 +988,7 @@ class ChatPage(Gtk.Box):
                      ("📺 Vis skjermen min", lambda: self._call_room(lambda: CL.share_screen(self.room))),
                      ("🔔 Ring", lambda: self._call_room(lambda: CL.send_ring(self.room))),
                      ("🆘 Be om hjelp", lambda: self._call_any(lambda: __import__("homeplus").ask_help())))),
-            ("Verktøy", (("🎛️ Lyd og video", self._av_settings), ("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
+            ("Verktøy", (("🎛️ Lyd og video", self._av_settings), ("📱 Mobilkamera", self._phonecam), ("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
                          ("📝 Notater", self._notes), ("🛒 Handleliste", self._shop),
                          ("🌐 Oversett siste melding", self._translate),
                          ("🏠 Hvor er alle?", lambda: self.status.set_label(CL.where_is_everyone())),

@@ -59,7 +59,7 @@ def live():
 
 def status():
     if not live():
-        return "Ikke tilkoblet – åpne Chat i Android-appen og trykk «📷 Mobilkamera»"
+        return "Ikke tilkoblet – åpne Chat i Android-appen og trykk «📷 Kamera»"
     return f"📱 Tilkoblet{(' (' + _S['from'] + ')') if _S['from'] else ''} · {_S['fps']} bilder/s"
 
 

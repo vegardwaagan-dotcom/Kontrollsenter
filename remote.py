@@ -1565,6 +1565,9 @@ def _handler(remote):
                 import homepcs
                 return self._send(200, {"pcs": homepcs.fetch() or []})
             import features as F
+            if what == "phonecam":                         # mobilkameraet: støtter PC-en det, og sender det nå?
+                import phonecam
+                return self._send(200, {"ok": True, "live": phonecam.live(), "status": phonecam.status()})
             if what == "chatrooms":
                 import chat
                 return self._send(200, {"rooms": [{"id": r, "name": n, "icon": i, "unread": u}
