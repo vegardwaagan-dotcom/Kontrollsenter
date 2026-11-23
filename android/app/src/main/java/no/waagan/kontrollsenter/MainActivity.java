@@ -294,9 +294,32 @@ public class MainActivity extends Activity {
                 == Configuration.UI_MODE_NIGHT_YES;
     }
 
+    /** Liquid Glass / Aero: appen blir gjennomsiktig og viser bakgrunnsbildet bak seg (uskarpt på Android 12+). */
+    boolean glassOn = false;
+    int glassBlur = 0;
+
+    void setGlassWindow(boolean on, int blur) {
+        glassOn = on;
+        glassBlur = Math.max(0, Math.min(150, blur));
+        android.view.Window w = getWindow();
+        if (Build.VERSION.SDK_INT >= 30) setTranslucent(on);   // uskarphet bak krever et gjennomsiktig vindu
+        if (on) {
+            w.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            root.setBackgroundColor(Color.TRANSPARENT);
+            web.setBackgroundColor(Color.TRANSPARENT);
+            if (Build.VERSION.SDK_INT >= 31) w.setBackgroundBlurRadius(glassBlur);
+        } else {
+            w.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
+            if (Build.VERSION.SDK_INT >= 31) w.setBackgroundBlurRadius(0);
+            applyTheme();
+        }
+    }
+
     private void applyTheme() {
         boolean dark = night();
         int bg = dark ? Color.rgb(0x1e, 0x1e, 0x24) : Color.rgb(0xf4, 0xf4, 0xf7);
+        if (glassOn) bg = Color.TRANSPARENT;
         root.setBackgroundColor(bg);
         web.setBackgroundColor(bg);
         if (Build.VERSION.SDK_INT >= 30) {
@@ -763,6 +786,23 @@ public class MainActivity extends Activity {
         public void setLook(String name) {
             if (name == null || !name.matches("[a-z]{1,20}")) return;
             getSharedPreferences("ks", 0).edit().putString("look", name).apply();
+        }
+
+        /** Liquid Glass / Aero-valgene (JSON), felles for startskjermen og alle PC-ene. */
+        @JavascriptInterface
+        public String getAero() {
+            return getSharedPreferences("ks", 0).getString("aero", "");
+        }
+
+        @JavascriptInterface
+        public void setAero(String json) {
+            if (json == null || json.length() > 300) return;
+            getSharedPreferences("ks", 0).edit().putString("aero", json).apply();
+        }
+
+        @JavascriptInterface
+        public void setGlassWindow(boolean on, int blur) {
+            runOnUiThread(() -> MainActivity.this.setGlassWindow(on, blur));
         }
 
         @JavascriptInterface

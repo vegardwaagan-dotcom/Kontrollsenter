@@ -315,19 +315,66 @@ def _install_entry(src):
         shutil.copy2(src, dst)
 
 
-def apply_update(package_files):
+def github_repo(url):
+    """«eier/repo» fra en GitHub-adresse, ellers None."""
+    import re
+    m = re.match(r"https?://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?/?$", (url or "").strip())
+    return f"{m.group(1)}/{m.group(2)}" if m else None
+
+
+def github_latest(repo):
+    """Nyeste utgivelse på GitHub: (versjon, adresse til kildekoden). Krever ikke Git – virker også på Windows."""
+    import json
+    import urllib.request
+    req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases/latest",
+                                 headers={"User-Agent": "Kontrollsenter", "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        j = json.load(r)
+    tag = j.get("tag_name") or ""
+    return tag.lstrip("v"), f"https://api.github.com/repos/{repo}/tarball/{tag}"
+
+
+def github_fetch(repo, package_files):
+    """Lag en fetch-funksjon for apply_update som henter programfilene fra nyeste GitHub-utgivelse."""
+    def fetch(tmp):
+        import fnmatch
+        import urllib.request
+        _ver, url = github_latest(repo)
+        arc = tmp / "github.tar.gz"
+        req = urllib.request.Request(url, headers={"User-Agent": "Kontrollsenter"})
+        with urllib.request.urlopen(req, timeout=60) as r, open(arc, "wb") as f:
+            shutil.copyfileobj(r, f)
+        src = tmp / "src"
+        with tarfile.open(arc) as t:
+            try:
+                t.extractall(src, filter="data")
+            except TypeError:                              # eldre Python uten filter
+                t.extractall(src)
+        top = next(src.iterdir())                          # GitHub pakker alt i én mappe (eier-repo-<id>)
+        if not (top / "VERSION").exists():
+            raise RuntimeError("GitHub-pakken mangler VERSION")
+        prog = tmp / "program"
+        prog.mkdir()
+        for e in top.iterdir():                            # bare programfilene – ikke android/, pakke-windows/ osv.
+            if any(fnmatch.fnmatch(e.name, pat) for pat in package_files):
+                shutil.move(str(e), prog / e.name)
+        return prog
+    return fetch
+
+
+def apply_update(package_files, fetch=None, source="NAS-en"):
     """Last ned, kontroller sjekksum og bytt ut programfilene. Returnerer (ok, melding).
 
     ALT i pakkens programmappe kopieres – ikke bare det denne (eldre) versjonen kjenner til. Ellers mangler
     nye mapper (f.eks. remote_web i 0.7.0) etter en oppdatering fra en gammel versjon."""
     tmp = Path(tempfile.mkdtemp())
     import progress as P
-    pt = P.begin("Oppdaterer Kontrollsenter", "Henter den nye versjonen fra NAS-en")
+    pt = P.begin("Oppdaterer Kontrollsenter", f"Henter den nye versjonen fra {source}")
     pt.set(0.05)
     try:
         try:
-            prog = _fetch_program(tmp)
-        except RuntimeError as e:
+            prog = (fetch or _fetch_program)(tmp)
+        except (RuntimeError, OSError) as e:
             pt.done(str(e), False)
             return False, str(e)
         pt.set(0.6, "Tar vare på versjonen du har nå")

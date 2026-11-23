@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.14", "Glass og Aero på mobilen – og GitHub på Windows", [
+        ("Android-appen", [
+            "«Liquid Glass»-temaet finnes nå også i appen",
+            "Ny innstilling «Liquid Glass og Aero» (Innstillinger → Utseende): gjennomsiktig app i temaets farger "
+            "der bakgrunnsbildet på telefonen skinner gjennom – uskarpt på Android 12+",
+            "Velg gjennomsiktighet, uskarphet og egen farge på glasset – samme valg som på PC-en",
+            "Temaene i appen lages nå automatisk fra PC-en ved hver versjon, så nye temaer alltid kommer til mobilen",
+        ]),
+        ("Windows", [
+            "«Oppdater fra GitHub» virker uten Git – henter nyeste versjon rett fra GitHub, med sikkerhetskopi og "
+            "automatisk tilbakerulling som ved oppdatering fra NAS-en (gjelder også Linux-PC-er uten Git)",
+        ]),
+    ]),
     ("0.99.13", "Oppdater appen fra GitHub", [
         ("Android-appen", [
             "Ny knapp «Oppdater fra GitHub» (pil ned øverst på startsiden, og under Mer → Appen)",

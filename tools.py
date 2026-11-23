@@ -423,6 +423,13 @@ def update_source():
         return DEFAULT_SOURCE
 
 
+def _vkey(v):
+    try:
+        return tuple(int(x) for x in str(v).split("."))
+    except ValueError:
+        return (0,)
+
+
 def update_from_github():
     """«Oppdater fra GitHub»: sjekk GitHub (ikke NAS-en) og oppdater hvis det finnes noe nyere."""
     _SOURCE[0] = "git"
@@ -468,6 +475,16 @@ def check_update():
 def _check_git():
     url = update_source()
     is_git = os.path.isdir(os.path.join(APP_DIR, ".git")) or os.path.isfile(os.path.join(APP_DIR, ".git"))
+    import lanupdate
+    repo = lanupdate.github_repo(url)
+    if repo and not is_git:                                # vanlig installasjon (også Windows): uten Git
+        try:
+            new = lanupdate.github_latest(repo)[0]
+        except Exception as e:  # noqa: BLE001
+            return f"Kunne ikke sjekke GitHub: {e}", False
+        newer = _vkey(new) > _vkey(version())
+        return (f"Versjon {new} er tilgjengelig på GitHub (du har {version()})" if newer
+                else "Du har nyeste versjon"), newer
     if is_git:
         code, remotes = run(["git", "-C", APP_DIR, "remote"], 10)
         if not remotes.strip() and url:
@@ -501,6 +518,11 @@ def do_update():
         import lanupdate
         return lanupdate.apply_update(PACKAGE_FILES)
     url = update_source()
+    import lanupdate
+    repo = lanupdate.github_repo(url)
+    if repo and not os.path.exists(os.path.join(APP_DIR, ".git")):
+        return lanupdate.apply_update(PACKAGE_FILES, fetch=lanupdate.github_fetch(repo, PACKAGE_FILES),
+                                      source="GitHub")
     if os.path.exists(os.path.join(APP_DIR, ".git")):
         code, out = run(["git", "-C", APP_DIR, "pull", "--ff-only", "--quiet"], 300)
         return code == 0, out.strip()

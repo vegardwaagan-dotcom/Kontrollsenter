@@ -64,6 +64,7 @@ function setLook(k) {
   if (typeof applyOwn === "function") applyOwn();
   applyLook();
   drawLooks();
+  if (window.ksAero) window.ksAero.apply();
 }
 function drawLooks() {
   const box = $("#ks-themes"); if (!box || !window.KS_THEMES) return;
