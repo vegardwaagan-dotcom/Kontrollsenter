@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.95.1", "Chat begge veier mellom PC-ene hjemme", [
+        ("Rettet", [
+            "Meldinger til en PC hjemme som også står som venn gikk via vennens Tailscale-navn – på et annet "
+            "Tailscale-nett kom de aldri frem. Nå går de over hjemmenettet først, så Tailscale, så NAS-en",
+            "Meldinger som ligger i kø sendes på samme måte (de kommer frem når Kontrollsenter er startet på nytt)",
+        ]),
+    ]),
     ("0.95.0", "Stabil chat, ring uten server og ryddigere direktemeldinger", [
         ("Tilkobling", [
             "Chatten virker også når fjernstyring fra mobilen er av (tjenesten kjører for chatten, mobilen holdes ute)",

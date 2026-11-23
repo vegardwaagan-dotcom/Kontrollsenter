@@ -270,10 +270,10 @@ def send(room, text, frm=None, notify=None, extra=None):
     elif room.startswith("p:"):
         name = room[2:]
         f = _friend(name)
-        if f:
-            targets.append(("venn", f))
-        elif _home_pc(name):
+        if _home_pc(name):                                  # i huset: hjemmenettet først (virker uten Tailscale)
             targets.append(("hjem", name))
+        elif f:
+            targets.append(("venn", f))
         else:
             raise ValueError("fant ikke mottakeren")
     ok = queued = 0
@@ -289,6 +289,9 @@ def send(room, text, frm=None, notify=None, extra=None):
     return f"Sendt til {ok}" + (f" · {queued} får den når de er på igjen" if queued else "")
 
 
+HOME_PORT = 27100
+
+
 def _home_direct(name, payload):
     """Rett til PC-en hjemme over hjemmenettet (husnøkkelen) – sekunder i stedet for NAS-postkassen."""
     try:
@@ -301,7 +304,7 @@ def _home_direct(name, payload):
         for ip in (pc.get("ips") or [])[:3]:
             try:
                 req = urllib.request.Request(
-                    f"http://{ip}:27100/api/house/chat?fk=" + urllib.parse.quote(key),
+                    f"http://{ip}:{HOME_PORT}/api/house/chat?fk=" + urllib.parse.quote(key),
                     data=json.dumps(payload, ensure_ascii=False).encode(), method="POST",
                     headers={"Content-Type": "application/json", "User-Agent": "Kontrollsenter"})
                 with urllib.request.urlopen(req, timeout=3) as r:
@@ -317,9 +320,32 @@ def _home_direct(name, payload):
 def _deliver(kind, target, payload):
     try:
         if kind == "venn":
-            return bool(_post_friend(target, payload).get("ok"))
+            try:
+                if _post_friend(target, payload, timeout=4).get("ok"):
+                    return True
+            except Exception:  # noqa: BLE001 – Tailscale-adressen svarer ikke: prøv hjemmenettet
+                pass
+            name = target.get("name")
+            if name and _home_pc(name):
+                return _home_direct(name, payload) or _deliver_nas(name, payload)
+            return False
         if _home_direct(target, payload):
             return True
+        f = _friend(target)                                 # ikke på hjemmenettet nå: som venn over Tailscale
+        if f:
+            try:
+                if _post_friend(f, payload, timeout=4).get("ok"):
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
+        return _deliver_nas(target, payload)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _deliver_nas(target, payload):
+    """Reserve: NAS-postkassen (PC-en henter den innen et minutt)."""
+    try:
         import features
         features.nas_send(target, payload["from"], json.dumps({"_chat2": payload}, ensure_ascii=False))
         return True
