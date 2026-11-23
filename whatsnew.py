@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.4", "Av betyr av", [
+        ("Funksjoner", [
+            "Når du tar bort en funksjon, slås den helt av: borte fra menyen, ingen bakgrunnsarbeid, og tjenester og "
+            "autostart Kontrollsenter satte opp for den (OpenRGB, Solaar, TRCC) stoppes og fjernes",
+            "Programmene funksjonen trenger avinstalleres – men bare de Kontrollsenter selv installerte. Programmer "
+            "du hadde fra før får stå, og din egen autostart for dem kommer tilbake",
+            "Oversikt, Historikk og Oppdateringer kan ikke tas bort, så det de trenger blir alltid værende",
+            "Strømming: Sunshine installeres og fjernes sammen med funksjonen, og holdes ikke i gang når den er av",
+            "Chat av: talekanal og webkamera-overlay stoppes",
+        ]),
+    ]),
     ("0.99.3", "Bare det du velger er på", [
         ("Funksjoner", [
             "Nye installasjoner starter med bare Oversikt, Historikk og Oppdateringer – alt annet krysses av i "

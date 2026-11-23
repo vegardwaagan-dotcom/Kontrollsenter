@@ -516,7 +516,7 @@ def _ov_phone():
 def ov_sync():
     """Start overlay-programmet når det er slått på – det viser seg selv bare når det har bilder (talekanal eller
     mobilkamera), eller når det er låst opp for flytting. Ellers stopp det."""
-    want = ov_cfg()["on"] and bool(ov_supported())
+    want = ov_cfg()["on"] and bool(ov_supported()) and __import__("funksjoner").on("chat")
     _ov_hotkey(want)
     if want and not ov_running():
         import shutil as _sh

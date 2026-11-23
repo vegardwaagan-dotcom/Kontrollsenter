@@ -34,6 +34,7 @@ COMPONENTS = [
     ("rustdesk", "RustDesk (fjernhjelp)", {"fjernhjelp"}, "all", None, "app", "rustdesk", 30),
     ("tailscale", "Tailscale (chat og PC-er utenfor huset)", {"chat", "pcer"}, "all", None, "app", "tailscale", 35),
     ("discord", "Discord", {"discord"}, "all", None, "app", "discord", 110),
+    ("sunshine", "Sunshine (strømming til TV og mobil)", {"stromming"}, "all", None, "app", "sunshine", 40),
     ("mangohud", "MangoHud (spill-overlay)", {"spill"}, "linux", None, "pkg",
      {"pacman": "mangohud", "dnf": "mangohud", "apt": "mangohud", "zypper": "mangohud", "cmd": "mangohud"}, 5),
     ("ffmpeg", "FFmpeg (klipp og talemeldinger)", {"spill", "chat"}, "win", None, "winget", "Gyan.FFmpeg", 90),

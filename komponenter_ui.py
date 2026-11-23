@@ -141,34 +141,9 @@ def run_for(win, enabled):
         GLib.idle_add(lambda: (show(p), False)[1])
 
     def show(p):
+        # bare det Kontrollsenter selv installerte fjernes – programmer du hadde fra før får stå (uten spørsmål)
         todo = K.todo_for(p)
-        new_keep = [c for c in p["keep"] if not K.asked(c[0]) and K.removable(c)]
-        if not new_keep:
-            if todo:
-                ProgressDialog(todo, p["keep"]).present(win)
-            return
-        # programmer som fantes før Kontrollsenter: spør én gang om de skal fjernes også (ingen er krysset av)
-        dlg = Adw.AlertDialog(heading=i18n.tr("Fjerne programmer du hadde fra før?"),
-                              body=i18n.tr("Funksjonene som bruker disse er slått av, men programmene var installert "
-                                           "før Kontrollsenter tok over. Kryss av for dem som skal fjernes."))
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        checks = []
-        for c in new_keep:
-            cb = Gtk.CheckButton(label=c[1])
-            box.append(cb)
-            checks.append((cb, c))
-        dlg.set_extra_child(box)
-        dlg.add_response("behold", i18n.tr("Behold alle"))
-        dlg.add_response("ok", i18n.tr("Fortsett"))
-        dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
-
-        def resp(_d, r):
-            K.mark_asked([c[0] for c in new_keep])
-            extra = [("remove", c) for cb, c in checks if r == "ok" and cb.get_active()]
-            keep = [c for c in p["keep"] if not any(c is e[1] for e in extra)]
-            if todo or extra:
-                ProgressDialog(todo + extra, keep).present(win)
-        dlg.connect("response", resp)
-        dlg.present(win)
+        if todo:
+            ProgressDialog(todo, p["keep"]).present(win)
     threading.Thread(target=work, daemon=True).start()
     return True

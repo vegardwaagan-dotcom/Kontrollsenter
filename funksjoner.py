@@ -9,8 +9,12 @@ Uten fila er alt på (slik det alltid har vært).
 """
 import json
 import os
+import sys
 
 CFG = os.path.expanduser("~/.config/systemmonitor/funksjonsvalg.json")
+_REAL_CFG = CFG                                      # tester bytter CFG – da stoppes aldri ekte tjenester
+# autostart Kontrollsenter selv har laget for en funksjon (fjernes og stoppes når funksjonen slås av)
+AUTOSTART_OF = {"utstyr": ["openrgb", "solaar"], "cpuskjerm": ["trcc"]}
 # valget i Windows-installasjonen (veiviseren starter med det, og lagrer så i CFG)
 SETUP = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Kontrollsenter", "funksjonsvalg.json") \
     if os.environ.get("LOCALAPPDATA") else ""
@@ -118,6 +122,7 @@ def save(profile, keys=None):
                 break
     else:
         want = PROFILES[profile][2]
+    before = set(enabled())
     d = {"profile": profile, "off": sorted(set(KEYS) - want)}
     os.makedirs(os.path.dirname(CFG), exist_ok=True)
     tmp = CFG + ".tmp"
@@ -125,7 +130,7 @@ def save(profile, keys=None):
         json.dump(d, f, indent=1)
     os.replace(tmp, CFG)
     _C["v"] = None
-    _stop_disabled()
+    _stop_disabled(before - set(enabled()))
     return cfg()
 
 
@@ -145,11 +150,55 @@ def set_feature(key, on):
     return save("custom", sorted(keys))
 
 
-def _stop_disabled():
-    """Slå av det som går i bakgrunnen for funksjoner som nettopp ble slått av."""
-    if not on("chat"):
+def _undo_autostart(key):
+    """Fjern Kontrollsenter sin autostart for et program, stopp den, og gi tilbake brukerens egen (fra .bak)."""
+    import glob
+    import shutil
+    import subprocess
+    import autostart
+    own = autostart.own_file(key)
+    if os.path.exists(own):
+        unit = os.path.basename(own)[:-len(".desktop")]
+        try:
+            esc = subprocess.run(["systemd-escape", unit], capture_output=True, text=True, timeout=5).stdout.strip()
+            subprocess.run(["systemctl", "--user", "stop", f"app-{esc}@autostart.service"], capture_output=True,
+                           timeout=15)
+        except (OSError, subprocess.SubprocessError):
+            pass
+        os.remove(own)
+    app = next((a for a in autostart.apps() if a[0] == key), None)
+    if app:                                            # brukerens egne oppføringer som Kontrollsenter skjulte
+        for bak in glob.glob(os.path.join(autostart.AUTOSTART, "*.desktop.bak")):
+            orig = bak[:-4]
+            try:
+                txt = open(bak, errors="replace").read()
+            except OSError:
+                continue
+            exec_rx, name_rx = app[5], app[6]
+            import re
+            if (exec_rx and re.search(exec_rx, txt)) or (name_rx and re.search(name_rx, txt)):
+                shutil.move(bak, orig)
+
+
+def _stop_disabled(newly_off=()):
+    """Slå av det funksjonene som nettopp ble slått av gjør i bakgrunnen – og det Kontrollsenter satte opp for
+    dem (tjenester og autostart). Programmer avinstalleres av komponenter.py (bare de Kontrollsenter installerte)."""
+    if CFG != _REAL_CFG or os.environ.get("KS_KOMP_TEST") or os.environ.get("KS_CHAT_TEST"):
+        return
+    newly_off = set(newly_off)
+    if "chat" in newly_off:
         try:
             import chatvc
-            chatvc.leave() if chatvc.current() else None
+            if chatvc.current():
+                chatvc.leave()
+            chatvc.ov_sync()
         except Exception:  # noqa: BLE001
             pass
+    if sys.platform == "win32":
+        return
+    for feat in newly_off:
+        for key in AUTOSTART_OF.get(feat, []):
+            try:
+                _undo_autostart(key)
+            except Exception:  # noqa: BLE001
+                pass

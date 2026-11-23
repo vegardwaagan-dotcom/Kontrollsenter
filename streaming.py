@@ -156,6 +156,8 @@ def sunshine_autostart(on):
 def watchdog():
     """Kalles hvert minutt: hold Sunshine i gang hvis du har valgt det (den kan krasje når en strøm avsluttes)."""
     c = cfg()
+    if not __import__("funksjoner").on("stromming"):           # Strømming er slått av under Funksjoner
+        return False
     if not c["keep_running"] or not sunshine_installed() or sunshine_running():
         return False
     if time.time() - watchdog.__dict__.get("last", 0) < 120:
