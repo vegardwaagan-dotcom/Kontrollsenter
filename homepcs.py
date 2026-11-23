@@ -105,6 +105,11 @@ def status(win):
 
 def _extra():
     out = {}
+    try:                                                   # spill som er installert (23) og Wi-Fi-signal (60)
+        import equipment
+        out.update(equipment.status_fields())
+    except Exception:  # noqa: BLE001
+        pass
     try:                                                   # familiekonkurransen
         import familyfun
         out.update(familyfun.status_fields())

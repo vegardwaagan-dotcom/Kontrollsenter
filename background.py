@@ -563,6 +563,10 @@ class Background:
                     self.flush_held()
             except Exception:  # noqa: BLE001
                 pass
+        if time.time() - getattr(self, "_eq_t", 0) > 15:                         # utstyr+: hodesett, kontrollere …
+            self._eq_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("equipment").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_hp_t", 0) > 60:                         # hjem+: nettverksvakt, fartstest
             self._hp_t = time.time()
             import threading as _th

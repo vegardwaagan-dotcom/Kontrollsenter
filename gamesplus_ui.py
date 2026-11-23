@@ -71,6 +71,18 @@ class GamesPlus(Gtk.Box):
         row.append(self.audio_dd)
         row.append(_btn("Bruk lydprofilen", self._link_audio))
         self.append(row)
+        drow = Gtk.Box(spacing=6)
+        self.dpi = Gtk.SpinButton.new_with_range(0, 25600, 100)
+        self.dpi.set_tooltip_text(i18n.tr("0 = ikke endre"))
+        drow.append(Gtk.Label(label=i18n.tr("Mus-DPI for spillet (Logitech/Solaar)"), xalign=0, hexpand=True))
+        drow.append(self.dpi)
+        drow.append(_btn("Lagre DPI", self._save_dpi))
+        self.append(drow)
+        self.append(_h("📦 Spill på de andre PC-ene"))
+        self.elsewhere = _dim("…")
+        self.append(self.elsewhere)
+        self.append(_btn("Slå på lokale overføringer i Steam", lambda _b: self.msg.set_label(
+            __import__("equipment").open_steam_lan_setting())))
         # 15 – delte profiler
         self.append(_h("📤 Delte spillprofiler (NAS)"))
         self.append(_dim("Startvalg og Proton for et spill – del ditt, eller bruk et som virker godt på en annen PC."))
@@ -135,9 +147,10 @@ class GamesPlus(Gtk.Box):
         def load():
             import avprofiles
             import launcher
+            import equipment
             return (G.who_plays(), G.diary(12), G.house_toplist(), G.startup_suggestions(),
                     avprofiles.cfg().get("audio", []), [g["name"] for g in launcher.all_games()][:60],
-                    G.shared_profiles())
+                    G.shared_profiles(), equipment.games_elsewhere())
         _bg(load, self._show)
         return False
 
@@ -145,7 +158,17 @@ class GamesPlus(Gtk.Box):
         if isinstance(r, Exception):
             self.msg.set_label(f"Feil: {r}")
             return
-        who, diary, top, sugg, audio, games, profs = r
+        who, diary, top, sugg, audio, games, profs, elsewhere = r
+        try:
+            import gamestats
+            names = {aid: gamestats.nice_name(aid, aid) for aid in list(elsewhere)[:12]}
+        except Exception:  # noqa: BLE001
+            names = {}
+        self.elsewhere.set_label(
+            "\n".join(f"{names.get(a, a)} – finnes på {', '.join(p)}" for a, p in list(elsewhere.items())[:12]) +
+            "\n\n" + i18n.tr("Med «lokale overføringer» på henter Steam disse fra PC-en hjemme i stedet for internett – "
+                               "mye raskere.") if elsewhere else
+            i18n.tr("Ingen spill her som mangler – eller de andre PC-ene har ikke delt listen ennå (kommer med 0.81)."))
         self._clear(self.who)
         if not who:
             self.who.append(_dim("Ingen hjemme eller blant vennene spiller akkurat nå."))
@@ -190,6 +213,11 @@ class GamesPlus(Gtk.Box):
             names = sugg
         self.smart.set_label(i18n.tr("Du åpner nesten alltid: ") + ", ".join(names) if names else
                              i18n.tr("Lærer fortsatt hva du pleier å åpne etter innlogging (trenger noen oppstarter)."))
+        try:
+            import equipment
+            self.dpi.set_value(equipment.cfg()["dpi_map"].get(lg or "", 0))
+        except Exception:  # noqa: BLE001
+            pass
         self._games = games
         self.pre_dd.set_model(Gtk.StringList.new([i18n.tr("(velg spill)")] + games))
 
@@ -223,6 +251,20 @@ class GamesPlus(Gtk.Box):
         G.set_(audio_map=m)
         self.msg.set_label(f"{self._target}: " + (i18n.tr("ingen lydprofil") if i == 0 else i18n.tr("lydprofil koblet ✓")))
         self.refresh()
+
+    def _save_dpi(self, *_):
+        import equipment
+        if not self._target:
+            self.msg.set_label(i18n.tr("Spill et spill først"))
+            return
+        m = equipment.cfg()["dpi_map"]
+        v = int(self.dpi.get_value())
+        if v:
+            m[self._target] = v
+        else:
+            m.pop(self._target, None)
+        equipment.set_(dpi_map=m)
+        self.msg.set_label(f"{self._target}: " + (f"{v} DPI når spillet starter ✓" if v else i18n.tr("DPI endres ikke")))
 
     def _share(self, *_):
         def work():

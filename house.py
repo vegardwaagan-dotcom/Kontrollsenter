@@ -386,7 +386,12 @@ def house_sleep_tick(win):
 def tick(win):
     """Fra bakgrunnen hvert minutt (i en tråd)."""
     c = cfg()
-    if c["night_update"]["on"] and night_update_due(c["night_update"]):
+    try:
+        import equipment
+        gaming = equipment.someone_gaming()
+    except Exception:  # noqa: BLE001
+        gaming = None
+    if c["night_update"]["on"] and night_update_due(c["night_update"]) and not gaming:
         key = time.strftime("%Y-%m-%d")
         if _STATE["asked"].get("nightupd") != key:
             _STATE["asked"]["nightupd"] = key

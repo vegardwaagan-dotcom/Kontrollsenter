@@ -396,6 +396,12 @@ def speed_history():
 def speed_tick(win):
     if not cfg()["speedtest"]:
         return
+    try:
+        import equipment
+        if equipment.someone_gaming():                  # 61: ikke ta båndbredden mens noen spiller
+            return
+    except Exception:  # noqa: BLE001
+        pass
     lt = time.localtime()
     try:
         import pricejobs

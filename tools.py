@@ -1799,6 +1799,16 @@ class ToolsPage(TabbedPage, _Cards):
         self.tab("gjenoppretting", "Gjenoppretting")
         self._try(W._restore_card, self, card) if win else self._try(self._restore_card)
         self._try(self._nasbackup_card)
+        self.tab("utstyr", "Utstyr")
+        try:                                              # utstyr+: batteri, Wi-Fi, kontrollere, skjerm …
+            import equipment_ui
+            c, i = card("Utstyr+", "Batterihelse og ladegrense, Wi-Fi-signal, kontrollere, skjermkalibrering og "
+                                   "forrige systemversjon.")
+            i.append(equipment_ui.EquipmentBox())
+            self.box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("utstyr+")
         self.tab("trygghet", "Trygghet og nett")
         try:
             import homeplus_ui

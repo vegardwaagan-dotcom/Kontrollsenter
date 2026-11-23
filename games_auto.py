@@ -332,6 +332,8 @@ def tick(auto):
             assistant.on_game_start(win, g[1])
             import gamesplus
             gamesplus.on_game_start(win, g[1])
+            import equipment
+            equipment.on_game_start(win, g[1])
             import looks
             looks.on_game(g[1])
             win.layout_for_game(True)
@@ -388,6 +390,8 @@ def tick(auto):
             scenes.on_event(win, "game_end", name)
             import gamesplus
             gamesplus.on_game_end(win, name)
+            import equipment
+            equipment.on_game_end(win, name)
             import looks
             looks.on_game(None)
             win.layout_for_game(False)

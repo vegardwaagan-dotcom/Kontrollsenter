@@ -13,6 +13,22 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.81.0", "Utstyr+", [
+        ("Nytt (Vedlikehold → Utstyr)", [
+            "Batterihelse på bærbare (kapasitet mot ny) og ladegrense 80 % der maskinen støtter det",
+            "Wi-Fi-signal med snitt og laveste siste uke",
+            "Kontrollere: batteri (også Xbox-kontrollere på Windows) og varsel når det er lavt",
+            "Skjermkalibrering: testmønstre for svartnivå, hvitnivå og gamma, med lysstyrke",
+            "Gå tilbake til forrige systemversjon med de gamle driverne (Bazzite)",
+            "Lyden følger hodesettet: går dit når det slås på, tilbake når det slås av",
+            "Vent mens noen spiller: oppdateringskvelden, NAS-kopien og fartstesten venter til ingen spiller",
+            "Ukens beste øyeblikk: video av ukas beste klipp søndag kveld, med beskjed til familien",
+        ]),
+        ("Spill+", [
+            "Mus-DPI per spill (Logitech/Solaar) – settes når spillet starter, tilbake etterpå",
+            "Spill på de andre PC-ene: se hvilke spill som finnes hjemme – Steam kan hente dem over hjemmenettet",
+        ]),
+    ]),
     ("0.80.0", "Hjem+: trygghet, mobil og stue", [
         ("Nytt", [
             "🥽 «Klar for VR» med ett trykk (VR-siden, søket og mobilappen): Max Ytelse, sjekk og fiks, start alt",

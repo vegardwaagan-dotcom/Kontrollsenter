@@ -72,7 +72,13 @@ def tick(win, notify=None):
             pass
         try:
             import pctools
-            if pctools.backup_due():
+            gaming = None
+            try:
+                import equipment
+                gaming = equipment.someone_gaming()   # 61: vent med NAS-kopien mens noen spiller
+            except Exception:  # noqa: BLE001
+                pass
+            if pctools.backup_due() and not gaming:
                 r = pctools.backup_run()
                 if notify and r["sent"]:
                     notify("cleanup", "Sikkerhetskopi til NAS-en ✓",
