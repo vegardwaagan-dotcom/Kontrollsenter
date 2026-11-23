@@ -1699,6 +1699,7 @@ class MonitorApp(Adw.Application):
         am.connect("activate", lambda *_: getattr(self, "win", None) and self.win.open_ambient())
         self.add_action(am)
         self.set_accels_for_action("app.ambient", ["F11"])
+        self.set_accels_for_action("app.chat", ["<Control><Shift>c"])      # chatten med én tast
 
     def do_activate(self):
         win = getattr(self, "win", None)

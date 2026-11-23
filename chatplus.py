@@ -308,6 +308,13 @@ def _apply_vote(room, ev, who):
                 break
         chat._save(chat.FILE, d)
     chat._fire(room, {"event": "vote"})
+    try:
+        import chatlink
+        m = next((x for x in chat.messages(room, 300) if x.get("id") == ev.get("mid")), None)
+        if m:
+            threading.Thread(target=chatlink.lobby_check, args=(room, m), daemon=True).start()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def send_event_invite(room, title, when_text, notify=None):

@@ -62,7 +62,7 @@ def _fire(room, msg):
 # --------------------------------------------------------------------------
 def rooms():
     """[(rom-id, visningsnavn, ikon, uleste)]"""
-    out = [("hjemme", "Hjemme", "🏠"), ("alle", "Alle (hjemme + venner)", "🌍")]
+    out = [("hjemme", "Hjemme", "🏠"), ("alle", "Alle (hjemme + venner)", "🌍"), ("meg", "Meg (notater og lenker)", "📌")]
     seen = set()
     try:
         import homepcs
@@ -190,6 +190,8 @@ def send(room, text, frm=None, notify=None, extra=None):
     msg = {"id": f"{me}-{time.time_ns()}", "t": time.time(), "from": frm, "pc": me, "text": text, "room": room}
     _store(room, msg)
     _fire(room, msg)
+    if room == "meg":                                     # bare her (og mobilappen din)
+        return "Lagret i Meg"
     targets = []                                            # (type, mål)
     if room == "alle":
         try:
@@ -299,6 +301,9 @@ def receive_friend(payload, src_ip, notify=None):
         next((x for x in friends.cfg()["friends"] if ip_of(x.get("addr", "")) == src_ip), None)
     if not f:
         raise PermissionError("du står ikke i vennelista til denne PC-en")
+    import chatlink
+    if chatlink.blocked(f["name"]):
+        return True
     room = payload.get("room") or "alle"
     if room.startswith("p:"):
         room = f"p:{f['name']}"                           # privat: rommet heter det JEG kaller vennen
@@ -355,13 +360,21 @@ def receive_home(payload, notify=None):
 
 def _alert(room, msg, notify):
     _fire(room, msg)
+    quiet = False
     try:
         import chatplus
+        import chatlink
         import remote
-        chatplus.autoreply(room, msg, getattr(remote, "win", None))
-        chatplus.play_notify_sound(msg.get("from"))
+        w = getattr(remote, "win", None)
+        chatplus.autoreply(room, msg, w)
+        chatlink.on_incoming(room, msg, w)
+        quiet = chatlink.quiet_now() and msg.get("kind") != "ring" and "🆘" not in str(msg.get("text", ""))
+        if not quiet:
+            chatplus.play_notify_sound(msg.get("from"))
     except Exception:  # noqa: BLE001
         pass
+    if quiet:
+        notify = None                                       # stille timer: ingen varsel etter leggetid
     try:
         import remote_extra
         remote_extra.event("chat", f"💬 {msg['from']}", msg["text"], "info")

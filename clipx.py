@@ -196,6 +196,17 @@ def confirm(name):
 
 def after_save(path):
     threading.Thread(target=housekeeping, daemon=True).start()
+
+    def share():                                           # høydepunkter rett i en chat-kanal (om valgt)
+        time.sleep(2)
+        try:
+            m = read_meta(path)
+            if m.get("kind") in ("highlight", "boss"):
+                import chatlink
+                chatlink.post_highlight(path, m.get("label") or m.get("game") or "Høydepunkt")
+        except Exception:  # noqa: BLE001
+            pass
+    threading.Thread(target=share, daemon=True).start()
     if C().load_cfg().get("share_nas"):
         threading.Thread(target=lambda: nas_upload(path), daemon=True).start()
 

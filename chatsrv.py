@@ -500,8 +500,11 @@ def receive(payload, src_ip, notify=None):
         if not channel(srv, ch):
             return True                                    # kanalen er slettet
         import chat
-        msg = {k: payload.get(k) for k in ("id", "t", "from", "text", "reply", "attach", "kind", "poll", "event")
-               if payload.get(k) is not None}
+        import chatlink
+        if chatlink.blocked(sender["name"]) or chatlink.blocked(sender["id"]):
+            return True                                   # blokkert: forkast stille
+        msg = {k: payload.get(k) for k in ("id", "t", "from", "text", "reply", "attach", "kind", "poll", "event",
+                                           "play", "setup", "screen") if payload.get(k) is not None}
         if msg.get("attach"):                              # vedlegg: lagre fila, behold bare beskrivelsen
             import chatplus
             msg["attach"] = chatplus.receive_attach(msg["attach"])
@@ -515,6 +518,10 @@ def receive(payload, src_ip, notify=None):
         msg["room"] = room
         if chat._store(room, msg):
             chat._alert(room, msg, notify if not muted(room) else None)
+        return True
+    if t == "presence":
+        import chatlink
+        chatlink.on_presence(sender, payload)
         return True
     if t in ("read", "typing"):
         import chatplus

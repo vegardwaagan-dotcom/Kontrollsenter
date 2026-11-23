@@ -13,6 +13,25 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.85.0", "Chatten kobles til resten", [
+        ("Nytt i chatten", [
+            "Status ved navnet: 🟢 på, 🎮 spiller …, ⚫ av – og avatar og status i profilen",
+            "«Spill sammen»-kort med «Bli med», lobby som sier fra når alle er klare, oppgaver med «Gjort», "
+            "middagsavstemning og 🔔 Ring (ringer til den andre svarer)",
+            "Hurtigsvar (Kommer!, 5 min til, Lagrer nå …) og 🆘 Hjelp / 🍕 Sulten",
+            "Private meldinger og @omtaler vises inni spillet – og kan leses høyt",
+            "@pc i chatten: «@pc hvor varm er du?», «@pc hvem spiller», «@pc hvor er alle» (bare spørsmål – ingen "
+            "styring fra chatten)",
+            "Del PC-status, del spilloppsettet ditt («Bruk»), «Vis skjermen min» (Se på) og be om hjelp",
+            "🛒 Felles handleliste: skriv «+melk» i chatten",
+            "Høydepunkter og ukens toppliste postes automatisk i kanalen du velger, og (valgfritt) når noen starter "
+            "et spill",
+            "Barnefilter, stille timer etter leggetid, blokkering, foreldrerapport (navn, ikke innhold), og en voksen "
+            "må godkjenne nye servere på barnas PC-er",
+            "Lim inn bilder (Ctrl+V), lenker med tittel, festede samtaler, egen lyd per person, rommet «Meg», "
+            "QR-vennekode og Ctrl+Shift+C for chatten",
+        ]),
+    ]),
     ("0.84.0", "Chat+: bilder, tale, avstemninger og mer", [
         ("Nytt i serverkanalene", [
             "📎 Bilder og filer (opptil 8 MB) rett i chatten – klipp deles som lenke og strømmes fra PC-en som har dem",

@@ -334,6 +334,8 @@ def tick(auto):
             gamesplus.on_game_start(win, g[1])
             import equipment
             equipment.on_game_start(win, g[1])
+            import chatlink
+            chatlink.announce_game(g[1])
             import looks
             looks.on_game(g[1])
             win.layout_for_game(True)
