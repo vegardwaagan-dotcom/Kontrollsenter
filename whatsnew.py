@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.82.0", "Chat for alle", [
+        ("Nytt", [
+            "💬 Chat i sidemenyen (under Hjemmet): chat med alle som har Kontrollsenter – «Hjemme» (familie-chatten), "
+            "«Alle» (hjemme + vennene dine) og privat med hver PC og hver venn",
+            "Vennene utenfor huset får meldingene direkte over Tailscale – bare de som står i vennelista di kan "
+            "skrive til deg",
+            "Er noen av, venter meldingen og sendes når de er på igjen (i opptil 3 døgn)",
+            "Varsel ved ny melding (trykk for å åpne chatten), og antall uleste per samtale",
+            "Mobilappen: velg «Alle» eller en privat samtale i chatten under Familie",
+        ]),
+    ]),
     ("0.81.0", "Utstyr+", [
         ("Nytt (Vedlikehold → Utstyr)", [
             "Batterihelse på bærbare (kapasitet mot ny) og ladegrense 80 % der maskinen støtter det",

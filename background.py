@@ -148,6 +148,10 @@ class Background:
         act = Gio.SimpleAction.new("syscheck", None)
         act.connect("activate", lambda *_: (self.show(), win._open_syscheck()))
         app.add_action(act)
+        act = Gio.SimpleAction.new("chat", None)
+        act.connect("activate", lambda *_: (self.show(), win.stack.set_visible_child_name("chat")
+                                            if "chat" in getattr(win, "_lazy", {}) else None))
+        app.add_action(act)
         act = Gio.SimpleAction.new("assistant", None)
         act.connect("activate", lambda *_: (self.show(), __import__("assistant_ui").open_dialog(win)))
         app.add_action(act)
@@ -563,6 +567,10 @@ class Background:
                     self.flush_held()
             except Exception:  # noqa: BLE001
                 pass
+        if time.time() - getattr(self, "_chatq_t", 0) > 60:                      # chat: send det som ligger i kø
+            self._chatq_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("chat").retry_outbox(), daemon=True).start()
         if time.time() - getattr(self, "_eq_t", 0) > 15:                         # utstyr+: hodesett, kontrollere …
             self._eq_t = time.time()
             import threading as _th

@@ -142,8 +142,11 @@ async function loadFamily() {
     $$("[data-join]").forEach((b) => (b.onclick = () => act({ a: "game", appid: b.dataset.join })));
     $$("[data-watch]").forEach((b) => (b.onclick = () => openWatch(b.dataset.watch, b.dataset.game)));
     const cur = $("#chat-to").value;
-    $("#chat-to").innerHTML = `<option value="">Til denne PC-en</option><option value="*">Til alle PC-ene</option>` +
-      f.pcs.filter((p) => p.name && p.name !== pcName).map((p) => `<option>${esc(p.name)}</option>`).join("");
+    let rooms = [];
+    try { rooms = (await X("chatrooms")).rooms || []; } catch (e) {}
+    $("#chat-to").innerHTML = `<option value="">Til denne PC-en</option><option value="*">🏠 Til alle PC-ene hjemme</option>` +
+      f.pcs.filter((p) => p.name && p.name !== pcName).map((p) => `<option>${esc(p.name)}</option>`).join("") +
+      rooms.filter((x) => x.id !== "hjemme").map((x) => `<option value="room:${esc(x.id)}">${esc(x.icon)} ${x.id === "alle" ? "Alle (hjemme + venner)" : "Privat: " + esc(x.name)}${x.unread ? " (" + x.unread + ")" : ""}</option>`).join("");
     $("#chat-to").value = cur;
     $("#fam-rank").innerHTML = Object.entries(f.ranking).filter(([, v]) => v.length).map(([k, v]) =>
       `<div><div class="label">${esc(k)}</div>${v.slice(0, 4).map(([n, x], i) => `<div>${["🥇", "🥈", "🥉", ""][i] || ""} ${esc(n)} <span class="dim">${esc(x)}</span></div>`).join("")}</div>`).join("");
@@ -159,7 +162,8 @@ async function loadFamily() {
 }
 async function loadChat() {
   try {
-    const m = (await X("chat")).messages;
+    const to = $("#chat-to").value || "";
+    const m = to.startsWith("room:") ? (await X("chatroom", "room=" + encodeURIComponent(to.slice(5)))).messages : (await X("chat")).messages;
     $("#chat").innerHTML = m.slice(-30).map((x) => `<div class="ev${x.urgent ? " warn" : ""}"><b>${esc(x.from)}</b> ${esc(x.text)} <span class="dim small">${hhmm(x.t)}</span></div>`).join("") || `<p class="dim small">Ingen meldinger ennå.</p>`;
     $("#chat").scrollTop = 1e6;
   } catch (e) {}
@@ -175,7 +179,9 @@ async function flushChat() {
   const q = chatQueue; chatQueue = []; setPref("chatq", []);
   for (const b of q) await sendChat(b);
 }
-$("#chat-send").onclick = () => { const t = $("#chat-text").value.trim(); if (t) { sendChat({ a: "chat", text: t, to: $("#chat-to").value || undefined }); $("#chat-text").value = ""; } };
+$("#chat-send").onclick = () => { const t = $("#chat-text").value.trim(); if (!t) return; const to = $("#chat-to").value || "";
+  sendChat(to.startsWith("room:") ? { a: "chat2", room: to.slice(5), text: t } : { a: "chat", text: t, to: to || undefined }); $("#chat-text").value = ""; };
+$("#chat-to").onchange = () => loadChat();
 $("#chat-text").onkeydown = (e) => e.key === "Enter" && $("#chat-send").onclick();
 $("#dinner").onclick = () => sendChat({ a: "dinner", to: $("#chat-to").value || "*" });
 $$("#bonus button").forEach((b) => (b.onclick = () => act({ a: "bonus", minutes: +b.dataset.m })));

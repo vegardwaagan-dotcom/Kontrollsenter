@@ -601,6 +601,9 @@ def _feature_action(win, kind, a):
     if kind == "chat":
         F.send_to(a.get("to"), a.get("_dev") or "Mobil", a.get("text"), _notify(win), urgent=bool(a.get("urgent")))
         return True, "Sendt"
+    if kind == "chat2":                                  # chat for alle: hjemme, alle, privat
+        import chat
+        return True, chat.send(str(a.get("room") or "alle"), a.get("text"), a.get("_dev") or None, _notify(win))
     if kind == "dinner":
         F.send_to(a.get("to") or "*", a.get("_dev") or "Mobil", a.get("text") or "🍽️ Middag! Kom og spis.",
                   _notify(win), urgent=True)
@@ -942,7 +945,7 @@ WEB_TYPES = {".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js
              ".apk": "application/vnd.android.package-archive"}
 
 
-LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "uilog",
+LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "chat2", "uilog",
               "goal_req", "shop_req"}   # «begrenset» tilgang
 
 
@@ -1287,6 +1290,19 @@ def _handler(remote):
                         return self._send(403, {"error": msg})
                     import savegames
                     return self._send(200, {"token": token, "name": savegames.pc_name()})
+                if p == "/api/friend/chat":                 # chat fra en venn (vennekoden + må stå i vennelista)
+                    import friends
+                    import chat
+                    if not friends.check_key((parse_qs(urlparse(self.path).query).get("k") or [""])[0]):
+                        return self._send(403, {"error": "feil vennekode eller deling er av"})
+                    ip = self.client_address[0]
+                    if ip.startswith("::ffff:"):
+                        ip = ip[7:]
+                    try:
+                        chat.receive_friend(body, ip, _notify(remote.win))
+                        return self._send(200, {"ok": True})
+                    except PermissionError as e:
+                        return self._send(403, {"error": str(e)})
                 if p == "/api/house/setup":                 # 14: oppsett fra en annen PC i huset (husnøkkel)
                     import watch as W
                     if not W.check_house_key((parse_qs(urlparse(self.path).query).get("fk") or [""])[0]):
@@ -1463,6 +1479,15 @@ def _handler(remote):
                 import homepcs
                 return self._send(200, {"pcs": homepcs.fetch() or []})
             import features as F
+            if what == "chatrooms":
+                import chat
+                return self._send(200, {"rooms": [{"id": r, "name": n, "icon": i, "unread": u}
+                                                  for r, n, i, u in chat.rooms()]})
+            if what == "chatroom":
+                import chat
+                room = arg("room", "alle")
+                chat.mark_read(room)
+                return self._send(200, {"room": room, "messages": chat.messages(room, 80)})
             simple = {"chat": lambda: {"messages": F.chat_list()}, "family": F.family,
                       "perf": lambda: {"games": F.perf_per_game(), "driver": F.driver_info()},
                       "startup": lambda: {"items": F.startup_list()}, "lan": lambda: {"devices": F.lan_devices()},

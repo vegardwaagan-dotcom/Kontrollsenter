@@ -282,7 +282,7 @@ def nas_send(target, frm, text, urgent=False):
     try:
         f = os.path.join(d, f"{_safe(target)}__{int(time.time() * 1000)}.json")
         with open(f, "w", encoding="utf-8") as fh:
-            json.dump({"from": str(frm)[:40], "text": str(text)[:500], "urgent": bool(urgent), "t": time.time()}, fh,
+            json.dump({"from": str(frm)[:40], "text": str(text)[:2000], "urgent": bool(urgent), "t": time.time()}, fh,
                       ensure_ascii=False)
         _h, _s, folder = L._split()
         L.smb_mkdir(f"{folder}/Meldinger")
@@ -319,7 +319,12 @@ def mailbox_tick(notify):
                 L._smb(f'cd "Meldinger"; get "{n}" "{d}/m.json"; del "{n}"', 60)
                 with open(f"{d}/m.json", encoding="utf-8") as fh:
                     m = json.load(fh)
-                chat_send(m.get("from", "?"), m.get("text", ""), notify, bool(m.get("urgent")))
+                txt = m.get("text", "")
+                if txt.startswith('{"_chat2"'):                 # «Alle»/privat-chat fra en PC hjemme
+                    import chat
+                    chat.receive_home(json.loads(txt)["_chat2"], notify)
+                    continue
+                chat_send(m.get("from", "?"), txt, notify, bool(m.get("urgent")))
             except Exception:  # noqa: BLE001
                 continue
     finally:
