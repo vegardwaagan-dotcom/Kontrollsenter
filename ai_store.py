@@ -206,10 +206,25 @@ def conversations():
             with open(os.path.join(d, n), encoding="utf-8") as f:
                 c = json.load(f)
             out.append({"id": c["id"], "title": c.get("title") or "Ny samtale", "tool": c.get("tool", "claude"),
-                        "updated": c.get("updated", 0), "count": len(c.get("messages", []))})
+                        "updated": c.get("updated", 0), "count": len(c.get("messages", [])),
+                        "pinned": bool(c.get("pinned")), "emoji": c.get("emoji") or ""})
         except (OSError, ValueError, KeyError):
             continue
-    return sorted(out, key=lambda c: -c["updated"])
+    return sorted(out, key=lambda c: (not c["pinned"], -c["updated"]))       # festede øverst
+
+
+def set_meta(cid, **kw):
+    """Fest / emoji på en samtale (uten å endre «sist brukt»)."""
+    c = load(cid)
+    if not c:
+        return
+    c.update({k: v for k, v in kw.items() if k in ("pinned", "emoji")})
+    p = _path(cid)
+    with _LOCK:
+        with open(p + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(c, f, ensure_ascii=False, indent=1)
+        os.replace(p + ".tmp", p)
+    threading.Thread(target=push, args=([p],), daemon=True).start()
 
 
 def new(tool):

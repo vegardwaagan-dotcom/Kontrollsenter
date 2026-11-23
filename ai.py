@@ -34,6 +34,9 @@ TOOLS = {
                "win_install": "npm install -g @google/gemini-cli",
                "auth": [f"{HOME}/.gemini/oauth_creds.json", f"{HOME}/.gemini/google_accounts.json"],
                "env_auth": ["GEMINI_API_KEY", "GOOGLE_API_KEY"]},
+    "lokal": {"name": "Lokal AI (Ollama)", "by": "på din PC – uten nett", "icon": "lokal-ai.svg",
+              "script": "script:ollama", "bins": [f"{HOME}/.local/bin/ollama", "ollama"], "login_cmd": None,
+              "update_cmd": None, "win_install": "winget install -e --id Ollama.Ollama", "auth": []},
 }
 _VER = {}
 
@@ -65,6 +68,9 @@ def set_(**kw):
 
 
 def binary(tool):
+    if tool == "lokal":
+        import ai_local
+        return ai_local.binary()
     for b in TOOLS[tool]["bins"]:
         p = b if os.path.isabs(b) else shutil.which(b, path=PATH)
         if p and os.path.isfile(p) and os.access(p, os.X_OK):
@@ -92,6 +98,8 @@ def version(tool, force=False):
 
 
 def logged_in(tool):
+    if tool == "lokal":                                    # ingen innlogging – alltid «klar» når den er installert
+        return True
     t = TOOLS[tool]
     return any(os.path.exists(p) for p in t["auth"]) or any(os.environ.get(k) for k in t.get("env_auth", []))
 
@@ -131,6 +139,8 @@ def open_terminal(tool, folder=None):
 
 
 def login(tool):
+    if tool == "lokal":
+        return "Lokal AI trenger ingen innlogging"
     _terminal(TOOLS[tool]["login_cmd"])
     return "Logg inn i terminalvinduet – kom tilbake hit når du er ferdig"
 
@@ -196,6 +206,90 @@ endre noe, gjør det med ks og si hva du endret og hvor det kan endres tilbake. 
 eller sletter noe. Ikke vis nøkler eller passord."""
 
 
+SYSTEM += """
+Mer du kan:
+  ks logg                         feilmeldinger fra Kontrollsenter og systemet (bruk når noe krasjer eller feiler)
+  ks pcer                         de andre PC-ene hjemme og vennene (status, temperatur, versjon)
+  ks wow                          World of Warcraft-dataene fra tillegget (karakterer, gull, quests, låser)
+  ks regler / ks regel ny … / ks regel slett <id>   automatiske oppgaver, f.eks.
+      ks regel ny hvis=gpu_temp over=85 spill=ja gjør=varsel tekst="GPU-en er varm"
+      ks regel ny når="søn 12:00" gjør=handling handling=clean
+    (hvis: cpu_temp, gpu_temp, cpu_load, gpu_load, watt · gjør: varsel eller handling=<ks-handling> med parametre)
+Endringer (ks gjør / ks sett / ks systemsjekk / ks regel) kan kreve at brukeren godtar dem – sier brukeren nei, får
+du «Brukeren sa nei»: ikke prøv igjen, foreslå heller noe annet."""
+
+PERSONAS = {
+    "standard": ("Standard", "✨", ""),
+    "kort": ("Kort og teknisk", "⚡", "Svar så kort som mulig, gjerne punktvis, med tekniske detaljer og tall."),
+    "rolig": ("Forklarende og rolig", "🧘", "Forklar steg for steg i et rolig, enkelt språk – som til en som "
+                                         "ikke kan så mye om PC-er. Ingen faguttrykk uten forklaring."),
+    "morsom": ("Morsom", "😄", "Vær leken og morsom med litt humor og emojier – men fortsatt riktig og nyttig."),
+}
+
+# hvordan svarene ser ut: farge og ikon per assistent
+TOOL_COLOR = {"claude": "#d97757", "codex": "#10a37f", "gemini": "#4285f4", "lokal": "#a970ff"}
+
+
+def describe_tool(name, inp):
+    """Én kort linje om hva assistenten gjorde («🌡️ Leste temperaturene»)."""
+    inp = inp if isinstance(inp, dict) else {}
+    cmd = str(inp.get("command") or inp.get("cmd") or "")
+    if name in ("Bash", "run_shell_command", "shell", "command_execution", "exec_command") or cmd:
+        c = cmd.strip()
+        for pre in ("bash -lc ", "sh -c "):
+            if c.startswith(pre):
+                c = c[len(pre):].strip("'\"")
+        if c.startswith("ks "):
+            parts = c.split()
+            sub = parts[1] if len(parts) > 1 else ""
+            rest = " ".join(parts[2:])
+            return {"status": "🌡️ Leste temperaturer, last og vifter", "temp": "🌡️ Leste temperaturene",
+                    "finn": f"🔎 Søkte etter «{rest}» i appen", "vis": "👉 Viste deg hvor det ligger",
+                    "side": f"📄 Åpnet siden {rest}", "sider": "📄 Så på sidene i appen",
+                    "handlinger": "📋 Så hva appen kan gjøre", "gjør": f"⚙️ Handling: {rest}",
+                    "gjor": f"⚙️ Handling: {rest}", "innstillinger": "🗂️ Så på innstillingsfilene",
+                    "les": f"🗂️ Leste {rest}", "sett": f"✏️ Innstilling: {rest}",
+                    "diagnose": "🩺 Undersøkte hvorfor PC-en er treg", "systemsjekk": "🛠️ Kjørte systemsjekken",
+                    "logg": "📜 Leste feilloggene", "pcer": "🖥️ Sjekket de andre PC-ene",
+                    "wow": "🐉 Leste WoW-dataene", "regler": "🤖 Så på de automatiske oppgavene",
+                    "regel": f"🤖 Automatisk oppgave: {rest}"}.get(sub, f"💻 ks {sub} {rest}".strip())[:90]
+        return f"💻 Kjørte: {c[:70]}"
+    path = str(inp.get("file_path") or inp.get("path") or inp.get("absolute_path") or "")
+    base = os.path.basename(path) if path else ""
+    if name in ("Read", "read_file", "read_many_files"):
+        return f"📄 Leste {base or 'en fil'}"
+    if name in ("Edit", "Write", "MultiEdit", "write_file", "replace", "file_change"):
+        return f"✏️ Endret {base or 'en fil'}"
+    if name in ("Grep", "Glob", "search_file_content", "glob", "list_directory", "LS"):
+        return "🔎 Søkte i filene"
+    if name in ("WebFetch", "WebSearch", "web_fetch", "google_web_search", "web_search"):
+        return "🌐 Søkte på nettet"
+    return f"🔧 {name}"[:60]
+
+
+QUOTA_F = os.path.expanduser("~/.cache/systemmonitor/ai-kvote.json")
+
+
+def quota():
+    """Siste kjente bruk per assistent: {"claude": {"five_hour": 0.84, "seven_day": 0.5, "t": …}, …}"""
+    try:
+        with open(QUOTA_F) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_quota(tool, info):
+    q = quota()
+    q[tool] = {**q.get(tool, {}), **info, "t": time.time()}
+    try:
+        os.makedirs(os.path.dirname(QUOTA_F), exist_ok=True)
+        with open(QUOTA_F, "w") as f:
+            json.dump(q, f)
+    except OSError:
+        pass
+
+
 def ks_bin():
     """Lag «ks» i en egen mappe som legges først i PATH for assistentene."""
     os.makedirs(BIN, exist_ok=True)
@@ -219,9 +313,16 @@ def ks_bin():
 # --------------------------------------------------------------------------
 # «Spør» – uten terminal, svaret strømmes inn
 # --------------------------------------------------------------------------
-def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None, history="", control=True):
+def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None, history="", control=True,
+        images=None, on_event=None, persona=None):
     """Start en forespørsel. history: det som er sagt før i samtalen (så assistenten husker). control: gi tilgang
-    til Kontrollsenter med «ks». Returnerer prosessen (kan stoppes med .terminate())."""
+    til Kontrollsenter med «ks». images: bildefiler brukeren la ved. on_event(kind, data): «tool» (tekstlinje om hva
+    assistenten gjorde) og «quota» (bruk). Svaret strømmes inn ord for ord via on_text.
+    Returnerer prosessen (kan stoppes med .terminate())."""
+    if tool == "lokal":
+        import ai_local
+        return ai_local.ask(prompt, history=history, on_text=on_text, on_done=on_done, images=images,
+                            persona=persona, control=control)
     b = binary(tool)
     if not b:
         raise RuntimeError(f"{TOOLS[tool]['name']} er ikke installert")
@@ -230,17 +331,26 @@ def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None,
         raise ValueError("skriv et spørsmål")
     folder = folder if folder and os.path.isdir(folder) else HOME
     rules = SYSTEM if control else ""
+    pz = PERSONAS.get(persona or cfg().get("persona", "standard"), PERSONAS["standard"])[2]
+    if pz:
+        rules += "\nStil: " + pz
     if not allow_edit:
         rules += "\nIkke opprett eller endre filer i mappa (brukeren har ikke slått på «Kan endre filer»)."
+    images = [p for p in (images or []) if os.path.isfile(p)]
+    if images and tool != "codex":
+        prompt += "\n\nBrukeren la ved bilde(r) – se på dem: " + " ".join(
+            ("@" + p) if tool == "gemini" else p for p in images)
     asked = (f"Tidligere i samtalen:\n{history}\n\nNytt fra brukeren:\n{prompt}" if history else prompt)
     if tool == "claude":
-        cmd = [b, "-p", asked, "--output-format", "text", "--append-system-prompt", rules]
-        if control:
-            cmd += ["--allowedTools", "Bash(ks:*)", "Bash(ks *)"]
+        cmd = [b, "-p", asked, "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+               "--append-system-prompt", rules]
+        allowed = (["Bash(ks:*)", "Bash(ks *)"] if control else []) + (["Read"] if images else [])
+        if allowed:
+            cmd += ["--allowedTools", *allowed]
         if allow_edit:
             cmd += ["--permission-mode", "acceptEdits"]
     elif tool == "gemini":
-        cmd = [b, "-p", f"{rules}\n\n{asked}"]
+        cmd = [b, "-p", f"{rules}\n\n{asked}", "-o", "stream-json"]
         if allow_edit:
             cmd += ["--approval-mode", "auto_edit"]
         if control:
@@ -248,9 +358,11 @@ def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None,
     else:
         # ks snakker med appen over 127.0.0.1 – det krever nettilgang i Codex sin sandkasse
         sandbox = "workspace-write" if (allow_edit or control) else "read-only"
-        cmd = [b, "exec", "--skip-git-repo-check", "--sandbox", sandbox]
+        cmd = [b, "exec", "--skip-git-repo-check", "--sandbox", sandbox, "--json"]
         if control:
             cmd += ["-c", "sandbox_workspace_write.network_access=true"]
+        for im in images:
+            cmd += ["-i", im]
         cmd += [f"{rules}\n\n{asked}"]
     kw = {"creationflags": 0x08000000} if IS_WIN else {"start_new_session": True}
     env = {**os.environ, "PATH": (ks_bin() + os.pathsep if control else "") + PATH, "NO_COLOR": "1"}
@@ -262,13 +374,88 @@ def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None,
     p = subprocess.Popen(cmd, cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                          env=env, **kw)
 
+    def ev(kind, data):
+        if on_event:
+            try:
+                on_event(kind, data)
+            except Exception:  # noqa: BLE001
+                pass
+
+    def text(t):
+        if on_text and t:
+            on_text(t)
+
     def pump():
-        while True:
-            ch = p.stdout.read1(2048) if hasattr(p.stdout, "read1") else p.stdout.read(2048)
-            if not ch:
-                break
-            if on_text:
-                on_text(ch.decode("utf-8", "replace"))
+        got = {"delta": False, "final": None, "tools": set()}
+        for raw in iter(p.stdout.readline, b""):
+            line = raw.decode("utf-8", "replace").strip()
+            if not line:
+                continue
+            try:
+                j = json.loads(line)
+            except ValueError:
+                if not line.startswith(("Reading additional input", "Loaded cached")):
+                    text(line + "\n")                      # feilmelding o.l. i ren tekst
+                continue
+            if not isinstance(j, dict):
+                continue
+            t = j.get("type")
+            if tool == "claude":
+                if t == "stream_event":
+                    e = j.get("event") or {}
+                    d = e.get("delta") or {}
+                    if e.get("type") == "content_block_delta" and d.get("type") == "text_delta":
+                        got["delta"] = True
+                        text(d.get("text", ""))
+                    elif e.get("type") == "content_block_start" and got["delta"]:
+                        text("\n\n")                       # ny tekstblokk etter et verktøy
+                elif t == "assistant":
+                    for c in (j.get("message") or {}).get("content") or []:
+                        if c.get("type") == "tool_use" and c.get("id") not in got["tools"]:
+                            got["tools"].add(c.get("id"))
+                            ev("tool", describe_tool(c.get("name"), c.get("input")))
+                elif t == "rate_limit_event":
+                    info = j.get("rate_limit_info") or {}
+                    w = info.get("unifiedWindows") or {}
+                    q = {k: (w.get(k) or {}).get("utilization") for k in ("five_hour", "seven_day")}
+                    q["resets"] = {k: (w.get(k) or {}).get("resetsAt") for k in ("five_hour", "seven_day")}
+                    _save_quota(tool, q)
+                    ev("quota", q)
+                elif t == "result":
+                    got["final"] = j.get("result")
+                    if j.get("is_error") and not got["delta"]:
+                        text(str(j.get("result") or "Noe gikk galt"))
+            elif tool == "codex":
+                it = j.get("item") or {}
+                if t in ("item.started", "item.completed") and it.get("type") == "command_execution" and \
+                        it.get("id") not in got["tools"]:
+                    got["tools"].add(it.get("id"))
+                    ev("tool", describe_tool("command_execution", {"command": it.get("command")}))
+                elif t == "item.completed" and it.get("type") == "file_change":
+                    for ch in it.get("changes") or [{}]:
+                        ev("tool", describe_tool("file_change", {"path": ch.get("path")}))
+                elif t == "item.completed" and it.get("type") == "agent_message":
+                    text(("\n\n" if got["delta"] else "") + str(it.get("text") or ""))
+                    got["delta"] = True
+                elif t == "turn.completed":
+                    u = j.get("usage") or {}
+                    _save_quota(tool, {"tokens": u.get("input_tokens", 0) + u.get("output_tokens", 0)})
+                elif t in ("error", "turn.failed"):
+                    text("✗ " + str(j.get("message") or (j.get("error") or {}).get("message") or "feil"))
+            else:                                           # gemini
+                if t == "message" and j.get("role") == "assistant":
+                    got["delta"] = True
+                    text(str(j.get("content") or ""))
+                elif t == "tool_use":
+                    ev("tool", describe_tool(j.get("tool_name"), j.get("parameters")))
+                elif t == "result":
+                    st = j.get("stats") or {}
+                    if st.get("total_tokens"):
+                        _save_quota(tool, {"tokens": st["total_tokens"]})
+                elif t == "error":
+                    text("✗ " + str(j.get("message") or "feil"))
+        if not got["delta"] and got["final"]:
+            text(str(got["final"]))
         code = p.wait()
         if on_done:
             on_done(code)

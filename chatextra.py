@@ -251,6 +251,7 @@ COMMANDS = [
     ("/skjerm", "", "Del skjermen din"),
     ("/status", "tekst", "Sett statusmeldingen din (tom = fjern)"),
     ("/stille", "[timer]", "Ikke forstyrr (0 = av)"),
+    ("@ai", "spørsmål", "AI-en din svarer i chatten (Claude, Codex, Gemini eller lokal)"),
     ("/hjelp", "", "Vis alle kommandoene"),
 ]
 

@@ -594,6 +594,20 @@ class Background:
             import threading as _th
             if __import__("funksjoner").on("chat"):
                 _th.Thread(target=lambda: __import__("chatplus").tick(self.win), daemon=True).start()
+        if time.time() - getattr(self, "_aiday_t", 0) > 600 and __import__("funksjoner").on("ai"):
+            self._aiday_t = time.time()                                          # morgenrapport + hurtigtast
+            try:
+                import aiextra
+                aiextra.daily_tick(self.win, self.notify)
+                aiextra.hotkey_setup(self.win)
+            except Exception:  # noqa: BLE001
+                pass
+        if time.time() - getattr(self, "_airule_t", 0) > 30 and __import__("funksjoner").on("ai"):
+            self._airule_t = time.time()                                         # automatiske oppgaver fra AI-en
+            try:
+                __import__("ai_rules").tick(self.win, self.notify)
+            except Exception:  # noqa: BLE001
+                pass
         if __import__("funksjoner").on("chat") and time.time() - getattr(self, "_cbak_t", 0) > 3600:
             self._cbak_t = time.time()                                           # chatten tas vare på (NAS) daglig
             try:

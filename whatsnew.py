@@ -13,6 +13,31 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.18", "Ny AI", [
+        ("Utseende", [
+            "Svaret kommer ord for ord mens AI-en skriver",
+            "Kode får farger og en «Kopier»-knapp",
+            "Forslagskort når samtalen er tom – trykk for å spørre",
+            "Små grå linjer viser hva AI-en gjør: «🌡️ Leste temperaturene», «⚙️ Handling: …»",
+            "Eget ikon og egen farge for Claude, Codex, Gemini og lokal AI",
+            "Målere for CPU, GPU, last og strøm rett under svaret når AI-en har sjekket PC-en",
+            "📊 Sidepanel: PC-en nå og alt AI-en har gjort",
+            "Fest samtaler øverst og gi dem en emoji (høyreklikk)",
+            "Viser hvor mye av Claude-kvoten du har brukt (5 timer og uke)",
+        ]),
+        ("Funksjoner", [
+            "«Godta / Avbryt» i samtalen før AI-en endrer noe (kan slås av i ⋯)",
+            "Legg ved bilder (📎 eller Ctrl+V) – f.eks. skjermbilde av en feilmelding",
+            "🔊 Les opp svar, og 🎙️ snakk inn spørsmålet (tale til tekst installeres første gang – lokalt og gratis)",
+            "Personligheter: Standard, Kort og teknisk, Forklarende og rolig, Morsom",
+            "Lokal AI uten nett (Ollama) – gratis og privat, bruker skjermkortet ditt",
+            "Hurtigtast Ctrl+Shift+A: spør AI-en fra hvor som helst, også «Forklar det jeg har kopiert»",
+            "☀️ Morgenrapport om PC-en hver dag kl. 08",
+            "Automatiske oppgaver: «Si fra hvis GPU-en går over 85 °C mens jeg spiller», «Rydd hver søndag»",
+            "AI-en kan lese feilloggene, se de andre PC-ene og WoW-dataene dine",
+            "@ai i chatten: AI-en din svarer for alle i samtalen · «🤖 Spør AI om denne» på meldinger",
+        ]),
+    ]),
     ("0.99.17", "Mer i chatten", [
         ("Chat", [
             "Talemeldinger med lydbølge og lengde – virker nå også på Windows uten FFmpeg (Esc avbryter)",

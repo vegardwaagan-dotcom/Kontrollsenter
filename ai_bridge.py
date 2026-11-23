@@ -14,6 +14,7 @@
 """
 import json
 import os
+import sys
 import re
 import threading
 
@@ -109,10 +110,124 @@ def _safe_file(name):
     return p
 
 
+_ASK = {"fn": None}                     # AI-siden viser «Godta / Avbryt» i samtalen (ellers et vindu)
+
+
+def set_confirm_handler(fn):
+    _ASK["fn"] = fn
+
+
+def _confirm(win, what):
+    """Spør brukeren før AI-en endrer noe. True = godtatt."""
+    try:
+        import ai
+        if not ai.cfg().get("confirm", True):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    import threading
+    from gi.repository import GLib
+    done = threading.Event()
+    res = {"ok": False}
+
+    def answer(ok):
+        res["ok"] = bool(ok)
+        done.set()
+
+    def ask():
+        if _ASK["fn"]:
+            try:
+                _ASK["fn"](what, answer)
+                return False
+            except Exception:  # noqa: BLE001
+                pass
+        from gi.repository import Adw
+        dlg = Adw.AlertDialog(heading="🤖 AI-en vil endre noe", body=what)
+        dlg.add_response("nei", "Avbryt")
+        dlg.add_response("ja", "Godta")
+        dlg.set_response_appearance("ja", Adw.ResponseAppearance.SUGGESTED)
+        dlg.connect("response", lambda _d, r_: answer(r_ == "ja"))
+        dlg.present(win)
+        return False
+    GLib.idle_add(ask)
+    done.wait(80)
+    return res["ok"]
+
+
+def _need_ok(win, what):
+    if not _confirm(win, what):
+        raise PermissionError("Brukeren sa nei – ikke prøv igjen, foreslå heller noe annet")
+
+
 def run(win, cmd, args):
     """Én ks-kommando. Returnerer tekst eller et objekt (blir JSON)."""
     import remote
     cmd = (cmd or "").lower()
+    if cmd == "logg":                                       # feilmeldinger: Kontrollsenter + systemet
+        import applog
+        own = [ln for ln in applog.tail(400).splitlines() if any(w in ln for w in ("ERROR", "Traceback", "Feil",
+                                                                                     "WARNING", "Error"))][-40:]
+        sysl = ""
+        try:
+            import subprocess
+            if sys.platform == "win32":
+                sysl = subprocess.run(["powershell", "-NoProfile", "-Command",
+                                       "Get-WinEvent -FilterHashtable @{LogName='System','Application';Level=1,2} "
+                                       "-MaxEvents 25 | Format-Table -AutoSize TimeCreated,ProviderName,Message "
+                                       "-Wrap | Out-String -Width 200"], capture_output=True, text=True,
+                                      timeout=40, creationflags=0x08000000).stdout
+            else:
+                sysl = subprocess.run(["journalctl", "-p", "err", "-b", "-n", "40", "--no-pager", "-o", "short"],
+                                      capture_output=True, text=True, timeout=20).stdout
+        except Exception as e:  # noqa: BLE001
+            sysl = f"(kunne ikke lese systemloggen: {e})"
+        return {"kontrollsenter": own or "ingen feil", "system": sysl.strip()[-6000:] or "ingen feil"}
+    if cmd in ("pcer", "pc-er", "pcs"):
+        out = {}
+        try:
+            import homepcs
+            import machine
+            out["hjemme"] = [{k: p.get(k) for k in ("name", "version", "cpu_t", "gpu_t", "cpu_l", "watts", "game",
+                                                    "os", "uptime")} | {"på": not p.get("off")}
+                             for p in machine.merge_home(homepcs.fetch() or [])]
+        except Exception as e:  # noqa: BLE001
+            out["hjemme"] = f"(fikk ikke lest: {e})"
+        try:
+            import friends
+            out["venner"] = [_short(d) for d in friends.fetch_all()]
+        except Exception as e:  # noqa: BLE001
+            out["venner"] = f"(fikk ikke lest: {e})"
+        return out
+    if cmd == "wow":
+        try:
+            import wowplus
+            return _short(wowplus._state()) or "Ingen WoW-data ennå – logg inn i spillet med tillegget på"
+        except Exception as e:  # noqa: BLE001
+            return f"Ingen WoW-data ({e})"
+    if cmd == "regler":
+        import ai_rules
+        return [{"id": r["id"], "regel": ai_rules.describe(r)} for r in ai_rules.load()] or "Ingen automatiske oppgaver"
+    if cmd == "regel":
+        import ai_rules
+        sub = (args or [""])[0].lower()
+        if sub in ("ny", "new", "legg"):
+            params = {}
+            for kv in args[1:]:
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    params[k] = v.strip("\"'")
+            import ai_rules as R
+            preview = R.describe({**{k: (float(v) if k in ("over", "under") else v) for k, v in params.items()},
+                                  "gjør": "varsel" if params.get("gjør", params.get("gjor")) == "varsel" else
+                                  ("handling" if params.get("handling") else "varsel")})
+            _need_ok(win, f"Lage en automatisk oppgave:\n{preview}")
+            r = ai_rules.add(params)
+            return f"✓ Lagt til ({r['id']}): {ai_rules.describe(r)}. Ligger under AI › ⋯ › Automatiske oppgaver."
+        if sub in ("slett", "fjern", "delete"):
+            rid = (args[1:] or [""])[0]
+            _need_ok(win, f"Slette den automatiske oppgaven {rid}")
+            return "✓ Slettet" if ai_rules.remove(rid) else "Fant ikke regelen – se «ks regler»"
+        raise ValueError("bruk: ks regel ny … / ks regel slett <id>")
     if cmd in ("status", "temp", "temperatur"):
         st = _main(lambda: remote.build_status(win))
         return _short(st)
@@ -179,6 +294,7 @@ def run(win, cmd, args):
                 a[k] = _coerce(v)
         if a["a"] not in actions():
             raise ValueError("ukjent handling – se «ks handlinger»")
+        _need_ok(win, "Gjøre: " + " ".join(args) + "\n" + actions()[a["a"]].get("om", ""))
         ok, msg = remote.do_action(win, a)
         return ("✓ " if ok else "✗ ") + str(msg)
     if cmd == "innstillinger":
@@ -198,6 +314,7 @@ def run(win, cmd, args):
             d = json.load(f)
         if not isinstance(d, dict):
             raise ValueError("fila er ikke en innstillingsliste")
+        _need_ok(win, f"Endre innstillingen {args[1]} i {os.path.basename(p)} til {' '.join(args[2:])}")
         keys = args[1].split(".")
         cur = d
         for k in keys[:-1]:
@@ -218,6 +335,7 @@ def run(win, cmd, args):
         import assistant
         return _short(_main(lambda: assistant.why_slow(win), 60))
     if cmd == "systemsjekk":
+        _need_ok(win, "Kjøre systemsjekken (retter vanlige feil)")
         ok, msg = remote.do_action(win, {"a": "syscheck"})
         return ("✓ " if ok else "✗ ") + str(msg)
     if cmd in ("hjelp", "help", ""):

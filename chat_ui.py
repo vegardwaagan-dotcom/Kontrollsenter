@@ -2107,6 +2107,11 @@ class ChatPage(Gtk.Box):
             for label, fn, ok in (("↪ Svar", lambda: self._set_reply(m), True),
                                   ("✏️ Rediger", lambda: self._edit(m), mine),
                                   ("📌 Fest / løsne", lambda: self._event(m, "pin", on=not m.get("pinned")), True),
+                                  ("🤖 Spør AI om denne", lambda: __import__("aiextra").quick_window(
+                                      self.get_root(), "Forklar kort: " + str(m.get("text", ""))[:2000]),
+                                   __import__("funksjoner").on("ai")),
+                                  ("📋 Kopier", lambda: Gdk.Display.get_default().get_clipboard().set(
+                                      str(m.get("text", ""))), True),
                                   ("🗑️ Slett", lambda: self._event(m, "delete"), mine or self._is_admin())):
                 if ok:
                     b = Gtk.Button(label=i18n.tr(label))
@@ -2159,6 +2164,18 @@ class ChatPage(Gtk.Box):
             return
         self.entry.set_text("")
         bg = getattr(self.get_root(), "bg", None)
+        if t.lower().startswith("@ai ") and __import__("funksjoner").on("ai"):   # @ai: AI-en din svarer i chatten
+            q = t[4:].strip()
+            notify = bg.notify if bg else None
+            self.status.set_label(i18n.tr("✨ AI-en tenker …"))
+
+            def ask_ai():
+                C.send(self.room, t, None, notify)
+                import aiextra
+                return aiextra.chat_ai(self.room, q, notify)
+            _bg(ask_ai, lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)),
+                                   self._load()))
+            return
         if t.startswith("/") and not t.startswith("//"):     # /-kommandoer: /poll /påminn /terning /gif …
             import chatextra as CX
 
