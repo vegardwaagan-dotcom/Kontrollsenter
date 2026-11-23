@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.3", "Bare det du velger er på", [
+        ("Funksjoner", [
+            "Nye installasjoner starter med bare Oversikt, Historikk og Oppdateringer – alt annet krysses av i "
+            "velkomstveiviseren, og programmene det trenger installeres da",
+            "Lukker du veiviseren uten å velge, er resten av – velg og installer senere under ☰ → Funksjoner",
+            "Windows-installasjonen har heller ingenting valgt på forhånd",
+            "PC-er som allerede bruker Kontrollsenter beholder funksjonene sine",
+        ]),
+    ]),
     ("0.99.2", "Fjern alt du ikke trenger", [
         ("Funksjoner", [
             "I Egendefinert kan alt fjernes unntatt Oversikt, Historikk og Oppdateringer (nye versjoner av "

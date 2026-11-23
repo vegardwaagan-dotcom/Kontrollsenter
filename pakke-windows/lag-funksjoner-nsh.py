@@ -12,11 +12,15 @@ out = ['; Laget av lag-funksjoner-nsh.py – ikke rediger for hånd', '!include 
        'InstType "Minimal – Oversikt, Historikk, GPU, Lyd, Spill, Chat, PC-er, Fjernhjelp og System"',
        'InstType /CUSTOMSTRING=Egendefinert', '']
 FEATS = [f for f in F.FEATURES if not f[4]]
+out.append('Function .onInit')
+out.append('  SetCurInstType ${NSIS_MAX_INST_TYPES}     ; Egendefinert: ingenting valgt på forhånd')
+out.append('FunctionEnd')
+out.append('')
 out.append('!macro KS_FUNKSJONER')
 out.append('SectionGroup /e "Funksjoner (kan endres senere under Innstillinger)" SecFeat')
 for key, name, _sub, _pages, _req in FEATS:
     types = " ".join(str(i + 1) for i, t in enumerate(TYPES) if key in F.PROFILES[t][2])
-    out.append(f'  Section "{name}" SecF_{key}')
+    out.append(f'  Section /o "{name}" SecF_{key}')
     if types:
         out.append(f'    SectionIn {types}')
     out.append('  SectionEnd')

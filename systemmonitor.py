@@ -26,6 +26,12 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 import welcome  # noqa: E402,F401  – må sjekke «første gang» før noe lager konfig-mappen
+if welcome.FIRST_RUN:                        # ny installasjon: bare Oversikt, Historikk og Oppdateringer til du velger
+    try:
+        import funksjoner as _fn
+        _fn.init_new_install()
+    except Exception:  # noqa: BLE001
+        pass
 import i18n  # noqa: E402
 import applog  # noqa: E402
 if sys.platform == "win32" or os.environ.get("KS_WINPERF_TEST"):

@@ -129,6 +129,15 @@ def save(profile, keys=None):
     return cfg()
 
 
+def init_new_install():
+    """Første gang Kontrollsenter starter på en PC: bare det som alltid er med er på – resten velges i
+    velkomstveiviseren (eller senere under ☰ → Funksjoner). PC-er som allerede bruker Kontrollsenter berøres ikke."""
+    if os.path.exists(CFG) or (SETUP and os.path.exists(SETUP)):
+        return False
+    save("custom", sorted(REQUIRED))
+    return True
+
+
 def set_feature(key, on):
     """Slå én funksjon av/på (f.eks. AI-menyen under Innstillinger) – resten beholdes som før."""
     keys = set(enabled())

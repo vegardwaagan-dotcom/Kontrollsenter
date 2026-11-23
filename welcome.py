@@ -86,8 +86,8 @@ class WelcomeDialog(Adw.Dialog):
         self.features = funksjoner_ui.FeaturePicker()
         self.features.set_size_request(480, -1)
         self.car.append(_page("ks-overview-symbolic", "Hvilke funksjoner vil du ha?",
-                              "Det du ikke tar med, slås helt av: det vises ikke i menyen og bruker verken minne "
-                              "eller prosessor. Du kan endre det senere under Innstillinger → Funksjoner.",
+                              "Kryss av for det du vil bruke – programmene det trenger installeres når du trykker «Kom "
+                              "i gang». Resten er av, og kan velges og installeres senere under ☰ → Funksjoner.",
                               self.features, pixel=0))
         # 4. Oppstart
         import sys
