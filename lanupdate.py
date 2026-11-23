@@ -478,7 +478,16 @@ def publish(make_package, selftest=True):
                 "version": local_version(), "code": p[0] * 10000 + p[1] * 100 + p[2],
                 "sha256": _sha256(apk), "size": apk.stat().st_size}))
             _smb(f'cd "Android"; put "{tmp}/versjon.json" "versjon.json"', 60)
-        return True, f"Versjon {local_version()} er lagt på hjemmenettet ✓ ({location()})"
+        msg = f"Versjon {local_version()} er lagt på hjemmenettet ✓ ({location()})"
+        if is_source_pc():                                 # og på GitHub, hvis gh er innlogget
+            try:
+                import ghpush
+                if ghpush.ready()[0]:
+                    gok, gmsg = ghpush.push()
+                    msg += " · GitHub: " + (gmsg if gok else f"feilet ({gmsg})")
+            except Exception as e:  # noqa: BLE001
+                msg += f" · GitHub feilet ({e})"
+        return True, msg
     except Exception as e:  # noqa: BLE001
         return False, str(e)
     finally:
