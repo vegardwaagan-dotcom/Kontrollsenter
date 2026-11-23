@@ -1014,3 +1014,18 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 #aitab .ai-bar > * { flex: 1 1 0; min-width: 0; }
 #aitab .ai-bar #ai-new, #aitab .ai-bar #ai-more { flex: 0 0 42px; width: 42px; height: 42px; padding: 0; }
 #aitab #ai-quota { margin: 2px 4px 4px; }
+
+/* valgt klipp: tydelig markering */
+.ct { transition: transform .15s, box-shadow .15s; }
+.ct.playing { outline: 3px solid var(--acc); outline-offset: 0; box-shadow: 0 0 0 6px color-mix(in srgb, var(--acc) 30%, transparent),
+  0 10px 26px -10px color-mix(in srgb, var(--acc) 80%, transparent); transform: scale(1.02);
+  background: color-mix(in srgb, var(--acc) 22%, var(--card2)); }
+.ct.playing .cb b { color: var(--acc); }
+.ct-now { position: absolute; z-index: 2; left: 50%; top: 42px; transform: translateX(-50%); background: var(--acc); color: #fff;
+  font-weight: 800; font-size: 13px; padding: 4px 12px; border-radius: 99px; box-shadow: 0 4px 12px -4px rgba(0,0,0,.6); }
+.ct.picked { outline: 3px dashed var(--acc); background: color-mix(in srgb, var(--acc) 12%, var(--card2)); }
+.ct.picked .sel-tick { background: var(--acc); transform: scale(1.15); box-shadow: 0 0 0 3px #fff; }
+.ct.playing.picked { outline-style: solid; }
+.clip-head { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.clip-head b { flex: 1; min-width: 0; color: var(--acc); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#clip-video { width: 100%; border-radius: 14px; background: #000; cursor: pointer; }

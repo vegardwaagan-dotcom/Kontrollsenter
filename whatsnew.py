@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.21", "Tydeligere klipp", [
+        ("Spill › Klipp", [
+            "Klippet du har valgt er tydelig markert: farget bakgrunn, ramme og «▶ Valgt» / «▶ Spilles nå»",
+            "Mobilen: trykk på videoen for fullskjerm i liggende format (tilbake-knappen går ut igjen) – "
+            "eller bruk «⛶ Fullskjerm»",
+            "PC (Linux og Windows): dobbeltklikk eller ▶ spiller klippet i fullskjerm i Kontrollsenter (Esc lukker)",
+            "Haket av flere klipp? De får stiplet ramme, så du ser forskjell på valgt og avhaket",
+            "Mindre forhåndsbilder i klipplista på PC-en",
+        ]),
+    ]),
     ("0.99.20", "Chatten fryser ikke lenger", [
         ("Rettet", [
             "Kontrollsenter kunne fryse i flere sekunder om gangen når du åpnet Chat mens et spill kjørte – "

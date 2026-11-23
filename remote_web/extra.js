@@ -507,7 +507,9 @@ function renderClipGrid() {
   $("#clip-list").innerHTML = list.map((x) => {
     const cs = (x.meta && x.meta.cs2) || {};
     const tag = x.kind === "highlight" ? "🏆 " + (x.meta && x.meta.label || "Høydepunkt") : x.kind === "boss" ? "🐉 Boss" : x.kind === "bookmark" ? "🔖" : "";
-    return `<div class="ct ${picked.has(x.name) ? "picked" : ""}" data-n="${esc(x.name)}"><button class="sel-tick" data-pick="${esc(x.name)}">✓</button>
+    const on = curClip && curClip.name === x.name && !curClip.pc;
+    return `<div class="ct ${picked.has(x.name) ? "picked" : ""}${on ? " playing" : ""}" data-n="${esc(x.name)}"><button class="sel-tick" data-pick="${esc(x.name)}">✓</button>
+      ${on ? '<span class="ct-now">▶ Spilles nå</span>' : ""}
       ${tag ? `<span class="badge2">${esc(tag)}</span>` : ""}<img loading="lazy" src="${thumbUrl(x.name)}" data-play="${esc(x.name)}" onerror="this.onerror=null;this.classList.add('nothumb');this.src='data:image/svg+xml,'+encodeURIComponent(NOTHUMB('🎬'))">
       <div class="cb"><b>${esc(x.name)}</b><span class="dim">${fmtB(x.size)} · ${hhmm(x.t)}${cs.map ? ` · ${esc(cs.map)} ${cs.kills ?? ""}/${cs.deaths ?? ""}` : ""}</span></div>
       <div class="ca"><button data-fav="${esc(x.name)}" data-on="${x.fav ? 1 : 0}">${x.fav ? "★" : "☆"}</button><button data-share="${esc(x.name)}" aria-label="Del">${SHARE_IC}</button><button data-dl="${esc(x.name)}">⬇</button><button data-cdel="${esc(x.name)}">🗑</button></div></div>`;
@@ -525,6 +527,14 @@ function wireClipButtons() {
 function playClip(name, pc) {
   curClip = { name, pc };
   $("#clip-player").hidden = false;
+  $$(".clipgrid .ct").forEach((el) => {                 // tydelig markering av klippet som spilles
+    const on = !pc && el.dataset.n === name;
+    el.classList.toggle("playing", on);
+    const tag = el.querySelector(".ct-now");
+    if (on && !tag) el.insertAdjacentHTML("afterbegin", '<span class="ct-now">▶ Spilles nå</span>');
+    if (!on && tag) tag.remove();
+  });
+  $("#clip-now").textContent = "▶ " + name;
   const v = $("#clip-video"); v.src = fileUrl(name, pc); v.play().catch(() => {});
   const x = clipData && clipData.clips.find((y) => y.name === name);
   const cs = x && x.meta && x.meta.cs2;
@@ -532,6 +542,31 @@ function playClip(name, pc) {
   v.onloadedmetadata = () => { for (const id of ["trim-a", "trim-b"]) $("#" + id).max = v.duration.toFixed(1); $("#trim-b").value = v.duration.toFixed(1); $("#trim-a").value = 0; trimLabels(); };
   $("#clip-player").scrollIntoView({ behavior: "smooth", block: "start" });
 }
+// trykk på videoen: fullskjerm og liggende (landskap); tilbake = vanlig visning
+async function clipFullscreen() {
+  const v = $("#clip-video");
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      return;
+    }
+    await (v.requestFullscreen || v.webkitRequestFullscreen || v.webkitEnterFullscreen).call(v);
+    try { await screen.orientation.lock("landscape"); } catch (e) { if (KS && KS.landscape) KS.landscape(true); }
+  } catch (e) { if (KS && KS.landscape) KS.landscape(true); }
+}
+{ const v = $("#clip-video");
+  let t0 = 0;
+  v.addEventListener("click", (e) => {                   // ett trykk på bildet (ikke på kontrollene nederst)
+    const r = v.getBoundingClientRect();
+    if (e.clientY - r.top > r.height - 48) return;
+    if (Date.now() - t0 < 350) return; t0 = Date.now();
+    e.preventDefault(); clipFullscreen();
+  });
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement) { try { screen.orientation.unlock(); } catch (e) {} if (KS && KS.landscape) KS.landscape(false); }
+  });
+}
+$("#clip-fs").onclick = clipFullscreen;
 function trimLabels() { $("#trim-av").textContent = (+$("#trim-a").value).toFixed(1) + " s"; $("#trim-bv").textContent = (+$("#trim-b").value).toFixed(1) + " s"; }
 $("#trim-a").oninput = () => { trimLabels(); $("#clip-video").currentTime = +$("#trim-a").value; };
 $("#trim-b").oninput = () => { trimLabels(); $("#clip-video").currentTime = +$("#trim-b").value; };

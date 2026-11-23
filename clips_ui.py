@@ -9,7 +9,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
 import clips  # noqa: E402
 import i18n  # noqa: E402
@@ -29,6 +29,49 @@ def _open(path):
         os.startfile(path)
     else:
         subprocess.Popen(["xdg-open", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+_CSS = """
+.ks-clip-row { border-radius: 12px; transition: background-color 150ms; }
+.ks-clip-row:hover { background-color: alpha(@window_fg_color, 0.05); }
+.ks-clip-sel { background-color: alpha(@accent_bg_color, 0.22); box-shadow: inset 4px 0 @accent_bg_color,
+  0 0 0 2px alpha(@accent_bg_color, 0.8); }
+.ks-clip-sel label { font-weight: 700; }
+.ks-clip-now { background: @accent_bg_color; color: @accent_fg_color; border-radius: 99px; padding: 1px 9px;
+  font-size: .8em; font-weight: 800; }
+.ks-clip-full { background: #000; }
+"""
+
+
+_CSS_DONE = []
+
+
+def play_fullscreen(path, parent=None):
+    """Spill av klippet i fullskjerm inne i Kontrollsenter. Esc, Q eller dobbeltklikk lukker."""
+    if not path or not os.path.exists(path):
+        return
+    if path.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+        _open(path)
+        return
+    w = Gtk.Window(title=os.path.basename(path))
+    w.add_css_class("ks-clip-full")
+    if parent is not None:
+        w.set_transient_for(parent)
+    v = Gtk.Video.new_for_filename(path)
+    v.set_autoplay(True)
+    v.set_hexpand(True)
+    v.set_vexpand(True)
+    w.set_child(v)
+    k = Gtk.EventControllerKey()
+    k.connect("key-pressed", lambda _c, kv, _co, _s: (w.close(), True)[1]
+              if kv in (Gdk.KEY_Escape, Gdk.KEY_q, Gdk.KEY_Q) else False)
+    w.add_controller(k)
+    g = Gtk.GestureClick()
+    g.connect("pressed", lambda _g, n, _x, _y: n == 2 and w.close())
+    w.add_controller(g)
+    w.connect("close-request", lambda *_: (v.get_media_stream() and v.get_media_stream().pause(), False)[1])
+    w.fullscreen()
+    w.present()
 
 
 class ClipsCard(Gtk.Box):
@@ -145,19 +188,40 @@ class ClipsCard(Gtk.Box):
         while (ch := self.list.get_first_child()):
             self.list.remove(ch)
         import clipx
+        if not _CSS_DONE:
+            _CSS_DONE.append(1)
+            try:
+                import theme
+                theme.add_css(_CSS)
+            except Exception:  # noqa: BLE001
+                pass
+        self._rows = {}
         for c in items:
             r = Gtk.Box(spacing=10)
+            r.add_css_class("ks-clip-row")
+            self._rows[c["name"]] = r
             for side, v in (("top", 6), ("bottom", 6), ("start", 8), ("end", 8)):
                 getattr(r, f"set_margin_{side}")(v)
             tp = os.path.join(clipx.THUMBS, c["name"] + ".jpg")
             if os.path.exists(tp):
-                pic = Gtk.Picture.new_for_filename(tp)
-                pic.set_size_request(112, 63)
-                pic.set_content_fit(Gtk.ContentFit.COVER)
-                r.append(pic)
+                try:                                          # liten forhåndsvisning (ikke full størrelse)
+                    from gi.repository import GdkPixbuf
+                    pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(tp, 160, 90, True)
+                    pic = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pb))
+                    pic.set_can_shrink(False)
+                    pic.set_valign(Gtk.Align.CENTER)
+                    r.append(pic)
+                except Exception:  # noqa: BLE001
+                    pass
             col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
             icon = "🖼️ " if c["kind"] == "image" else "🏆 " if c["kind"] in ("highlight", "boss") else "🎬 "
-            col.append(Gtk.Label(label=icon + c["name"], xalign=0, ellipsize=3))
+            tr = Gtk.Box(spacing=6)
+            tr.append(Gtk.Label(label=icon + c["name"], xalign=0, ellipsize=3, hexpand=True))
+            now = Gtk.Label(label="▶ " + i18n.tr("Valgt"), visible=False)
+            now.add_css_class("ks-clip-now")
+            tr.append(now)
+            r._now = now
+            col.append(tr)
             extra = (c.get("meta") or {}).get("cs2") or {}
             info = f"{c['size'] / 2**20:.0f} MB · " + time.strftime("%d.%m %H:%M", time.localtime(c["t"]))
             if extra.get("map"):
@@ -172,7 +236,13 @@ class ClipsCard(Gtk.Box):
             r.append(fav)
             pb = Gtk.Button(icon_name="media-playback-start-symbolic", valign=Gtk.Align.CENTER, tooltip_text=i18n.tr("Spill av"))
             pb.add_css_class("flat")
-            pb.connect("clicked", lambda _b, n=c["name"]: _open(os.path.join(clips.clip_dir(), n)))
+            pb.connect("clicked", lambda _b, n=c["name"]: (self._select(n), play_fullscreen(
+                os.path.join(clips.clip_dir(), n), self.get_root())))
+            g = Gtk.GestureClick()                            # trykk = velg (tydelig markert), dobbeltklikk = fullskjerm
+            g.connect("pressed", lambda _g, npress, _x, _y, n=c["name"]: (self._select(n), npress == 2 and
+                                                                         play_fullscreen(os.path.join(clips.clip_dir(), n),
+                                                                                         self.get_root())))
+            r.add_controller(g)
             r.append(pb)
             db = Gtk.Button(icon_name="user-trash-symbolic", valign=Gtk.Align.CENTER, tooltip_text=i18n.tr("Slett"))
             db.add_css_class("flat")
@@ -180,7 +250,16 @@ class ClipsCard(Gtk.Box):
             r.append(db)
             self.list.append(r)
         self.list.set_visible(bool(items))
+        if getattr(self, "_sel", None) in self._rows:
+            self._select(self._sel)
         return False
+
+    def _select(self, name):
+        self._sel = name
+        for n, row in getattr(self, "_rows", {}).items():
+            on = n == name
+            (row.add_css_class if on else row.remove_css_class)("ks-clip-sel")
+            row._now.set_visible(on)
 
     # ---- velg tast: trykk kombinasjonen du vil bruke ----
     NAMES = {"Page_Up": "PageUp", "Page_Down": "PageDown", "Scroll_Lock": "ScrollLock", "space": "Space",

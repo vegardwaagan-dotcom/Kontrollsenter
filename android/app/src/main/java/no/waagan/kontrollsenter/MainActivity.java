@@ -100,6 +100,27 @@ public class MainActivity extends Activity {
                 return true;
             }
 
+            // fullskjerm for video (klipp): legges over alt, liggende, uten system-linjer
+            @Override
+            public void onShowCustomView(View v, CustomViewCallback cb) {
+                if (fsView != null) { cb.onCustomViewHidden(); return; }
+                fsView = v;
+                fsCb = cb;
+                ((android.view.ViewGroup) getWindow().getDecorView()).addView(v, new android.widget.FrameLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+                setLandscape(true);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                if (fsView == null) return;
+                ((android.view.ViewGroup) getWindow().getDecorView()).removeView(fsView);
+                fsView = null;
+                if (fsCb != null) fsCb.onCustomViewHidden();
+                fsCb = null;
+                setLandscape(false);
+            }
+
             @Override
             public void onPermissionRequest(android.webkit.PermissionRequest req) {
                 runOnUiThread(() -> {
@@ -403,6 +424,14 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (fsView != null) {                                 // tilbake: ut av fullskjerm først
+            if (fsCb != null) fsCb.onCustomViewHidden();
+            ((android.view.ViewGroup) getWindow().getDecorView()).removeView(fsView);
+            fsView = null;
+            fsCb = null;
+            setLandscape(false);
+            return;
+        }
         String url = web.getUrl();
         if (url != null && url.startsWith("http")) {
             // lukk først det som ligger oppå (velger, «Se på», søk) – ellers tilbake til PC-listen
@@ -418,6 +447,27 @@ public class MainActivity extends Activity {
 
     /** Tilgjengelig for sidene som window.KS – bare ufarlige funksjoner. */
     static final int REQ_FILE = 7, REQ_MIC = 8, REQ_LISTEN = 9;
+    View fsView;
+    android.webkit.WebChromeClient.CustomViewCallback fsCb;
+
+    /** Liggende fullskjerm (video) av/på. */
+    void setLandscape(boolean on) {
+        setRequestedOrientation(on ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController c = getWindow().getInsetsController();
+            if (c != null) {
+                if (on) {
+                    c.hide(WindowInsets.Type.systemBars());
+                    c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                } else {
+                    c.show(WindowInsets.Type.systemBars());
+                }
+            }
+        }
+    }
+
+
     android.webkit.ValueCallback<Uri[]> fileCb;
     android.webkit.PermissionRequest pendingMic;
     android.speech.tts.TextToSpeech tts;
@@ -496,6 +546,12 @@ public class MainActivity extends Activity {
                     startListen();
                 }
             });
+        }
+
+        /** Liggende visning av/på (fullskjerm-video når nettsiden ikke klarer å låse retningen selv). */
+        @JavascriptInterface
+        public void landscape(boolean on) {
+            runOnUiThread(() -> setLandscape(on));
         }
 
         /** Les opp et svar (telefonens talesyntese, norsk om den finnes). */
