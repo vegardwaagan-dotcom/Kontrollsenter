@@ -45,6 +45,16 @@ def _bg(fn, done):
     threading.Thread(target=work, daemon=True).start()
 
 
+def _short_icon(icon, name):
+    """Bare ikonet på serverstripa: «🎮Gaming» → «🎮», ingen emoji → forbokstaven i navnet."""
+    lead = ""
+    for ch in str(icon or ""):
+        if ch.isalnum() or ch.isspace():
+            break
+        lead += ch
+    return lead[:8] or (str(name or "?").strip()[:1].upper() or "?")
+
+
 def _dim(t):
     lab = Gtk.Label(label=i18n.tr(t), xalign=0, wrap=True)
     lab.add_css_class("dim-label")
@@ -162,13 +172,6 @@ class ChatPage(Gtk.Box):
         right.append(self.reply_bar)
         self.typing_lab = _dim("")
         right.append(self.typing_lab)
-        qr = Gtk.Box(spacing=6)
-        for q in CL.cfg()["quick"] + ["🆘 Hjelp", "🍕 Sulten"]:
-            b = Gtk.Button(label=q)
-            b.add_css_class("ks-react")
-            b.connect("clicked", lambda _b, t=q: self._quick(t))
-            qr.append(b)
-        right.append(Gtk.ScrolledWindow(child=qr, vscrollbar_policy=Gtk.PolicyType.NEVER, propagate_natural_height=True))
         row = Gtk.Box(spacing=6)
         self.emoji_btn = Gtk.MenuButton(label="😊", tooltip_text=i18n.tr("Emoji"), valign=Gtk.Align.CENTER)
         self.emoji_btn.add_css_class("flat")
@@ -192,6 +195,12 @@ class ChatPage(Gtk.Box):
         self.entry.connect("changed", lambda e: self.room.startswith("s:") and e.get_text() and
                            threading.Thread(target=CP.typing, args=(self.room,), daemon=True).start())
         row.append(self.entry)
+        self._quick_items = CL.cfg()["quick"] + ["🆘 Hjelp", "🍕 Sulten"]
+        self.quick_dd = Gtk.DropDown.new_from_strings(["⚡"] + self._quick_items)
+        self.quick_dd.set_tooltip_text(i18n.tr("Hurtigsvar"))
+        self.quick_dd.set_valign(Gtk.Align.CENTER)
+        self.quick_dd.connect("notify::selected", self._quick_pick)
+        row.append(self.quick_dd)
         more = Gtk.MenuButton(label="⋯", tooltip_text=i18n.tr("Mer: avstemning, avtale, påminnelse …"),
                               valign=Gtk.Align.CENTER)
         more.add_css_class("flat")
@@ -209,6 +218,10 @@ class ChatPage(Gtk.Box):
         self.members_rev = Gtk.Revealer(child=self.members, transition_type=Gtk.RevealerTransitionType.SLIDE_LEFT)
         self.append(self.members_rev)
         self.reply_to = None
+        self._parts = [c for c in self._children()]
+        self.gate = self._gate_box()
+        self.append(self.gate)
+        self.connect("map", lambda *_: self._gate_check())
         C.on_message(lambda room, m: (room == self.room and (self._typing() if m.get("event") == "typing"
                                                              else self._load()), m.get("event") or self._rail()))
         CS.on_change(lambda sid: (self._rail(), sid == self.view and self._channels()))
@@ -217,6 +230,60 @@ class ChatPage(Gtk.Box):
         GLib.timeout_add_seconds(15, lambda: (self.get_mapped() and (self._channels(), self._load()), True)[1])
         GLib.timeout_add_seconds(2, lambda: (self.get_mapped() and self._bars(), True)[1])
         CS.on_change(lambda _sid: self._bars())
+
+    def _children(self):
+        out, c = [], self.get_first_child()
+        while c is not None:
+            out.append(c)
+            c = c.get_next_sibling()
+        return out
+
+    def _gate_box(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14, hexpand=True, vexpand=True,
+                      valign=Gtk.Align.CENTER, halign=Gtk.Align.CENTER, visible=False)
+        icon = Gtk.Label(label="🔒")
+        icon.add_css_class("title-1")
+        box.append(icon)
+        t = Gtk.Label(label=i18n.tr("Installer Tailscale først"))
+        t.add_css_class("title-2")
+        box.append(t)
+        d = Gtk.Label(label=i18n.tr("Chatten går over Tailscale – et gratis, privat nettverk mellom PC-ene og vennene "
+                                    "dine. Installer det, logg inn, og kom tilbake hit."), wrap=True,
+                      max_width_chars=50, justify=Gtk.Justification.CENTER)
+        d.add_css_class("dim-label")
+        box.append(d)
+        self.gate_msg = _dim("")
+        self.gate_msg.set_halign(Gtk.Align.CENTER)
+        row = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
+        row.append(_btn("Installer Tailscale", lambda *_: self._ts_install(), True))
+        row.append(_btn("Jeg har logget inn – sjekk igjen", lambda *_: self._gate_check(force=True)))
+        box.append(row)
+        box.append(self.gate_msg)
+        return box
+
+    def _ts_install(self):
+        self.gate_msg.set_label(i18n.tr("Installerer …"))
+
+        def work():
+            import apps
+            apps.install("tailscale")
+            return i18n.tr("Installert – start Tailscale og logg inn (gratis konto), så trykk «sjekk igjen»")
+        _bg(work, lambda r: self.gate_msg.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)))
+
+    def _gate_check(self, force=False):
+        if force:
+            C._TS["t"] = 0
+
+        def done(st):
+            ok = not isinstance(st, Exception) and st.get("running")
+            for c in self._parts:
+                c.set_visible(bool(ok) if c is not self.members_rev else bool(ok))
+            self.gate.set_visible(not ok)
+            if not ok and not isinstance(st, Exception) and st.get("installed"):
+                self.gate_msg.set_label(i18n.tr("Tailscale er installert, men ikke pålogget – åpne Tailscale og logg "
+                                                "inn."))
+        _bg(C.tailscale, done)
+        return False
 
     # ------------------------------------------------------------------ serverlist
     def _rail(self):
@@ -232,7 +299,8 @@ class ChatPage(Gtk.Box):
         add("💬", "Direkte: hjemme, alle og privat", lambda: self._open("direct"), self.view == "direct")
         self.rail.append(Gtk.Separator())
         for sid, srv in sorted(CS.servers().items(), key=lambda kv: kv[1].get("created", 0)):
-            add(srv.get("icon", "🎮"), srv.get("name", "Server"), lambda s=sid: self._open(s), self.view == sid)
+            add(_short_icon(srv.get("icon"), srv.get("name", "Server")), srv.get("name", "Server"),
+                lambda s=sid: self._open(s), self.view == sid)
         self.rail.append(Gtk.Separator())
         add("➕", "Lag en server", self._create)
         add("🔗", "Bli med i en server (lim inn invitasjonslenke)", self._join)
@@ -719,38 +787,55 @@ class ChatPage(Gtk.Box):
 
     def _more_pop(self):
         pop = Gtk.Popover()
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
-                      margin_end=6)
-        items = (("📊 Avstemning", self._poll), ("📅 Avtale med svar", self._event_inv),
-                 ("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
-                 ("🎲 Kast terning", lambda: self._call_room(lambda: CP.dice(self.room))),
-                 ("✊ Stein–saks–papir", self._rps), ("📝 Notater for samtalen", self._notes),
-                 ("🌐 Oversett siste melding", self._translate), ("💨 Meldinger forsvinner …", self._vanish),
-                 ("💾 Eksporter samtalen", self._export),
-                 ("🎮 Spill sammen …", self._play), ("🕹️ Lobby …", self._lobby), ("📋 Oppgave med «Gjort»", self._task),
-                 ("🍽️ Middagsavstemning", lambda: self._call_room(lambda: CL.dinner_poll(self.room))),
-                 ("🔔 Ring", lambda: self._call_room(lambda: CL.send_ring(self.room))),
-                 ("📊 Del PC-status", lambda: self._call_any(lambda: C.send(self.room, CL.status_card(
-                     self.get_root())))),
-                 ("⚙️ Del spilloppsettet (sist spilte)", self._share_setup),
-                 ("📺 Vis skjermen min", lambda: self._call_room(lambda: CL.share_screen(self.room))),
-                 ("🆘 Be om hjelp", lambda: self._call_any(lambda: __import__("homeplus").ask_help())),
-                 ("🛒 Handleliste", self._shop), ("🏠 Hvor er alle?", lambda: self.status.set_label(
-                     CL.where_is_everyone())),
-                 ("📣 Bruk kanalen til høydepunkter og ukens toppliste", self._use_for_posts),
-                 ("🏷️ Bruk kanalen til tilbud fra ønskelisten", lambda: self._topic("tilbud")),
-                 ("🔄 Bruk kanalen til oppdateringer", lambda: self._topic("oppdateringer")))
-        for label, fn in items:
-            b = Gtk.Button(label=i18n.tr(label))
-            b.add_css_class("flat")
-            b.get_child().set_xalign(0)
-            b.connect("clicked", lambda _b, f=fn: (pop.popdown(), f()))
-            box.append(b)
-        pop.set_child(box)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
+                        margin_end=6)
+        groups = (
+            ("Lag", (("📊 Avstemning", self._poll), ("📅 Avtale med svar", self._event_inv),
+                     ("📋 Oppgave med «Gjort»", self._task), ("🎮 Spill sammen …", self._play),
+                     ("🕹️ Lobby …", self._lobby),
+                     ("🍽️ Middagsavstemning", lambda: self._call_room(lambda: CL.dinner_poll(self.room))))),
+            ("Del", (("📊 PC-status", lambda: self._call_any(lambda: C.send(self.room, CL.status_card(self.get_root())))),
+                     ("⚙️ Spilloppsettet (sist spilte)", self._share_setup),
+                     ("📺 Vis skjermen min", lambda: self._call_room(lambda: CL.share_screen(self.room))),
+                     ("🔔 Ring", lambda: self._call_room(lambda: CL.send_ring(self.room))),
+                     ("🆘 Be om hjelp", lambda: self._call_any(lambda: __import__("homeplus").ask_help())))),
+            ("Verktøy", (("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
+                         ("📝 Notater", self._notes), ("🛒 Handleliste", self._shop),
+                         ("🌐 Oversett siste melding", self._translate),
+                         ("🏠 Hvor er alle?", lambda: self.status.set_label(CL.where_is_everyone())),
+                         ("🎲 Terning", lambda: self._call_room(lambda: CP.dice(self.room))),
+                         ("✊ Stein–saks–papir", self._rps))),
+            ("Kanalen", (("💨 Meldinger forsvinner …", self._vanish), ("💾 Eksporter", self._export),
+                         ("📣 Høydepunkter og toppliste hit", self._use_for_posts),
+                         ("🏷️ Tilbud fra ønskelisten hit", lambda: self._topic("tilbud")),
+                         ("🎁 Gratis spill (Epic) hit", lambda: self._topic("gratis")),
+                         ("🔄 Oppdateringer hit", lambda: self._topic("oppdateringer")))))
+        sc = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, propagate_natural_height=True,
+                                max_content_height=520)
+        for title, items in groups:
+            h = Gtk.Label(label=i18n.tr(title).upper(), xalign=0, margin_top=6, margin_start=6)
+            h.add_css_class("ks-chan-cat")
+            outer.append(h)
+            for label, fn in items:
+                b = Gtk.Button(label=i18n.tr(label))
+                b.add_css_class("flat")
+                b.get_child().set_xalign(0)
+                b.connect("clicked", lambda _b, f=fn: (pop.popdown(), f()))
+                outer.append(b)
+        sc.set_child(outer)
+        pop.set_child(sc)
         return pop
 
     def _call_any(self, fn):
         _bg(fn, lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
+
+    def _quick_pick(self, dd, _p):
+        i = dd.get_selected()
+        if i <= 0:
+            return
+        text = self._quick_items[i - 1]
+        GLib.idle_add(lambda: (dd.set_selected(0), False)[1])
+        self._quick(text)
 
     def _quick(self, text):
         if text.startswith("🆘"):

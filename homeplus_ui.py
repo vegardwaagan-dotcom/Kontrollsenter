@@ -1,6 +1,5 @@
 """Hjem+ i vinduet: trygghet og nett (Vedlikehold), gjeste-Wi-Fi og rommet (Smart Hjem), oppsett mellom PC-er."""
 import threading
-import time
 
 import gi
 

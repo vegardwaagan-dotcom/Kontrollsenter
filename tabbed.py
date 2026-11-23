@@ -49,7 +49,10 @@ class TabbedPage(Gtk.Box):
         for side, v in (("top", 8), ("bottom", 2), ("start", 12), ("end", 12)):
             getattr(bar, f"set_margin_{side}")(v)
         self.tabbar = bar
-        self.append(bar)
+        # mange faner: rull sideveis i stedet for å gjøre hele siden bredere enn vinduet
+        tsc = Gtk.ScrolledWindow(child=bar, vscrollbar_policy=Gtk.PolicyType.NEVER,
+                                 hscrollbar_policy=Gtk.PolicyType.AUTOMATIC, propagate_natural_height=True)
+        self.append(tsc)
         self.append(self.stack)
 
         def _fx(s, _p):

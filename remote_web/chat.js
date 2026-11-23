@@ -1,10 +1,16 @@
 // ---------- Chat-fanen (28): rom og servere, bobler, bilder, avstemninger, hurtigsvar ----------
 const chatSec = h(`<section id="chattab" class="page" hidden>
-  <div class="card chat-card">
+  <div class="card ct-gate" id="ct-gate" hidden><div class="ct-gate-in">
+    <div style="font-size:42px">🔒</div><h2>Installer Tailscale først</h2>
+    <p class="dim">Chatten går over Tailscale – et gratis, privat nettverk mellom PC-ene og vennene dine. Installer det
+    på PC-en (og logg inn), så virker chatten her også.</p>
+    <button id="ct-ts" class="primary">Installer Tailscale på PC-en</button>
+    <button id="ct-ts-check" class="soft">Sjekk igjen</button><p id="ct-ts-msg" class="dim small"></p></div></div>
+  <div class="card chat-card" id="ct-card">
     <div class="row between"><select id="ct-room" class="search"></select><button id="ct-ref" class="soft small">↻</button></div>
     <div id="ct-msgs" class="ct-msgs"></div>
-    <div id="ct-quick" class="row wrap ct-quick"></div>
-    <div class="row"><input id="ct-text" maxlength="2000" placeholder="Skriv en melding …" enterkeyhint="send">
+    <div class="row"><select id="ct-quick" class="ct-qsel" aria-label="Hurtigsvar"></select>
+      <input id="ct-text" maxlength="2000" placeholder="Skriv en melding …" enterkeyhint="send">
       <button id="ct-send" class="primary">Send</button></div>
     <p id="ct-status" class="dim small"></p>
   </div></section>`);
@@ -16,16 +22,23 @@ const chatSec = h(`<section id="chattab" class="page" hidden>
   nav.insertBefore(b, nav.querySelector('[data-tab="system"]'));
 } }
 const QUICK = ["Kommer! 🏃", "5 min til ⏳", "Lagrer nå 💾", "👍", "😂", "🎉"];
-$("#ct-quick").innerHTML = QUICK.map((q) => `<button class="soft small" data-q="${esc(q)}">${esc(q)}</button>`).join("");
+$("#ct-quick").innerHTML = '<option value="">⚡</option>' + QUICK.map((q) => `<option value="${esc(q)}">${esc(q)}</option>`).join("");
 let ctRoom = pref("ct_room", "alle"), ctMe = { id: "", name: "" }, ctTimer = null;
 function ctTime(t) {
   const d = new Date(t * 1000), two = (n) => String(n).padStart(2, "0");
   const today = new Date().toDateString() === d.toDateString();
   return (today ? "" : two(d.getDate()) + "." + two(d.getMonth() + 1) + " ") + two(d.getHours()) + ":" + two(d.getMinutes());
 }
+function ctGate(ts) {                                   // uten Tailscale: bare «Installer Tailscale først»
+  $("#ct-gate").hidden = !!ts.running; $("#ct-card").hidden = !ts.running;
+  if (!ts.running) $("#ct-ts-msg").textContent = ts.installed ? "Tailscale er installert på PC-en, men ikke pålogget – åpne Tailscale og logg inn." : "";
+  return !!ts.running;
+}
 async function ctRooms() {
   try {
-    const r = (await X("chatrooms")).rooms || [];
+    const all = await X("chatrooms");
+    if (!ctGate(all.tailscale || { running: true })) return;
+    const r = all.rooms || [];
     const unread = r.reduce((a, x) => a + (x.unread || 0), 0);
     const bd = $("#ct-badge"); if (bd) { bd.hidden = !unread; bd.textContent = unread > 9 ? "9+" : unread; }
     const sel = $("#ct-room");
@@ -76,7 +89,11 @@ $("#ct-room").onchange = () => { ctRoom = $("#ct-room").value; setPref("ct_room"
 $("#ct-ref").onclick = () => { ctRooms(); ctLoad(); };
 $("#ct-send").onclick = () => { ctSend($("#ct-text").value); $("#ct-text").value = ""; };
 $("#ct-text").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#ct-send").onclick(); });
-$("#ct-quick").querySelectorAll("button").forEach((b) => (b.onclick = () => ctSend(b.dataset.q)));
+$("#ct-quick").onchange = (e) => { const v = e.target.value; if (v) ctSend(v); e.target.value = ""; };
+$("#ct-ts").onclick = async () => { $("#ct-ts-msg").textContent = "Installerer på PC-en …";
+  try { const r = await api("/api/action", { a: "panel", do: "appinstall", key: "tailscale" }); $("#ct-ts-msg").textContent = r.msg || "Startet – logg inn i Tailscale på PC-en"; }
+  catch (e) { $("#ct-ts-msg").textContent = "✗ " + e.message; } };
+$("#ct-ts-check").onclick = () => ctRooms();
 { const _st3 = setTab; setTab = function (t) {                  // eslint-disable-line no-global-assign
   _st3(t);
   $("#chattab").hidden = t !== "chat" || !token;

@@ -19,7 +19,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
 LIST_FILE = Path.home() / ".config/systemmonitor/programmer.json"
 ICON_DIRS = [Path("/var/lib/flatpak/appstream/flathub/x86_64/active/icons/128x128"),

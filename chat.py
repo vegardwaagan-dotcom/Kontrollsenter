@@ -60,6 +60,28 @@ def _fire(room, msg):
 # --------------------------------------------------------------------------
 # Rom og meldinger
 # --------------------------------------------------------------------------
+_TS = {"t": 0, "v": None}
+
+
+def tailscale():
+    """{"installed", "running"} – chatten med venner går over Tailscale (mellomlagret 30 s)."""
+    if _TS["v"] is not None and time.time() - _TS["t"] < 30:
+        return _TS["v"]
+    try:
+        import friends
+        st = friends.tailscale_self()
+        running = bool(st.get("running") and st.get("ip"))
+    except Exception:  # noqa: BLE001
+        running = False
+    try:
+        import apps
+        installed = bool(apps.installed("tailscale")) or running
+    except Exception:  # noqa: BLE001
+        installed = running
+    _TS.update(t=time.time(), v={"installed": installed, "running": running})
+    return _TS["v"]
+
+
 def rooms():
     """[(rom-id, visningsnavn, ikon, uleste)]"""
     out = [("hjemme", "Hjemme", "🏠"), ("alle", "Alle (hjemme + venner)", "🌍"), ("meg", "Meg (notater og lenker)", "📌")]

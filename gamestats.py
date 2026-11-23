@@ -9,7 +9,6 @@ import json
 import os
 import re
 import secrets
-import shutil
 import struct
 import sys
 import threading

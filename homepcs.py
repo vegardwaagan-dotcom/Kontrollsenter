@@ -7,7 +7,6 @@ import json
 import os
 import platform
 import shutil
-import subprocess
 import sys
 import tempfile
 import threading

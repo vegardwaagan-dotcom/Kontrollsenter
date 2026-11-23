@@ -744,8 +744,9 @@ _LISTENERS = []
 SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
     ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
-    ("Spill", ["spill", "vr", "discord", "stromming"]),
-    ("Hjemmet", ["scener", "smarthjem", "familie", "chat", "fjernhjelp", "hjemme", "venner"]),
+    ("Spill", ["spill", "vr", "stromming"]),
+    ("Sosialt", ["chat", "discord", "hjemme", "venner", "fjernhjelp"]),
+    ("Hjemmet", ["scener", "smarthjem", "familie"]),
     ("System", ["nettverk", "programmer", "verktoy", "innstillinger"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]

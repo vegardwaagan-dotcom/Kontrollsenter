@@ -12,6 +12,13 @@ import threading
 import time
 from collections import deque
 
+try:                                    # «Mindre minnebruk» / «Eldre PC»: tegn uten skjermkortdriveren (sparer ~110 MB)
+    import json as _j
+    _y = _j.load(open(os.path.expanduser("~/.config/systemmonitor/ytelse.json")))
+    if (_y.get("mem") or _y.get("lowend") or _y.get("saveall")) and not os.environ.get("GSK_RENDERER"):
+        os.environ["GSK_RENDERER"] = "cairo"
+except (OSError, ValueError):
+    pass
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -75,7 +82,13 @@ def set_overlay(visible):
     except Exception:  # noqa: BLE001
         log = ""
     text = OVERLAY_SETTINGS + log + ("" if visible else "no_display\n")
-    tmp = MANGOHUD_CONF + ".tmp"
+    try:
+        with open(MANGOHUD_CONF) as f:
+            if f.read() == text:                  # uendret: ikke skriv til disk
+                return
+    except OSError:
+        pass
+    tmp = f"{MANGOHUD_CONF}.{os.getpid()}.tmp"
     with open(tmp, "w") as f:
         f.write(text)
     os.replace(tmp, MANGOHUD_CONF)

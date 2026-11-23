@@ -78,6 +78,10 @@ class GamesPlus(Gtk.Box):
         drow.append(self.dpi)
         drow.append(_btn("Lagre DPI", self._save_dpi))
         self.append(drow)
+        self.append(_h("🎁 Gratis spill denne uken (Epic Games)"))
+        self.free = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self.free.append(_dim("…"))
+        self.append(self.free)
         self.append(_h("📦 Spill på de andre PC-ene"))
         self.elsewhere = _dim("…")
         self.append(self.elsewhere)
@@ -152,7 +156,25 @@ class GamesPlus(Gtk.Box):
                     avprofiles.cfg().get("audio", []), [g["name"] for g in launcher.all_games()][:60],
                     G.shared_profiles(), equipment.games_elsewhere())
         _bg(load, self._show)
+        _bg(lambda: __import__("freegames").fetch(), self._show_free)
         return False
+
+    def _show_free(self, v):
+        self._clear(self.free)
+        if isinstance(v, Exception):
+            self.free.append(_dim(i18n.tr("Fikk ikke hentet listen (er PC-en på nett?)")))
+            return
+        day = lambda t: time.strftime("%d.%m", time.localtime(t)) if t else "?"  # noqa: E731
+        rows = [(f"🎁 {g['title']}", f"gratis til {day(g['until'])}", g["url"]) for g in v["now"]]
+        rows += [(f"⏳ {g['title']}", f"gratis fra {day(g['from'])}", g["url"]) for g in v["soon"]]
+        if not rows:
+            self.free.append(_dim(i18n.tr("Ingen gratisspill akkurat nå")))
+        for title, when, url in rows:
+            r = Gtk.Box(spacing=8)
+            r.append(Gtk.Label(label=title, xalign=0, hexpand=True, ellipsize=3))
+            r.append(_dim(when))
+            r.append(_btn("Åpne", lambda _b, u=url: Gtk.UriLauncher.new(u).launch(self.get_root(), None, None)))
+            self.free.append(r)
 
     def _show(self, r):
         if isinstance(r, Exception):

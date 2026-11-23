@@ -905,3 +905,5 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .ct-sys { text-align: center; opacity: .6; font-size: 12px; font-style: italic; }
 .ct-quick { gap: 6px; margin: 6px 0; }
 .chat-card .row input { flex: 1; min-width: 0; }
+.ct-qsel { flex: 0 0 auto; width: 56px; padding-left: 8px; padding-right: 4px; }
+.ct-gate-in { text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 18px 6px; }

@@ -19,7 +19,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 
 import deps  # noqa: E402
 
@@ -234,7 +234,11 @@ class LcdPage(Gtk.Box):
         self.dev_lbl = Gtk.Label(label="Kjølerskjerm", xalign=0)
         self.dev_lbl.add_css_class("heading")
         pi.append(self.dev_lbl)
-        self.preview = Gtk.Picture(content_fit=Gtk.ContentFit.CONTAIN, can_shrink=True)
+        # Én tegneflate med én piksel-buffer som fylles på nytt for hvert bilde – ingen nye GPU-teksturer per
+        # bilde (det lekket ~2 MB/s og kostet 130+ MB mens siden var åpen).
+        self.preview = Gtk.DrawingArea()
+        self._frame = None                                     # (bytearray, bredde, høyde, stride)
+        self.preview.set_draw_func(self._draw_frame)
         self.preview.set_size_request(300, 300)
         self.preview.set_overflow(Gtk.Overflow.HIDDEN)
         self.preview.add_css_class("lcd-preview")
@@ -282,8 +286,9 @@ class LcdPage(Gtk.Box):
         right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, hexpand=True)
         top = Gtk.Box(spacing=8)
         self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vexpand=True)
-        sw = Gtk.StackSwitcher(stack=self.stack, hexpand=True)
-        top.append(sw)
+        sw = Gtk.StackSwitcher(stack=self.stack)
+        top.append(Gtk.ScrolledWindow(child=sw, hexpand=True, vscrollbar_policy=Gtk.PolicyType.NEVER,
+                                      hscrollbar_policy=Gtk.PolicyType.AUTOMATIC, propagate_natural_height=True))
         self.status = Gtk.Label(xalign=0, wrap=True)
         self.status.add_css_class("dim-label")
         import confirm
@@ -1020,38 +1025,112 @@ class LcdPage(Gtk.Box):
     # Live forhåndsvisning
     # =====================================================================
     def _preview_loop(self):
-        try:
-            deps.enable_trcc_import()
-            from trcc import frame_share, ipc
-        except ImportError:
-            GLib.idle_add(self.prev_lbl.set_label, "Forhåndsvisning krever trcc-linux")
-            return
-        reader = frame_share.FrameReader(Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "trcc" / "frames")
-        while True:
-            try:
-                sock = ipc.open_event_stream(["FrameSent"], shared_frames=True, timeout=5)
-                f = sock.makefile("r")
-                last = 0.0
-                for line in f:
-                    if time.monotonic() - last < 0.1:          # maks 10 bilder/s
-                        continue
-                    ev = json.loads(line).get("fields", {})
-                    shape = ev.get("shared_shape")
-                    if not ev.get("shared_seq") or not shape:
-                        continue
-                    w, h, stride = shape
-                    px = reader.read(ev["key"], ev["shared_seq"], w, h, stride)
-                    if not px:
-                        continue
-                    last = time.monotonic()
-                    tex = Gdk.MemoryTexture.new(w, h, Gdk.MemoryFormat.B8G8R8A8, GLib.Bytes.new(bytes(px)), stride)
-                    GLib.idle_add(self._show_frame, tex)
-            except Exception:  # noqa: BLE001 – tjenesten kjører ikke ennå
-                GLib.idle_add(self.prev_lbl.set_label, "Venter på TRCC-tjenesten …")
-            time.sleep(2)
+        """Live forhåndsvisning: leser bildefila TRCC skriver (to plasser med hode «TRFS») direkte – uten å importere
+        trcc og uten hendelsesstrømmen (den kostet 130+ MB og vokste). Bare mens siden vises, høyst 5 bilder/s."""
+        import mmap
+        import struct
+        hdr = struct.Struct("<4sQIII")
+        frames = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "trcc" / "frames"
+        cur = {"path": None, "mm": None, "f": None, "seq": 0, "seen": time.monotonic()}
 
-    def _show_frame(self, tex):
-        self.preview.set_paintable(tex)
+        def close():
+            for k in ("mm", "f"):
+                try:
+                    if cur[k] is not None:
+                        cur[k].close()
+                except (OSError, ValueError):
+                    pass
+            cur.update(path=None, mm=None, f=None)
+
+        self._frame_busy = False
+        while True:
+            if not self.get_mapped():
+                if cur["mm"] is not None:
+                    close()
+                    GLib.idle_add(self._drop_frame)
+                time.sleep(1)
+                continue
+            time.sleep(0.2)
+            if self._frame_busy:
+                continue
+            try:
+                files = sorted(frames.glob("*.frame"), key=lambda x: x.stat().st_mtime) if frames.is_dir() else []
+                if not files:
+                    raise FileNotFoundError
+                newest = files[-1]
+                if cur["path"] != newest or cur["mm"] is None or cur["mm"].size() != newest.stat().st_size:
+                    close()
+                    cur["f"] = open(newest, "rb")
+                    cur["mm"] = mmap.mmap(cur["f"].fileno(), 0, access=mmap.ACCESS_READ)
+                    cur["path"] = newest
+                mm = cur["mm"]
+                best = None
+                for slot in (0, 1):
+                    # slot-størrelsen er ukjent til vi har lest et hode: prøv plass 0, så plass 1 ut fra den
+                    off = 0 if slot == 0 else (best[4] if best else None)
+                    if off is None or off + hdr.size > mm.size():
+                        continue
+                    magic, seq, w, h, stride = hdr.unpack_from(mm, off)
+                    if magic != b"TRFS" or not (0 < w <= 8192 and 0 < h <= 8192) or seq <= 0:
+                        continue
+                    size = 32 + stride * h
+                    if best is None or seq > best[0]:
+                        best = (seq, w, h, stride, size, off)
+                    elif slot == 0:
+                        best = (best[0], best[1], best[2], best[3], size, best[5])
+                if not best:
+                    raise FileNotFoundError
+                seq, w, h, stride, size, off = best
+                if seq == cur["seq"]:
+                    if time.monotonic() - cur["seen"] > 10:
+                        GLib.idle_add(self.prev_lbl.set_label, "Venter på TRCC-tjenesten …")
+                    continue
+                fr = self._frame
+                if fr is None or fr[1:] != (w, h, stride):
+                    fr = (bytearray(stride * h), w, h, stride)
+                fr[0][:] = mm[off + 32:off + 32 + stride * h]
+                if struct.unpack_from("<Q", mm, off + 4)[0] != seq:       # ble skrevet over mens vi leste
+                    continue
+                cur.update(seq=seq, seen=time.monotonic())
+                self._frame = fr
+                self._frame_busy = True
+                GLib.idle_add(self._show_frame, None)
+            except (OSError, ValueError, FileNotFoundError):
+                close()
+                GLib.idle_add(self.prev_lbl.set_label, "Venter på TRCC-tjenesten …")
+                time.sleep(2)
+
+    def _draw_frame(self, _a, cr, aw, ah):
+        fr = self._frame
+        if not fr:
+            return
+        import cairo
+        buf, w, h, stride = fr
+        try:
+            surf = cairo.ImageSurface.create_for_data(buf, cairo.FORMAT_ARGB32, w, h, stride)
+        except (ValueError, TypeError):
+            return
+        sc = min(aw / w, ah / h)
+        cr.translate((aw - w * sc) / 2, (ah - h * sc) / 2)
+        cr.scale(sc, sc)
+        cr.set_source_surface(surf, 0, 0)
+        cr.paint()
+
+    def _drop_frame(self):
+        self._frame = None
+        self.preview.queue_draw()
+        try:
+            import perf
+            perf.trim()
+        except Exception:  # noqa: BLE001
+            pass
+        return False
+
+    def _show_frame(self, _tex):
+        self._frame_busy = False
+        if not self.get_mapped():
+            return False
+        self.preview.queue_draw()
         if self.prev_lbl.get_label() != "Live forhåndsvisning av skjermen":
             self.prev_lbl.set_label("Live forhåndsvisning av skjermen")
         return False

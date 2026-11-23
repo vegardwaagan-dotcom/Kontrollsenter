@@ -17,7 +17,6 @@ import socket
 import sys
 import subprocess
 import tarfile
-import threading
 import time
 import tempfile
 from pathlib import Path
@@ -244,7 +243,18 @@ def check():
         return (f"Versjon {local_version()} er installert, men programmet som kjører er {applog.RUNNING}. "
                 "Start Kontrollsenter på nytt for å ta den i bruk."), None
     if not on_lan():
-        return "Ikke på hjemmenettet", None
+        try:                                      # borte: en venn-PC hjemme videresender NAS-ens versjon
+            import relayupdate
+            r = relayupdate.remote()
+        except Exception:  # noqa: BLE001
+            r = None
+        if not r:
+            return "Ikke på hjemmenettet (og ingen venn-PC hjemme svarer)", None
+        if not newer(r["version"], local_version()):
+            return f"Du har nyeste versjon (via {r['friend']['name']}: {r['version']})", None
+        if r.get("pilot"):
+            return f"Versjon {r['version']} testes først hjemme – prøv igjen senere", None
+        return f"Versjon {r['version']} er tilgjengelig via {r['friend']['name']} (du har {local_version()})", r["version"]
     try:
         rv = remote_version()
     except Exception as e:  # noqa: BLE001
@@ -273,12 +283,21 @@ def _sha256(path):
 
 
 def _fetch_program(tmp):
-    """Hent pakken fra NAS-en, kontroller sjekksummen og pakk ut. Returnerer programmappen (eller kaster)."""
-    _smb(f'get {PKG} "{tmp}/{PKG}"; get SHA256SUMS "{tmp}/SHA256SUMS"', 300)
-    sums = dict(reversed(ln.split(None, 1)) for ln in (tmp / "SHA256SUMS").read_text().splitlines() if ln.strip())
-    want = sums.get(PKG, "").strip()
-    if not want or want != _sha256(tmp / PKG):
-        raise RuntimeError("sjekksummen stemmer ikke – oppdateringen ble ikke installert")
+    """Hent pakken fra NAS-en (eller via en venn-PC hjemme når vi er borte), kontroller sjekksummen og pakk ut.
+    Returnerer programmappen (eller kaster)."""
+    if on_lan():
+        _smb(f'get {PKG} "{tmp}/{PKG}"; get SHA256SUMS "{tmp}/SHA256SUMS"', 300)
+        sums = dict(reversed(ln.split(None, 1)) for ln in (tmp / "SHA256SUMS").read_text().splitlines()
+                    if ln.strip())
+        want = sums.get(PKG, "").strip()
+        if not want or want != _sha256(tmp / PKG):
+            raise RuntimeError("sjekksummen stemmer ikke – oppdateringen ble ikke installert")
+    else:
+        import relayupdate
+        info = relayupdate.remote(force=True)
+        if not info or not info.get("sha256"):
+            raise RuntimeError("ingen venn-PC hjemme svarer – prøv igjen senere")
+        relayupdate.download("pkg", tmp / PKG, info)
     with tarfile.open(tmp / PKG) as t:
         t.extractall(tmp / "x", filter="data")
     prog = next((p for p in (tmp / "x").glob("*/program") if p.is_dir()), None)

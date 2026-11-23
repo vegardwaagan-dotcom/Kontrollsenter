@@ -13,6 +13,33 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.88.0", "Mindre minne, ryddigere chat og oppdatering for venner", [
+        ("Raskere og lettere", [
+            "CPU-skjerm-siden brukte 130–180 MB ekstra minne for forhåndsvisningen – nå under 30 MB, og bare mens "
+            "siden vises",
+            "«Mindre minnebruk» og «Eldre PC» tegner uten skjermkortdriveren (rundt 110 MB mindre)",
+            "Kontrollsenters eget minne vises for seg, ved siden av minnet som deles med andre programmer",
+            "Gammel og ubrukt kode er ryddet bort",
+        ]),
+        ("Chat", [
+            "Uten Tailscale viser chatten bare «Installer Tailscale først» – med knapp som installerer det",
+            "Hurtigsvar er flyttet til ⚡-hjulet ved skrivefeltet (også i mobilappen) – ikke lenger i veien over chatten",
+            "⋯-menyen er delt i grupper: Lag, Del, Verktøy og Kanalen",
+            "Serverikonene på stripa viser bare ikonet",
+        ]),
+        ("Oppdatering for venner", [
+            "Venner utenfor huset får nye versjoner av Kontrollsenter (Linux, Windows og mobilappen) via PC-ene "
+            "hjemme over Tailscale – sjekksummen kontrolleres før noe installeres",
+        ]),
+        ("Ryddigere meny", [
+            "Ny seksjon «Sosialt» i sidemenyen: Chat, Discord, PC-er og Fjernhjelp",
+            "Faner som ikke får plass, kan rulles sideveis i stedet for å gjøre siden bredere",
+        ]),
+        ("Nytt", [
+            "🎁 Gratis spill denne uken: Epic Games’ gratisspill vises på Spill-siden, du får varsel når et nytt "
+            "kommer, og det kan postes i en chatkanal",
+        ]),
+    ]),
     ("0.87.0", "Chat i mobilappen", [
         ("Nytt i mobilappen", [
             "💬 Egen Chat-fane: alle samtaler og serverkanaler, bobler, bilder, talemeldinger, avstemninger du kan "

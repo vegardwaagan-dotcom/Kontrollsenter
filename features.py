@@ -4,7 +4,6 @@ shader-varsel, oppstartsprogrammer, ukjente enheter, sikkerhetssjekk, Steam-tilb
 månedlig Wrapped.
 """
 import glob
-import io
 import json
 import os
 import re
@@ -245,9 +244,9 @@ def chat_send(frm, text, notify=None, urgent=False):
     title = ("📣 " if urgent else "💬 ") + str(frm)[:40]
     try:                                              # «Spill sammen»: trykk på varselet for å bli med
         import launcher
-        g, clean = launcher.parse_invite(text)
+        g, _clean = launcher.parse_invite(text)
     except Exception:  # noqa: BLE001
-        g, clean = None, text
+        g = None
     if g and notify:
         from gi.repository import Gio
         act = Gio.Action.print_detailed_name("app.joingame", GLib.Variant("s", json.dumps({"g": g, "from": frm})))
@@ -990,6 +989,8 @@ def tick(notify, win=None):
             threading.Thread(target=lan_tick, daemon=True).start()
         if every("wish", 3600):
             threading.Thread(target=wishlist_tick, daemon=True).start()
+        if every("free", 6 * 3600):
+            threading.Thread(target=lambda: __import__("freegames").tick(), daemon=True).start()
         if every("ach", 1800):
             threading.Thread(target=achievements, daemon=True).start()
         if every("self", 10 ** 9) and win is not None:          # én gang, 90 s etter oppstart

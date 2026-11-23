@@ -610,7 +610,6 @@ def tune_fps(win, progress=None, seconds=30):
         orig = open(conf).read()
     except OSError:
         orig = ""
-    import games_auto
     sess = getattr(getattr(getattr(win, "bg", None), "auto", None), "session", None)
     results = []
     try:

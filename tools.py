@@ -946,10 +946,12 @@ class _Cards:
     def _perf_card(self):
         import perf
         c, i = card("Ytelse – hva Kontrollsenter bruker",
-                    "Prosessor, minne og lesing/skriving til disk for Kontrollsenter selv (målt hvert 2. sekund).")
+                    "Prosessor, minne og disk for Kontrollsenter selv. «Eget minne» er det programmet faktisk bruker – "
+                    "«med delte bibl.» tar også med skjermkortdriveren og GTK, som deles med andre programmer.")
         grid = Gtk.Grid(column_spacing=24, row_spacing=6)
         labs = {}
-        for n, (k, name) in enumerate((("cpu", "Prosessor"), ("rss", "Minne"), ("read", "Leser fra disk"),
+        for n, (k, name) in enumerate((("cpu", "Prosessor"), ("uss", "Eget minne"), ("rss", "Med delte bibl."),
+                                       ("read", "Leser fra disk"),
                                        ("write", "Skriver til disk"), ("threads", "Tråder"))):
             a = Gtk.Label(label=name, xalign=0)
             a.add_css_class("dim-label")
@@ -968,6 +970,7 @@ class _Cards:
             if u.get("t"):
                 labs["cpu"].set_label(f"{u['cpu']:.1f} %")
                 labs["rss"].set_label(perf.human(u["rss"]))
+                labs["uss"].set_label(perf.human(u.get("uss") or u["rss"]))
                 labs["read"].set_label(perf.human(u["read"]) + "/s")
                 labs["write"].set_label(perf.human(u["write"]) + "/s")
                 labs["threads"].set_label(str(u["threads"]))
@@ -1011,7 +1014,8 @@ class _Cards:
         sws["mem"] = self._switch_row(i, "Mindre minnebruk",
                          "Sider du har åpnet blir liggende i minnet. Når vinduet har vært lukket i 3 minutter, "
                          "starter Kontrollsenter stille på nytt i statusfeltet og bruker bare en tredjedel så mye "
-                         "minne. Aldri mens du spiller eller noe installeres.",
+                         "minne. Aldri mens du spiller eller noe installeres. Tegner også uten skjermkortdriveren "
+                         "(rundt 110 MB mindre) fra neste start.",
                          perf.flag("mem"), lambda w, _p: perf.set_flag("mem", w.get_active()))
         for s in sws.values():
             s.set_sensitive(not perf.save_all())

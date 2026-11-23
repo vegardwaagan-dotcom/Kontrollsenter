@@ -341,6 +341,12 @@ def _loop():
                 _USE["write"] = max(0.0, (wb - last_io[1]) / dt)
             last_io, last_t = (rb, wb), now
             _USE.update(cpu=round(cpu, 1), rss=mem, threads=p.num_threads(), t=time.time())
+            if now - _USE.get("_uss_t", 0) > 10:              # eget minne (uten delte biblioteker/driver) – dyrere å lese
+                try:
+                    _USE["uss"] = p.memory_full_info().uss
+                except (psutil.Error, AttributeError):
+                    _USE["uss"] = mem
+                _USE["_uss_t"] = now
         except Exception:  # noqa: BLE001
             pass
 

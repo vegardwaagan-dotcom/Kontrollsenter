@@ -321,6 +321,18 @@ def apk_info(force=False):
                     shutil.rmtree(tmp, ignore_errors=True)
         except Exception:  # noqa: BLE001
             nas = None
+        if nas is None:
+            try:                                          # borte: via en venn-PC hjemme
+                import lanupdate
+                if not lanupdate.on_lan():
+                    import relayupdate
+                    r = relayupdate.remote(force)
+                    a = (r or {}).get("apk") or {}
+                    if a.get("code"):
+                        nas = {"version": str(a["version"]), "code": int(a["code"]), "sha256": a.get("sha256", ""),
+                               "source": "venn"}
+            except Exception:  # noqa: BLE001
+                pass
         loc = _local_apk()
         best = max((x for x in (nas, loc) if x), key=lambda x: (x["code"], x["source"] == "nas"), default=None)
         _APK["t"], _APK["info"] = time.time(), best
@@ -346,7 +358,11 @@ def apk_path():
             import lanupdate
             os.makedirs(os.path.dirname(APK_CACHE), exist_ok=True)
             part = APK_CACHE + ".part"
-            lanupdate._smb(f'cd "Android"; get Kontrollsenter.apk "{part}"', 120)
+            if info["source"] == "venn":
+                import relayupdate
+                relayupdate.download("apk", part)
+            else:
+                lanupdate._smb(f'cd "Android"; get Kontrollsenter.apk "{part}"', 120)
             if not ok(part):
                 raise RuntimeError("APK-en på NAS-en har feil sjekksum")
             os.replace(part, APK_CACHE)
@@ -1197,6 +1213,22 @@ def _handler(remote):
                         UPD.set_auto((q.get("on") or ["1"])[0] == "1")
                         return self._send(200, {"ok": True, "auto": UPD.auto_on()})
                     return self._send(200, house_update(remote.win))
+                if p in ("/api/friend/update", "/api/friend/update/file"):   # videresend NAS-ens versjon til venner
+                    import friends
+                    import relayupdate
+                    q = parse_qs(u.query)
+                    if not friends.check_key((q.get("k") or [""])[0]):
+                        return self._send(403, {"error": "feil vennekode eller deling er av"})
+                    if p == "/api/friend/update":
+                        return self._send(200, relayupdate.serve_info() or {})
+                    try:
+                        fp = relayupdate.serve_file((q.get("f") or [""])[0])
+                    except ValueError as e:
+                        return self._send(400, {"error": str(e)})
+                    except Exception as e:  # noqa: BLE001
+                        return self._send(503, {"error": str(e)})
+                    with open(fp, "rb") as f:
+                        return self._send(200, f.read(), "application/octet-stream")
                 if p == "/api/friend":                   # venner utenfor huset (Tailscale): bare lesing, egen kode
                     import friends
                     if not friends.check_key((parse_qs(u.query).get("k") or [""])[0]):
@@ -1519,7 +1551,7 @@ def _handler(remote):
             if what == "chatrooms":
                 import chat
                 return self._send(200, {"rooms": [{"id": r, "name": n, "icon": i, "unread": u}
-                                                  for r, n, i, u in chat.rooms()]})
+                                                  for r, n, i, u in chat.rooms()], "tailscale": chat.tailscale()})
             if what == "chatroom":
                 import chat
                 room = arg("room", "alle")

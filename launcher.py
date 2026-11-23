@@ -5,10 +5,8 @@ kjører. «Spill sammen» sender en invitasjon til de andre PC-ene i huset; de k
 """
 import glob
 import json
-import os
 import re
 import sqlite3
-import time
 import urllib.request
 from pathlib import Path
 

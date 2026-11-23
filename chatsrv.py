@@ -342,7 +342,11 @@ def join(text):
     srv = d.get("server")
     if not srv:
         raise RuntimeError(d.get("error") or "ble ikke med")
-    _put(srv)
+    with _LOCK:                       # en nyere versjon kan ha kommet fra eieren mens vi ventet på svaret
+        cur = get(srv["id"])
+        if cur and int(cur.get("v", 0)) > int(srv.get("v", 0)):
+            srv = {**cur, "invites": srv.get("invites", cur.get("invites", {}))}
+        _put(srv)
     return srv
 
 
