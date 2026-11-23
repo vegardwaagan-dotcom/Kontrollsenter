@@ -556,6 +556,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("venner", "PC-er utenfor hjemmet", "ks-friends-symbolic", "friends_ui", "FriendsPage"),
                 ("chat", "Chat", "ks-chat-symbolic", "chat_ui", "ChatPage"),
                 ("fjernhjelp", "Fjernhjelp", "ks-remote-symbolic", "remotehelp_ui", "RemoteHelpPage"),
+                ("ai", "AI", "ks-ai-symbolic", "ai_ui", "AiPage"),
                 ("verktoy", "Vedlikehold", "ks-tools-symbolic", "tools", "ToolsPage"),
                 ("innstillinger", "Innstillinger", "ks-settings-symbolic", "tools", "SettingsPage")):
             if name == "bluetooth" and not self.hw["bluetooth"]:

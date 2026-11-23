@@ -747,6 +747,7 @@ SECTIONS = [
     ("Spill", ["spill", "vr", "stromming"]),
     ("Sosialt", ["chat", "discord", "hjemme", "venner", "fjernhjelp"]),
     ("Hjemmet", ["scener", "smarthjem", "familie"]),
+    ("AI", ["ai"]),
     ("System", ["nettverk", "programmer", "verktoy", "innstillinger"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
@@ -774,6 +775,7 @@ PAGE_HELP = {
     "chat": "Chat med alle som har Kontrollsenter: de hjemme, vennene dine, og privat med hver enkelt.",
     "vr": "Meta Quest 3 gjennom Steam og SteamVR – trådløst eller med kabel. Kontrollsenter installerer og retter alt.",
     "stromming": "Spill og se PC-skjermen på telefonen eller TV-en (Sunshine + Moonlight).",
+    "ai": "Claude Code og Codex: åpne dem i terminalen i en mappe, eller spør rett herfra – svaret kommer i appen.",
     "fjernhjelp": "Styr en annen PC eller få hjelp med RustDesk – din ID, PC-ene hjemme med ett trykk, og «Be om hjelp».",
     "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "
                "ekstra spilletid og leggetid.",

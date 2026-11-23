@@ -1056,6 +1056,21 @@ class _Cards:
         b.connect("clicked", open_)
         i.append(lab)
         i.append(b)
+
+        def ai_toggle(w, _p):                              # AI-menyen (Claude Code og Codex) – på som standard
+            if getattr(w, "_rev", False):
+                return
+            F.set_feature("ai", w.get_active())
+            root = self.get_root()
+            try:
+                root.sidebar.invalidate_filter()
+                root.sidebar.invalidate_headers()
+            except Exception:  # noqa: BLE001
+                pass
+            show()
+        self._switch_row(i, "AI-menyen (Claude Code og Codex)",
+                         "Viser AI i sidemenyen: åpne Claude Code og Codex i en mappe, eller spør rett i appen. Slå av "
+                         "for å skjule menyen.", F.on("ai"), ai_toggle)
         self.box.append(c)
 
     def _simple_card(self):

@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.97.0", "AI: Claude Code og Codex", [
+        ("Ny meny: AI", [
+            "Claude Code (Anthropic) og Codex (OpenAI) på samme side: versjon, innlogget eller ikke, installer, "
+            "oppdater, logg inn og avinstaller",
+            "«Åpne i terminal» starter assistenten i mappa du har valgt (med «Nylige» mapper)",
+            "«Spør»: skriv et spørsmål, velg Claude Code eller Codex – svaret strømmer inn i appen (Ctrl+Enter sender, "
+            "Stopp avbryter)",
+            "Som standard kan AI-en bare lese; «La AI-en endre filer i mappa» må slås på",
+            "Menyen er på som standard – slå den av under Innstillinger → Generelt → «AI-menyen»",
+        ]),
+    ]),
     ("0.96.0", "Varsler for anrop og chat, og vennene vises igjen", [
         ("Varsler", [
             "Når noen ringer: varsel med 📞 Svar, 🔕 Demp (stopper ringingen) og ❌ Legg på",

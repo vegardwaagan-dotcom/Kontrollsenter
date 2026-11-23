@@ -34,6 +34,7 @@ FEATURES = [
     ("scener", "Scener", "Én knapp som gjør mange ting, også på tid", ["scener"], False),
     ("smarthjem", "Smart Hjem", "Lys, stikkontakter og Hue", ["smarthjem"], False),
     ("familie", "Familie", "Ukeplan, skjermtid og leggetid", ["familie"], False),
+    ("ai", "AI: Claude Code og Codex", "Kodeassistenter i terminalen og «Spør» i appen", ["ai"], False),
     ("nettverk", "Nett og tilkobling", "Nettverk, Wi-Fi og Bluetooth", ["nettverk", "wifi", "bluetooth"], False),
     ("programmer", "Programmer", "Installer og oppdater programmer", ["programmer"], False),
     ("verktoy", "Vedlikehold", "Opprydding, oppstart, sikkerhetskopi og verktøy", ["verktoy"], False),
@@ -124,6 +125,13 @@ def save(profile, keys=None):
     _C["v"] = None
     _stop_disabled()
     return cfg()
+
+
+def set_feature(key, on):
+    """Slå én funksjon av/på (f.eks. AI-menyen under Innstillinger) – resten beholdes som før."""
+    keys = set(enabled())
+    (keys.add if on else keys.discard)(key)
+    return save("custom", sorted(keys))
 
 
 def _stop_disabled():
