@@ -94,7 +94,9 @@ def status(win):
             bats = [b["pct"], b["state"]]
     except Exception:  # noqa: BLE001
         pass
-    return {"name": savegames.pc_name(), "model": _model(), "distro": _distro(), "version": applog.RUNNING,
+    import machine
+    return {"name": savegames.pc_name(), "hw": machine.hw_id(), "os": machine.os_name(),
+            "model": _model(), "distro": _distro(), "version": applog.RUNNING,
             "cpu_t": getattr(win, "_cpu_t", None), "gpu_t": nv.get("temp") if nv else None,
             "cpu_l": round(getattr(win, "_cpu_load", 0) or 0), "watts": round((getattr(win, "_power", {}) or {})
                                                                               .get("total") or 0),
@@ -512,6 +514,8 @@ class HomePage(Gtk.ScrolledWindow):
         import applog
         import savegames
         me = savegames.pc_name()
+        import machine
+        pcs = machine.merge_home(pcs, STALE)               # samme maskin (Windows og Linux) = én PC
         for p in pcs:
             on = time.time() - p.get("time", 0) < STALE
             c = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -525,9 +529,16 @@ class HomePage(Gtk.ScrolledWindow):
             img = Gtk.Image(icon_name=icon, pixel_size=24)
             img.add_css_class("tile-icon" if on else "dim-label")
             head.append(img)
-            name = Gtk.Label(label=p.get("name", "?") + ("  (" + i18n.tr("denne") + ")" if p.get("name") == me else ""),
+            this = me in (p.get("aliases") or [p.get("name")])
+            name = Gtk.Label(label=p.get("name", "?") + ("  (" + i18n.tr("denne") + ")" if this else ""),
                              xalign=0, hexpand=True, ellipsize=3)
             name.add_css_class("heading")
+            if p.get("systems"):                           # dual boot: vis systemene og hvilket som kjører
+                sysl = Gtk.Label(label="  ·  ".join(f"{machine.os_icon(o)} {o}" + (" ●" if s_on else "") +
+                                                    f" ({n})" for n, o, s_on in p["systems"]),
+                                 xalign=0, wrap=True)
+                sysl.add_css_class("caption")
+                sysl.add_css_class("dim-label")
             head.append(name)
             dot = Gtk.Label(label="● " + (i18n.tr("på") if on else i18n.tr("av")))
             dot.add_css_class("success" if on else "dim-label")
@@ -538,6 +549,8 @@ class HomePage(Gtk.ScrolledWindow):
             sub.add_css_class("caption")
             sub.add_css_class("dim-label")
             inner.append(sub)
+            if p.get("systems"):
+                inner.append(sysl)
             if on:
                 vals = []
                 if p.get("cpu_t") is not None:

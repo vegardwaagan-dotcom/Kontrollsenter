@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.5", "Dual boot: Windows og Linux på samme PC er én PC", [
+        ("Samme maskin", [
+            "Kontrollsenter kjenner igjen samme maskin i Windows og Linux (nettverkskortet) – og deler det med de "
+            "andre PC-ene",
+            "PC-er hjemme og PC-er utenfor hjemmet viser maskinen som ÉN PC, med systemene (🪟 Windows · 🐧 Linux) og "
+            "hvilket som kjører nå",
+            "Chatten: samme maskin er én samtale – meldinger fra begge systemene vises samlet, og nye går til systemet "
+            "som er på",
+            "Samme chat i begge systemene: identitet, samtaler, servere og nøkler følger med via NAS-en (hentes ved "
+            "oppstart, sendes når noe endres og når Kontrollsenter avsluttes)",
+        ]),
+    ]),
     ("0.99.4", "Av betyr av", [
         ("Funksjoner", [
             "Når du tar bort en funksjon, slås den helt av: borte fra menyen, ingen bakgrunnsarbeid, og tjenester og "

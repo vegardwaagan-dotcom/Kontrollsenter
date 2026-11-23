@@ -268,7 +268,8 @@ class FriendsPage(Gtk.ScrolledWindow):
                                       "Be en venn sende invitasjonen sin, og lim den inn under «Legg til venn».",
                                       compact=False))
             return False
-        for d in fs:
+        import machine
+        for d in machine.merge_friends(fs):                 # samme maskin (Windows og Linux) = ett kort
             self.flow.append(self._tile(d))
         return False
 
@@ -286,10 +287,20 @@ class FriendsPage(Gtk.ScrolledWindow):
         name = Gtk.Label(label=d.get("friend") or d.get("name") or "?", xalign=0, hexpand=True, ellipsize=3)
         name.add_css_class("heading")
         head.append(name)
+        if d.get("systems"):
+            import machine
+            sysl = Gtk.Label(label="  ·  ".join(f"{machine.os_icon(o)} {o or n}" + (" ●" if s_on else "")
+                                                for n, o, s_on in d["systems"]), xalign=0, wrap=True)
+            sysl.add_css_class("caption")
+            sysl.add_css_class("dim-label")
+        else:
+            sysl = None
         dot = Gtk.Label(label="● " + (_t("på") if on else _t("av")))
         dot.add_css_class("success" if on else "dim-label")
         head.append(dot)
         inner.append(head)
+        if sysl is not None:
+            inner.append(sysl)
         if on and d.get("game"):
             g = Gtk.Label(label="🎮 " + d["game"] + (f"  ·  {d['fps']} FPS" if d.get("fps") else ""), xalign=0,
                           ellipsize=3)

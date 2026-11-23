@@ -97,14 +97,35 @@ def room_groups(pins=()):
     flat = {rid: (rid, name, icon, unread) for rid, name, icon, unread in rooms() if not rid.startswith("s:")}
     old = {}
     home = []
+    hidden = set()                                          # andre navn for samme maskin (dual boot)
     try:
-        import homepcs
-        for p in homepcs.fetch() or []:
+        import machine
+        pcs_all = machine._pcs()
+        pcs = machine.merge_home(pcs_all)
+        me_al = set(machine.home_aliases(_me()))
+        for p in pcs:
             n = p.get("name")
-            if n and n != _me():
-                home.append(f"p:{n}")
-                if p.get("version") and _ver(p["version"]) < MIN_CHAT:
-                    old[f"p:{n}"] = f"⚠️ {p['version']} – må oppdateres"
+            if not n or n == _me() or n in me_al:
+                continue
+            home.append(f"p:{n}")
+            for a in p.get("aliases") or []:
+                if a != n:
+                    hidden.add(f"p:{a}")
+            if p.get("systems"):
+                old[f"p:{n}"] = "  ·  ".join(f"{machine.os_icon(o)} {o}" + (" ●" if on else "")
+                                            for _a, o, on in p["systems"])
+                for q in pcs_all:                           # et av systemene har for gammel versjon
+                    if q.get("name") in (p.get("aliases") or []) and q.get("version") and \
+                            _ver(q["version"]) < MIN_CHAT:
+                        old[f"p:{n}"] += f"  ⚠️ {q['name']} {q['version']} – må oppdateres"
+            if p.get("version") and _ver(p["version"]) < MIN_CHAT:
+                old[f"p:{n}"] = (old.get(f"p:{n}", "") + "  ").lstrip() + f"⚠️ {p['version']} – må oppdateres"
+        for r in list(flat):                                # samme maskin vises én gang
+            if r in hidden:
+                flat.pop(r, None)
+        for r in home:
+            if r not in flat:
+                flat[r] = (r, r[2:], "💻", 0)
     except Exception:  # noqa: BLE001
         pass
     groups = [("Festet", [r for r in pins if r in flat]),
@@ -160,18 +181,39 @@ def rooms():
     return res
 
 
+def aliases(room):
+    """Samme maskin under flere navn (Windows og Linux med dual boot) → alle rommene for den: [rom-id]."""
+    if not room.startswith("p:"):
+        return [room]
+    try:
+        import machine
+        names = machine.home_aliases(room[2:])
+    except Exception:  # noqa: BLE001
+        names = [room[2:]]
+    return [f"p:{n}" for n in names] if room[2:] in names else [room] + [f"p:{n}" for n in names if n != room[2:]]
+
+
 def messages(room, limit=100):
     if room == "hjemme":
         import features
         return [{**m, "room": "hjemme"} for m in features.chat_list(limit)]
     d = _load(FILE, {})
-    return (d.get(room) or [])[-limit:]
+    al = aliases(room)
+    if len(al) == 1:
+        return (d.get(room) or [])[-limit:]
+    seen, out = set(), []                                  # begge systemene på samme PC i én samtale
+    for m in sorted((m for r in al for m in d.get(r) or []), key=lambda m: m.get("t", 0)):
+        if m.get("id") not in seen:
+            seen.add(m.get("id"))
+            out.append(m)
+    return out[-limit:]
 
 
 def mark_read(room):
     with _LOCK:
         d = _load(FILE, {})
-        d.setdefault("_read", {})[room] = time.time()
+        for r in aliases(room):
+            d.setdefault("_read", {})[r] = time.time()
         _save(FILE, d)
 
 
@@ -280,7 +322,12 @@ def send(room, text, frm=None, notify=None, extra=None):
             pass
     elif room.startswith("p:"):
         name = room[2:]
-        f = _friend(name)
+        try:                                                # dual boot: til systemet som kjører nå
+            import machine
+            name = machine.online_alias(name)
+        except Exception:  # noqa: BLE001
+            pass
+        f = _friend(name) or _friend(room[2:])
         if _home_pc(name):                                  # i huset: hjemmenettet først (virker uten Tailscale)
             targets.append(("hjem", name))
         elif f:

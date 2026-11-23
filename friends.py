@@ -198,7 +198,8 @@ def remove_friend(addr):
 def snapshot(win, full=False):
     c = cfg()
     show = {"game": True, "temps": True, "hw": True} if full else c["show"]
-    out = {"name": my_name(), "time": time.time(), "version": None}
+    import machine
+    out = {"name": my_name(), "time": time.time(), "version": None, "hw": machine.hw_id(), "os": machine.os_name()}
     try:
         import applog
         out["version"] = applog.RUNNING

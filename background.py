@@ -356,6 +356,8 @@ class Background:
             if hasattr(self, "play"):
                 self.play.save()
             homepcs.publish(self.win, off=True)
+            if __import__("funksjoner").on("chat"):          # dual boot: chatten til det andre systemet
+                __import__("chat_sync").push()
         except Exception:  # noqa: BLE001
             pass
         if self.held:
@@ -592,6 +594,13 @@ class Background:
             import threading as _th
             if __import__("funksjoner").on("chat"):
                 _th.Thread(target=lambda: __import__("chatplus").tick(self.win), daemon=True).start()
+        if __import__("funksjoner").on("chat") and time.time() - getattr(self, "_csync_t", time.time() - 3550) > 120:
+            first = not getattr(self, "_csync_done", False)                     # dual boot: samme chat i begge
+            self._csync_t = time.time()
+            self._csync_done = True
+            import threading as _th
+            _th.Thread(target=lambda f=first: (__import__("chat_sync").pull() if f else None,
+                                               __import__("chat_sync").push()), daemon=True).start()
         if time.time() - getattr(self, "_callc_t", 0) > 3600 and __import__("funksjoner").on("chat"):
             self._callc_t = time.time()                                          # gamle samtaler uten server
             import threading as _th
