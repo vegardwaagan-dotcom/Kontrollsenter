@@ -104,7 +104,9 @@ public class MainActivity extends Activity {
         if (saved != null) {
             web.restoreState(saved);
         } else {
-            web.loadUrl(ACTION_UPDATE.equals(getIntent().getAction()) ? START + "?oppdater=1" : START);
+            String room = getIntent().getStringExtra("chat_room");
+            web.loadUrl(ACTION_UPDATE.equals(getIntent().getAction()) ? START + "?oppdater=1"
+                    : room != null ? START + "#chat:" + android.net.Uri.encode(room) : START);
         }
         // varsel om nye app-versjoner (Android 13+ spør om lov én gang)
         if (Build.VERSION.SDK_INT >= 33
@@ -178,6 +180,9 @@ public class MainActivity extends Activity {
             }
         } else if (ACTION_UPDATE.equals(intent.getAction())) {
             web.loadUrl(START + "?oppdater=1");
+        } else if (intent.getStringExtra("chat_room") != null) {      // fra et chat-varsel: åpne samtalen
+            String q = org.json.JSONObject.quote(intent.getStringExtra("chat_room"));
+            web.evaluateJavascript("window.ksOpenChat && window.ksOpenChat(" + q + ")", null);
         }
     }
 

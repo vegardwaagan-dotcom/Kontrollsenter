@@ -15,7 +15,7 @@ import org.json.JSONObject;
 abstract class KsWidget extends AppWidgetProvider {
     static final String ACT = "no.waagan.kontrollsenter.WIDGET_ACTION";
     static final Class<?>[] ALL = {StatusWidget.class, TempWidget.class, QuickWidget.class, FamilyWidget.class,
-            BatteryWidget.class, PlaytimeWidget.class, PickWidget.class, GameWidget.class};
+            BatteryWidget.class, PlaytimeWidget.class, PickWidget.class, GameWidget.class, ChatWidget.class};
 
     abstract int layout();
 

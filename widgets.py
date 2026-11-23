@@ -128,6 +128,24 @@ def data(win):
         pass
     _family_bg()
     out["pcs"] = _FAM["pcs"]
+    try:                                                   # chat-widgeten: de siste meldingene fra andre
+        import chat
+        import chatsrv
+        me_id = chatsrv.me()["id"]
+        import savegames
+        me_pc = savegames.pc_name()
+        last = []
+        for rid, name, _icon, _u in chat.rooms():
+            if rid == "meg":
+                continue
+            for m in chat.messages(rid, 5):
+                if m.get("from_id") != me_id and m.get("pc") != me_pc and not str(m.get("from", "")).startswith("🤖"):
+                    last.append({"t": m.get("t", 0), "from": m.get("from"), "text": str(m.get("text", ""))[:80],
+                                 "room": rid, "where": name})
+        last.sort(key=lambda x: -x["t"])
+        out["chat"] = last[:3]
+    except Exception:  # noqa: BLE001
+        out["chat"] = []
     return out
 
 

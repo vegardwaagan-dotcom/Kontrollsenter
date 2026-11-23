@@ -28,6 +28,7 @@ import org.json.JSONObject;
 public class UpdateJob extends JobService {
     static final int JOB_ID = 1;
     static final String CH_UPDATE = "oppdatering";
+    static final String CH_CHAT = "chat";
     static final String CH_EVENTS = "hendelser";
 
     static void schedule(Context c) {
@@ -126,6 +127,11 @@ public class UpdateJob extends JobService {
                     JSONObject e = evs.getJSONObject(k);
                     last = Math.max(last, e.optDouble("t", last));
                     String lvl = e.optString("level");
+                    if ("chat".equals(e.optString("kind")) && !e.optString("room").isEmpty() && wants(c, "chat")) {
+                        notifyChat(c, (int) (e.optDouble("t") % 100000), e.optString("title"), e.optString("body"),
+                                e.optString("room"), name);
+                        continue;
+                    }
                     if (!"info".equals(lvl) && wants(c, e.optString("kind"))) {
                         notifyEvent(c, (int) (e.optDouble("t") % 100000), name + ": " + e.optString("title"),
                                 e.optString("body"));
@@ -220,6 +226,34 @@ public class UpdateJob extends JobService {
                 .setContentIntent(PendingIntent.getActivity(c, 4, i, PendingIntent.FLAG_IMMUTABLE)).setAutoCancel(true);
         try {
             nm.notify(1000 + Math.abs(id % 50000), b.build());
+        } catch (SecurityException e) {
+            // varsler er slått av
+        }
+    }
+
+    /** Chatmelding med «Svar»-felt rett i varselet (29). */
+    static void notifyChat(Context c, int id, String title, String body, String room, String pc) {
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        channel(nm, CH_CHAT, "Chat", NotificationManager.IMPORTANCE_HIGH);
+        int nid = 7000 + Math.abs(id % 50000);
+        Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra("chat_room", room);
+        Intent rep = new Intent(c, ChatReply.class).putExtra("room", room).putExtra("id", nid).putExtra("pc", pc);
+        PendingIntent rpi = PendingIntent.getBroadcast(c, nid, rep,
+                PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        android.app.RemoteInput ri = new android.app.RemoteInput.Builder(ChatReply.KEY).setLabel("Svar …").build();
+        Notification.Action reply = new Notification.Action.Builder(
+                android.graphics.drawable.Icon.createWithResource(c, android.R.drawable.ic_menu_send), "Svar", rpi)
+                .addRemoteInput(ri).build();
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CH_CHAT) : new Notification.Builder(c);
+        b.setSmallIcon(android.R.drawable.stat_notify_chat).setContentTitle(title).setContentText(body)
+                .setStyle(new Notification.BigTextStyle().bigText(body))
+                .setContentIntent(PendingIntent.getActivity(c, nid, open, PendingIntent.FLAG_IMMUTABLE |
+                        PendingIntent.FLAG_UPDATE_CURRENT))
+                .addAction(reply).setAutoCancel(true);
+        try {
+            nm.notify(nid, b.build());
         } catch (SecurityException e) {
             // varsler er slått av
         }

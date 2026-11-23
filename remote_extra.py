@@ -43,9 +43,10 @@ def _jsave(path, data):
 # --------------------------------------------------------------------------
 # 21 / 1 – hendelser (tidslinje + varsler til appen)
 # --------------------------------------------------------------------------
-def event(kind, title, body="", level="info"):
-    """Legg til en hendelse. level: info | warn | error | game."""
-    e = {"t": time.time(), "kind": kind, "title": title, "body": body, "level": level}
+def event(kind, title, body="", level="info", **extra):
+    """Legg til en hendelse. level: info | warn | error | game. extra: f.eks. room (chat)."""
+    e = {"t": time.time(), "kind": kind, "title": title, "body": body, "level": level,
+         **{k: v for k, v in extra.items() if isinstance(v, (str, int, float))}}
     with _LOCK:
         _MEM_EV.append(e)
         del _MEM_EV[:-2000]

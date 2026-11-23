@@ -72,6 +72,13 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
         </receiver>
+        <receiver android:name=".ChatReply" android:exported="false" />
+        <receiver android:name=".ChatWidget" android:exported="false" android:label="Chat">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_chat_info" />
+        </receiver>
         <receiver android:name=".FamilyWidget" android:exported="false" android:label="Familien">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.87.0", "Chat i mobilappen", [
+        ("Nytt i mobilappen", [
+            "💬 Egen Chat-fane: alle samtaler og serverkanaler, bobler, bilder, talemeldinger, avstemninger du kan "
+            "stemme i, reaksjoner og hurtigsvar – med antall uleste på fanen",
+            "Svar rett fra varselet: chatmeldinger kommer som varsel med «Svar»-felt",
+            "Trykk på et chatvarsel for å åpne samtalen",
+            "Ny widget «Chat»: de tre siste meldingene og hurtigsvar (Kommer! / 5 min til)",
+        ]),
+    ]),
     ("0.86.0", "Tale, kryptering og klistremerker", [
         ("Nytt i chatten", [
             "📢 Walkie-talkie: trykk og snakk – spilles av med en gang hos de andre (ikke etter leggetid)",

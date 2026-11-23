@@ -377,7 +377,7 @@ def _alert(room, msg, notify):
         notify = None                                       # stille timer: ingen varsel etter leggetid
     try:
         import remote_extra
-        remote_extra.event("chat", f"💬 {msg['from']}", msg["text"], "info")
+        remote_extra.event("chat", f"💬 {msg['from']}", msg["text"], "info", room=room)
     except Exception:  # noqa: BLE001
         pass
     if notify:

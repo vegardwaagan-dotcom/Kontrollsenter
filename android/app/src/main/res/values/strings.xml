@@ -15,6 +15,7 @@
     <string name="sc_scene">Scene</string>
     <string name="w_desc_temp">CPU, GPU og strøm i store tall</string>
     <string name="w_desc_quick">Spillmodus, lagre klipp, lås og demp</string>
+    <string name="w_desc_chat">De siste chatmeldingene – og hurtigsvar</string>
     <string name="w_desc_family">Hva familien spiller – og «Middag!»</string>
     <string name="w_desc_battery">Batteri i mus, tastatur og hodesett</string>
     <string name="w_desc_playtime">Spilletid i dag og grensen</string>

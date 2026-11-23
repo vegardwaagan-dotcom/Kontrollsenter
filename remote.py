@@ -604,6 +604,15 @@ def _feature_action(win, kind, a):
     if kind == "chat2":                                  # chat for alle: hjemme, alle, privat
         import chat
         return True, chat.send(str(a.get("room") or "alle"), a.get("text"), a.get("_dev") or None, _notify(win))
+    if kind == "chatvote":                               # stemme i en avstemning fra mobilen
+        import chat
+        import chatplus
+        room = str(a.get("room") or "")
+        m = next((x for x in chat.messages(room, 300) if x.get("id") == a.get("mid")), None)
+        if not m:
+            raise ValueError("fant ikke avstemningen")
+        chatplus.vote(room, m, int(a.get("idx", 0)))
+        return True, "Stemt ✓"
     if kind == "dinner":
         F.send_to(a.get("to") or "*", a.get("_dev") or "Mobil", a.get("text") or "🍽️ Middag! Kom og spis.",
                   _notify(win), urgent=True)
@@ -945,7 +954,7 @@ WEB_TYPES = {".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js
              ".apk": "application/vnd.android.package-archive"}
 
 
-LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "chat2", "uilog",
+LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "show", "clip", "chat", "chat2", "chatvote", "uilog",
               "goal_req", "shop_req"}   # «begrenset» tilgang
 
 
@@ -1195,6 +1204,17 @@ def _handler(remote):
                     return self._send(200, friends.snapshot(remote.win))
                 if p == "/api/watch":                    # «Se på»: MJPEG-strøm av skjermen (bare visning)
                     return self._watch(parse_qs(u.query))
+                if p == "/api/chatfile":                   # vedlegg i chatten til mobilappen (<img> kan ikke sende nøkkel)
+                    q = parse_qs(u.query)
+                    if not remote.check((q.get("k") or [""])[0]):
+                        return self._send(401, {"error": "ikke paret"})
+                    import chatplus
+                    fp = chatplus.file_path({"sha": (q.get("sha") or [""])[0], "name": (q.get("name") or [""])[0]})
+                    if not fp:
+                        return self._send(404, {"error": "fant ikke fila"})
+                    import mimetypes
+                    return self._send(200, open(fp, "rb").read(), mimetypes.guess_type(fp)[0] or
+                                      "application/octet-stream")
                 if p in ("/api/clipfile", "/api/clipthumb"):   # nøkkel i adressen – <video>/<img> kan ikke sende den
                     q = parse_qs(u.query)
                     import clipx
@@ -1504,7 +1524,9 @@ def _handler(remote):
                 import chat
                 room = arg("room", "alle")
                 chat.mark_read(room)
-                return self._send(200, {"room": room, "messages": chat.messages(room, 80)})
+                import chatsrv
+                return self._send(200, {"room": room, "messages": chat.messages(room, 80), "me_id": chatsrv.me()["id"],
+                                        "me": chatsrv.me()["name"]})
             simple = {"chat": lambda: {"messages": F.chat_list()}, "family": F.family,
                       "perf": lambda: {"games": F.perf_per_game(), "driver": F.driver_info()},
                       "startup": lambda: {"items": F.startup_list()}, "lan": lambda: {"devices": F.lan_devices()},
