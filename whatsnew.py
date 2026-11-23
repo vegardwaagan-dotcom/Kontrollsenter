@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.83.0", "Servere i chatten – som Discord", [
+        ("Nytt (Chat)", [
+            "Lag egne servere (➕) med kategorier og kanaler – venner blir med via invitasjonslenke (🔗), eller du "
+            "sender invitasjonen rett i en privat melding med «Bli med»-knapp",
+            "Roller: eier 👑, admin 🛡️ og medlem – admin kan lage og endre kanaler og kaste ut; eieren kan gi bort "
+            "eierskapet. Medlemmer kan forlate serveren når de vil",
+            "Meldinger går direkte til alle medlemmene – serveren virker selv om eieren er av, og de som er av får "
+            "meldingene når de er på igjen. Bare medlemmer kan skrive",
+            "Høyreklikk på en melding: svar, reaksjoner (👍😂❤️😮🎉🔥), rediger, slett og fest",
+            "Demp en kanal, medlemslisten ved siden av, og uleste per kanal",
+        ]),
+    ]),
     ("0.82.2", "Fjernhjelp i sidemenyen", [
         ("Nytt", [
             "🛟 Fjernhjelp har fått sin egen side i sidemenyen (under Hjemmet): RustDesk-ID-en din stort og tydelig, "

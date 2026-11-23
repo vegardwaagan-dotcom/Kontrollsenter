@@ -82,6 +82,14 @@ def rooms():
                 out.append((f"p:{n}", n, "👋"))
     except Exception:  # noqa: BLE001
         pass
+    try:                                                  # serverkanaler («Server › #kanal»)
+        import chatsrv
+        for srv in chatsrv.servers().values():
+            for c in srv.get("categories", []):
+                for ch in c.get("channels", []):
+                    out.append((f"s:{srv['id']}:{ch['id']}", f"{srv['name']} › #{ch['name']}", srv.get("icon", "🎮")))
+    except Exception:  # noqa: BLE001
+        pass
     d = _load(FILE, {})
     read = d.get("_read", {})
     res = []
@@ -148,7 +156,7 @@ def _post_friend(f, payload, timeout=6):
         return json.load(r)
 
 
-def send(room, text, frm=None, notify=None):
+def send(room, text, frm=None, notify=None, extra=None):
     """Send en melding i et rom. Returnerer tekst om hvordan det gikk."""
     text = str(text or "").strip()[:500]
     if not text:
@@ -159,6 +167,18 @@ def send(room, text, frm=None, notify=None):
         import features
         features.send_to("*", frm, text, notify)
         return "Sendt til PC-ene hjemme"
+    if room.startswith("s:"):                             # serverkanal: direkte til alle medlemmene
+        import chatsrv
+        _s, sid, ch = room.split(":", 2)
+        srv = chatsrv.get(sid)
+        if not srv or not chatsrv.channel(srv, ch):
+            raise ValueError("fant ikke kanalen")
+        msg = {"id": f"{chatsrv.me()['id']}-{time.time_ns()}", "t": time.time(), "from": frm, "pc": me,
+               "from_id": chatsrv.me()["id"], "text": text, "room": room, **(extra or {})}
+        _store(room, msg)
+        _fire(room, msg)
+        ok, q = chatsrv.broadcast(srv, {"type": "msg", "ch": ch, **{k: v for k, v in msg.items() if k != "room"}})
+        return f"Sendt til {ok}" + (f" · {q} får den når de er på igjen" if q else "")
     msg = {"id": f"{me}-{time.time_ns()}", "t": time.time(), "from": frm, "pc": me, "text": text, "room": room}
     _store(room, msg)
     _fire(room, msg)
@@ -210,7 +230,7 @@ def _deliver(kind, target, payload):
 def _queue(kind, target, payload):
     with _LOCK:
         q = _load(OUTBOX, [])
-        key = target.get("addr") if kind == "venn" else target
+        key = target.get("addr") if kind == "venn" else target.get("member") if kind == "srv" else target
         q.append({"kind": kind, "to": key, "name": target.get("name") if kind == "venn" else target,
                   "payload": payload, "t": time.time()})
         _save(OUTBOX, q[-500:])
@@ -225,6 +245,15 @@ def retry_outbox():
     left, sent = [], 0
     for e in q:
         if time.time() - e["t"] > 3 * 86400:
+            continue
+        if e["kind"] == "srv":
+            import chatsrv
+            if chatsrv._post(e["to"], e["payload"]):
+                sent += 1
+                continue
+            if time.time() - e["t"] > 3 * 86400:
+                continue
+            left.append(e)
             continue
         if e["kind"] == "venn":
             f = _friend(e.get("name")) or next((x for x in __import__("friends").cfg()["friends"]
@@ -275,6 +304,36 @@ def receive_friend(payload, src_ip, notify=None):
     return True
 
 
+def apply_event(room, ev, sender=None):
+    """Reaksjon / redigering / sletting / festing på en melding i et rom."""
+    mid = str(ev.get("mid") or "")
+    who = (sender or {}).get("name") or str(ev.get("from") or "?")
+    who_id = (sender or {}).get("id") or ev.get("from_id")
+    with _LOCK:
+        d = _load(FILE, {})
+        for m in d.get(room) or []:
+            if m.get("id") != mid:
+                continue
+            t = ev.get("type")
+            if t == "react":
+                e = str(ev.get("emoji") or "")[:8]
+                r = m.setdefault("reactions", {}).setdefault(e, [])
+                (r.remove if who in r else r.append)(who)
+                if not r:
+                    m["reactions"].pop(e, None)
+            elif t in ("edit", "delete") and (m.get("from_id") == who_id or (sender or {}).get("role") in
+                                               ("owner", "admin") and t == "delete"):
+                if t == "edit":
+                    m["text"], m["edited"] = str(ev.get("text") or "")[:2000], time.time()
+                else:
+                    m["text"], m["deleted"] = "", True
+            elif t == "pin":
+                m["pinned"] = bool(ev.get("on", True))
+            break
+        _save(FILE, d)
+    _fire(room, {"event": ev.get("type"), "mid": mid})
+
+
 def receive_home(payload, notify=None):
     """En melding fra en PC hjemme (via NAS-postkassen)."""
     room = payload.get("room") or "alle"
@@ -297,6 +356,11 @@ def _alert(room, msg, notify):
         try:
             from gi.repository import GLib
             where = "" if room.startswith("p:") else " (alle)"
+            if room.startswith("s:"):
+                import chatsrv
+                srv = chatsrv.get(room.split(":")[1]) or {}
+                ch = chatsrv.channel(srv, room.split(":")[2]) or {}
+                where = f" · #{ch.get('name', '?')} ({srv.get('name', '')})"
             GLib.idle_add(lambda: (notify("chat", f"💬 {msg['from']}{where}", msg["text"], force=True,
                                           action="app.chat"), False)[1])
         except Exception:  # noqa: BLE001

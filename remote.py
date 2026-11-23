@@ -1276,7 +1276,8 @@ def _handler(remote):
                 return self._send(403, {"error": "bare hjemmenettet"})
             p = urlparse(self.path).path
             try:
-                body = self._body(1024 * 1024 if p == "/api/house/setup" else MAX_BODY)
+                body = self._body(1024 * 1024 if p in ("/api/house/setup", "/api/chat/inbox", "/api/chat/join")
+                                  else MAX_BODY)
                 if p == "/api/local/action":                 # knapper i KDE-widgetene
                     if not self._local():
                         return self._send(403, {"error": "bare fra denne PC-en"})
@@ -1290,6 +1291,22 @@ def _handler(remote):
                         return self._send(403, {"error": msg})
                     import savegames
                     return self._send(200, {"token": token, "name": savegames.pc_name()})
+                if p in ("/api/chat/inbox", "/api/chat/join"):   # servere i chatten
+                    import chatsrv
+                    ip = self.client_address[0]
+                    if ip.startswith("::ffff:"):
+                        ip = ip[7:]
+                    try:
+                        if p == "/api/chat/join":
+                            return self._send(200, {"ok": True, "server": chatsrv.handle_join(body)})
+                        if (parse_qs(urlparse(self.path).query).get("k") or [""])[0] != chatsrv.me()["key"]:
+                            return self._send(403, {"error": "feil kode"})
+                        chatsrv.receive(body, ip, _notify(remote.win))
+                        return self._send(200, {"ok": True})
+                    except PermissionError as e:
+                        return self._send(403, {"error": str(e)})
+                    except ValueError as e:
+                        return self._send(400, {"error": str(e)})
                 if p == "/api/friend/chat":                 # chat fra en venn (vennekoden + må stå i vennelista)
                     import friends
                     import chat
