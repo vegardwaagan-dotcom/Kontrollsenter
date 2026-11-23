@@ -74,28 +74,8 @@ if ($Admin) {
         try {   # nyere LibreHardwareMonitor bruker PawnIO-driveren for å lese hovedkortbrikkene
             winget install -e --id namazso.PawnIO --silent --accept-package-agreements --accept-source-agreements | Out-Host
         } catch { Warn "PawnIO kunne ikke installeres automatisk: $_" }
-        try {   # OpenRGB styrer RGB-lys fra Kontrollsenter (valgfritt – hoppes over hvis det feiler)
-            if (-not (Get-Command OpenRGB.exe -ErrorAction SilentlyContinue) -and
-                -not (Test-Path "$env:ProgramFiles\OpenRGB\OpenRGB.exe")) {
-                # pakken heter OpenRGB.OpenRGB i dag (tidligere CalcProgrammer1.OpenRGB)
-                # «portable»-pakker kan avvise --scope machine – prøv da uten
-                $done = $false
-                foreach ($try in @(@("OpenRGB.OpenRGB", "--scope", "machine"), @("OpenRGB.OpenRGB"),
-                                   @("CalcProgrammer1.OpenRGB"))) {
-                    if ($done) { break }
-                    $wargs = @("install", "-e", "--id") + $try + @("--silent", "--accept-package-agreements",
-                                                                   "--accept-source-agreements")
-                    winget @wargs | Out-Host
-                    if ($LASTEXITCODE -eq 0) { Green "OpenRGB er installert"; $done = $true }
-                }
-                if (-not $done) { Warn "OpenRGB ble ikke installert – kan installeres i Programmer-fanen" }
-            }
-        } catch { Warn "OpenRGB kunne ikke installeres automatisk: $_" }
-        try {   # ffmpeg: redigering av klipp (klipp til, GIF, montasje …) – valgfritt
-            if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-                winget install -e --id Gyan.FFmpeg --silent --accept-package-agreements --accept-source-agreements | Out-Host
-            }
-        } catch { Warn "ffmpeg kunne ikke installeres automatisk: $_" }
+        # OpenRGB, FFmpeg, RustDesk, Tailscale, Discord … installeres av velkomstveiviseren i Kontrollsenter –
+        # bare for funksjonene som velges (med fremdrift), og fjernes igjen når funksjonen slås av.
         # deler målingene bare lokalt på port 8085
         @"
 <?xml version="1.0" encoding="utf-8"?>

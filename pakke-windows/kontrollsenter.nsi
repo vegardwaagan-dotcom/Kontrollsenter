@@ -44,7 +44,7 @@ VIAddVersionKey /LANG=1044 "ProductVersion" "${VERSION}"
 !define MUI_COMPONENTSPAGE_TEXT_INSTTYPE "Type:"
 
 !define MUI_WELCOMEPAGE_TITLE "Velkommen til Kontrollsenter ${VERSION}"
-!define MUI_WELCOMEPAGE_TEXT "Kontrollsenter viser og styrer PC-en din: ytelse, temperaturer, strøm, strømmodus, historikk og PC-ene på hjemmenettet.$\r$\n$\r$\nFørste gang lastes GTK4 (MSYS2) og LibreHardwareMonitor ned. Det tar noen minutter, og Windows ber om administratortilgang én gang.$\r$\n$\r$\nTrykk Neste for å fortsette."
+!define MUI_WELCOMEPAGE_TEXT "Kontrollsenter viser og styrer PC-en din: ytelse, temperaturer, strøm, strømmodus, historikk og PC-ene på hjemmenettet.$\r$\n$\r$\nHer installeres bare selve programmet (med GTK4/MSYS2 og LibreHardwareMonitor, som trengs for å starte og vise temperaturene). Windows ber om administratortilgang én gang.$\r$\n$\r$\nProgrammene funksjonene trenger (OpenRGB, RustDesk, Tailscale, Discord …) installeres når du har valgt funksjoner i velkomstveiviseren.$\r$\n$\r$\nTrykk Neste for å fortsette."
 !define MUI_FINISHPAGE_TITLE "Kontrollsenter er installert"
 !define MUI_FINISHPAGE_TEXT "Du finner Kontrollsenter på skrivebordet og i Start-menyen. Det kan også ligge som ikon i systemstatusfeltet nede til høyre."
 !define MUI_FINISHPAGE_RUN

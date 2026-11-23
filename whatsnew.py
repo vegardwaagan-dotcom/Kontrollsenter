@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.91.0", "Programmene installeres etter at du har valgt funksjoner", [
+        ("Installasjon", [
+            "Installasjonsskriptet (Linux) og Setup.exe (Windows) legger bare inn selve Kontrollsenter",
+            "Programmene funksjonene trenger (OpenRGB, Solaar, ratbagd, TRCC, RustDesk, Tailscale, Discord, "
+            "MangoHud, FFmpeg …) installeres når du har valgt funksjoner i velkomstveiviseren",
+            "Fremdrift med prosent, tid igjen og nedlastingshastighet – kan kjøres i bakgrunnen",
+            "Slår du av en funksjon (veiviseren eller Innstillinger → Funksjoner), fjernes programmene den brukte – "
+            "med samme fremdrift",
+            "Programmer du hadde fra før, fjernes bare hvis du krysser av for det (du blir spurt én gang)",
+        ]),
+    ]),
     ("0.90.1", "Mobilkameraet er lettere å finne", [
         ("Mobilkamera", [
             "Ny 📱-knapp i chatten på PC-en (venstre stripe og ⋯-menyen) med veiledning, «Vis i vindu», «Bruk i "

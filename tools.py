@@ -530,6 +530,8 @@ def make_package(dest_dir):
                 shutil.copytree(f, d)
             else:
                 shutil.copy2(f, d)
+    if (pkg_src / "udev").is_dir():                     # udev-reglene følger programmet (veiviseren legger dem inn)
+        shutil.copytree(pkg_src / "udev", prog / "udev", dirs_exist_ok=True)
     win_src = Path(APP_DIR) / "pakke-windows"         # installasjon for Windows 11
     if win_src.is_dir():
         wdst = dest / "Windows"

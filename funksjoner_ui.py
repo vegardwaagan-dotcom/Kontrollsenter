@@ -75,8 +75,13 @@ class FeaturePicker(Gtk.Box):
 
 
 def apply(win, profile, keys):
-    """Lagre og oppdater sidemenyen med en gang."""
+    """Lagre, oppdater sidemenyen med en gang, og installer/fjern programmene funksjonene trenger (med fremdrift)."""
     F.save(profile, keys)
+    try:
+        import komponenter_ui
+        komponenter_ui.run_for(win, F.enabled())
+    except Exception:  # noqa: BLE001
+        pass
     try:
         win.sidebar.invalidate_filter()
         win.sidebar.invalidate_headers()
