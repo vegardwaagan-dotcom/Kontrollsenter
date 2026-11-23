@@ -64,14 +64,19 @@ class VoiceBar(Gtk.Box):
         self.b_mute = self._b(row, "🎙️", "Demp mikrofonen", VC.toggle_mute)
         self.b_deaf = self._b(row, "🎧", "Slå av lyden (du hører ingen og blir dempet)", VC.toggle_deaf)
         self.b_cam = self._b(row, "📷", "Webkamera av/på", VC.toggle_camera)
-        self.b_ov = Gtk.MenuButton(label="🖼️", tooltip_text=i18n.tr("Webkamera-overlay i spill"))
+        self.b_ov = Gtk.MenuButton(label="🖼️", tooltip_text=i18n.tr("Webkamera-overlay i spill"),
+                                   always_show_arrow=False)
         self.b_ov.set_popover(overlay_popover(lambda: self.refresh()))
         row.append(self.b_ov)
         s = Gtk.Button(label="🎛️", tooltip_text=i18n.tr("Lyd og video"))
         s.connect("clicked", lambda *_: open_settings())
         row.append(s)
-        self._b(row, "📞", "Forlat talekanalen", VC.leave).add_css_class("ks-off")
         self.append(row)
+        lv = Gtk.Button(label=i18n.tr("📞 Forlat talen"), tooltip_text=i18n.tr("Forlat talekanalen (eller samtalen)"))
+        lv.add_css_class("ks-off")
+        lv.connect("clicked", lambda *_: _bg(VC.leave, lambda res: (isinstance(res, Exception) and
+                                                                    _status(res, self.status), self.refresh())))
+        self.append(lv)
         VC.on_change(lambda what: what in ("roster", "error") and self.refresh())
         self.refresh()
 
@@ -339,6 +344,10 @@ def open_settings(parent):
                        lambda v: VC.set_(vad=v)))
     g2.add(_scale_row("Terskel for stemmeaktivering", "Lavere = mer følsom", -70, -20, c["vad_level"],
                       lambda v: VC.set_(vad_level=int(v)), "{:.0f} dB"))
+
+    g2.add(_combo("Forlat talen når jeg har vært borte i", "Ingen mus, tastatur eller prat så lenge",
+                  [(0, "Aldri"), (10, "10 minutter"), (15, "15 minutter"), (30, "30 minutter"), (60, "1 time"),
+                   (120, "2 timer")], int(c.get("auto_leave_min", 30)), lambda v: VC.set_(auto_leave_min=int(v))))
 
     # --- høyttaler
     g3 = Adw.PreferencesGroup(title=i18n.tr("Høyttaler / hodetelefoner"))

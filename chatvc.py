@@ -23,7 +23,7 @@ import time
 IS_WIN = sys.platform == "win32"
 CFG = os.path.expanduser("~/.config/systemmonitor/chat-av.json")
 DEFAULT = {"mic": "", "speaker": "", "camera": "", "quality": "hd", "fps": 30, "codec": "auto", "mic_vol": 100, "out_vol": 100,
-           "noise": True, "agc": True, "vad": False, "vad_level": -50}
+           "noise": True, "agc": True, "vad": False, "vad_level": -50, "auto_leave_min": 30}
 # oppløsninger for webkameraet: nøkkel -> (bredde, høyde, navn)
 QUALITY = {"lav": (320, 180, "180p – svak nettlinje"), "middels": (640, 360, "360p"),
            "hd": (1280, 720, "HD 720p"), "fullhd": (1920, 1080, "Full HD 1080p"), "qhd": (2560, 1440, "1440p"),
@@ -774,7 +774,7 @@ def join(sid, ch):
     leave()
     Gst = _GST["Gst"]
     with _LOCK:
-        _S.update(sid=sid, ch=ch, mute=False, deaf=False, cam=False, peers=set(), error=None,
+        _S.update(sid=sid, ch=ch, mute=False, deaf=False, cam=False, peers=set(), error=None, joined=time.time(),
                   assrc=random.randint(1, 2 ** 31 - 1), vssrc=random.randint(1, 2 ** 31 - 1),
                   aport=_free(APORTS), vport=_free(VPORTS), hport=_free(HPORTS))
         _S["pipes"]["recv-a"] = _recv_audio_pipe(_S["aport"])
@@ -842,12 +842,48 @@ def _drop_peer(v):
             p.get_by_name("out").emit("remove", key[0], port)
 
 
+def idle_check(now=None):
+    """Har du vært borte (verken mus/tastatur eller snakket) i «auto_leave_min» minutter? → forlat talen.
+    Ukjent om du er borte (None fra skrivebordet): aldri – da kan du sitte og lytte."""
+    mins = int(cfg().get("auto_leave_min") or 0)
+    if not mins or not _S["sid"]:
+        return False
+    now = now or time.time()
+    try:
+        import house
+        idle = house.idle_seconds()
+    except Exception:  # noqa: BLE001
+        idle = None
+    if idle is None:
+        return False
+    last = max(_S.get("joined", now), _SPEAK.get("me", 0), now - idle)
+    if now - last < mins * 60:
+        return False
+    import chatsrv
+    srv = chatsrv.get(_S["sid"]) or {}
+    ch = chatsrv.channel(srv, _S["ch"]) or {}
+    leave()
+    try:
+        import remote
+        from gi.repository import GLib
+        bg = getattr(getattr(remote, "win", None), "bg", None)
+        if bg:
+            GLib.idle_add(lambda: (bg.notify("chat", "Du forlot talen", f"Du var borte i {mins} minutter – "
+                                             f"{ch.get('name', 'talekanalen')} ({srv.get('name', '')})",
+                                             force=True, action="app.chat"), False)[1])
+    except Exception:  # noqa: BLE001
+        pass
+    return True
+
+
 def _heartbeat():
     def loop(token):
         import chatsrv
         while _S["sid"] and _S.get("hb") == token:
             time.sleep(15)
             if not _S["sid"] or _S.get("hb") != token:
+                return
+            if idle_check():
                 return
             srv = chatsrv.get(_S["sid"])
             if srv:

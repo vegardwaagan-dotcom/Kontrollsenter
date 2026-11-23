@@ -399,7 +399,9 @@ class ChatPage(Gtk.Box):
                 if calls:                                   # samtaler uten server (📞)
                     header("Samtaler")
                     for sid, chid, name, people in calls:
-                        self._row(f"s:{sid}:{chid}", f"🔊  {name.lstrip('📞 ')}", 0, voice=True)
+                        self._row(f"s:{sid}:{chid}", f"🔊  {name.lstrip('📞 ')}", 0, voice=True,
+                                  extra=self._leave_btn("✕", "Legg på og fjern samtalen",
+                                                        lambda s_=sid: __import__("chatcall").forget(s_)))
                         for pid, pname, pmute, pcam in people:
                             cam = f"  📷 {pcam}" if isinstance(pcam, str) else "  📷" if pcam else ""
                             pl = Gtk.Label(label=f"{'🔇' if pmute else '🎙️'} {pname}{cam}", xalign=0, ellipsize=3)
@@ -458,7 +460,7 @@ class ChatPage(Gtk.Box):
                                for p in chatvc.roster(srv["id"], ch["id"])) if voice else ()
                 chans.append((rid, ch["name"], voice, unread, CS.muted(rid), people))
             layout.append((cat["id"], cat["name"], tuple(chans)))
-        sig = (srv["id"], srv.get("v"), manage, tuple(layout), srv.get("name"), srv.get("icon"))
+        sig = (srv["id"], srv.get("v"), manage, tuple(layout), srv.get("name"), srv.get("icon"), chatvc.current())
         # bygg bare om når noe faktisk er endret – og aldri rett etter et klikk (da forsvant klikket)
         if not select and not force and sig == self._sig:
             self._building = False
@@ -502,7 +504,9 @@ class ChatPage(Gtk.Box):
             for rid, name, voice, unread, muted, people in chans:
                 if not voice:
                     first = first or rid
-                self._row(rid, ("🔊  " if voice else "#  ") + name + ("  🔕" if muted else ""), unread, voice=voice)
+                here = voice and chatvc.current() == (srv["id"], rid.split(":")[2])
+                self._row(rid, ("🔊  " if voice else "#  ") + name + ("  🔕" if muted else ""), unread, voice=voice,
+                          extra=self._leave_btn(i18n.tr("Forlat"), "Forlat talekanalen", chatvc.leave) if here else None)
                 for pid, pname, pmute, pdeaf, pcam in people:
                     cam = f"  📷 {pcam}" if isinstance(pcam, str) else "  📷" if pcam else ""
                     pl = Gtk.Label(label=f"{'🔇' if pmute or pdeaf else '🎙️'} {pname}{cam}",
@@ -522,6 +526,14 @@ class ChatPage(Gtk.Box):
         self._vc_speak()
         if select:
             self._load()
+
+    def _leave_btn(self, label, tip, fn):
+        b = Gtk.Button(label=label, tooltip_text=i18n.tr(tip))
+        b.add_css_class("flat")
+        b.add_css_class("ks-react")
+        b.connect("clicked", lambda *_: _bg(fn, lambda res: (self.status.set_label(
+            ("✗ " if isinstance(res, Exception) else "") + str(res)), self.vcbar.refresh(), self._channels(force=True))))
+        return b
 
     def _vc_changed(self, what):
         if what == "speak":
@@ -601,7 +613,7 @@ class ChatPage(Gtk.Box):
         import chatvc_ui
         chatvc_ui.open_settings(self.get_root())
 
-    def _row(self, rid, text, unread, voice=False, note=""):
+    def _row(self, rid, text, unread, voice=False, note="", extra=None):
         r = Gtk.Box(spacing=8)
         if note:
             col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
@@ -617,6 +629,9 @@ class ChatPage(Gtk.Box):
             u = Gtk.Label(label=str(unread))
             u.add_css_class("ks-chip")
             r.append(u)
+        if extra is not None:
+            extra.set_valign(Gtk.Align.CENTER)
+            r.append(extra)
         row = Gtk.ListBoxRow(child=r)
         row._rid = rid
         row._voice = voice

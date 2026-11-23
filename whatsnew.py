@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.8", "Forlat talen – også av seg selv", [
+        ("Chat", [
+            "Tydelig «📞 Forlat talen»-knapp i talelinja, og «Forlat» ved talekanalen du er i",
+            "✕ ved samtalene under «Samtaler» legger på og fjerner samtalen fra lista",
+            "Har du vært borte i 30 minutter (ingen mus, tastatur eller prat), forlater du talekanalen eller "
+            "samtalen av deg selv – med varsel. Endres under 🎛️ Lyd og video (10 min – 2 timer, eller aldri)",
+        ]),
+    ]),
     ("0.99.7", "«Må oppdateres» reagerer på trykk", [
         ("Rettet", [
             "Undermenyen «Må oppdateres» i chatten åpnes og lukkes med en gang du trykker (trykket ble ignorert av "

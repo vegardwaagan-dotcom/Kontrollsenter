@@ -192,6 +192,26 @@ def _quiet(fn):
         pass
 
 
+def forget(sid):
+    """Legg på og fjern samtalen fra lista (eieren sletter den for alle, andre forlater den)."""
+    import chatsrv
+    import chatvc
+    if chatvc.current() and chatvc.current()[0] == sid:
+        chatvc.leave()
+    srv = chatsrv.get(sid)
+    if not srv:
+        return "Samtalen er borte"
+    try:
+        if chatsrv.my_role(srv) == "owner":
+            chatsrv.delete_server(sid)
+        else:
+            chatsrv.leave(sid)
+    except Exception:  # noqa: BLE001
+        chatsrv._drop(sid)
+    _fire()
+    return "Du forlot samtalen"
+
+
 def active():
     """Samtaler (skjulte servere) med talekanalen og hvem som er inne: [(sid, kanal-id, navn, deltakere)]."""
     import chatsrv
