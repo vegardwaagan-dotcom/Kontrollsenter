@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.2", "Fjern alt du ikke trenger", [
+        ("Funksjoner", [
+            "I Egendefinert kan alt fjernes unntatt Oversikt, Historikk og Oppdateringer (nye versjoner av "
+            "Kontrollsenter og «Oppdater alt» for appene er alltid med)",
+            "Også Innstillinger kan skjules – den åpnes fortsatt fra ☰-menyen",
+            "Ny «Funksjoner …» i ☰-menyen, så du alltid kommer tilbake til valgene",
+        ]),
+    ]),
     ("0.99.1", "Juster AI-siden", [
         ("AI", [
             "Dra i skillet mellom samtalelista og samtalen for å gjøre lista smalere eller bredere (huskes)",

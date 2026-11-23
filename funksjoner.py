@@ -18,7 +18,9 @@ SETUP = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Kontrollsenter", "funk
 # (nøkkel, navn, forklaring, sider i menyen, alltid på)
 FEATURES = [
     ("oversikt", "Oversikt", "Temperaturer, last og strøm", ["oversikt"], True),
-    ("historikk", "Historikk", "Grafer over tid", ["historikk"], False),
+    ("historikk", "Historikk", "Grafer over tid", ["historikk"], True),
+    ("oppdateringer", "Oppdateringer", "Nye versjoner av Kontrollsenter og «Oppdater alt» for appene – alltid med",
+     [], True),
     ("gpu", "GPU-innstillinger", "Strømgrense, klokke og vifter for skjermkortet", ["gpu"], False),
     ("utstyr", "Utstyr: RGB, Logitech og MSI", "Lys, mus/tastatur og bærbar-innstillinger", ["rgb", "logitech", "msi"],
      False),
@@ -38,14 +40,14 @@ FEATURES = [
     ("nettverk", "Nett og tilkobling", "Nettverk, Wi-Fi og Bluetooth", ["nettverk", "wifi", "bluetooth"], False),
     ("programmer", "Programmer", "Installer og oppdater programmer", ["programmer"], False),
     ("verktoy", "Vedlikehold", "Opprydding, oppstart, sikkerhetskopi og verktøy", ["verktoy"], False),
-    ("innstillinger", "Innstillinger", "", ["innstillinger"], True),
+    ("innstillinger", "Innstillinger", "Skjult kan den fortsatt åpnes fra ☰-menyen", ["innstillinger"], False),
 ]
 KEYS = [f[0] for f in FEATURES]
 REQUIRED = {f[0] for f in FEATURES if f[4]}
 PAGE_FEATURE = {p: f[0] for f in FEATURES for p in f[3]}
 
-MINIMAL = {"oversikt", "historikk", "gpu", "lyd", "spill", "chat", "pcer", "fjernhjelp", "nettverk", "programmer",
-           "verktoy", "innstillinger"}
+MINIMAL = {"oversikt", "historikk", "oppdateringer", "gpu", "lyd", "spill", "chat", "pcer", "fjernhjelp", "nettverk",
+           "programmer", "verktoy", "innstillinger"}
 PROFILES = {
     "full": ("Fullstendig", "Alle funksjoner", set(KEYS)),
     "medium": ("Medium", "Alt unntatt Discord, Scener, Smart Hjem og CPU-skjerm (TRCC)",
@@ -109,7 +111,7 @@ def save(profile, keys=None):
     if profile not in PROFILES:
         raise ValueError("ukjent profil")
     if profile == "custom":
-        want = (set(keys or KEYS) | REQUIRED) & set(KEYS)
+        want = (set(KEYS if keys is None else keys) | REQUIRED) & set(KEYS)
         for prof, (_n, _d, ks) in PROFILES.items():           # samme som en fast profil: bruk den
             if ks is not None and ks == want:
                 profile = prof

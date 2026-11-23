@@ -243,6 +243,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         sec.append(i18n.tr("Mini-vindu"), "win.mini")
         sec.append(i18n.tr("Stue-modus (F11)"), "win.ambient")
         sec.append(i18n.tr("Innstillinger"), "win.settings")
+        sec.append(i18n.tr("Funksjoner …"), "win.features")
         menu.append_section(None, sec)
         sec = Gio.Menu()
         sec.append(i18n.tr("Hva er nytt?"), "win.whatsnew")
@@ -1293,7 +1294,8 @@ class MonitorWindow(Adw.ApplicationWindow):
                          ("whatsnew", lambda *_: self._open_whatsnew()),
                          ("ambient", lambda *_: self.open_ambient()),
                          ("about", lambda *_: self._open_about()),
-                         ("settings", lambda *_: self._on_sidebar(None, self._rows["innstillinger"]))):
+                         ("settings", lambda *_: self._on_sidebar(None, self._rows["innstillinger"])),
+                         ("features", lambda *_: __import__("funksjoner_ui").open_dialog(self))):
             act = Gio.SimpleAction.new(name, None)
             act.connect("activate", fn)
             self.add_action(act)
