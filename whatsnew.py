@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.82.1", "Større rullehjul", [
+        ("Bedre", [
+            "Rullehjulet for valg er like bredt som valget du trykker på, med større tekst og høyere rader som følger "
+            "størrelsen på vinduet – og lavere når det bare er noen få valg",
+        ]),
+    ]),
     ("0.82.0", "Chat for alle", [
         ("Nytt", [
             "💬 Chat i sidemenyen (under Hjemmet): chat med alle som har Kontrollsenter – «Hjemme» (familie-chatten), "

@@ -61,9 +61,12 @@ def _accent(widget):
 
 
 class Wheel(Gtk.DrawingArea):
-    def __init__(self, items, selected, on_pick):
+    def __init__(self, items, selected, on_pick, width=None, scale=1.0):
         super().__init__(focusable=True, can_focus=True)
         self.items, self.on_pick = items, on_pick
+        self.scale = scale
+        self.row = ROW * scale
+        self.vis = min(VISIBLE, max(1.6, len(items) - 0.4))   # korte lister: lavere hjul
         self.pos = float(max(0, selected))
         self.target = self.pos
         self._tick = 0
@@ -73,8 +76,9 @@ class Wheel(Gtk.DrawingArea):
         for t in items:
             lay.set_text(t, -1)
             w = max(w, lay.get_pixel_size()[0])
-        self.set_content_width(int(min(520, max(240, w + 90))))
-        self.set_content_height(int(2 * ROW / math.sin((math.pi / 2) / (VISIBLE + 0.6)) * 0.95 + 8))
+        need = (w * (1 + 0.2 * (scale - 1))) + 110 * scale
+        self.set_content_width(int(min(900, max(width or 0, 320, need))))
+        self.set_content_height(int(2 * self.row / math.sin((math.pi / 2) / (self.vis + 0.6)) * 0.95 + 8))
         self.set_draw_func(self._draw)
         sc = Gtk.EventControllerScroll(flags=Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.KINETIC)
         sc.connect("scroll", self._on_scroll)
@@ -144,7 +148,7 @@ class Wheel(Gtk.DrawingArea):
 
     def _drag_update(self, _g, _dx, dy):
         self._moved = max(self._moved, abs(dy))
-        self.pos = self._clamp(self._drag_from - dy / (ROW * 0.92))
+        self.pos = self._clamp(self._drag_from - dy / (self.row * 0.92))
         self.target = self.pos
         self.queue_draw()
 
@@ -152,7 +156,7 @@ class Wheel(Gtk.DrawingArea):
         self._drag_from = None
         if self._moved < 6:                          # et trykk: velg raden som ble trykket på
             h = self.get_height()
-            off = (self._y0 - h / 2) / (ROW * 0.92)
+            off = (self._y0 - h / 2) / (self.row * 0.92)
             i = round(self.pos + off)
             if 0 <= i < len(self.items):
                 if i == round(self.pos):
@@ -183,12 +187,12 @@ class Wheel(Gtk.DrawingArea):
         fg = self.get_color()
         (ar, ag, ab), (br, bg, bb) = _accent(self)
         cy = h / 2
-        step = (math.pi / 2) / (VISIBLE + 0.6)
-        R = ROW / math.sin(step) * 0.95               # radius på sylinderen: nabovalgene står nesten en rad unna
+        step = (math.pi / 2) / (self.vis + 0.6)
+        R = self.row / math.sin(step) * 0.95               # radius på sylinderen: nabovalgene står nesten en rad unna
         # glassbåndet for det valgte
-        bh = ROW * 0.98
+        bh = self.row * 0.98
         x0, y0, bw = 6, cy - bh / 2, w - 12
-        rad = 14
+        rad = 14 * self.scale
         cr.new_sub_path()
         cr.arc(x0 + bw - rad, y0 + rad, rad, -math.pi / 2, 0)
         cr.arc(x0 + bw - rad, y0 + bh - rad, rad, 0, math.pi / 2)
@@ -216,11 +220,11 @@ class Wheel(Gtk.DrawingArea):
         # elementene på sylinderen
         lay = self.create_pango_layout("")
         lay.set_ellipsize(Pango.EllipsizeMode.END)
-        lay.set_width(int((w - 44) * Pango.SCALE))
-        first, last = int(math.floor(self.pos - VISIBLE - 1)), int(math.ceil(self.pos + VISIBLE + 1))
+        lay.set_width(int((w - 44 * self.scale) * Pango.SCALE))
+        first, last = int(math.floor(self.pos - self.vis - 1)), int(math.ceil(self.pos + self.vis + 1))
         for i in range(max(0, first), min(len(self.items), last + 1)):
             d = i - self.pos
-            ang = d * (math.pi / 2) / (VISIBLE + 0.6)
+            ang = d * (math.pi / 2) / (self.vis + 0.6)
             if abs(ang) >= math.pi / 2:
                 continue
             c = math.cos(ang)
@@ -229,12 +233,12 @@ class Wheel(Gtk.DrawingArea):
             lay.set_text(self.items[i], -1)
             fd = Pango.FontDescription.from_string("Sans")
             fd.set_weight(Pango.Weight.BOLD if near > 0.5 else Pango.Weight.MEDIUM)
-            fd.set_absolute_size(int((15 + 3 * near) * Pango.SCALE))
+            fd.set_absolute_size(int((15 + 3 * near) * self.scale * Pango.SCALE))
             lay.set_font_description(fd)
             lay.set_alignment(Pango.Alignment.CENTER)
             tw, th = lay.get_pixel_size()
             cr.save()
-            cr.translate(22, y)
+            cr.translate(22 * self.scale, y)
             cr.scale(1, max(0.05, c))                 # sammenpresset mot kantene – som en sylinder
             cr.translate(0, -th / 2)
             alpha = (0.18 + 0.82 * c ** 3)
@@ -294,10 +298,18 @@ def open_wheel(widget, anchor=None):
         if 0 <= i < len(items) and widget.get_selected() != i:
             widget.set_selected(i)
         pop.popdown()
-    whl = Wheel(items, widget.get_selected(), pick)
+    host = anchor or widget
+    aw = host.get_width() or 0
+    if isinstance(widget, Adw.ComboRow):                  # raden er bred: bruk bredden til selve valget
+        aw = min(aw, 560)
+    win = widget.get_root()
+    ww = win.get_width() if win is not None else 1200
+    scale = 1.15 if ww < 900 else 1.3 if ww < 1500 else 1.45   # i takt med vinduet – ikke en liten liste
+    whl = Wheel(items, widget.get_selected(), pick, width=aw - 20 if aw else None, scale=scale)
     box.append(whl)
     pop.set_child(box)
-    pop.set_parent(anchor or widget)
+    pop.set_position(Gtk.PositionType.BOTTOM)
+    pop.set_parent(host)
     pop.connect("closed", lambda p: GLib.idle_add(p.unparent))
     pop.popup()
     whl.grab_focus()
