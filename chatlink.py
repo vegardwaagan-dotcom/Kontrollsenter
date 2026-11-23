@@ -53,7 +53,13 @@ def my_presence(win=None):
     import chatplus
     p = chatplus.my_profile()
     game = getattr(getattr(win, "bg", None), "game_name", None) if win else None
-    return {"game": game, "status": p["status"], "avatar": p["avatar"], "color": p["color"], "t": time.time()}
+    try:
+        import chatvoice
+        pub = chatvoice.my_pub()
+    except Exception:  # noqa: BLE001
+        pub = None
+    return {"game": game, "status": p["status"], "avatar": p["avatar"], "color": p["color"], "t": time.time(),
+            **({"pub": pub} if pub else {})}
 
 
 def broadcast_presence(win):

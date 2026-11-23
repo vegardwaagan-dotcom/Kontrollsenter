@@ -14,6 +14,7 @@ import chat as C  # noqa: E402
 import chatplus as CP  # noqa: E402
 import chatlink as CL  # noqa: E402
 import chatsrv as CS  # noqa: E402
+import chatvoice as CV  # noqa: E402
 
 EMOJI = ("😀 😂 🤣 😊 😍 😎 🤔 😮 😢 😡 👍 👎 👏 🙌 🙏 💪 🔥 🎉 🥳 ❤️ 💯 ✅ ❌ ⭐ 🎮 🕹️ 🎯 🏆 ⚔️ 🛡️ "
          "🐉 🍕 🍔 🍿 ☕ 🍺 🎧 🎤 📸 🎬 💻 🖥️ ⏰ 📅 🏠 🚀 👀 🤝 😴 🤖").split()
@@ -136,6 +137,20 @@ class ChatPage(Gtk.Box):
         self.mem_btn.connect("toggled", lambda b: self.members_rev.set_reveal_child(b.get_active()))
         th.append(self.mem_btn)
         right.append(th)
+        self.callbar = Gtk.Box(spacing=8, visible=False)
+        self.callbar.add_css_class("card")
+        self.call_lab = Gtk.Label(xalign=0, hexpand=True, margin_start=12)
+        self.callbar.append(self.call_lab)
+        self.call_ans = _btn("📞 Svar", lambda *_: self._call_do(CV.call_answer), True)
+        self.callbar.append(self.call_ans)
+        self.callbar.append(_btn("Legg på", lambda *_: self._call_do(CV.call_end)))
+        right.append(self.callbar)
+        self.gamebar = Gtk.Box(spacing=8, visible=False)
+        self.game_lab = _dim("")
+        self.game_lab.set_hexpand(True)
+        self.gamebar.append(self.game_lab)
+        self.gamebar.append(_btn("Send til alle som spiller", self._to_players, flat=True))
+        right.append(self.gamebar)
         self.msgs = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.scroll = Gtk.ScrolledWindow(child=self.msgs, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
         right.append(self.scroll)
@@ -165,6 +180,10 @@ class ChatPage(Gtk.Box):
         self.mic_btn = _btn("🎙️", self._voice, flat=True)
         self.mic_btn.set_tooltip_text(i18n.tr("Talemelding: trykk for å starte, trykk igjen for å sende"))
         row.append(self.mic_btn)
+        self.walkie_btn = _btn("📢", self._walkie, flat=True)
+        self.walkie_btn.set_tooltip_text(i18n.tr("Walkie-talkie: trykk og snakk, trykk igjen – spilles av med en gang hos "
+                                                 "de andre"))
+        row.append(self.walkie_btn)
         self.entry = Gtk.Entry(placeholder_text=i18n.tr("Skriv en melding …"), hexpand=True, max_length=2000)
         self.entry.connect("activate", self._send)
         pk = Gtk.EventControllerKey()
@@ -196,6 +215,8 @@ class ChatPage(Gtk.Box):
         self._rail()
         self._channels(select=True)
         GLib.timeout_add_seconds(15, lambda: (self.get_mapped() and (self._channels(), self._load()), True)[1])
+        GLib.timeout_add_seconds(2, lambda: (self.get_mapped() and self._bars(), True)[1])
+        CS.on_change(lambda _sid: self._bars())
 
     # ------------------------------------------------------------------ serverlist
     def _rail(self):
@@ -302,6 +323,24 @@ class ChatPage(Gtk.Box):
             row.add_controller(g)
         self.list.append(row)
 
+    def _member_menu(self, widget, m):
+        pop = Gtk.Popover()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
+                      margin_end=6)
+        items = [("📞 Ring med tale", lambda: self._call_do(lambda: CV.call_start(m, self.room)), CV.calls_ok()),
+                 ("🎵 Egen varsellyd …", lambda: self._pick_sound(m.get("name")), True),
+                 ("🚫 Blokker", lambda: CL.block(m.get("name")), True)]
+        for label, fn, ok in items:
+            if ok:
+                b = Gtk.Button(label=i18n.tr(label))
+                b.add_css_class("flat")
+                b.connect("clicked", lambda _b, f=fn: (pop.popdown(), f()))
+                box.append(b)
+        pop.set_child(box)
+        pop.set_parent(widget)
+        pop.connect("closed", lambda p: GLib.idle_add(p.unparent))
+        pop.popup()
+
     def _room_menu(self, widget, rid):
         pop = Gtk.Popover()
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
@@ -370,6 +409,10 @@ class ChatPage(Gtk.Box):
             sub = _dim(what)
             sub.set_margin_start(22)
             row.append(sub)
+            if mid != CS.me()["id"]:
+                g = Gtk.GestureClick(button=3)
+                g.connect("pressed", lambda *_a, mm=m, w=row: self._member_menu(w, mm))
+                row.add_controller(g)
             self.members.append(row)
 
     # ------------------------------------------------------------------ meldinger
@@ -420,7 +463,8 @@ class ChatPage(Gtk.Box):
             av, colr = CL.avatar(m.get("from_id")) if m.get("from_id") else ("", "")
             who = Gtk.Label(label=("" if mine else f"{av + ' ' if av else ''}{m.get('from')}  ·  ") +
                             time.strftime("%d.%m %H:%M", time.localtime(m.get("t", 0))) +
-                            ("  (redigert)" if m.get("edited") else "") + ("  📌" if m.get("pinned") else ""),
+                            ("  (redigert)" if m.get("edited") else "") + ("  📌" if m.get("pinned") else "") +
+                            ("  🔒" if m.get("e2e") else ""),
                             xalign=1 if mine else 0)
             who.add_css_class("ks-chat-who")
             col.append(who)
@@ -471,7 +515,7 @@ class ChatPage(Gtk.Box):
             path = CP.file_path(att)
             if att.get("kind") == "image" and path:
                 pic = Gtk.Picture.new_for_filename(path)
-                pic.set_size_request(260, 180)
+                pic.set_size_request(*((110, 110) if m.get("kind") == "sticker" else (260, 180)))
                 pic.set_content_fit(Gtk.ContentFit.CONTAIN)
                 pic.set_halign(al)
                 col.append(pic)
@@ -529,6 +573,44 @@ class ChatPage(Gtk.Box):
         self.typing_lab.set_label("🎉 🎊 🥳 🎉 🎊 🥳 🎉 🎊 🥳")
         GLib.timeout_add_seconds(4, lambda: (self.typing_lab.set_label(""), False)[1])
 
+    def _bars(self):
+        st = CV.call_state()
+        self.callbar.set_visible(bool(st))
+        if st:
+            self.call_lab.set_label(st)
+            self.call_ans.set_visible(bool(CV._CALL.get("incoming")))
+        game, names = CV.same_game(self.get_root())
+        self.gamebar.set_visible(bool(names))
+        if names:
+            self.game_lab.set_label(f"🎮 {', '.join(names[:3])} spiller også {game}")
+        return False
+
+    def _call_do(self, fn):
+        _bg(fn, lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)), self._bars()))
+
+    def _to_players(self, *_):
+        t = self.entry.get_text().strip() or i18n.tr("Bli med? 🎮")
+        self.entry.set_text("")
+        _bg(lambda: CV.send_to_players(self.get_root(), t), lambda r: self.status.set_label(str(r)))
+
+    def _walkie(self, *_):
+        if not self._need_server():
+            return
+        if CP._REC["p"] is None:
+            try:
+                CP.record_start()
+                self.walkie_btn.set_label("🔴")
+                self.status.set_label(i18n.tr("Snakk nå … trykk 🔴 for å sende"))
+            except Exception as e:  # noqa: BLE001
+                self.status.set_label(f"✗ {e}")
+            return
+        self.walkie_btn.set_label("📢")
+        path = CP.record_stop()
+        if not path:
+            self.status.set_label(i18n.tr("For kort"))
+            return
+        _bg(lambda: CV.send_walkie(self.room, path), lambda r: (self.status.set_label(str(r)), self._load()))
+
     def _typing(self):
         who = CP.who_typing(self.room)
         self.typing_lab.set_label((", ".join(who) + " " + i18n.tr("skriver …")) if who else "")
@@ -545,8 +627,47 @@ class ChatPage(Gtk.Box):
             b.connect("clicked", lambda _b, ee=e: (self.entry.set_text(self.entry.get_text() + ee),
                                                    self.entry.set_position(-1)))
             grid.append(b)
-        pop.set_child(grid)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.append(grid)
+        box.append(Gtk.Separator())
+        sl = Gtk.Label(label=i18n.tr("Klistremerker"), xalign=0, margin_start=6)
+        sl.add_css_class("caption-heading")
+        box.append(sl)
+        self.stick_box = Gtk.FlowBox(max_children_per_line=6, selection_mode=Gtk.SelectionMode.NONE, margin_start=6,
+                                     margin_end=6)
+        box.append(self.stick_box)
+        box.append(_btn("➕ Lag klistremerke av et bilde …", lambda *_: (pop.popdown(), self._make_sticker()), flat=True))
+        pop.set_child(box)
+        pop.connect("show", lambda *_: self._fill_stickers(pop))
         return pop
+
+    def _fill_stickers(self, pop):
+        while (c := self.stick_box.get_first_child()) is not None:
+            self.stick_box.remove(c)
+        for path in CV.stickers()[:18]:
+            b = Gtk.Button()
+            b.add_css_class("flat")
+            pic = Gtk.Picture.new_for_filename(path)
+            pic.set_size_request(56, 56)
+            b.set_child(pic)
+            b.connect("clicked", lambda _b, pp=path: (pop.popdown(), self._call_room(lambda: CV.send_sticker(
+                self.room, pp))))
+            self.stick_box.append(b)
+
+    def _make_sticker(self):
+        dlg = Gtk.FileDialog(title=i18n.tr("Velg et bilde"))
+
+        def done(d, res):
+            try:
+                f = d.open_finish(res)
+            except GLib.Error:
+                return
+            try:
+                CV.make_sticker(f.get_path())
+                self.status.set_label(i18n.tr("Klistremerket er laget – finn det under 😊"))
+            except Exception as e:  # noqa: BLE001
+                self.status.set_label(f"✗ {e}")
+        dlg.open(self.get_root(), None, done)
 
     def _need_server(self):
         if not self.room.startswith("s:"):
@@ -616,7 +737,9 @@ class ChatPage(Gtk.Box):
                  ("🆘 Be om hjelp", lambda: self._call_any(lambda: __import__("homeplus").ask_help())),
                  ("🛒 Handleliste", self._shop), ("🏠 Hvor er alle?", lambda: self.status.set_label(
                      CL.where_is_everyone())),
-                 ("📣 Bruk kanalen til høydepunkter og ukens toppliste", self._use_for_posts))
+                 ("📣 Bruk kanalen til høydepunkter og ukens toppliste", self._use_for_posts),
+                 ("🏷️ Bruk kanalen til tilbud fra ønskelisten", lambda: self._topic("tilbud")),
+                 ("🔄 Bruk kanalen til oppdateringer", lambda: self._topic("oppdateringer")))
         for label, fn in items:
             b = Gtk.Button(label=i18n.tr(label))
             b.add_css_class("flat")
@@ -734,6 +857,11 @@ class ChatPage(Gtk.Box):
         v.append(e)
         dlg.set_child(Gtk.ScrolledWindow(child=v, vexpand=True))
         dlg.present(self.get_root())
+
+    def _topic(self, kind):
+        if self._need_server():
+            CV.set_topic_room(kind, self.room)
+            self.status.set_label(i18n.tr("Kanalen brukes nå til ") + kind)
 
     def _use_for_posts(self):
         if not self._need_server():

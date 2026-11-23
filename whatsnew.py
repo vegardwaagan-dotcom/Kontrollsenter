@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.86.0", "Tale, kryptering og klistremerker", [
+        ("Nytt i chatten", [
+            "📢 Walkie-talkie: trykk og snakk – spilles av med en gang hos de andre (ikke etter leggetid)",
+            "📞 Taleanrop 1-til-1: høyreklikk på et medlem → «Ring med tale» (Linux; lyden går direkte mellom PC-ene)",
+            "🔒 Ende-til-ende-kryptering: meldinger i serverne krypteres for hver mottaker når begge har støtte "
+            "(nye Windows-installasjoner får det også)",
+            "Klistremerker: lag av et bilde og send med ett trykk (😊-menyen)",
+            "Spillrom: «X spiller også CS2 – send til alle som spiller»",
+            "Temakanaler: tilbud fra ønskelisten og «Oppdater alt»-resultater postes i kanalen du velger",
+        ]),
+    ]),
     ("0.85.0", "Chatten kobles til resten", [
         ("Nytt i chatten", [
             "Status ved navnet: 🟢 på, 🎮 spiller …, ⚫ av – og avatar og status i profilen",

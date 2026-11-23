@@ -792,6 +792,11 @@ def wishlist_tick():
     for s in sales:
         if f"{s['appid']}:{s['pct']}" not in seen:
             _ev("steam", f"Tilbud: {s['name']} −{s['pct']} %", s.get("price") or "", "game")
+            try:                                          # temakanal «tilbud» i chatten (om valgt)
+                import chatvoice
+                chatvoice.post_topic("tilbud", f"🏷️ Tilbud: {s['name']} −{s['pct']} % {s.get('price') or ''}")
+            except Exception:  # noqa: BLE001
+                pass
             seen.add(f"{s['appid']}:{s['pct']}")
     c = cfg()
     c["_wl_seen"] = sorted(seen)[-300:]

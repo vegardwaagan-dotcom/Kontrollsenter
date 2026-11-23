@@ -70,8 +70,13 @@ def my_addrs():
 
 def me_member(role="member"):
     m = me()
+    try:
+        import chatvoice
+        pub = chatvoice.my_pub()
+    except Exception:  # noqa: BLE001
+        pub = None
     return {"id": m["id"], "name": m["name"], "addrs": my_addrs(), "port": PORT, "key": m["key"], "role": role,
-            "joined": time.time()}
+            "joined": time.time(), **({"pub": pub} if pub else {})}
 
 
 # --------------------------------------------------------------------------
@@ -358,7 +363,7 @@ def handle_join(body):
     inv["used"] = inv.get("used", 0) + 1
     srv["members"][mid] = {"id": mid, "name": str(m.get("name"))[:40], "addrs": [str(a)[:60] for a in m["addrs"][:4]],
                            "port": int(m.get("port") or PORT), "key": str(m["key"])[:60], "role": "member",
-                           "joined": time.time()}
+                           "joined": time.time(), **({"pub": str(m["pub"])[:60]} if m.get("pub") else {})}
     _bump_and_send(srv)
     _system_msg(srv, f"👋 {srv['members'][mid]['name']} ble med i serveren")
     return srv
@@ -419,10 +424,15 @@ def broadcast(srv, payload):
     ok = q = 0
     mine = me()["id"]
     payload = {**payload, "srv": srv["id"], "from_id": mine}
+    try:
+        import chatvoice
+        seal = chatvoice.seal
+    except Exception:  # noqa: BLE001
+        seal = None
     for mid, m in srv.get("members", {}).items():
         if mid == mine:
             continue
-        r = _send_or_queue(m, payload)
+        r = _send_or_queue(m, seal(m, payload) if seal else payload)
         if r:
             ok += 1
         elif r is False:
@@ -496,6 +506,8 @@ def receive(payload, src_ip, notify=None):
         _changed(sid)
         return True
     if t == "msg":
+        import chatvoice
+        payload = chatvoice.open_sealed(sender, payload)
         ch = str(payload.get("ch") or "")
         if not channel(srv, ch):
             return True                                    # kanalen er slettet
@@ -516,12 +528,31 @@ def receive(payload, src_ip, notify=None):
         msg["text"] = str(msg.get("text") or "")[:2000]
         room = f"s:{sid}:{ch}"
         msg["room"] = room
+        if payload.get("e2e"):
+            msg["e2e"] = True
         if chat._store(room, msg):
             chat._alert(room, msg, notify if not muted(room) else None)
+            if msg.get("kind") == "walkie":
+                import chatvoice
+                chatvoice.on_walkie(msg)
         return True
     if t == "presence":
         import chatlink
         chatlink.on_presence(sender, payload)
+        if payload.get("pub") and sender.get("pub") != payload.get("pub"):     # nøkkel til kryptering
+            sender["pub"] = str(payload["pub"])[:60]
+            _put(srv)
+        return True
+    if t in ("call", "call_ok", "call_end"):
+        import chatvoice
+        if t == "call":
+            chatvoice.call_incoming(sender, payload)
+            _alert(notify, f"📞 {sender['name']} ringer", "Åpne Chat og trykk «Svar»")
+        elif t == "call_ok":
+            chatvoice.call_accepted(sender, payload)
+        else:
+            chatvoice.call_end(notify_peer=False)
+        _changed(sid)
         return True
     if t in ("read", "typing"):
         import chatplus

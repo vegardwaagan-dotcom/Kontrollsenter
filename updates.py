@@ -428,6 +428,12 @@ def update_all(win=None, include_pcs=True, on_done=None):
             except Exception:  # noqa: BLE001
                 pass
             _changed()
+            try:                                           # temakanal «oppdateringer» i chatten (om valgt)
+                import chatvoice
+                chatvoice.post_topic("oppdateringer", "🔄 Oppdater alt: " + "; ".join(
+                    f"{n}: {'OK' if o else 'feilet'}" for n, o, _m in results))
+            except Exception:  # noqa: BLE001
+                pass
             from gi.repository import GLib
             if on_done:
                 GLib.idle_add(lambda: (on_done(results), False)[1])

@@ -44,7 +44,8 @@ if ($Admin) {
         }
         $pkgs = "mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-gtk4 mingw-w64-ucrt-x86_64-libadwaita " +
                 "mingw-w64-ucrt-x86_64-python-gobject mingw-w64-ucrt-x86_64-python-psutil " +
-                "mingw-w64-ucrt-x86_64-python-cairo mingw-w64-ucrt-x86_64-adwaita-icon-theme"
+                "mingw-w64-ucrt-x86_64-python-cairo mingw-w64-ucrt-x86_64-adwaita-icon-theme " +
+                "mingw-w64-ucrt-x86_64-python-cryptography"
         $env:MSYSTEM = "UCRT64"; $env:CHERE_INVOKING = "1"
         & "$MSYS\usr\bin\bash.exe" -lc "pacman -Syu --noconfirm" | Out-Host     # 1. gang: kjernepakker
         & "$MSYS\usr\bin\bash.exe" -lc "pacman -Syu --noconfirm" | Out-Host     # 2. gang: resten
