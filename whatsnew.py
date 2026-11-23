@@ -13,6 +13,20 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.17", "Mer i chatten", [
+        ("Chat", [
+            "Talemeldinger med lydbølge og lengde – virker nå også på Windows uten FFmpeg (Esc avbryter)",
+            "Bilder, filer, talemeldinger, skjermdeling og «Spill sammen» også i direktemeldinger",
+            "Lenker vises som kort med bilde, tittel og beskrivelse",
+            "/-kommandoer: /poll, /påminn, /terning, /spill, /gif, /skjerm, /status, /stille – skriv /hjelp",
+            "GIF-søk (Tenor – gratis nøkkel legges inn første gang du bruker /gif)",
+            "Festede meldinger vises øverst i samtalen – trykk for å se alle",
+            "«Spiller nå» øverst i serverkanaler: hvem, hvilket spill og hvor lenge – med «Bli med»",
+            "🖥️ Del skjermen rett fra talelinja",
+            "👍 og «✓ Lest» rett fra chatvarselet",
+            "Chatten tas vare på på NAS-en hver dag (Chat-backup – de siste 14 dagene)",
+        ]),
+    ]),
     ("0.99.16", "Nytt utseende i chatten", [
         ("Chat", [
             "Meldinger fra samme person samles under ett navn, med rundt profilbilde (initialer i egen farge "

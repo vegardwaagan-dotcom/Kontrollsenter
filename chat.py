@@ -316,8 +316,16 @@ def send(room, text, frm=None, notify=None, extra=None):
     for k in ("kind", "invite", "call_id", "reply"):       # samtaler uten server (chatcall.py), svar på melding
         if (extra or {}).get(k):
             msg[k] = str(extra[k])[:400]
+    for k in ("screen", "play", "setup"):                  # kort: skjermdeling, spill sammen, spilloppsett
+        if isinstance((extra or {}).get(k), dict) and len(json.dumps(extra[k])) < 2000:
+            msg[k] = extra[k]
+    att = (extra or {}).get("attach")
+    if isinstance(att, dict):                              # bilde / fil / talemelding i en direktemelding
+        msg["attach"] = {k: v for k, v in att.items() if k != "data"}
     _store(room, msg)
     _fire(room, msg)
+    if isinstance(att, dict):
+        msg = {**msg, "attach": att}                        # dataene sendes med til mottakeren
     if room == "meg":                                     # bare her (og mobilappen din)
         return "Lagret i Meg"
     targets = []                                            # (type, mål)
@@ -349,6 +357,11 @@ def send(room, text, frm=None, notify=None, extra=None):
     ok = queued = 0
     for kind, t in targets:
         payload = {**msg, "room": "alle" if room == "alle" else f"p:{me}"}   # hos mottakeren heter privatrommet meg
+        if payload.get("attach", {}).get("data"):
+            v = _peer_version(kind, t)
+            if not v or _ver(v) < EV_MIN:                  # eldre versjon tar ikke imot filer i direktemeldinger
+                payload["attach"] = {k: v_ for k, v_ in payload["attach"].items() if k != "data"}
+                payload["text"] = payload["text"] + " (be dem oppdatere Kontrollsenter for å se den)"
         if _deliver(kind, t, payload):
             ok += 1
         else:
@@ -525,6 +538,22 @@ def queued_count():
 # --------------------------------------------------------------------------
 # Motta
 # --------------------------------------------------------------------------
+def _extra_fields(payload, msg):
+    """Vedlegg og kort fra en direktemelding (bilde, fil, talemelding, skjermdeling, spill sammen)."""
+    for k in ("screen", "play", "setup"):
+        if isinstance(payload.get(k), dict) and len(json.dumps(payload[k])) < 2000:
+            msg[k] = payload[k]
+    att = payload.get("attach")
+    if isinstance(att, dict):
+        try:
+            import chatplus
+            att = chatplus.receive_attach(att)
+            msg["attach"] = {k: (v if k != "wave" else [int(x) for x in v][:64]) for k, v in att.items()
+                             if k in ("name", "size", "sha", "kind", "wave", "secs")}
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def _call_fields(payload, msg):
     """Samtale-invitasjon i en direktemelding: ta vare på feltene og si fra (chatcall.on_message)."""
     if payload.get("kind") in ("call", "call_end", "call_no") and payload.get("call_id"):
@@ -569,6 +598,7 @@ def receive_friend(payload, src_ip, notify=None):
     _call_fields(payload, msg)
     if payload.get("reply"):
         msg["reply"] = str(payload["reply"])[:80]
+    _extra_fields(payload, msg)
     if _store(room, msg):
         _alert(room, msg, notify)
     return True
@@ -626,6 +656,7 @@ def receive_home(payload, notify=None):
     _call_fields(payload, msg)
     if payload.get("reply"):
         msg["reply"] = str(payload["reply"])[:80]
+    _extra_fields(payload, msg)
     if _store(room, msg):
         _alert(room, msg, notify)
 
@@ -671,7 +702,10 @@ def _alert(room, msg, notify):
                 srv = chatsrv.get(room.split(":")[1]) or {}
                 ch = chatsrv.channel(srv, room.split(":")[2]) or {}
                 where = f" · #{ch.get('name', '?')} ({srv.get('name', '')})"
+            tgt = f"{room}|{msg.get('id', '')}"             # knapper i varselet: 👍 og «Merk som lest»
             GLib.idle_add(lambda: (notify("chat", f"💬 {msg['from']}{where}", msg["text"], force=True,
-                                          action="app.chat"), False)[1])
+                                          action="app.chat", buttons=[("👍", "app.chat-react", tgt),
+                                                                      ("✓ Lest", "app.chat-read", tgt)]),
+                                   False)[1])
         except Exception:  # noqa: BLE001
             pass

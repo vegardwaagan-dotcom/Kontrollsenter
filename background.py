@@ -594,6 +594,12 @@ class Background:
             import threading as _th
             if __import__("funksjoner").on("chat"):
                 _th.Thread(target=lambda: __import__("chatplus").tick(self.win), daemon=True).start()
+        if __import__("funksjoner").on("chat") and time.time() - getattr(self, "_cbak_t", 0) > 3600:
+            self._cbak_t = time.time()                                           # chatten tas vare på (NAS) daglig
+            try:
+                __import__("chatextra").backup_tick()
+            except Exception:  # noqa: BLE001
+                pass
         if __import__("funksjoner").on("chat") and time.time() - getattr(self, "_csync_t", time.time() - 3550) > 120:
             first = not getattr(self, "_csync_done", False)                     # dual boot: samme chat i begge
             self._csync_t = time.time()

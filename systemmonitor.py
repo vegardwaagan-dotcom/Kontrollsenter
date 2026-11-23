@@ -1716,6 +1716,10 @@ class MonitorApp(Adw.Application):
             ca.connect("activate", lambda _a, v, n=name: __import__("chatcall").from_notification(n, v.get_string(),
                                                                                                     self))
             self.add_action(ca)
+        for name in ("chat-react", "chat-read"):                               # knappene i chatvarselet
+            ca = Gio.SimpleAction.new(name, GLib.VariantType.new("s"))
+            ca.connect("activate", lambda _a, v, n=name: __import__("chatextra").from_notification(n, v.get_string()))
+            self.add_action(ca)
         act = Gio.SimpleAction.new("joingame", GLib.VariantType.new("s"))      # «Spill sammen» fra varselet
 
         def join(_a, v):

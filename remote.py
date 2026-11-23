@@ -1356,7 +1356,8 @@ def _handler(remote):
                     return self._send(400, {"error": str(e)})
                 return self._send(200, {"ok": True})
             try:
-                body = self._body(12 * 1024 * 1024 if p == "/api/chat/inbox" else 1024 * 1024
+                body = self._body(12 * 1024 * 1024 if p in ("/api/chat/inbox", "/api/friend/chat", "/api/house/chat")
+                                  else 1024 * 1024
                                   if p in ("/api/house/setup", "/api/chat/join") else MAX_BODY)
                 if p == "/api/local/ai":                     # «ks» – AI-assistentene styrer Kontrollsenter (bare herfra)
                     if not self._local():

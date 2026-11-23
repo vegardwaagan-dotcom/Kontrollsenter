@@ -58,7 +58,13 @@ def my_presence(win=None):
         pub = chatvoice.my_pub()
     except Exception:  # noqa: BLE001
         pub = None
-    return {"game": game, "status": p["status"], "avatar": p["avatar"], "color": p["color"], "t": time.time(),
+    try:
+        import chatextra
+        since = chatextra.game_since(game)
+    except Exception:  # noqa: BLE001
+        since = 0
+    return {"game": game, "since": since, "status": p["status"], "avatar": p["avatar"], "color": p["color"],
+            "t": time.time(),
             **({"pub": pub} if pub else {})}
 
 
@@ -70,7 +76,12 @@ def broadcast_presence(win):
 
 
 def on_presence(sender, ev):
-    _PRES[sender["id"]] = {"name": sender["name"], "game": ev.get("game"), "status": str(ev.get("status") or "")[:80],
+    try:
+        since = float(ev.get("since") or 0)
+    except (TypeError, ValueError):
+        since = 0
+    _PRES[sender["id"]] = {"name": sender["name"], "game": ev.get("game"), "since": since,
+                           "status": str(ev.get("status") or "")[:80],
                            "avatar": str(ev.get("avatar") or "")[:4], "color": str(ev.get("color") or "")[:9],
                            "t": time.time()}
 

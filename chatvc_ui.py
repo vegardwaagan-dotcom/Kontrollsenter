@@ -68,6 +68,10 @@ class VoiceBar(Gtk.Box):
                                    always_show_arrow=False)
         self.b_ov.set_popover(overlay_popover(lambda: self.refresh()))
         row.append(self.b_ov)
+        sh = Gtk.Button(label="🖥️", tooltip_text=i18n.tr("Del skjermen med de i talen"))
+        sh.connect("clicked", lambda *_: _bg(lambda: __import__("chatlink").share_screen(
+            f"s:{VC.state()['sid']}:{VC.state()['ch']}"), lambda r: _status(r, self.status)))
+        row.append(sh)
         s = Gtk.Button(label="🎛️", tooltip_text=i18n.tr("Lyd og video"))
         s.connect("clicked", lambda *_: open_settings())
         row.append(s)

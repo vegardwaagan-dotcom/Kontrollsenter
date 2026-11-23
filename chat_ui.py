@@ -56,6 +56,15 @@ _CSS = """
 .ks-chat-jump { border-radius: 99px; padding: 4px 12px; margin: 10px; font-weight: 700;
   box-shadow: 0 4px 14px -4px alpha(black, 0.5); }
 .ks-dnd { color: #ff9f43; font-weight: 700; font-size: .85em; }
+.ks-pinbar { border-radius: 10px; padding: 4px 10px; background: alpha(@accent_bg_color, 0.14); }
+.ks-playing { padding: 2px 0; }
+.ks-playing button { border-radius: 99px; padding: 2px 10px; font-size: .85em; }
+.ks-linkcard { border-radius: 12px; padding: 8px; background: alpha(@window_fg_color, 0.06);
+  border-left: 3px solid @accent_bg_color; }
+.ks-voice { border-radius: 18px; padding: 4px 10px 4px 4px; background: alpha(@window_fg_color, 0.07); }
+.ks-chat-me + .ks-voice, .ks-voice.mine { background: alpha(@accent_bg_color, 0.30); }
+.ks-gif-pick { padding: 0; border-radius: 8px; }
+.ks-thumb { border-radius: 12px; }
 window.ks-glass .ks-chat-other { background-color: alpha(@window_fg_color, 0.10); border: 1px solid alpha(white, 0.10); }
 window.ks-glass .ks-chat-me { border: 1px solid alpha(white, 0.20); }
 """
@@ -79,6 +88,26 @@ def _short_icon(icon, name):
             break
         lead += ch
     return lead[:8] or (str(name or "?").strip()[:1].upper() or "?")
+
+
+def _thumb(path, w, h, cover=False):
+    """Bilde skalert ned (ellers ber et stort bilde om full bredde og strekker hele meldingen)."""
+    try:
+        from gi.repository import GdkPixbuf
+        if cover:
+            pb = GdkPixbuf.Pixbuf.new_from_file(path)
+            k = max(w / pb.get_width(), h / pb.get_height())
+            pb = pb.scale_simple(max(1, int(pb.get_width() * k)), max(1, int(pb.get_height() * k)),
+                                 GdkPixbuf.InterpType.BILINEAR)
+            pb = pb.new_subpixbuf((pb.get_width() - w) // 2, (pb.get_height() - h) // 2, w, h)
+        else:
+            pb = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, w, h, True)
+        pic = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pb))
+        pic.set_can_shrink(False)
+        pic.add_css_class("ks-thumb")
+        return pic
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _dim(t):
@@ -196,6 +225,13 @@ class ChatPage(Gtk.Box):
         self.group_call_btn.connect("clicked", lambda *_: self._group_call())
         th.append(self.group_call_btn)
         right.append(th)
+        self.pinbar = Gtk.Button(visible=False, halign=Gtk.Align.FILL)        # 📌 festet melding øverst
+        self.pinbar.add_css_class("ks-pinbar")
+        self.pinbar.connect("clicked", lambda *_: self._pins_dialog())
+        right.append(self.pinbar)
+        self.playing = Gtk.Box(spacing=6, visible=False)                      # 🎮 hvem spiller nå (servere)
+        self.playing.add_css_class("ks-playing")
+        right.append(self.playing)
         self.callbar = Gtk.Box(spacing=8, visible=False)
         self.callbar.add_css_class("card")
         self.call_lab = Gtk.Label(xalign=0, hexpand=True, margin_start=12)
@@ -1020,6 +1056,10 @@ class ChatPage(Gtk.Box):
             t_ = Gtk.Label(label=text, wrap=True, xalign=0, selectable=True, max_width_chars=60,
                            tooltip_text=time.strftime("%d.%m.%Y %H:%M", time.localtime(t)))
             big = not m.get("deleted") and LK.emoji_count(text)
+            att_k = (m.get("attach") or {}).get("kind")
+            auto_txt = not m.get("deleted") and ((att_k == "audio" and text.startswith("🎙️")) or
+                                                 (att_k == "image" and text in ("🖼️ Bilde", "")))
+            t_.set_visible(not auto_txt)
             t_.add_css_class("ks-chat-emoji" if big else ("ks-chat-me" if mine else "ks-chat-other"))
             if cont and not big:
                 t_.add_css_class("ks-cont")
@@ -1046,6 +1086,7 @@ class ChatPage(Gtk.Box):
             else:
                 self.msgs.append(outer)
         self._seen[room] = {m.get("id") for m in msgs}
+        self._update_top(room, msgs)
         mine_last = [m for m in msgs if m.get("from_id") == me_id and not m.get("deleted")]
         if room.startswith("s:") and mine_last:
             rc = _dim(CP.receipt(room, mine_last[-1]))
@@ -1097,13 +1138,13 @@ class ChatPage(Gtk.Box):
         if att:
             path = CP.file_path(att)
             if att.get("kind") == "image" and path:
-                pic = Gtk.Picture.new_for_filename(path)
-                pic.set_size_request(*((110, 110) if m.get("kind") == "sticker" else (260, 180)))
-                pic.set_content_fit(Gtk.ContentFit.CONTAIN)
-                pic.set_halign(al)
-                col.append(pic)
+                pic = _thumb(path, *((110, 110) if m.get("kind") == "sticker" else (300, 220)))
+                if pic:
+                    pic.set_halign(al)
+                    col.append(pic)
             elif att.get("kind") == "audio":
-                col.append(_btn("▶ Spill av", lambda _b, p=path: CP.play(p), flat=True))
+                col.append(self._voice_widget(path, att, mine))
+                path = None                                  # ingen fil-knapp under talemeldinger
             if path:
                 col.append(_btn(f"📂 {att.get('name')} ({att.get('size', 0) // 1024} KB)",
                                 lambda _b, p=path: self._open_path(p), flat=True))
@@ -1146,9 +1187,182 @@ class ChatPage(Gtk.Box):
                 col.append(_btn("🎬 Se klippet", lambda _b, u=url: self._open_url(u), True))
             else:
                 b = _btn("🔗 " + url[:50], lambda _b, u=url: self._open_url(u), flat=True)
+                b.set_halign(al)
                 col.append(b)
-                _bg(lambda u=url: CL.link_title(u), lambda t, bb=b: t and not isinstance(t, Exception) and
-                    bb.set_label("🔗 " + t[:70]))
+                import chatextra as CX
+                _bg(lambda u=url: CX.link_preview(u),
+                    lambda pv, bb=b, u=url: pv and not isinstance(pv, Exception) and self._link_card(bb, u, pv))
+
+    def _link_card(self, btn, url, pv):
+        """Bytt lenke-knappen ut med et kort: bilde, tittel, beskrivelse og nettsted."""
+        par = btn.get_parent()
+        if par is None:
+            return
+        card_ = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, halign=btn.get_halign())
+        card_.add_css_class("ks-linkcard")
+        card_.set_size_request(280, -1)
+        if pv.get("site"):
+            st = Gtk.Label(label=pv["site"], xalign=0)
+            st.add_css_class("ks-chat-time")
+            card_.append(st)
+        tl = Gtk.Label(label=pv.get("title") or url, xalign=0, wrap=True, max_width_chars=42)
+        tl.add_css_class("heading")
+        card_.append(tl)
+        if pv.get("desc"):
+            card_.append(Gtk.Label(label=pv["desc"], xalign=0, wrap=True, max_width_chars=42, lines=3,
+                                   ellipsize=3, css_classes=["dim-label", "caption"]))
+        if pv.get("image"):
+            pic = _thumb(pv["image"], 280, 150, cover=True)
+            if pic:
+                card_.append(pic)
+        g = Gtk.GestureClick()
+        g.connect("released", lambda *_: self._open_url(url))
+        card_.add_controller(g)
+        card_.set_cursor_from_name("pointer")
+        par.insert_child_after(card_, btn)
+        par.remove(btn)
+
+    def _voice_widget(self, path, att, mine):
+        """Talemelding: ▶ + lydbølge + lengde."""
+        box = Gtk.Box(spacing=8, halign=Gtk.Align.END if mine else Gtk.Align.START)
+        box.add_css_class("ks-voice")
+        if mine:
+            box.add_css_class("mine")
+        play = Gtk.Button(label="▶")
+        play.add_css_class("circular")
+        play.add_css_class("suggested-action")
+        play.set_sensitive(bool(path))
+        play.connect("clicked", lambda *_: path and CP.play(path))
+        box.append(play)
+        wv = att.get("wave") or [3, 5, 2, 6, 4, 7, 3, 5, 2, 4, 6, 3, 5, 2, 4, 3, 6, 2, 4, 3]
+        da = Gtk.DrawingArea(content_width=max(80, len(wv) * 4), content_height=28, valign=Gtk.Align.CENTER)
+        fg = self.get_color()
+
+        def draw(_a, cr, w, h):
+            n = len(wv)
+            bw = w / n
+            cr.set_source_rgba(fg.red, fg.green, fg.blue, 0.75)
+            for i, v in enumerate(wv):
+                bh = max(2, h * (0.15 + 0.85 * v / 9))
+                cr.rectangle(i * bw + bw * 0.2, (h - bh) / 2, bw * 0.6, bh)
+            cr.fill()
+        da.set_draw_func(draw)
+        box.append(da)
+        secs = att.get("secs")
+        tl = Gtk.Label(label=(f"{int(secs // 60)}:{int(secs % 60):02d}" if secs else "🎙️"))
+        tl.add_css_class("ks-chat-time")
+        box.append(tl)
+        return box
+
+    def _pins_dialog(self):
+        pins = [m for m in getattr(self, "_last_msgs", []) if m.get("pinned") and not m.get("deleted")]
+        dlg = Adw.AlertDialog(heading=f"📌 {i18n.tr('Festet')} ({len(pins)})")
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        for m in reversed(pins):
+            lab = Gtk.Label(label=f"{m.get('from')} · {time.strftime('%d.%m %H:%M', time.localtime(m.get('t', 0)))}\n"
+                                  f"{m.get('text', '')}", xalign=0, wrap=True, max_width_chars=50, selectable=True)
+            lab.add_css_class("card")
+            lab.set_margin_bottom(2)
+            box.append(lab)
+        dlg.set_extra_child(box)
+        dlg.add_response("close", i18n.tr("Lukk"))
+        dlg.present(self.get_root())
+
+    def _help_dialog(self, txt):
+        dlg = Adw.AlertDialog(heading=i18n.tr("Kommandoer i chatten"), body=txt)
+        dlg.add_response("close", i18n.tr("Lukk"))
+        dlg.present(self.get_root())
+
+    def _gif_dialog(self, query=""):
+        """Søk etter GIF-er (Tenor) og send den du trykker på."""
+        import chatextra as CX
+        if not CX.gif_key():
+            dlg = Adw.AlertDialog(heading=i18n.tr("GIF-søk"),
+                                  body=i18n.tr("GIF-søket bruker Tenor (gratis). Lag en nøkkel én gang på "
+                                               "developers.google.com/tenor (Get a key) og lim den inn her."))
+            e = Gtk.Entry(placeholder_text="Tenor API-nøkkel", width_chars=40)
+            dlg.set_extra_child(e)
+            dlg.add_response("cancel", i18n.tr("Avbryt"))
+            dlg.add_response("ok", i18n.tr("Lagre"))
+            dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+            dlg.connect("response", lambda _d, r: r == "ok" and e.get_text().strip() and (
+                CP.set_(tenor_key=e.get_text().strip()), self._gif_dialog(query)))
+            dlg.present(self.get_root())
+            return
+        dlg = Adw.Dialog(title="GIF", content_width=560, content_height=520)
+        tv = Adw.ToolbarView()
+        tv.add_top_bar(Adw.HeaderBar())
+        v = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_start=12, margin_end=12,
+                    margin_bottom=12)
+        se = Gtk.SearchEntry(text=query, placeholder_text=i18n.tr("Søk etter GIF …"))
+        v.append(se)
+        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=4, row_spacing=6,
+                           column_spacing=6, homogeneous=True)
+        sc = Gtk.ScrolledWindow(child=flow, vexpand=True)
+        v.append(sc)
+        info = _dim("")
+        v.append(info)
+        tv.set_content(v)
+        dlg.set_child(tv)
+
+        def send(big):
+            dlg.close()
+            self.status.set_label(i18n.tr("Sender GIF …"))
+            bg = getattr(self.get_root(), "bg", None)
+            _bg(lambda: CP.send_file(self.room, CX.gif_file(big), "", bg.notify if bg else None),
+                lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
+
+        def show(res):
+            while (c := flow.get_first_child()) is not None:
+                flow.remove(c)
+            if isinstance(res, Exception):
+                info.set_label(f"✗ {res}")
+                return
+            info.set_label("" if res else i18n.tr("Ingen treff"))
+            for tiny_path, big in res:
+                b = Gtk.Button()
+                b.add_css_class("ks-gif-pick")
+                pic = Gtk.Picture.new_for_filename(tiny_path)
+                pic.set_content_fit(Gtk.ContentFit.COVER)
+                pic.set_size_request(120, 90)
+                b.set_child(pic)
+                b.connect("clicked", lambda _b, u=big: send(u))
+                flow.append(b)
+
+        def search(*_):
+            q = se.get_text().strip() or "hello"
+            info.set_label(i18n.tr("Søker …"))
+            _bg(lambda: [(CX.gif_file(t), b) for t, b in CX.gif_search(q)], show)
+        se.connect("activate", search)
+        dlg.present(self.get_root())
+        search()
+
+    def _update_top(self, room, msgs):
+        """📌 siste festede melding og 🎮 hvem som spiller nå (servere)."""
+        import chatextra as CX
+        self._last_msgs = msgs
+        pins = [m for m in msgs if m.get("pinned") and not m.get("deleted")]
+        self.pinbar.set_visible(bool(pins))
+        if pins:
+            last = pins[-1]
+            self.pinbar.set_label(f"📌 {last.get('from')}: {str(last.get('text', ''))[:80]}" +
+                                  (f"   (+{len(pins) - 1})" if len(pins) > 1 else ""))
+        while (c := self.playing.get_first_child()) is not None:
+            self.playing.remove(c)
+        players = []
+        if room.startswith("s:"):
+            srv = CS.get(room.split(":")[1]) or {}
+            for mid, mem in (srv.get("members") or {}).items():
+                p = CL._PRES.get(mid) if mid != CS.me()["id"] else None
+                if p and p.get("game") and time.time() - p.get("t", 0) < 600:
+                    players.append((mem.get("name") or p.get("name"), p["game"], p.get("since") or 0))
+        for name, game, since in players[:6]:
+            lbl = f"🎮 {name} · {game}" + (f" · {CX.fmt_dur(time.time() - since)}" if since else "")
+            b = Gtk.Button(label=lbl, tooltip_text=i18n.tr("Bli med i spillet"))
+            b.connect("clicked", lambda _b, g=game: _bg(lambda: CL.join_play(g),
+                                                       lambda r: self.status.set_label(str(r))))
+            self.playing.append(b)
+        self.playing.set_visible(bool(players))
 
     def _open_url(self, url):
         from gi.repository import Gio
@@ -1318,14 +1532,16 @@ class ChatPage(Gtk.Box):
                 self.status.set_label(f"✗ {e}")
         dlg.open(self.get_root(), None, done)
 
-    def _need_server(self):
+    def _need_server(self, dm=False):
+        if dm and self.room.startswith("p:"):                # virker også i direktemeldinger
+            return True
         if not self.room.startswith("s:"):
             self.status.set_label(i18n.tr("Dette virker i serverkanaler – lag en server med ➕"))
             return False
         return True
 
     def _attach(self, *_):
-        if not self._need_server():
+        if not self._need_server(dm=True):
             return
         dlg = Gtk.FileDialog(title=i18n.tr("Legg ved"))
         try:
@@ -1348,7 +1564,37 @@ class ChatPage(Gtk.Box):
         dlg.open(self.get_root(), None, done)
 
     def _voice(self, *_):
-        if not self._need_server():
+        if not self._need_server(dm=True):
+            return
+        import chatextra as CX
+        if CX.rec_available() and CP._REC["p"] is None:     # talemelding med lydbølge (GStreamer, også Windows)
+            if not CX.recording():
+                try:
+                    CX.rec_start()
+                except Exception as e:  # noqa: BLE001
+                    self.status.set_label(f"✗ {e}")
+                    return
+                self.mic_btn.set_label("⏺️")
+                t0 = time.time()
+
+                def tick():
+                    if not CX.recording():
+                        return False
+                    bars = "▁▂▃▄▅▆▇█"
+                    self.status.set_label(f"🔴 {int(time.time() - t0)} s  " + bars[int(CX.rec_level() * 7)] * 6 +
+                                          "  " + i18n.tr("trykk 🎙️ for å sende · Esc avbryter"))
+                    return True
+                GLib.timeout_add(120, tick)
+                return
+            self.mic_btn.set_label("🎙️")
+            res = CX.rec_stop()
+            if not res:
+                self.status.set_label(i18n.tr("For kort opptak"))
+                return
+            path, wv, secs = res
+            bg = getattr(self.get_root(), "bg", None)
+            _bg(lambda: CX.send_voice(self.room, path, wv, secs, bg.notify if bg else None),
+                lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
             return
         if CP._REC["p"] is None:
             try:
@@ -1611,10 +1857,18 @@ class ChatPage(Gtk.Box):
         self.status.set_label(i18n.tr("Høydepunkter og ukens toppliste postes nå i denne kanalen"))
 
     def _paste_key(self, _c, keyval, _code, state):
+        if keyval == Gdk.KEY_Escape:                         # Esc avbryter en talemelding
+            import chatextra as CX
+            if CX.recording():
+                CX.rec_cancel()
+                self.mic_btn.set_label("🎙️")
+                self.status.set_label(i18n.tr("Talemeldingen ble avbrutt"))
+                return True
+            return False
         if not (state & Gdk.ModifierType.CONTROL_MASK) or keyval not in (Gdk.KEY_v, Gdk.KEY_V):
             return False
         cb = Gdk.Display.get_default().get_clipboard()
-        if not cb.get_formats().contain_gtype(Gdk.Texture) or not self.room.startswith("s:"):
+        if not cb.get_formats().contain_gtype(Gdk.Texture) or not self.room.startswith(("s:", "p:")):
             return False
 
         def got(c, res):
@@ -1630,7 +1884,7 @@ class ChatPage(Gtk.Box):
         return True
 
     def _call_room(self, fn):
-        if not self._need_server():
+        if not self._need_server(dm=True):
             return
         _bg(fn, lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
 
@@ -1905,6 +2159,26 @@ class ChatPage(Gtk.Box):
             return
         self.entry.set_text("")
         bg = getattr(self.get_root(), "bg", None)
+        if t.startswith("/") and not t.startswith("//"):     # /-kommandoer: /poll /påminn /terning /gif …
+            import chatextra as CX
+
+            def cmd():
+                return CX.command(self.room, t, self.get_root(), bg.notify if bg else None)
+
+            def done(res):
+                if isinstance(res, Exception):
+                    self.status.set_label(f"✗ {res}")
+                    return
+                txt, special = res
+                if special and special[0] == "gif":
+                    self._gif_dialog(special[1])
+                elif txt:
+                    self.status.set_label(str(txt)[:300])
+                    if t.split()[0].lower() in ("/hjelp", "/help", "/?"):
+                        self._help_dialog(txt)
+                self._load()
+            _bg(cmd, done)
+            return
         extra = {"reply": self.reply_to["id"]} if self.reply_to and self.room not in ("hjemme", "meg") else None
         self._set_reply(None)
         self.status.set_label(i18n.tr("Sender …"))
