@@ -71,8 +71,57 @@ def push():
     os.makedirs(os.path.dirname(STATE), exist_ok=True)
     with open(STATE, "w") as f:
         json.dump({"url": url}, f)
-    return True, "sendt til GitHub ✓"
+    rel = release()
+    return True, "sendt til GitHub ✓" + (f" · {rel}" if rel else "")
+
+
+def _repo():
+    u = _url().rstrip("/")
+    u = u[:-4] if u.endswith(".git") else u
+    return "/".join(u.split("/")[-2:])
+
+
+def release():
+    """Lag en nedlastingsside (GitHub Release) for versjonen med Android-appen og Windows-installasjonen."""
+    gh = _gh()
+    try:
+        with open(os.path.join(APP, "VERSION")) as f:
+            ver = f.read().strip()
+    except OSError:
+        return ""
+    files = []
+    for name, label in ((f"Kontrollsenter-{ver}.apk", "Android-app"),
+                        (f"Kontrollsenter-Setup-{ver}.exe", "Windows-installasjon")):
+        p = os.path.join(APP, "dist", name)
+        if os.path.exists(p):
+            files.append(f"{p}#{label} ({name})")
+    if not files:
+        return ""
+    tag, repo = f"v{ver}", _repo()
+    notes = f"Kontrollsenter {ver}"
+    try:
+        import whatsnew
+        for v, title, groups in whatsnew.NEWS:
+            if v == ver:
+                notes = f"## {title}\n" + "\n".join(f"\n**{g}**\n" + "\n".join(f"- {x}" for x in items)
+                                                     for g, items in groups)
+                break
+    except Exception:  # noqa: BLE001
+        pass
+    have = subprocess.run([gh, "release", "view", tag, "-R", repo], capture_output=True, text=True, timeout=60)
+    if have.returncode == 0:
+        r = subprocess.run([gh, "release", "upload", tag, "-R", repo, "--clobber", *files],
+                           capture_output=True, text=True, timeout=600)
+    else:
+        r = subprocess.run([gh, "release", "create", tag, "-R", repo, "--target", "main", "--latest",
+                            "--title", f"Kontrollsenter {ver}", "--notes", notes, *files],
+                           capture_output=True, text=True, timeout=600)
+    if r.returncode != 0:
+        lines = (r.stderr or r.stdout).strip().splitlines()
+        return "app-opplasting feilet: " + (lines[-1] if lines else "ukjent feil")
+    return f"Android-app og Windows-installasjon lagt ved {tag}"
 
 
 if __name__ == "__main__":
-    print(push())
+    import sys
+    print(release() if "--release" in sys.argv else push())
