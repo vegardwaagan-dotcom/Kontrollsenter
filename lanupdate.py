@@ -377,8 +377,12 @@ def apply_update(package_files, fetch=None, source="NAS-en"):
         except (RuntimeError, OSError) as e:
             pt.done(str(e), False)
             return False, str(e)
-        pt.set(0.6, "Tar vare på versjonen du har nå")
         old = local_version()
+        try:
+            newv = (prog / "VERSION").read_text().strip()
+        except OSError:
+            newv = "?"
+        pt.set(0.6, f"Fra {old} til {newv} – tar vare på versjonen du har nå")
         # ta vare på versjonen som kjører nå
         BACKUP.parent.mkdir(parents=True, exist_ok=True)
         with tarfile.open(BACKUP, "w:gz") as t:
@@ -387,7 +391,7 @@ def apply_update(package_files, fetch=None, source="NAS-en"):
                     t.add(src, arcname=src.name)
         entries = sorted(prog.iterdir())
         for n, src in enumerate(entries):
-            pt.set(0.7 + 0.3 * n / max(1, len(entries)), "Installerer filene")
+            pt.set(0.7 + 0.3 * n / max(1, len(entries)), f"Installerer versjon {newv}")
             _install_entry(src)
         arm_rollback(old, local_version())
         pt.done(f"Oppdatert til {local_version()}")

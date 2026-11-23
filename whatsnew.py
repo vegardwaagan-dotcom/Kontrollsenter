@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.15", "Du ser hvilken versjon du får", [
+        ("Oppdateringer", [
+            "«Oppdater alt» viser «Ny versjon funnet: 0.99.15 (du har 0.99.14)» under Kontrollsenter – og hvilken "
+            "versjon du har når alt er oppdatert",
+            "Linja på Oversikt sier «Kontrollsenter 0.99.15», og varselet nevner versjonen",
+            "Fremdriftsvinduet viser «Fra 0.99.14 til 0.99.15» mens det oppdaterer",
+            "Venter versjonen på testing eller omstart, står grunnen der i stedet for «Oppdatert»",
+            "Gjelder Linux og Windows; Android-appen viste allerede versjonen",
+        ]),
+    ]),
     ("0.99.14", "Glass og Aero på mobilen – og GitHub på Windows", [
         ("Android-appen", [
             "«Liquid Glass»-temaet finnes nå også i appen",

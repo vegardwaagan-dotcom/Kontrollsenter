@@ -240,12 +240,14 @@ def firmware_apply(t):
 def ks_check():
     import lanupdate as L
     try:
-        _txt, new = L.check()
+        txt, new = L.check()
     except Exception:  # noqa: BLE001
         return -1, "Fant ikke hjemmenettet", None
     if new:
-        return 1, f"Versjon {new} er klar", new
-    return 0, "Oppdatert", None
+        return 1, f"Ny versjon funnet: {new} (du har {L.local_version()})", new
+    if txt.startswith("Du har nyeste"):
+        return 0, f"Oppdatert – versjon {L.local_version()}", None
+    return 0, txt, None                                    # f.eks. «testes først på …» eller «start på nytt»
 
 
 def _ver(v):

@@ -814,18 +814,22 @@ class Background:
                 found = len([r for r in syscheck.run_all() if r.level in ("warn", "error")])
             except Exception:  # noqa: BLE001
                 pass
+            ksv = None
             try:
-                upd = sum(max(0, s["count"]) for s in updates.status(refresh=True, only=("apps", "ks")))
+                st = updates.status(refresh=True, only=("apps", "ks"))
+                upd = sum(max(0, s["count"]) for s in st)
+                ksv = next((v for s in st if s["key"] == "ks" for k, v in s.get("items") or [] if k == "ks"), None)
             except Exception:  # noqa: BLE001
                 upd = 0
-            GLib.idle_add(done, found, upd)
+            GLib.idle_add(done, found, upd, ksv)
 
-        def done(found, upd):
+        def done(found, upd, ksv=None):
             if found:
                 self.notify("syscheck", "Systemsjekk fant noe",
                             f"{found} ting bør sjekkes. Klikk for å åpne Systemsjekk.", action="app.syscheck")
             if upd:
                 self.notify("updates", "Oppdateringer tilgjengelig",
+                            (f"Kontrollsenter {ksv} er klar. " if ksv else "") +
                             f"{upd} oppdateringer er klare. Trykk «Oppdater alt» på Oversikt.", action="app.show")
             return False
 

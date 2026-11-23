@@ -221,7 +221,10 @@ class OverviewBar(Gtk.Box):
         elif n == 0:
             self.lab.set_label("✅ " + i18n.tr("Alt er oppdatert"))
         else:
-            names = ", ".join(i18n.tr(s["name"]) for s in st if s["count"] > 0)
+            def nm(s):
+                new = next((v for k, v in s.get("items") or [] if k == "ks" and v), None) if s["key"] == "ks" else None
+                return i18n.tr(s["name"]) + (f" {new}" if new else "")
+            names = ", ".join(nm(s) for s in st if s["count"] > 0)
             self.lab.set_label("🔄 " + i18n.tr("{n} oppdateringer").replace("{n}", str(n)) + " · " + names)
         self.btn.set_visible(n > 0 or not st)
         self.btn.set_sensitive(True)
