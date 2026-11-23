@@ -364,6 +364,11 @@ class Cs2Live:
             what = {3: "3K", 4: "4K"}.get(len(kt), "ACE")
             now = time.time()
             keep = (now - kt[0] + 3, max(0.0, now - kt[-1] - 2)) if c.get("killzoom") else None
+            try:
+                import gamesplus
+                gamesplus.celebrate(None, "ace" if "ace" in str(what).lower() else "highlight")
+            except Exception:  # noqa: BLE001
+                pass
             r.save(label=f"CS2 {what} på {mp.get('name', '').replace('de_', '').title()}", kind="highlight",
                    keep=keep, meta={"highlight": what})
         except Exception:  # noqa: BLE001

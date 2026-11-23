@@ -96,6 +96,11 @@ def all_games():
     out = [g for g in out if not re.search(r"Steam Linux Runtime|Legacy Steam Runtime|Steamworks|Proton|"
                                            r"Redistributable|SteamVR", g["name"] or "")]
     out += _heroic() + _lutris()
+    try:                                                   # RetroArch-spillelistene
+        import gamesplus
+        out += gamesplus.retro_games()
+    except Exception:  # noqa: BLE001
+        pass
     last, week = {}, {}
     try:
         import games_auto
@@ -123,6 +128,9 @@ def launch_uri(g):
 
 def launch(g):
     from gi.repository import Gio
+    if g.get("store") == "retro":
+        import gamesplus
+        return gamesplus.retro_launch(g)
     uri = launch_uri(g)
     if uri:
         Gio.AppInfo.launch_default_for_uri(uri, None)

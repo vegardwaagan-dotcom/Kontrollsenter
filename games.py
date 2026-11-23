@@ -408,6 +408,15 @@ class GamesPage(TabbedPage):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("spill-launcher")
+        try:                                               # spillkveld, Discord/lyd per spill, dagbok, verktøy
+            import gamesplus_ui
+            c, i = card("Spill+", "Spillkveld med venner, Discord og lyd per spill, delte profiler, dagbok, "
+                                  "toppliste og verktøy.")
+            i.append(gamesplus_ui.GamesPlus(lambda: self.get_root()))
+            self.box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("spill+")
         self.tab("prestasjoner", "Prestasjoner")
         try:
             self._achievements()

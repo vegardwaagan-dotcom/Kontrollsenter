@@ -603,6 +603,11 @@ class WowLog:
                 if len(parts) >= 6 and parts[-1].strip() == "1":     # suksess
                     boss = parts[2].strip('"') if len(parts) > 2 else "boss"
                     self.rec.save(label=f"WoW {boss}", kind="boss", meta={"wow": {"boss": boss}})
+                    try:
+                        import gamesplus
+                        gamesplus.celebrate(None, "boss")
+                    except Exception:  # noqa: BLE001
+                        pass
             elif "UNIT_DIED" in ln and "Player-" in ln:
                 m = re.search(r'Player-[^,]+,"([^"-]+)', ln)
                 if m and m.group(1) in self.names:

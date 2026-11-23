@@ -260,6 +260,11 @@ class Session:
              "watts": round(avg_w) if avg_w else None,
              "kr": round(power.cost(avg_w, dur / 3600), 2) if avg_w else None,
              "drops": self.drops[-10:]}
+        try:                                               # skjermkortdriver (FPS-sammenligning ved ny driver)
+            import features
+            s["driver"] = features.driver_info()
+        except Exception:  # noqa: BLE001
+            pass
         _save_session(s)
         _prune_logs()
         return s
@@ -325,6 +330,8 @@ def tick(auto):
             scenes.on_event(win, "game_start", g[1])
             import assistant
             assistant.on_game_start(win, g[1])
+            import gamesplus
+            gamesplus.on_game_start(win, g[1])
             import looks
             looks.on_game(g[1])
             win.layout_for_game(True)
@@ -379,6 +386,8 @@ def tick(auto):
         try:
             import scenes
             scenes.on_event(win, "game_end", name)
+            import gamesplus
+            gamesplus.on_game_end(win, name)
             import looks
             looks.on_game(None)
             win.layout_for_game(False)
@@ -388,7 +397,12 @@ def tick(auto):
             s = auto.session.finish()
             auto.session = None
             if s["minutes"] >= 1:
-                auto.notify("session", f"Spilløkt: {name}", summary(s) + best_of_week(s))
+                try:
+                    import gamesplus
+                    cmp_ = gamesplus.fps_compare(s)
+                except Exception:  # noqa: BLE001
+                    cmp_ = ""
+                auto.notify("session", f"Spilløkt: {name}", summary(s) + best_of_week(s) + cmp_)
             try:
                 if bg:
                     bg.flush_held()                       # varslene som ble holdt tilbake mens du spilte

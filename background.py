@@ -208,6 +208,11 @@ class Background:
             except Exception:  # noqa: BLE001
                 pass
         threading.Thread(target=_crash_check, daemon=True, name="krasjsjekk").start()
+        try:                                               # smart oppstart (om slått på)
+            import gamesplus
+            gamesplus.at_start(win)
+        except Exception:  # noqa: BLE001
+            pass
         if sys.platform == "win32":                       # ytelsesrapport til NAS-en etter 10 min (finne treghet)
             def _perf_report():
                 import time as _t
@@ -386,7 +391,13 @@ class Background:
         except Exception:  # noqa: BLE001
             pass
         # mens du spiller: hold varslene tilbake og vis dem samlet etterpå (ikke chat, spilletid eller personvern)
-        if (self.cfg.get("game_hold", True) and getattr(self, "game_name", None) and key not in ALWAYS
+        meeting = False
+        try:
+            import gamesplus
+            meeting = not getattr(self, "game_name", None) and gamesplus.in_meeting()
+        except Exception:  # noqa: BLE001
+            pass
+        if (self.cfg.get("game_hold", True) and (getattr(self, "game_name", None) or meeting) and key not in ALWAYS
                 and kind_of(key) not in ("playtime", "chat") and key not in ("game", "session", "held", "bg", "invite")):
             held = self.__dict__.setdefault("_game_held", [])
             if all(h[0] != key for h in held):
@@ -540,6 +551,17 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
             _th.Thread(target=_pt, daemon=True).start()
+        if self.__dict__.get("_game_held") and not getattr(self, "game_name", None):   # møtet er over: vis varslene
+            try:
+                import gamesplus
+                if not gamesplus.in_meeting():
+                    self.flush_held()
+            except Exception:  # noqa: BLE001
+                pass
+        if time.time() - getattr(self, "_gp_t", 0) > 30:                         # spill+: ping-vakt, spillkveld …
+            self._gp_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("gamesplus").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_fam_t", 0) > 50:                        # familie+: leggetid, kø, pause …
             self._fam_t = time.time()
             import threading as _th

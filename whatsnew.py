@@ -13,6 +13,23 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.79.0", "Spill+", [
+        ("Nytt (Spill → Spillene → Spill+)", [
+            "Spillkveld: hvem hjemme og blant vennene spiller hva – «Spill sammen» starter spillet, inviterer og blir "
+            "med i Discord-kanalen",
+            "Discord-kanal og lydprofil per spill – byttes når spillet starter (og lyden tilbake etterpå)",
+            "Delte spillprofiler via NAS-en: startvalg og Proton som virker godt på en annen PC",
+            "Spill-dagbok (første gang, lengste økt, timer-milepæler) og husets toppliste",
+            "Ping-vakt: sier fra inni spillet når pingen blir dårlig – og om det er Wi-Fi/ruteren eller internett",
+            "Lysshow: RGB og Hue blinker ved ace i CS2 og bosskill i WoW",
+            "Forutsi spillkvelden («du pleier å spille nå»), og gjør klart om du vil",
+            "Smart oppstart: lærer hvilke programmer du alltid åpner, og kan starte dem selv",
+            "Ikke forstyrr i møter (Teams, Zoom, Webex) – varslene kommer samlet etterpå",
+            "Retrospill fra RetroArch vises sammen med de andre spillene",
+            "Finn beste FPS-grense (Linux) og Forvarm shadere – knapper du trykker selv",
+            "Øktrapporten sammenligner FPS med snittet ditt, og sier fra om ny skjermkortdriver",
+        ]),
+    ]),
     ("0.78.0", "Familie+", [
         ("Nytt (Familie → Familie+)", [
             "Gjøremål fra ukeplanen kan krysses av – en voksen godkjenner, og det gir stjerner og ekstra spilletid",
