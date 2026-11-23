@@ -284,17 +284,34 @@ def send_sticker(room, path, notify=None):
 # --------------------------------------------------------------------------
 # 32 – spillrom, 33 – temakanaler
 # --------------------------------------------------------------------------
+_WHO = {"t": 0, "v": [], "busy": False}
+
+
+def _who_plays():
+    """Hvem som spiller hva (venner og PC-ene hjemme) – hentes over nettet i bakgrunnen, aldri i hovedtråden
+    (kunne fryse vinduet i flere sekunder hvert annet sekund mens du spilte)."""
+    if time.time() - _WHO["t"] > 30 and not _WHO["busy"]:
+        _WHO["busy"] = True
+
+        def work():
+            try:
+                import gamesplus
+                _WHO["v"] = list(gamesplus.who_plays())
+            except Exception:  # noqa: BLE001
+                pass
+            finally:
+                _WHO.update(t=time.time(), busy=False)
+        import threading
+        threading.Thread(target=work, daemon=True).start()
+    return _WHO["v"]
+
+
 def same_game(win):
     """(spill, [navn]) for andre som spiller det samme som meg nå."""
     game = getattr(getattr(win, "bg", None), "game_name", None) if win else None
     if not game:
         return None, []
-    names = []
-    try:
-        import gamesplus
-        names += [n for n, g, _w in gamesplus.who_plays() if g == game]
-    except Exception:  # noqa: BLE001
-        pass
+    names = [n for n, g, _w in _who_plays() if g == game]
     try:
         import chatlink
         names += [p["name"] for p in chatlink._PRES.values() if p.get("game") == game and time.time() - p["t"] < 600]

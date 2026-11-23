@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.20", "Chatten fryser ikke lenger", [
+        ("Rettet", [
+            "Kontrollsenter kunne fryse i flere sekunder om gangen når du åpnet Chat mens et spill kjørte – "
+            "sjekken av hvem som spiller det samme spillet går nå i bakgrunnen (Linux og Windows)",
+        ]),
+    ]),
     ("0.99.19", "Ny chat og AI i mobilappen", [
         ("Android-appen – chat", [
             "Samme utseende som på PC-en: grupperte bobler, profilbilder med farge og pålogget-prikk, datoskiller, "
