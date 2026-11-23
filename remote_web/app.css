@@ -1057,3 +1057,8 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 #dg-text { width: 100%; border-radius: 14px; padding: 10px; font: inherit; margin-bottom: 6px; }
 .dg-e { position: relative; padding: 8px 40px 8px 4px; border-bottom: 1px solid var(--line); white-space: pre-wrap; }
 .dg-e button { position: absolute; right: 0; top: 8px; }
+
+.cal-wk { font-size: 11px !important; font-weight: 800; border-radius: 7px; padding: 2px 0; opacity: 1 !important; }
+.cal-wk.even { background: color-mix(in srgb, var(--acc, #5b8cff) 22%, transparent); color: var(--acc, #5b8cff); }
+.cal-wk.odd { background: color-mix(in srgb, currentColor 8%, transparent); }
+.cal-wkbig { text-align: center; font-size: 15px; margin: 2px 0 6px; }

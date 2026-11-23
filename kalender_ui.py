@@ -35,7 +35,10 @@ CSS = """
 .ks-cal-day.sel { background: @accent_bg_color; color: @accent_fg_color; }
 .ks-cal-dots { font-size: 8px; letter-spacing: 1px; }
 .ks-cal-wd { font-size: .8em; font-weight: 800; opacity: .6; }
-.ks-cal-wk { font-size: .75em; opacity: .45; }
+.ks-cal-wk { font-size: .85em; font-weight: 800; border-radius: 8px; padding: 2px 5px; min-width: 22px; }
+.ks-cal-wk.even { background: alpha(@accent_bg_color, 0.20); color: @accent_color; }
+.ks-cal-wk.odd { background: alpha(@window_fg_color, 0.08); opacity: .8; }
+.ks-cal-weekbig { font-size: 1.05em; margin-bottom: 2px; }
 .ks-cal-title { font-size: 1.5em; font-weight: 800; }
 .ks-cal-red { color: #ff4d4d; font-weight: 700; }
 .ks-cal-item { border-radius: 10px; padding: 6px 10px; background: alpha(@window_fg_color, 0.06); }
@@ -151,6 +154,9 @@ class CalendarPage(Gtk.Box):
         nxt.connect("clicked", lambda *_: self._step(1))
         nav.append(nxt)
         mi.append(nav)
+        self.week_lab = Gtk.Label(halign=Gtk.Align.CENTER)
+        self.week_lab.add_css_class("ks-cal-weekbig")
+        mi.append(self.week_lab)
         jump = Gtk.Box(spacing=6)
         tb = Gtk.Button(label=i18n.tr("I dag"))
         tb.connect("clicked", lambda *_: self._goto(dt.date.today()))
@@ -289,6 +295,9 @@ class CalendarPage(Gtk.Box):
     def _render_month(self):
         y, m = self.year, self.month
         self.title.set_label(f"{MONTHS[m - 1].capitalize()} {y}")
+        wk_sel = self.sel.isocalendar()[1]
+        self.week_lab.set_markup(f"<b>Uke {wk_sel}</b> · " + ("partallsuke" if wk_sel % 2 == 0 else "oddetallsuke")
+                                 + f"  <span alpha='60%'>(valgt dag)</span>")
         self.mcard._title.set_markup(f'<span foreground="{SEASON[m]}">●</span> {i18n.tr("Kalender")}')
         _clear(self.grid)
         wk = Gtk.Label(label=i18n.tr("uke"))
@@ -302,8 +311,11 @@ class CalendarPage(Gtk.Box):
             self.grid.attach(lab, i + 1, 0, 1, 1)
         today = dt.date.today()
         for r, week in enumerate(calendar.Calendar(0).monthdatescalendar(y, m), start=1):
-            wn = Gtk.Label(label=str(week[0].isocalendar()[1]))
+            wnum = week[0].isocalendar()[1]
+            wn = Gtk.Label(label=str(wnum), tooltip_text=f"Uke {wnum} – " + ("partallsuke" if wnum % 2 == 0
+                                                                             else "oddetallsuke"))
             wn.add_css_class("ks-cal-wk")
+            wn.add_css_class("even" if wnum % 2 == 0 else "odd")
             self.grid.attach(wn, 0, r, 1, 1)
             for c, d in enumerate(week, start=1):
                 its = self._items.get(d, [])
@@ -354,7 +366,8 @@ class CalendarPage(Gtk.Box):
         self.day_card._title.set_label(f"{WD_LONG[d.weekday()].capitalize()} {d.day}. {MONTHS[d.month - 1]} {d.year}")
         _clear(self.day_box, 1)
         sun = info["sun"]
-        self.day_box.append(_dim(f"Uke {info['week']} · {when} · {info['moon']}"
+        self.day_box.append(_dim(f"Uke {info['week']} ({'partall' if info['week'] % 2 == 0 else 'oddetall'}) · "
+                                 f"{when} · {info['moon']}"
                                  + (f" · 🌅 {sun[0]} 🌇 {sun[1]}" if sun else " · ☀️ midnattssol / mørketid")))
         its = self._items.get(d, [])
         for x in its:
@@ -499,7 +512,9 @@ class CalendarPage(Gtk.Box):
 
     def _render_week(self):
         mon = self.sel - dt.timedelta(days=self.sel.weekday())
-        self.wtitle.set_label(f"Uke {mon.isocalendar()[1]} · {mon.day}. {MONTHS[mon.month - 1][:3]} – "
+        wkn = mon.isocalendar()[1]
+        self.wtitle.set_label(f"Uke {wkn} ({'partall' if wkn % 2 == 0 else 'oddetall'}) · {mon.day}. "
+                              f"{MONTHS[mon.month - 1][:3]} – "
                               f"{(mon + dt.timedelta(days=6)).day}. {MONTHS[(mon + dt.timedelta(days=6)).month - 1][:3]}"
                               f" {mon.year}")
         if not all((mon + dt.timedelta(days=i)) in self._items or True for i in range(7)):
@@ -581,15 +596,49 @@ class CalendarPage(Gtk.Box):
         kd = Gtk.DropDown.new_from_strings([f"{v[0]} {i18n.tr(v[1])}" for v in K.KINDS.values()])
         kd.set_selected(kinds.index((ev or {}).get("kind", "event")) if (ev or {}).get("kind", "event") in kinds else 0)
         box.append(kd)
-        r1 = Gtk.Box(spacing=6)
-        date = Gtk.Entry(text=(ev or {}).get("date") or day.isoformat(), width_chars=11, tooltip_text="ÅÅÅÅ-MM-DD")
-        r1.append(date)
-        tm = Gtk.Entry(text=(ev or {}).get("time", ""), placeholder_text=i18n.tr("kl. (tom = hele dagen)"),
-                       width_chars=10)
-        r1.append(tm)
-        end = Gtk.Entry(text=(ev or {}).get("end", ""), placeholder_text=i18n.tr("til dato (valgfri)"), width_chars=12)
-        r1.append(end)
+        # dato: kalender i en sprettboks (ingen skriving av datoformat)
+        try:
+            d0 = dt.date.fromisoformat((ev or {}).get("date") or day.isoformat())
+        except ValueError:
+            d0 = day
+        sel_date = {"v": d0}
+        date_btn = Gtk.MenuButton(label=f"📅 {d0.day}. {MONTHS[d0.month - 1]} {d0.year}")
+        calw = Gtk.Calendar()
+        calw.select_day(GLib.DateTime.new_local(d0.year, d0.month, d0.day, 0, 0, 0))
+        pop = Gtk.Popover(child=calw)
+        date_btn.set_popover(pop)
+
+        def picked(c):
+            g = c.get_date()
+            sel_date["v"] = dt.date(g.get_year(), g.get_month(), g.get_day_of_month())
+            v = sel_date["v"]
+            date_btn.set_label(f"📅 {v.day}. {MONTHS[v.month - 1]} {v.year}")
+            pop.popdown()
+        calw.connect("day-selected", picked)
+        r1 = Gtk.Box(spacing=8)
+        r1.append(date_btn)
+        # klokkeslett: hele dagen eller timer/minutter
+        t0 = (ev or {}).get("time") or ""
+        allday = Gtk.CheckButton(label=i18n.tr("Hele dagen"), active=not t0)
+        r1.append(allday)
+        hh = Gtk.SpinButton.new_with_range(0, 23, 1)
+        mm = Gtk.SpinButton.new_with_range(0, 55, 5)
+        hh.set_value(int(t0.split(":")[0]) if t0 else 18)
+        mm.set_value(int(t0.split(":")[1]) if t0 else 0)
+        for w in (hh, mm):
+            w.set_wrap(True)
+            w.set_orientation(Gtk.Orientation.VERTICAL)
+            w.connect("output", lambda s_: (s_.set_text(f"{int(s_.get_value()):02d}"), True)[1])
+        tbox = Gtk.Box(spacing=2)
+        tbox.append(Gtk.Label(label=i18n.tr("kl.")))
+        tbox.append(hh)
+        tbox.append(Gtk.Label(label=":"))
+        tbox.append(mm)
+        tbox.set_sensitive(not allday.get_active())
+        allday.connect("toggled", lambda w: tbox.set_sensitive(not w.get_active()))
+        r1.append(tbox)
         box.append(r1)
+        end_v = {"v": (ev or {}).get("end", "")}
         rd = Gtk.DropDown.new_from_strings([i18n.tr(n) for _k, n in REPEATS])
         rk = [k for k, _n in REPEATS]
         rd.set_selected(rk.index((ev or {}).get("repeat", "")) if (ev or {}).get("repeat", "") in rk else 0)
@@ -647,8 +696,9 @@ class CalendarPage(Gtk.Box):
             elif r == "ok":
                 kind = kinds[kd.get_selected()]
                 sid = names[scene_dd.get_selected() - 1][0] if scene_dd and scene_dd.get_selected() > 0 else ""
-                data = {"id": eid, "title": title.get_text(), "date": date.get_text().strip(),
-                        "time": tm.get_text().strip(), "end": end.get_text().strip(), "repeat": rk[rd.get_selected()],
+                data = {"id": eid, "title": title.get_text(), "date": sel_date["v"].isoformat(),
+                        "time": "" if allday.get_active() else f"{int(hh.get_value()):02d}:{int(mm.get_value()):02d}",
+                        "end": end_v["v"], "repeat": rk[rd.get_selected()],
                         "remind": mk[md.get_selected()], "color": color["v"], "kind": "scene" if sid else kind,
                         "scene": sid, "note": note.get_text(), "done": (ev or {}).get("done")}
 

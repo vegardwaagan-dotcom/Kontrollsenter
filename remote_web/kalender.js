@@ -41,7 +41,7 @@
     <p class="dim small">Norske røde dager er markert med rødt. Bla så langt fram i tid du vil.</p>
     <div class="cal-nav"><button class="soft" id="cal-prev">‹</button><b id="cal-title"></b><button class="soft" id="cal-next">›</button></div>
     <div class="cal-jump"><button class="soft small" id="cal-today">I dag</button><button class="soft small" id="cal-ym">−1 år</button><button class="soft small" id="cal-yp">+1 år</button><button class="soft small" id="cal-y10">+10 år</button></div>
-    <div id="cal-cd" class="cal-cd" hidden></div>
+    <div id="cal-wkbig" class="cal-wkbig"></div><div id="cal-cd" class="cal-cd" hidden></div>
     <div id="cal-grid" class="cal-grid"></div><div id="cal-info" class="cal-info"></div>
     <div id="cal-items"></div><button class="soft full-w" id="cal-add">＋ Ny hendelse</button>
     <details><summary>🏖️ Ferieplanlegger</summary><div id="cal-vac"></div></details>
@@ -72,7 +72,7 @@
     let g = '<span class="cal-wd">uke</span>' + WD.map((w, i) => `<span class="cal-wd${i === 6 ? " cal-red" : ""}">${w}</span>`).join("");
     for (let r = 0; r < 6; r++) {
       const ws = add(start, r * 7); if (r > 3 && ws.getMonth() !== M) break;
-      g += `<span class="cal-wk">${week(ws)}</span>`;
+      g += `<span class="cal-wk ${week(ws) % 2 ? "odd" : "even"}" title="Uke ${week(ws)} – ${week(ws) % 2 ? "oddetallsuke" : "partallsuke"}">${week(ws)}</span>`;
       for (let c = 0; c < 7; c++) {
         const d = add(ws, c), n = nameOf(d), hol = !!red(d.getFullYear())[key(d)];
         const pi = pcItems(d).filter((x) => x.kind !== "school");
@@ -83,7 +83,8 @@
     }
     $("#cal-grid").innerHTML = g;
     const n = Math.round((sel - t) / 864e5), nm = nameOf(sel), hol = !!red(sel.getFullYear())[key(sel)];
-    $("#cal-info").innerHTML = `<b>${WDL[(sel.getDay() + 6) % 7].replace(/^./, (x) => x.toUpperCase())} ${sel.getDate()}. ${MND[sel.getMonth()]} ${sel.getFullYear()}</b> · uke ${week(sel)} · ` +
+    $("#cal-wkbig").innerHTML = `<b>Uke ${week(sel)}</b> · ${week(sel) % 2 ? "oddetallsuke" : "partallsuke"}`;
+    $("#cal-info").innerHTML = `<b>${WDL[(sel.getDay() + 6) % 7].replace(/^./, (x) => x.toUpperCase())} ${sel.getDate()}. ${MND[sel.getMonth()]} ${sel.getFullYear()}</b> · uke ${week(sel)} (${week(sel) % 2 ? "oddetall" : "partall"}) · ` +
       (n === 0 ? "i dag" : n === 1 ? "i morgen" : n === -1 ? "i går" : n > 0 ? `om ${n} dager` : `for ${-n} dager siden`) +
       (nm ? `<br><span class="${hol ? "cal-red" : ""}">${esc(nm)}</span>` : sel.getDay() === 0 ? "<br>Søndag (rød dag)" : "");
     const its = (PC[iso(sel)] || []).filter((x) => x.kind !== "red" || true);

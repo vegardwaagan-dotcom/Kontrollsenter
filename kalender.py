@@ -72,12 +72,13 @@ def load(max_age=300):
                 shutil.rmtree(tmp, ignore_errors=True)
     except Exception:  # noqa: BLE001
         pass
-    if d is None:
-        try:
-            with open(LOCAL, encoding="utf-8") as f:
-                d = json.load(f)
-        except (OSError, ValueError):
-            d = {"events": []}
+    try:
+        with open(LOCAL, encoding="utf-8") as f:
+            local = json.load(f)
+    except (OSError, ValueError):
+        local = None
+    if d is None or (local and local.get("t", 0) > d.get("t", 0)):   # nyeste vinner (NAS kan henge etter)
+        d = local or {"events": []}
     else:
         _write_local(d)
     d.setdefault("events", [])
@@ -93,6 +94,7 @@ def _write_local(d):
 
 
 def _save(d):
+    d["t"] = time.time()
     _write_local(d)
     _CACHE.update(t=time.time(), d=d)
 
@@ -121,11 +123,22 @@ def add(ev):
     title = str(ev.get("title") or "").strip()[:120]
     if not title:
         raise ValueError("skriv hva det gjelder")
-    dt.date.fromisoformat(str(ev.get("date")))
-    tm = str(ev.get("time") or "")
-    if tm:
-        hh, mm = (int(x) for x in tm.split(":"))
-        tm = f"{hh:02d}:{mm:02d}"
+    tm = str(ev.get("time") or "").strip().replace(".", ":").replace(" ", "")
+    if tm:                                                  # «14», «1400», «14.00» og «14:00» virker
+        import re
+        m = re.match(r"^(\d{1,2}):?(\d{2})?$", tm)
+        if not m or int(m.group(1)) > 23 or int(m.group(2) or 0) > 59:
+            raise ValueError("skriv klokkeslett som 14:00")
+        tm = f"{int(m.group(1)):02d}:{int(m.group(2) or 0):02d}"
+    try:
+        dt.date.fromisoformat(str(ev.get("date")))
+    except ValueError:                                      # «24.11.2026» / «24.11»
+        import re
+        m = re.match(r"^(\d{1,2})\.(\d{1,2})\.?(\d{4})?$", str(ev.get("date") or "").strip())
+        if not m:
+            raise ValueError("ugyldig dato") from None
+        ev = {**ev, "date": dt.date(int(m.group(3) or dt.date.today().year), int(m.group(2)),
+                                    int(m.group(1))).isoformat()}
     import savegames
     e = {"id": ev.get("id") or f"e{int(time.time() * 1000)}{os.urandom(2).hex()}", "title": title, "date": str(ev["date"]), "time": tm,
          "end": str(ev.get("end") or ""), "color": str(ev.get("color") or COLORS[0])[:9],

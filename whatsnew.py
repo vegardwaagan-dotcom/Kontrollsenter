@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.26", "Hendelser lagres – og tydelig ukenummer", [
+        ("Kalender", [
+            "Rettet: hendelser ble ikke lagret når klokkeslett eller dato var skrevet på en annen måte (f.eks. «14» "
+            "eller «24.11») – og feilmeldingen kom ikke fram",
+            "Dato velges i en kalender og klokkeslett med timer og minutter (eller «Hele dagen»)",
+            "Tydelig ukenummer: «Uke 48 · partallsuke» over måneden, ukenumrene i fargede felt (partall uthevet), "
+            "og partall/oddetall i dagen og ukevisningen – også på mobilen",
+            "Flere hendelser rett etter hverandre lagres sikkert (nyeste versjon vinner mot NAS-en)",
+        ]),
+    ]),
     ("0.99.25", "Kalenderen kobles til alt", [
         ("Spill og venner", [
             "Spilletid per dag (rødt ⚠️ når grensen ble passert), WoW-reset hver onsdag, gratis Epic-spill og "
