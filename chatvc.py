@@ -417,6 +417,101 @@ def _ssrc_owner(ssrc):
     return None
 
 
+# --------------------------------------------------------------------------
+# Webkamera-overlay i spill (webcam_overlay.py: eget lite program i overlay-laget over spillet)
+# --------------------------------------------------------------------------
+OV_CFG = os.path.expanduser("~/.config/systemmonitor/chat-overlay.json")
+OV_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "ks-vc-overlay")
+OV_DEFAULT = {"on": False, "show": "both", "corner": "top-right", "size": "middels", "opacity": 100}
+_OV = {"proc": None, "last": {}, "seq": 0, "t": 0}
+
+
+def ov_cfg():
+    try:
+        with open(OV_CFG) as f:
+            return {**OV_DEFAULT, **json.load(f)}
+    except (OSError, ValueError):
+        return dict(OV_DEFAULT)
+
+
+def ov_set(**kw):
+    c = {**ov_cfg(), **{k: v for k, v in kw.items() if k in OV_DEFAULT}}
+    os.makedirs(os.path.dirname(OV_CFG), exist_ok=True)
+    with open(OV_CFG, "w") as f:
+        json.dump(c, f, indent=1)
+    ov_sync()
+    return c
+
+
+def ov_supported():
+    """«layer-shell» (over fullskjermspill), «vindu» (alltid øverst – X11) eller None (Windows)."""
+    if IS_WIN:
+        return None
+    if "sup" not in _OV:
+        try:
+            out = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                               "webcam_overlay.py"), "--sjekk"],
+                                 capture_output=True, text=True, timeout=10).stdout.strip()
+            _OV["sup"] = out or None
+        except (OSError, subprocess.SubprocessError):
+            _OV["sup"] = None
+    return _OV["sup"]
+
+
+def ov_running():
+    p = _OV["proc"]
+    return p is not None and p.poll() is None
+
+
+def ov_sync():
+    """Start overlay-programmet når det er slått på og du er i en talekanal – ellers stopp det."""
+    want = ov_cfg()["on"] and bool(_S["sid"]) and not IS_WIN
+    if want and not ov_running():
+        import shutil as _sh
+        _sh.rmtree(OV_DIR, ignore_errors=True)
+        os.makedirs(OV_DIR, exist_ok=True)
+        try:
+            _OV["proc"] = subprocess.Popen([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                                         "webcam_overlay.py"),
+                                            "--forelder", str(os.getpid())],
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError:
+            _OV["proc"] = None
+    elif not want and ov_running():
+        _OV["proc"].terminate()
+        _OV["proc"] = None
+        import shutil as _sh
+        _sh.rmtree(OV_DIR, ignore_errors=True)
+
+
+def _ov_write(who, data, w, h, stride):
+    """Siste bilde til overlayet (minne, høyst 15 per sekund per kilde)."""
+    now = time.time()
+    if now - _OV["last"].get(who, 0) < 1 / 15:
+        return
+    _OV["last"][who] = now
+    _OV["seq"] += 1
+    import struct as _st
+    path = os.path.join(OV_DIR, f"{who}.rgba")
+    try:
+        with open(path + ".tmp", "wb") as f:
+            f.write(_st.pack("<4sIIIQ", b"KSVC", w, h, stride, _OV["seq"]))
+            f.write(data)
+        os.replace(path + ".tmp", path)
+        if now - _OV["t"] > 0.5:                           # navn og hvem som snakker
+            _OV["t"] = now
+            cur = current()
+            people = {p["id"]: p for p in roster(*cur)} if cur else {}
+            src = [{"key": k, "me": k == "me", "name": "Deg" if k == "me" else people.get(k, {}).get("name", "?"),
+                    "talking": bool(people.get(k, {}).get("speaking"))} for k in _FRAMES
+                   if k == "me" or k in people]
+            with open(os.path.join(OV_DIR, "kilder.json.tmp"), "w") as f:
+                json.dump(src, f)
+            os.replace(os.path.join(OV_DIR, "kilder.json.tmp"), os.path.join(OV_DIR, "kilder.json"))
+    except OSError:
+        pass
+
+
 def _on_sample(sink, who):
     s = sink.emit("pull-sample")
     if s is None:
@@ -433,6 +528,9 @@ def _on_sample(sink, who):
         w, h = caps.get_value("width"), caps.get_value("height")
         _FRAMES[who] = (bytes(info.data), w, h, len(info.data) // max(1, h), time.time())
         buf.unmap(info)
+        if _OV["proc"] is not None:
+            fr = _FRAMES[who]
+            _ov_write(who, fr[0], fr[1], fr[2], fr[3])
         _fire("video")
     return 0
 
@@ -631,6 +729,7 @@ def join(sid, ch):
                 _add_peer(v)
     _fanout(srv, _payload("join"))
     _heartbeat()
+    ov_sync()
     _fire()
     return f"Du er i 🔊 {chan['name']}"
 
@@ -647,6 +746,7 @@ def leave():
             _stop(name)
         _S.update(sid=None, ch=None, cam=False, peers=set())
         _FRAMES.clear()
+    ov_sync()
     _fire()
     return "Du forlot talekanalen"
 

@@ -64,6 +64,9 @@ class VoiceBar(Gtk.Box):
         self.b_mute = self._b(row, "🎙️", "Demp mikrofonen", VC.toggle_mute)
         self.b_deaf = self._b(row, "🎧", "Slå av lyden (du hører ingen og blir dempet)", VC.toggle_deaf)
         self.b_cam = self._b(row, "📷", "Webkamera av/på", VC.toggle_camera)
+        self.b_ov = Gtk.MenuButton(label="🖼️", tooltip_text=i18n.tr("Webkamera-overlay i spill"))
+        self.b_ov.set_popover(overlay_popover(lambda: self.refresh()))
+        row.append(self.b_ov)
         s = Gtk.Button(label="🎛️", tooltip_text=i18n.tr("Lyd og video"))
         s.connect("clicked", lambda *_: open_settings())
         row.append(s)
@@ -94,7 +97,74 @@ class VoiceBar(Gtk.Box):
             b.set_label(txt[0] if on else txt[1])
             (b.add_css_class if on else b.remove_css_class)("ks-off")
         (self.b_cam.add_css_class if st["cam"] else self.b_cam.remove_css_class)("ks-cam-on")
+        (self.b_ov.add_css_class if VC.ov_cfg()["on"] else self.b_ov.remove_css_class)("ks-cam-on")
         return False
+
+
+# --------------------------------------------------------------------------
+# Webkamera-overlay i spill: av/på, hvem som vises, hjørne og størrelse
+# --------------------------------------------------------------------------
+def _seg(box, items, current, on_pick):
+    row = Gtk.Box(homogeneous=True)
+    row.add_css_class("linked")
+    first = None
+    for key, label in items:
+        b = Gtk.ToggleButton(label=i18n.tr(label), active=key == current)
+        if first:
+            b.set_group(first)
+        first = first or b
+        b.connect("toggled", lambda btn, k=key: btn.get_active() and on_pick(k))
+        row.append(b)
+    box.append(row)
+
+
+def overlay_controls(changed=None):
+    """Kontrollene for overlayet (brukes i talelinjen og under Lyd og video)."""
+    c = VC.ov_cfg()
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    sup = VC.ov_supported()
+    top = Gtk.Box(spacing=12)
+    col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+    t = Gtk.Label(label=i18n.tr("Webkamera-overlay i spill"), xalign=0)
+    t.add_css_class("heading")
+    col.append(t)
+    sub = Gtk.Label(xalign=0, wrap=True, max_width_chars=36)
+    sub.add_css_class("dim-label")
+    sub.add_css_class("caption")
+    sub.set_label(i18n.tr("Ligger over spillet (også fullskjerm) – klikk går rett gjennom" if sup == "layer-shell" else
+                          "Ligger øverst over vinduer – spill i «uten ramme»-modus" if sup == "vindu" else
+                          "Virker foreløpig bare på Linux"))
+    col.append(sub)
+    top.append(col)
+    sw = Gtk.Switch(active=c["on"], valign=Gtk.Align.CENTER, sensitive=bool(sup))
+    sw.connect("notify::active", lambda w, _p: (VC.ov_set(on=w.get_active()), changed and changed()))
+    top.append(sw)
+    box.append(top)
+    box.append(Gtk.Label(label=i18n.tr("Vis"), xalign=0))
+    _seg(box, [("me", "Bare meg"), ("peer", "Bare motparten"), ("both", "Begge")], c["show"],
+         lambda k: VC.ov_set(show=k))
+    box.append(Gtk.Label(label=i18n.tr("Hjørne"), xalign=0))
+    _seg(box, [("top-left", "↖"), ("top-right", "↗"), ("bottom-left", "↙"), ("bottom-right", "↘")], c["corner"],
+         lambda k: VC.ov_set(corner=k))
+    box.append(Gtk.Label(label=i18n.tr("Størrelse"), xalign=0))
+    _seg(box, [("liten", "Liten"), ("middels", "Middels"), ("stor", "Stor")], c["size"],
+         lambda k: VC.ov_set(size=k))
+    op = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 20, 100, 5)
+    op.set_value(c["opacity"])
+    op.set_format_value_func(lambda _s, v: f"{v:.0f} % synlig")
+    op.connect("value-changed", lambda sc: VC.ov_set(opacity=int(sc.get_value())))
+    box.append(op)
+    return box
+
+
+def overlay_popover(changed=None):
+    pop = Gtk.Popover()
+    box = overlay_controls(changed)
+    for side in ("top", "bottom", "start", "end"):
+        getattr(box, f"set_margin_{side}")(12)
+    box.set_size_request(320, -1)
+    pop.set_child(box)
+    return pop
 
 
 # --------------------------------------------------------------------------
@@ -293,6 +363,15 @@ def open_settings(parent):
     pic.add_css_class("ks-vtile")
     pic.set_size_request(-1, 220)
     g4.add(pic)
+
+    # --- overlay i spill
+    g6 = Adw.PreferencesGroup(title=i18n.tr("🖼️ Webkamera-overlay i spill"),
+                              description=i18n.tr("Vis deg selv, motparten eller begge i et hjørne over spillet mens "
+                                                  "du er i en talekanal."))
+    page.add(g6)
+    ovc = overlay_controls()
+    ovc.set_margin_top(4)
+    g6.add(ovc)
 
     # --- mobilen som webkamera
     import phonecam

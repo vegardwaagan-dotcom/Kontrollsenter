@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.93.0", "Webkamera-overlay i spill", [
+        ("Overlay i spill", [
+            "🖼️ i talelinjen (og under Lyd og video): vis webkameraene i et hjørne over spillet",
+            "Velg «Bare meg», «Bare motparten» eller «Begge» – og slå det av og på når du vil",
+            "Velg hjørne, størrelse (liten/middels/stor) og hvor synlig det skal være",
+            "Ligger over fullskjermspill på KDE/Wayland, og museklikk går rett gjennom til spillet",
+            "Starter av seg selv når du går inn i en talekanal (hvis det er på), og forsvinner når du går ut",
+        ]),
+    ]),
     ("0.92.0", "Webkamera i HD, Full HD, 1440p og 4K – opptil 120 bilder/s", [
         ("Webkamera i talekanalene", [
             "Oppløsning: 180p, 360p, HD 720p, Full HD 1080p, 1440p og 4K 2160p",
