@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.23", "Kalender med røde dager", [
+        ("Ny: Hjemmet › Kalender", [
+            "Kalender med alle norske røde dager markert i rødt (nyttår, påske, 1. og 17. mai, Kristi himmelfart, "
+            "pinse og jul) – pluss søndager",
+            "Bla så langt fram i tid du vil: måned for måned, velg år (helt til 2300) og «I dag»",
+            "Ukenummer, merkedager med prikk (morsdag, farsdag, julaften, sankthans …) og hvor mange dager det er igjen",
+            "«Neste røde dager» og alle røde dager i året, med 🏖️ for langhelger",
+            "Også i mobilappen (Spill-fanen › 📅 Kalender) – virker uten kontakt med PC-en, sveip for å bla",
+        ]),
+    ]),
     ("0.99.22", "Ryddet bort det som lå dobbelt", [
         ("Ryddet", [
             "«Gå tilbake til forrige systemversjon» ligger bare under Vedlikehold › Gjenoppretting (ikke også i Utstyr)",

@@ -18,6 +18,7 @@
       ["prest", "🏆 Prestasjoner", ["c-ach", "t:Prestasjoner"]],
       ["vr", "🥽 VR og strømming", ["c-vr", "c-stream"]],
       ["familie", "👨‍👩‍👧 Familie", ["c-family", "c-goals", "c-shop", "c-plan", "c-week", "c-safe"]],
+      ["kalender", "📅 Kalender", ["c-cal"]],
       ["venner", "👥 Venner og PC-er", ["c-friends", "pn:homepcs"]],
     ],
     mer: [
