@@ -8,7 +8,8 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+gi.require_version("Graphene", "1.0")
+from gi.repository import Adw, Gdk, Gio, GLib, Graphene, Gtk  # noqa: E402
 
 import chat as C  # noqa: E402
 import chatplus as CP  # noqa: E402
@@ -35,6 +36,28 @@ _CSS = """
 .ks-chan row.ks-vc-row { min-height: 0; padding: 1px 10px; }
 .ks-cat-add { min-height: 22px; min-width: 22px; padding: 0 4px; margin-top: 8px; opacity: .7; }
 .ks-react { padding: 0 6px; min-height: 22px; border-radius: 11px; font-size: .9em; }
+/* nytt utseende: grupperte bobler, datoskiller, store emojier, «Nye meldinger» */
+.ks-chat-me { border-radius: 18px 18px 6px 18px; padding: 8px 13px;
+  background-image: linear-gradient(160deg, alpha(white, 0.16), alpha(white, 0) 60%);
+  box-shadow: 0 2px 8px -4px alpha(black, 0.45); }
+.ks-chat-other { border-radius: 18px 18px 18px 6px; padding: 8px 13px;
+  box-shadow: inset 0 1px alpha(white, 0.06); }
+.ks-chat-me.ks-cont { border-radius: 18px 6px 6px 18px; }
+.ks-chat-other.ks-cont { border-radius: 6px 18px 18px 6px; }
+.ks-chat-emoji { font-size: 2.6em; background: none; box-shadow: none; padding: 0 4px; }
+.ks-chat-day { font-size: .78em; font-weight: 700; opacity: .65; padding: 3px 12px; border-radius: 99px;
+  background: alpha(@window_fg_color, 0.07); margin: 8px 0 2px; }
+.ks-chat-new { color: #ff5b5b; font-size: .78em; font-weight: 800; letter-spacing: .04em; }
+.ks-chat-newline { background: alpha(#ff5b5b, 0.7); min-height: 1px; }
+.ks-chat-time { font-size: .72em; opacity: .55; }
+.ks-chat-name { font-size: .82em; font-weight: 700; }
+.ks-chat-compact .ks-chat-me, .ks-chat-compact .ks-chat-other { padding: 3px 9px; border-radius: 9px; }
+.ks-chat-compact .ks-chat-emoji { font-size: 1.6em; }
+.ks-chat-jump { border-radius: 99px; padding: 4px 12px; margin: 10px; font-weight: 700;
+  box-shadow: 0 4px 14px -4px alpha(black, 0.5); }
+.ks-dnd { color: #ff9f43; font-weight: 700; font-size: .85em; }
+window.ks-glass .ks-chat-other { background-color: alpha(@window_fg_color, 0.10); border: 1px solid alpha(white, 0.10); }
+window.ks-glass .ks-chat-me { border: 1px solid alpha(white, 0.20); }
 """
 
 
@@ -201,7 +224,19 @@ class ChatPage(Gtk.Box):
         right.append(self.gamebar)
         self.msgs = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.scroll = Gtk.ScrolledWindow(child=self.msgs, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
-        right.append(self.scroll)
+        self.msg_ov = Gtk.Overlay(child=self.scroll, vexpand=True)
+        self.jump = Gtk.Button(label="↓ " + i18n.tr("Nye meldinger"), halign=Gtk.Align.CENTER,
+                               valign=Gtk.Align.END, visible=False)
+        self.jump.add_css_class("suggested-action")
+        self.jump.add_css_class("ks-chat-jump")
+        self.jump.connect("clicked", lambda *_: self._jump_new())
+        self.msg_ov.add_overlay(self.jump)
+        self.scroll.get_vadjustment().connect("value-changed", self._scrolled)
+        self._bg_prov = Gtk.CssProvider()
+        self.msg_ov.get_style_context().add_provider(self._bg_prov, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 5)
+        self.msg_ov.add_css_class("ks-chat-area")
+        self._newmark, self._seen, self._new_w, self._shown_room = {}, {}, None, None
+        right.append(self.msg_ov)
         self.reply_bar = Gtk.Box(spacing=6, visible=False)
         self.reply_lab = _dim("")
         self.reply_lab.set_hexpand(True)
@@ -669,6 +704,7 @@ class ChatPage(Gtk.Box):
         pins = CP.cfg()["pinned_rooms"]
         items = [("📌 Løsne" if rid in pins else "📌 Fest øverst", lambda: CP.set_(
             pinned_rooms=[x for x in pins if x != rid] if rid in pins else pins + [rid]))]
+        items.append(("🎨 Bakgrunn …", lambda: self._bg_dialog(rid)))
         if rid.startswith("p:"):
             name = rid[2:]
             items += [("✏️ Gi kallenavn …", lambda: self._nick_dialog(name=name)),
@@ -798,6 +834,19 @@ class ChatPage(Gtk.Box):
 
         def work():
             m = C.messages(room, 150)
+            if room not in self._newmark:                   # «Nye meldinger»-streken: der du slapp sist
+                try:
+                    rd = C._load(C.FILE, {}).get("_read", {})
+                    self._newmark[room] = max([rd.get(a, 0) for a in C.aliases(room)] or [0])
+                except Exception:  # noqa: BLE001
+                    self._newmark[room] = 0
+            if room.startswith("p:") and time.time() - getattr(self, "_rdp", {}).get(room, 0) > 20 and any(
+                    mm.get("t", 0) > self._newmark.get(room, 0) and mm.get("pc") != C._me() for mm in m):
+                self.__dict__.setdefault("_rdp", {})[room] = time.time()
+                try:
+                    C.send_event(room, {"type": "read", "t": time.time()})
+                except Exception:  # noqa: BLE001
+                    pass
             C.mark_read(room)
             if room.startswith("s:") and time.time() - getattr(self, "_rd", {}).get(room, 0) > 20:
                 self.__dict__.setdefault("_rd", {})[room] = time.time()
@@ -806,9 +855,87 @@ class ChatPage(Gtk.Box):
         _bg(work, lambda msgs: self._show(room, msgs))
         return False
 
+    def _avatar(self, name, mid, size):
+        """Rundt profilbilde: emoji fra profilen eller initialer i personens faste farge, med pålogget-prikk."""
+        import chatlook as LK
+        emo, colr = CL.avatar(mid) if mid else ("", "")
+        colr = colr or LK.color_for(name)
+        dot = None
+        if mid:
+            ic, _t = CL.presence(mid)
+            dot = {"🟢": (0.18, 0.8, 0.44), "🎮": (1.0, 0.62, 0.26)}.get(ic)
+        da = Gtk.DrawingArea(content_width=size, content_height=size, valign=Gtk.Align.START, margin_top=2)
+        rgba = Gdk.RGBA()
+        rgba.parse(colr)
+        label = emo or LK.initials(name)
+
+        def draw(_a, cr, w, h):
+            import math
+            cr.arc(w / 2, h / 2, min(w, h) / 2, 0, 2 * math.pi)
+            cr.set_source_rgba(rgba.red, rgba.green, rgba.blue, 0.95 if not emo else 0.30)
+            cr.fill()
+            from gi.repository import Pango, PangoCairo
+            lay = PangoCairo.create_layout(cr)
+            fd = Pango.FontDescription.from_string(f"Sans Bold {max(6, int(size * (0.48 if emo else 0.36)))}px")
+            lay.set_font_description(fd)
+            lay.set_text(label, -1)
+            tw, th = lay.get_pixel_size()
+            cr.move_to((w - tw) / 2, (h - th) / 2)
+            cr.set_source_rgb(1, 1, 1)
+            PangoCairo.show_layout(cr, lay)
+            if dot:
+                r_ = max(3, size * 0.15)
+                cr.arc(w - r_, h - r_, r_ + 1.5, 0, 2 * math.pi)
+                cr.set_source_rgb(0.1, 0.1, 0.12)
+                cr.fill()
+                cr.arc(w - r_, h - r_, r_, 0, 2 * math.pi)
+                cr.set_source_rgb(*dot)
+                cr.fill()
+        da.set_draw_func(draw)
+        da.set_tooltip_text(name)
+        return da
+
+    def _set_room_bg(self, room):
+        import chatlook as LK
+        key = CP.cfg().get("room_bg", {}).get(room, "")
+        css = ".ks-chat-area { background: none; }"
+        if key.startswith("bilde:"):
+            path = key[6:].replace('"', "")
+            css = (f'.ks-chat-area {{ background: linear-gradient(alpha(@window_bg_color,0.55), '
+                   f'alpha(@window_bg_color,0.55)), url("file://{path}"); background-size: cover; '
+                   f'background-position: center; }}')
+        elif key in LK.BACKGROUNDS and key:
+            css = f".ks-chat-area {{ background: {LK.BACKGROUNDS[key][1]}; }}"
+        self._bg_prov.load_from_data(css.encode())
+
+    def _scrolled(self, adj):
+        if adj.get_value() + adj.get_page_size() >= adj.get_upper() - 40:
+            self.jump.set_visible(False)
+
+    def _jump_new(self):
+        w = self._new_w
+        adj = self.scroll.get_vadjustment()
+        if w is not None and w.get_parent() is not None:
+            ok, pt = w.compute_point(self.msgs, Graphene.Point())
+            if ok:
+                adj.set_value(max(0, pt.y - 40))
+                self._new_w = None
+                self.jump.set_label("↓ " + i18n.tr("Til bunnen"))
+                return
+        adj.set_value(adj.get_upper())
+        self.jump.set_visible(False)
+
     def _show(self, room, msgs):
         if isinstance(msgs, Exception) or room != self.room:
             return
+        import chatlook as LK
+        same_room = self._shown_room == room
+        seen_before = self._seen.get(room, set()) if same_room else None
+        self._shown_room = room
+        self._set_room_bg(room)
+        compact = CP.cfg().get("compact")
+        (self.msgs.add_css_class if compact else self.msgs.remove_css_class)("ks-chat-compact")
+        self.msgs.set_spacing(2 if compact else 3)
         while (c := self.msgs.get_first_child()) is not None:
             self.msgs.remove(c)
         if not msgs:
@@ -818,36 +945,85 @@ class ChatPage(Gtk.Box):
         import savegames
         me_pc, me_id = savegames.pc_name(), CS.me()["id"]
         by_id = {m.get("id"): m for m in msgs}
+        mark = self._newmark.get(room, 0)
+        new_w, last_day, prev = None, None, None
+        av_size = 22 if compact else 32
         for m in msgs:
+            t = m.get("t", 0)
+            day = LK.day_label(t)
+            if day != last_day:                              # datoskiller
+                dl = Gtk.Label(label=i18n.tr(day), halign=Gtk.Align.CENTER)
+                dl.add_css_class("ks-chat-day")
+                self.msgs.append(dl)
+                last_day, prev = day, None
             if str(m.get("from", "")).startswith("🤖"):
                 lab = Gtk.Label(label=m.get("text", ""), xalign=0.5, wrap=True)
                 lab.add_css_class("ks-chat-sys")
                 lab.add_css_class("caption")
                 self.msgs.append(lab)
+                prev = None
                 continue
             mine = m.get("from_id") == me_id or (not m.get("from_id") and (m.get("pc") == me_pc or
                                                                             m.get("from") == me_pc))
+            if not mine and mark and t > mark and new_w is None and not same_room:   # «Nye meldinger»
+                nl = Gtk.Box(spacing=8, margin_top=6)
+                for side in (0, 1):
+                    ln = Gtk.Box(hexpand=True, valign=Gtk.Align.CENTER)
+                    ln.add_css_class("ks-chat-newline")
+                    nl.append(ln)
+                    if side == 0:
+                        tl = Gtk.Label(label=i18n.tr("NYE MELDINGER"))
+                        tl.add_css_class("ks-chat-new")
+                        nl.append(tl)
+                self.msgs.append(nl)
+                new_w, prev = nl, None
+            sender = m.get("from_id") or m.get("pc") or m.get("from")
+            cont = (prev is not None and prev[0] == sender and t - prev[1] < 300)   # samme person rett etter
+            prev = (sender, t)
+            name = (CP.display(m.get("pc") or m.get("from"), m.get("from_id"))
+                    if CP.nick(m.get("pc") or m.get("from"), m.get("from_id")) else m.get("from"))
+            outer = Gtk.Box(spacing=8, halign=Gtk.Align.END if mine else Gtk.Align.START,
+                            margin_top=0 if cont else (2 if compact else 6))
+            if not mine:
+                if cont:
+                    outer.append(Gtk.Box(width_request=av_size))
+                else:
+                    av_w = self._avatar(name, m.get("from_id"), av_size)
+                    av_w.set_margin_top(18 if not compact else 14)      # på høyde med første boble
+                    outer.append(av_w)
             col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                           halign=Gtk.Align.END if mine else Gtk.Align.START)
-            av, colr = CL.avatar(m.get("from_id")) if m.get("from_id") else ("", "")
-            who = Gtk.Label(label=("" if mine else f"{av + ' ' if av else ''}"
-                                   f"{CP.display(m.get('pc') or m.get('from'), m.get('from_id')) if (CP.nick(m.get('pc') or m.get('from'), m.get('from_id'))) else m.get('from')}  ·  ") +
-                            time.strftime("%d.%m %H:%M", time.localtime(m.get("t", 0))) +
-                            ("  (redigert)" if m.get("edited") else "") + ("  📌" if m.get("pinned") else "") +
-                            ("  🔒" if m.get("e2e") else ""),
-                            xalign=1 if mine else 0)
-            who.add_css_class("ks-chat-who")
-            col.append(who)
+            outer.append(col)
+            stamp = time.strftime("%H:%M", time.localtime(t))
+            extra = (("  · " + i18n.tr("redigert")) if m.get("edited") else "") + ("  📌" if m.get("pinned") else "") + \
+                ("  🔒" if m.get("e2e") else "")
+            if not cont:
+                hb = Gtk.Box(spacing=6, halign=Gtk.Align.END if mine else Gtk.Align.START)
+                if not mine:
+                    nm = Gtk.Label(label=name, xalign=0)
+                    nm.add_css_class("ks-chat-name")
+                    nm.set_markup(f'<span foreground="{LK.color_for(name)}">{GLib.markup_escape_text(name)}</span>')
+                    hb.append(nm)
+                tm = Gtk.Label(label=stamp + extra)
+                tm.add_css_class("ks-chat-time")
+                hb.append(tm)
+                col.append(hb)
+            elif extra:
+                tm = Gtk.Label(label=extra.strip(), xalign=1 if mine else 0)
+                tm.add_css_class("ks-chat-time")
+                col.append(tm)
             if m.get("reply") and by_id.get(m["reply"]):
                 q = by_id[m["reply"]]
                 ql = _dim(f"↪ {q.get('from')}: {str(q.get('text', ''))[:60]}")
                 col.append(ql)
             text = i18n.tr("(slettet)") if m.get("deleted") else CL.clean(m.get("text", ""))
-            if colr and not mine:
-                who.add_css_class("accent")
-            t = Gtk.Label(label=text, wrap=True, xalign=0, selectable=True, max_width_chars=60)
-            t.add_css_class("ks-chat-me" if mine else "ks-chat-other")
-            col.append(t)
+            t_ = Gtk.Label(label=text, wrap=True, xalign=0, selectable=True, max_width_chars=60,
+                           tooltip_text=time.strftime("%d.%m.%Y %H:%M", time.localtime(t)))
+            big = not m.get("deleted") and LK.emoji_count(text)
+            t_.add_css_class("ks-chat-emoji" if big else ("ks-chat-me" if mine else "ks-chat-other"))
+            if cont and not big:
+                t_.add_css_class("ks-cont")
+            col.append(t_)
             if not m.get("deleted"):
                 self._extras(col, room, m, mine)
             if "ks-server://" in text and not m.get("deleted") and not mine and m.get("kind") != "call":
@@ -860,20 +1036,57 @@ class ChatPage(Gtk.Box):
                     b.connect("clicked", lambda _b, mm=m, ee=e: self._react(mm, ee))
                     rr.append(b)
                 col.append(rr)
-            if room.startswith("s:") and not m.get("deleted"):
+            if not m.get("deleted"):
                 self._menu_for(col, m, mine)
-            self.msgs.append(col)
+            if seen_before is not None and m.get("id") not in seen_before:   # ny melding: glir mykt inn
+                rv = Gtk.Revealer(transition_type=Gtk.RevealerTransitionType.SLIDE_UP, transition_duration=220,
+                                  child=outer, reveal_child=False)
+                self.msgs.append(rv)
+                GLib.timeout_add(16, lambda r_=rv: (r_.set_reveal_child(True), False)[1])
+            else:
+                self.msgs.append(outer)
+        self._seen[room] = {m.get("id") for m in msgs}
         mine_last = [m for m in msgs if m.get("from_id") == me_id and not m.get("deleted")]
         if room.startswith("s:") and mine_last:
             rc = _dim(CP.receipt(room, mine_last[-1]))
             rc.set_xalign(1)
             self.msgs.append(rc)
+        if room.startswith("p:") and msgs:                   # direktemelding: ✓ sendt / ✓✓ lest
+            mm = [m for m in msgs if (m.get("pc") == me_pc or m.get("from") == me_pc) and not m.get("deleted")]
+            if mm and mm[-1] is msgs[-1]:
+                seen = C.seen_by(room)
+                rc = _dim(("✓✓ " + i18n.tr("Lest") + " " + time.strftime("%H:%M", time.localtime(seen)))
+                          if seen >= mm[-1].get("t", 0) else "✓ " + i18n.tr("Sendt"))
+                rc.set_xalign(1)
+                self.msgs.append(rc)
         if msgs and CP.is_celebration(msgs[-1].get("text")) and time.time() - msgs[-1].get("t", 0) < 30:
             self._confetti()
         q = C.queued_count()
-        self.status.set_label(i18n.tr("{n} meldinger venter på at mottakeren skal bli på igjen").replace(
-            "{n}", str(q)) if q else "")
-        GLib.timeout_add(60, lambda: (self.scroll.get_vadjustment().set_value(1e9), False)[1])
+        dnd = LK.dnd_text()
+        self.status.set_label((("🚫 " + i18n.tr(dnd) + "   ") if dnd else "") +
+                              (i18n.tr("{n} meldinger venter på at mottakeren skal bli på igjen").replace(
+                                  "{n}", str(q)) if q else ""))
+        adj = self.scroll.get_vadjustment()
+        at_bottom = adj.get_value() + adj.get_page_size() >= adj.get_upper() - 60
+        if not same_room and new_w is not None:              # første gang: hopp til første uleste
+            self._new_w = new_w
+
+            def first():
+                self._jump_new()
+                ad = self.scroll.get_vadjustment()
+                more = ad.get_value() + ad.get_page_size() < ad.get_upper() - 40   # mer under? vis «Til bunnen»
+                self.jump.set_label("↓ " + i18n.tr("Til bunnen"))
+                self.jump.set_visible(more)
+                return False
+            GLib.timeout_add(80, first)
+        elif same_room and not at_bottom and seen_before is not None and \
+                any(mm.get("id") not in seen_before for mm in msgs):
+            self.jump.set_label("↓ " + i18n.tr("Nye meldinger"))
+            self.jump.set_visible(True)                      # du har scrollet opp: ikke dra deg ned
+        else:
+            self.jump.set_visible(False)
+            GLib.timeout_add(60, lambda: (self.scroll.get_vadjustment().set_value(1e9), False)[1])
+        self._newmark[room] = time.time()                    # neste gang: streken der du slapp
         if self.view != "direct":                       # oppdater «uleste» nå som kanalen er lest
             GLib.idle_add(lambda: (self._channels(), False)[1])
 
@@ -1173,6 +1386,9 @@ class ChatPage(Gtk.Box):
                          ("🏠 Hvor er alle?", lambda: self.status.set_label(CL.where_is_everyone())),
                          ("🎲 Terning", lambda: self._call_room(lambda: CP.dice(self.room))),
                          ("✊ Stein–saks–papir", self._rps))),
+            ("Visning", (("🎨 Bakgrunn i samtalen …", lambda: self._bg_dialog(self.room)),
+                         ("📏 Kompakt visning av/på", self._toggle_compact),
+                         ("🚫 Ikke forstyrr …", self._dnd_dialog))),
             ("Kanalen", (("💨 Meldinger forsvinner …", self._vanish), ("💾 Eksporter", self._export),
                          ("📣 Høydepunkter og toppliste hit", self._use_for_posts),
                          ("🏷️ Tilbud fra ønskelisten hit", lambda: self._topic("tilbud")),
@@ -1193,6 +1409,78 @@ class ChatPage(Gtk.Box):
         sc.set_child(outer)
         pop.set_child(sc)
         return pop
+
+    def _toggle_compact(self):
+        CP.set_(compact=not CP.cfg().get("compact"))
+        self._shown_room = None
+        self._load()
+
+    def _bg_dialog(self, room):
+        """Egen bakgrunn per samtale: ferdige fargebakgrunner eller et eget bilde."""
+        import chatlook as LK
+        dlg = Adw.AlertDialog(heading=i18n.tr("Bakgrunn i samtalen"),
+                              body=i18n.tr("Vises bare hos deg. Velg en bakgrunn eller et eget bilde."))
+        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=4, column_spacing=6,
+                           row_spacing=6)
+
+        def pick(key):
+            bgs = dict(CP.cfg().get("room_bg", {}))
+            if key:
+                bgs[room] = key
+            else:
+                bgs.pop(room, None)
+            CP.set_(room_bg=bgs)
+            if room == self.room:
+                self._set_room_bg(room)
+            dlg.close()
+        for key, (name, css) in LK.BACKGROUNDS.items():
+            b = Gtk.Button(label=i18n.tr(name))
+            b.set_size_request(96, 56)
+            pr = Gtk.CssProvider()
+            pr.load_from_data(f"button {{ background: {css if key else 'alpha(@window_fg_color,0.06)'}; "
+                              f"background-color: alpha(@window_fg_color,0.06); }}".encode())
+            b.get_style_context().add_provider(pr, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 9)
+            b.connect("clicked", lambda _b, k=key: pick(k))
+            flow.append(b)
+        img = Gtk.Button(label="🖼️ " + i18n.tr("Eget bilde …"))
+        img.set_size_request(96, 56)
+
+        def choose(*_):
+            fd = Gtk.FileDialog(title=i18n.tr("Velg et bilde"))
+            flt = Gtk.FileFilter()
+            flt.add_mime_type("image/*")
+            fs = Gio.ListStore.new(Gtk.FileFilter)
+            fs.append(flt)
+            fd.set_filters(fs)
+
+            def done(d, res):
+                try:
+                    f = d.open_finish(res)
+                except GLib.Error:
+                    return
+                if f and f.get_path():
+                    pick("bilde:" + f.get_path())
+            fd.open(self.get_root(), None, done)
+        img.connect("clicked", choose)
+        flow.append(img)
+        dlg.set_extra_child(flow)
+        dlg.add_response("close", i18n.tr("Lukk"))
+        dlg.present(self.get_root())
+
+    def _dnd_dialog(self):
+        import chatlook as LK
+        dlg = Adw.AlertDialog(heading=i18n.tr("Ikke forstyrr"),
+                              body=(LK.dnd_text() or i18n.tr("Ingen varsler for chatmeldinger – de kommer fortsatt "
+                                                             "inn, og du ser dem når du åpner chatten.")))
+        sw = Gtk.CheckButton(label=i18n.tr("Alltid når jeg spiller"), active=bool(CP.cfg().get("dnd_game")))
+        sw.connect("toggled", lambda w: CP.set_(dnd_game=w.get_active()))
+        dlg.set_extra_child(sw)
+        for rid, label in (("1", "1 time"), ("2", "2 timer"), ("8", "8 timer"), ("-1", "Til i morgen"),
+                           ("0", "Av")):
+            dlg.add_response(rid, i18n.tr(label))
+        dlg.set_close_response("close")
+        dlg.connect("response", lambda _d, r: r != "close" and (LK.set_dnd(int(r)), self._load()))
+        dlg.present(self.get_root())
 
     def _call_any(self, fn):
         _bg(fn, lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
@@ -1584,6 +1872,11 @@ class ChatPage(Gtk.Box):
 
     def _event(self, m, kind, **kw):
         room = self.room
+        if not room.startswith("s:"):                       # direktemelding: til den andre (chat.send_event)
+            ev = {"type": kind, "mid": m["id"], **kw}
+            _bg(lambda: C.send_event(room, ev), lambda _r: None)
+            GLib.timeout_add(150, lambda: (self._load(), False)[1])
+            return
         _s, sid, ch = room.split(":", 2)
         ev = {"type": kind, "mid": m["id"], "ch": ch, "from": CS.me()["name"], "from_id": CS.me()["id"], **kw}
         srv = CS.get(sid)
@@ -1593,8 +1886,7 @@ class ChatPage(Gtk.Box):
         self._load()
 
     def _react(self, m, emoji):
-        if self.room.startswith("s:"):
-            self._event(m, "react", emoji=emoji)
+        self._event(m, "react", emoji=emoji)
 
     def _edit(self, m):
         _ask(self.get_root(), "Rediger meldingen", "", [("t", "Melding", m.get("text", ""))],
@@ -1613,7 +1905,7 @@ class ChatPage(Gtk.Box):
             return
         self.entry.set_text("")
         bg = getattr(self.get_root(), "bg", None)
-        extra = {"reply": self.reply_to["id"]} if self.reply_to and self.room.startswith("s:") else None
+        extra = {"reply": self.reply_to["id"]} if self.reply_to and self.room not in ("hjemme", "meg") else None
         self._set_reply(None)
         self.status.set_label(i18n.tr("Sender …"))
         _bg(lambda: C.send(self.room, t, None, bg.notify if bg else None, extra=extra),

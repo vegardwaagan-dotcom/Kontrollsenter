@@ -13,6 +13,22 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.16", "Nytt utseende i chatten", [
+        ("Chat", [
+            "Meldinger fra samme person samles under ett navn, med rundt profilbilde (initialer i egen farge "
+            "eller emojien fra profilen) og grønn/oransje prikk når de er på eller spiller",
+            "Datoskiller: «I dag», «I går», «Mandag 17. nov.»",
+            "Meldinger med bare 1–3 emojier vises stort",
+            "Rød «NYE MELDINGER»-strek der du slapp sist, og en knapp som tar deg til bunnen",
+            "Nye meldinger glir mykt inn",
+            "Kompakt visning (⋯ → Visning)",
+            "Egen bakgrunn per samtale – Nordlys, Solnedgang, Dyphav, Galakse, Skog, Lava eller et eget bilde",
+            "Ikke forstyrr: 1 t, 2 t, 8 t, til i morgen – eller alltid når du spiller",
+            "Reaksjoner, svar, rediger, slett og fest virker nå også i direktemeldinger (høyreklikk på en melding)",
+            "✓ Sendt / ✓✓ Lest under din siste direktemelding",
+            "Glass-stil på boblene når Flytende glass er på",
+        ]),
+    ]),
     ("0.99.15", "Du ser hvilken versjon du får", [
         ("Oppdateringer", [
             "«Oppdater alt» viser «Ny versjon funnet: 0.99.15 (du har 0.99.14)» under Kontrollsenter – og hvilken "

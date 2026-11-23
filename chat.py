@@ -313,7 +313,7 @@ def send(room, text, frm=None, notify=None, extra=None):
             pass
         return f"Sendt til {ok}" + (f" · {q} får den når de er på igjen" if q else "")
     msg = {"id": f"{me}-{time.time_ns()}", "t": time.time(), "from": frm, "pc": me, "text": text, "room": room}
-    for k in ("kind", "invite", "call_id"):                # samtaler uten server (chatcall.py)
+    for k in ("kind", "invite", "call_id", "reply"):       # samtaler uten server (chatcall.py), svar på melding
         if (extra or {}).get(k):
             msg[k] = str(extra[k])[:400]
     _store(room, msg)
@@ -357,6 +357,58 @@ def send(room, text, frm=None, notify=None, extra=None):
     if not targets:
         return "Ingen å sende til ennå – legg til venner under PC-er utenfor hjemmet"
     return f"Sendt til {ok}" + (f" · {queued} får den når de er på igjen" if queued else "")
+
+
+def _dm_target(room):
+    name = room[2:]
+    try:
+        import machine
+        name = machine.online_alias(name)
+    except Exception:  # noqa: BLE001
+        pass
+    if _home_pc(name):
+        return ("hjem", name)
+    f = _friend(name) or _friend(room[2:])
+    return ("venn", f) if f else None
+
+
+EV_MIN = (0, 99, 16)                                     # eldre versjoner kjenner ikke hendelser i direktemeldinger
+
+
+def _peer_version(kind, t):
+    """Versjonen mottakeren kjører (None = ukjent)."""
+    try:
+        if kind == "hjem":
+            import machine
+            return next((p.get("version") for p in machine._pcs() if p.get("name") == t), None)
+        import friends
+        return (friends._CACHE.get(t.get("addr")) or {}).get("version")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def send_event(room, ev):
+    """Reaksjon / redigering / sletting / festing / lest i en direktemelding (servere: chatsrv.broadcast)."""
+    me = _me()
+    if ev.get("type") != "read":
+        apply_event(room, ev, {"name": me, "pc": me})
+    if not room.startswith("p:"):
+        return False
+    tgt = _dm_target(room)
+    if not tgt:
+        return False
+    v = _peer_version(*tgt)
+    if not v or _ver(v) < EV_MIN:                          # gammel versjon ville vist det som en tom melding
+        return False
+    payload = {"ev": ev, "room": f"p:{me}", "pc": me, "from": me, "id": f"ev-{me}-{time.time_ns()}"}
+    if not _deliver(tgt[0], tgt[1], payload) and ev.get("type") != "read":
+        _queue(tgt[0], tgt[1], payload)
+    return True
+
+
+def seen_by(room):
+    """Når den andre sist leste samtalen (0 = ukjent)."""
+    return float(_load(FILE, {}).get("_seen_by", {}).get(room, 0))
 
 
 HOME_PORT = 27100
@@ -508,10 +560,15 @@ def receive_friend(payload, src_ip, notify=None):
         room = f"p:{f['name']}"                           # privat: rommet heter det JEG kaller vennen
     elif room != "alle":
         room = "alle"
+    if isinstance(payload.get("ev"), dict):               # reaksjon / redigering / sletting / lest i en direktemelding
+        apply_event(room, payload["ev"], {"name": f["name"], "pc": f["name"]})
+        return True
     msg = {"id": str(payload.get("id") or time.time_ns())[:80], "t": time.time(),
            "from": str(payload.get("from") or f["name"])[:40], "pc": f["name"], "text": str(payload.get("text"))[:500],
            "room": room}
     _call_fields(payload, msg)
+    if payload.get("reply"):
+        msg["reply"] = str(payload["reply"])[:80]
     if _store(room, msg):
         _alert(room, msg, notify)
     return True
@@ -520,6 +577,13 @@ def receive_friend(payload, src_ip, notify=None):
 def apply_event(room, ev, sender=None):
     """Reaksjon / redigering / sletting / festing på en melding i et rom."""
     mid = str(ev.get("mid") or "")
+    if ev.get("type") == "read":                           # den andre har lest samtalen (✓✓ Lest)
+        with _LOCK:
+            d = _load(FILE, {})
+            d.setdefault("_seen_by", {})[room] = min(time.time(), float(ev.get("t") or time.time()))
+            _save(FILE, d)
+        _fire(room, {"event": "read"})
+        return
     who = (sender or {}).get("name") or str(ev.get("from") or "?")
     who_id = (sender or {}).get("id") or ev.get("from_id")
     with _LOCK:
@@ -534,8 +598,9 @@ def apply_event(room, ev, sender=None):
                 (r.remove if who in r else r.append)(who)
                 if not r:
                     m["reactions"].pop(e, None)
-            elif t in ("edit", "delete") and (m.get("from_id") == who_id or (sender or {}).get("role") in
-                                               ("owner", "admin") and t == "delete"):
+            elif t in ("edit", "delete") and ((who_id and m.get("from_id") == who_id) or
+                                               ((sender or {}).get("pc") and m.get("pc") == sender["pc"]) or
+                                               (sender or {}).get("role") in ("owner", "admin") and t == "delete"):
                 if t == "edit":
                     m["text"], m["edited"] = str(ev.get("text") or "")[:2000], time.time()
                 else:
@@ -552,9 +617,15 @@ def receive_home(payload, notify=None):
     room = payload.get("room") or "alle"
     if room not in ("alle",) and not room.startswith("p:"):
         room = "alle"
+    if isinstance(payload.get("ev"), dict):
+        pc = str(payload.get("pc") or "")[:40]
+        apply_event(room, payload["ev"], {"name": pc, "pc": pc})
+        return
     msg = {"id": str(payload.get("id"))[:80], "t": time.time(), "from": str(payload.get("from"))[:40],
            "pc": str(payload.get("pc"))[:40], "text": str(payload.get("text"))[:500], "room": room}
     _call_fields(payload, msg)
+    if payload.get("reply"):
+        msg["reply"] = str(payload["reply"])[:80]
     if _store(room, msg):
         _alert(room, msg, notify)
 
@@ -569,7 +640,9 @@ def _alert(room, msg, notify):
         w = getattr(remote, "win", None)
         chatplus.autoreply(room, msg, w)
         chatlink.on_incoming(room, msg, w)
-        quiet = chatlink.quiet_now() and msg.get("kind") != "ring" and "🆘" not in str(msg.get("text", ""))
+        import chatlook
+        quiet = (chatlink.quiet_now() or chatlook.dnd_active(w)) and msg.get("kind") != "ring" and \
+            "🆘" not in str(msg.get("text", ""))
         if not quiet:
             chatplus.play_notify_sound(msg.get("from"))
     except Exception:  # noqa: BLE001

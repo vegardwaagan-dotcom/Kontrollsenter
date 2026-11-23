@@ -24,7 +24,8 @@ CFG = os.path.expanduser("~/.config/systemmonitor/chat-pluss.json")
 MAX_FILE = 8 * 1024 * 1024
 DEF = {"status": "", "color": "", "avatar": "", "autoreply": True, "autoreply_text": "",
        "sounds": {}, "pinned_rooms": [], "vanish": {}, "scheduled": [], "reminders": [], "notes": {},
-       "clean_days": 30, "celebrate": True, "stickers": [], "nicks": {}}
+       "clean_days": 30, "celebrate": True, "stickers": [], "nicks": {},
+       "compact": False, "room_bg": {}, "dnd_until": 0, "dnd_game": False}
 _TYPING = {}                 # rom -> {navn: tid}
 _READ = {}                   # rom -> {medlem-id: tid}
 _DELIV = {}                  # melding-id -> antall levert
