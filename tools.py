@@ -1068,9 +1068,9 @@ class _Cards:
             except Exception:  # noqa: BLE001
                 pass
             show()
-        self._switch_row(i, "AI-menyen (Claude Code og Codex)",
-                         "Viser AI i sidemenyen: åpne Claude Code og Codex i en mappe, eller spør rett i appen. Slå av "
-                         "for å skjule menyen.", F.on("ai"), ai_toggle)
+        self._switch_row(i, "AI-menyen (Claude Code, Codex og Gemini)",
+                         "Viser AI i sidemenyen: spør rett i appen, eller åpne assistenten i en mappe. Slå av for å "
+                         "skjule menyen.", F.on("ai"), ai_toggle)
         self.box.append(c)
 
     def _simple_card(self):

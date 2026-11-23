@@ -28,6 +28,12 @@ TOOLS = {
               "login_cmd": "codex login", "update_cmd": None,
               "win_install": "npm install -g @openai/codex",
               "auth": [f"{HOME}/.codex/auth.json"]},
+    "gemini": {"name": "Gemini", "by": "Google", "icon": "gemini.svg", "script": "script:gemini",
+               "bins": ["/home/linuxbrew/.linuxbrew/bin/gemini", f"{HOME}/.local/bin/gemini", "gemini"],
+               "login_cmd": "gemini", "update_cmd": None,
+               "win_install": "npm install -g @google/gemini-cli",
+               "auth": [f"{HOME}/.gemini/oauth_creds.json", f"{HOME}/.gemini/google_accounts.json"],
+               "env_auth": ["GEMINI_API_KEY", "GOOGLE_API_KEY"]},
 }
 _VER = {}
 
@@ -84,7 +90,8 @@ def version(tool, force=False):
 
 
 def logged_in(tool):
-    return any(os.path.exists(p) for p in TOOLS[tool]["auth"])
+    t = TOOLS[tool]
+    return any(os.path.exists(p) for p in t["auth"]) or any(os.environ.get(k) for k in t.get("env_auth", []))
 
 
 def status(tool):
@@ -146,7 +153,7 @@ def update(tool):
     if tool == "claude":
         r = subprocess.run([b, "update"], capture_output=True, text=True, timeout=600, env={**os.environ, "PATH": PATH})
         out = (r.stdout + r.stderr).strip()
-    elif "linuxbrew" in b:
+    elif "linuxbrew" in b and tool == "codex" and os.path.realpath(b).startswith("/home/linuxbrew/.linuxbrew/Cellar"):
         r = subprocess.run(["bash", "-c", f'export PATH="{PATH}"; brew upgrade codex'], capture_output=True,
                            text=True, timeout=900)
         out = (r.stdout + r.stderr).strip()
@@ -181,6 +188,8 @@ def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None)
         cmd = [b, "-p", prompt, "--output-format", "text"]
         if allow_edit:
             cmd += ["--permission-mode", "acceptEdits"]
+    elif tool == "gemini":
+        cmd = [b, "-p", prompt] + (["--approval-mode", "auto_edit"] if allow_edit else [])
     else:
         cmd = [b, "exec", "--skip-git-repo-check", "--sandbox", "workspace-write" if allow_edit else "read-only",
                prompt]

@@ -103,6 +103,7 @@ fi
 if [ -w "$(npm prefix -g)/lib" ] 2>/dev/null; then npm install -g @openai/codex
 else npm install -g --prefix "$HOME/.local" @openai/codex; fi
 """
+GEMINI_INSTALL = CODEX_INSTALL.replace("@openai/codex", "@google/gemini-cli")
 SCRIPTS = {
     "script:claude-code": {
         "name": "Claude Code", "desc": "Anthropics KI-assistent for koding, i terminalen",
@@ -119,6 +120,14 @@ SCRIPTS = {
                       'npm uninstall -g --prefix "$HOME/.local" @openai/codex 2>/dev/null; '
                       'brew uninstall codex 2>/dev/null; true'),
     },
+}
+SCRIPTS["script:gemini"] = {
+    "name": "Gemini CLI", "desc": "Googles KI-assistent for koding, i terminalen",
+    "bins": ["/home/linuxbrew/.linuxbrew/bin/gemini", f"{HOME}/.local/bin/gemini", "gemini"], "run": "gemini",
+    "install": GEMINI_INSTALL,
+    "uninstall": ('export PATH="$HOME/.local/bin:/home/linuxbrew/.linuxbrew/bin:$PATH"; '
+                  'npm uninstall -g @google/gemini-cli 2>/dev/null; '
+                  'npm uninstall -g --prefix "$HOME/.local" @google/gemini-cli 2>/dev/null; true'),
 }
 for sid, sc in SCRIPTS.items():
     CATALOG.append((sid, sc["name"], sc["desc"], "Utvikling og KI", None))

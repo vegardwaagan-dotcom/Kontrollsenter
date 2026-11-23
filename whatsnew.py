@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.98.0", "AI-siden: mer plass og Gemini", [
+        ("AI", [
+            "Valghjul for Claude Code, Codex og Gemini – status og knapper på én linje øverst",
+            "Svaret fyller siden, og du skriver nederst (som i en chat) – tidligere spørsmål blir stående over",
+            "Enter sender, Shift+Enter gir ny linje",
+            "Gemini CLI (Google) kan installeres, logges inn og brukes på samme måte",
+        ]),
+    ]),
     ("0.97.0", "AI: Claude Code og Codex", [
         ("Ny meny: AI", [
             "Claude Code (Anthropic) og Codex (OpenAI) på samme side: versjon, innlogget eller ikke, installer, "
