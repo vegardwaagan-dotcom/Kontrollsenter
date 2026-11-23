@@ -158,6 +158,11 @@ class DeskWidget(Gtk.Window):
             r.append(t)
             self.content.append(r)
 
+    def _draw_calendar(self, d):
+        self.content.append(_lbl(d.get("cal_date") or "", ("ks-desk-name",)))
+        self.content.append(_lbl(d.get("cal_today") or i18n.tr("Ingenting i dag"), ("ks-desk-sub",), wrap=True))
+        self.content.append(_lbl(d.get("cal_red") or "", ("ks-desk-sub",)))
+
     def _draw_playtime(self, d):
         s = d.get("play_s") or 0
         self.content.append(_lbl(f"{s // 3600} t {(s % 3600) // 60} min", ("ks-desk-big", "numeric")))

@@ -602,6 +602,10 @@ class Background:
                 aiextra.hotkey_setup(self.win)
             except Exception:  # noqa: BLE001
                 pass
+        if time.time() - getattr(self, "_kallog_t", 0) > 900 and __import__("funksjoner").on("kalender"):
+            self._kallog_t = time.time()                                         # hvem er hjemme / når er vennene på
+            import threading as _th
+            _th.Thread(target=lambda: __import__("kalender_extra").log_tick(), daemon=True).start()
         if time.time() - getattr(self, "_kal_t", 0) > 55 and __import__("funksjoner").on("kalender"):
             self._kal_t = time.time()                                            # kalender: påminnelser og scener
             import threading as _th

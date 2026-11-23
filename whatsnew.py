@@ -13,6 +13,29 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.25", "Kalenderen kobles til alt", [
+        ("Spill og venner", [
+            "Spilletid per dag (rødt ⚠️ når grensen ble passert), WoW-reset hver onsdag, gratis Epic-spill og "
+            "Steam-salgene (ca.-datoer)",
+            "Spillkveld: «💬 Inviter i chatten» med svarknapper (Kommer / Kanskje / Nei)",
+            "«Når vennene pleier å spille» – Kontrollsenter noterer når vennene er på",
+        ]),
+        ("PC-en", [
+            "Per dag: maks CPU/GPU-temperatur og kWh, PC-dagbok (ny versjon, temperatur, omstart …) og "
+            "planlagte oppgaver (opprydding, automatiske AI-oppgaver, ukens video)",
+            "AI-en kan lese og legge inn i kalenderen: «Legg inn tannlege tirsdag kl. 14» (med Godta/Avbryt) og "
+            "«Når er neste langhelg?»",
+        ]),
+        ("Hjemmet og familien", [
+            "Vær for de neste 10 dagene og strømprisen i dag rett i kalenderen",
+            "Middag: «🛒» legger ingrediensene i handlelista · klipp og skjermbilder på dagen de ble tatt",
+            "Hvem som var hjemme (PC-ene som var på) · røde dager og skoleferier gir helgegrensen for spilletid",
+            "Google/Outlook-kalenderen fra Oversikt-flisen vises i kalenderen",
+        ]),
+        ("Widgets", [
+            "Ny kalender-widget: på KDE-skrivebordet, Windows-skrivebordet og hjemmeskjermen på Android",
+        ]),
+    ]),
     ("0.99.24", "Kalender med hendelser – og dagbok", [
         ("Kalender", [
             "Egne hendelser: tid, farge, påminnelse og gjentakelse (hver uke, måned, år …) – delt med hele huset på NAS-en",

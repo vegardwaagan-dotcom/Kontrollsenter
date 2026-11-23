@@ -24,6 +24,7 @@ KINDS = {
     "family": ("Familien", "Hva de andre PC-ene spiller – og «Middag!»", "👨‍👩‍👦", 16, 9),
     "battery": ("Batterier", "Batteriet i mus, tastatur og hodesett", "🔋", 14, 6),
     "playtime": ("Spilletid i dag", "Hvor mye som er spilt i dag, og grensen", "⏱️", 14, 6),
+    "calendar": ("Kalender", "I dag, neste røde dag og nedtelling", "📅", 16, 7),
 }
 LOCAL_ACTIONS = {"gamemode", "clip", "system", "volume", "power", "dinner", "clipshot"}
 
@@ -102,6 +103,17 @@ def data(win):
             out["next_event"] = ev["title"] + " · " + ev["when"]
         wh = win.energy.today_wh()
         out["kwh"] = round(wh / 1000, 2)
+    except Exception:  # noqa: BLE001
+        pass
+    try:                                              # kalender-widgeten
+        import datetime as _dt
+        import helligdager
+        today = _dt.date.today()
+        nd, nn, ni = helligdager.upcoming(1)[0]
+        out["cal_date"] = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"][today.weekday()] \
+            + f" {today.day}.{today.month} · uke {today.isocalendar()[1]}"
+        out["cal_red"] = f"🔴 {nn} " + ("i dag" if ni == 0 else "i morgen" if ni == 1 else f"om {ni} dager")
+        out["cal_today"] = getattr(win, "_cal_line", "") or ""
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -334,6 +346,10 @@ BODIES = {
                 }
             }
             Text { visible: !(root.d.batteries || []).length; text: "Ingen trådløse enheter"; color: Qt.rgba(1, 1, 1, 0.6); font.pixelSize: 13 }
+            Item { Layout.fillHeight: true }''',
+    "calendar": r'''            Text { text: root.d.cal_date || ""; color: "white"; font.pixelSize: 20; font.bold: true }
+            Text { text: root.d.cal_today || "Ingenting i dag"; color: Qt.rgba(1, 1, 1, 0.85); font.pixelSize: 13; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Text { text: root.d.cal_red || ""; color: "#ff8080"; font.pixelSize: 13 }
             Item { Layout.fillHeight: true }''',
     "playtime": r'''            Text { text: Math.floor((root.d.play_s || 0) / 3600) + " t " + Math.round(((root.d.play_s || 0) % 3600) / 60) + " min"; color: "white"; font.pixelSize: 30; font.bold: true }
             Rectangle {

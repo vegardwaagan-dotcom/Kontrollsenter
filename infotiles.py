@@ -178,6 +178,9 @@ def _ics_time(val, params):
     return datetime.strptime(val[:15], "%Y%m%dT%H%M%S").replace(tzinfo=tzinfo), False
 
 
+_ICS_ALL = []
+
+
 def _cal():
     url = cfg().get("ics")
     if not url:
@@ -215,6 +218,8 @@ def _cal():
             step = timedelta(days=7 if "WEEKLY" in r else 1)
             while e["start"] < now:
                 e["start"] += step
+    global _ICS_ALL
+    _ICS_ALL = [e for e in events if e.get("start")]            # alle (kalenderen viser dem på riktig dag)
     up = sorted((e for e in events if e["start"] >= now - timedelta(minutes=5)), key=lambda e: e["start"])
     out = []
     for e in up[:5]:

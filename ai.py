@@ -211,6 +211,9 @@ Mer du kan:
   ks logg                         feilmeldinger fra Kontrollsenter og systemet (bruk når noe krasjer eller feiler)
   ks pcer                         de andre PC-ene hjemme og vennene (status, temperatur, versjon)
   ks wow                          World of Warcraft-dataene fra tillegget (karakterer, gull, quests, låser)
+  ks kalender [dager]             det som skjer (røde dager, hendelser, bursdager, ukeplan) – standard 14 dager
+  ks kalender ny tittel="Tannlege" dato=2026-12-01 tid=14:00 [gjenta=uke|måned|år] [type=trash|dinner|routine|…]
+  ks kalender slett <id> / ks kalender fri [år]     slett hendelse / ferieplanlegger (lange fri rundt røde dager)
   ks regler / ks regel ny … / ks regel slett <id>   automatiske oppgaver, f.eks.
       ks regel ny hvis=gpu_temp over=85 spill=ja gjør=varsel tekst="GPU-en er varm"
       ks regel ny når="søn 12:00" gjør=handling handling=clean
@@ -252,7 +255,8 @@ def describe_tool(name, inp):
                     "diagnose": "🩺 Undersøkte hvorfor PC-en er treg", "systemsjekk": "🛠️ Kjørte systemsjekken",
                     "logg": "📜 Leste feilloggene", "pcer": "🖥️ Sjekket de andre PC-ene",
                     "wow": "🐉 Leste WoW-dataene", "regler": "🤖 Så på de automatiske oppgavene",
-                    "regel": f"🤖 Automatisk oppgave: {rest}"}.get(sub, f"💻 ks {sub} {rest}".strip())[:90]
+                    "regel": f"🤖 Automatisk oppgave: {rest}", "kalender": f"📅 Kalender {rest}".strip(),
+                    "kal": f"📅 Kalender {rest}".strip()}.get(sub, f"💻 ks {sub} {rest}".strip())[:90]
         return f"💻 Kjørte: {c[:70]}"
     path = str(inp.get("file_path") or inp.get("path") or inp.get("absolute_path") or "")
     base = os.path.basename(path) if path else ""

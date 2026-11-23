@@ -18,6 +18,7 @@
     <string name="w_desc_chat">De siste chatmeldingene – og hurtigsvar</string>
     <string name="w_desc_family">Hva familien spiller – og «Middag!»</string>
     <string name="w_desc_battery">Batteri i mus, tastatur og hodesett</string>
+    <string name="w_desc_calendar">I dag, dagens hendelser og neste røde dag</string>
     <string name="w_desc_playtime">Spilletid i dag og grensen</string>
     <string name="w_desc_pick">Velg selv fire fliser: temperatur, strømpris, vær, ping, spilletid, batteri …</string>
     <string name="sc_game">Spillmodus</string>

@@ -157,7 +157,7 @@ class DiaryView(Gtk.ScrolledWindow):
     def _toast(self, t):
         root = self.get_root()
         if hasattr(root, "toast"):
-            root.toast(Adw.Toast(title=t))
+            root.toast(t)
         else:
             dlg = Adw.AlertDialog(heading=t)
             dlg.add_response("ok", "OK")

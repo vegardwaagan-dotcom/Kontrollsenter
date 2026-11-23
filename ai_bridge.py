@@ -231,6 +231,39 @@ def run(win, cmd, args):
             return _short(wowplus._state()) or "Ingen WoW-data ennå – logg inn i spillet med tillegget på"
         except Exception as e:  # noqa: BLE001
             return f"Ingen WoW-data ({e})"
+    if cmd in ("kalender", "kal"):
+        import datetime as dt
+        import kalender as K
+        sub = (args or [""])[0].lower()
+        if sub in ("ny", "legg"):
+            p = {}
+            for kv in args[1:]:
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    p[k.lower()] = v.strip("\"'")
+            ev = {"title": p.get("tittel") or p.get("title"), "date": p.get("dato") or p.get("date"),
+                  "time": p.get("tid") or p.get("time") or "", "repeat": {"uke": "weekly", "måned": "monthly",
+                                                                          "år": "yearly"}.get(p.get("gjenta", ""),
+                                                                                             p.get("gjenta", "")),
+                  "kind": p.get("type", "event"), "note": p.get("notat", ""),
+                  "remind": int(p.get("varsle", 30 if (p.get("tid") or p.get("time")) else -1))}
+            _need_ok(win, f"Legge inn i kalenderen: {ev['title']} {ev['date']} {ev['time']}".strip())
+            e = K.add(ev)
+            return f"✓ Lagt inn ({e['id']}): {e['title']} {e['date']} {e['time']} – Hjemmet › Kalender"
+        if sub in ("slett", "fjern"):
+            eid = (args[1:] or [""])[0]
+            _need_ok(win, f"Slette kalenderhendelsen {eid}")
+            return "✓ Slettet" if K.remove(eid) else "Fant ikke hendelsen"
+        if sub in ("fri", "ferie"):
+            y = int((args[1:] or [dt.date.today().year])[0])
+            return [{"høytid": n, "feriedager": t, "fra": a.isoformat(), "til": b.isoformat(), "dager_fri": ln}
+                    for n, t, a, b, ln in K.vacation_tips(y)]
+        days = int(sub) if sub.isdigit() else 14
+        t = dt.date.today()
+        it = K.items(t, t + dt.timedelta(days=days))
+        return {d.isoformat(): [f"{x['icon']} {x['title']}" + (f" {x['time']}" if x.get("time") else "")
+                                + (f" (id {x['id']})" if x.get("id") else "") for x in lst
+                                if x.get("kind") not in ("moon", "weather", "stat")] for d, lst in sorted(it.items())}
     if cmd == "regler":
         import ai_rules
         return [{"id": r["id"], "regel": ai_rules.describe(r)} for r in ai_rules.load()] or "Ingen automatiske oppgaver"

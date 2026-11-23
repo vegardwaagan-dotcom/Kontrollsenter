@@ -150,7 +150,16 @@ def limit_today():
     c = limit_cfg()
     if not c["enabled"]:
         return None
-    base = c["weekend"] if time.localtime().tm_wday >= 5 else c["weekday"]
+    free = time.localtime().tm_wday >= 5
+    try:                                                    # røde dager og skoleferier teller som helg (kalenderen)
+        import datetime as _dt
+        import helligdager
+        import kalender
+        t = _dt.date.today()
+        free = free or helligdager.is_red(t) or any(a <= t <= b for a, b, _n in kalender.school_holidays(t.year))
+    except Exception:  # noqa: BLE001
+        pass
+    base = c["weekend"] if free else c["weekday"]
     try:
         import features
         return base + features.bonus_today() / 60

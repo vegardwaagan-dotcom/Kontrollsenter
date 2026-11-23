@@ -179,6 +179,8 @@ class CalendarPage(Gtk.Box):
         side.append(dc)
         uc, self.up_box = _card("Kommer snart")
         side.append(uc)
+        fc, self.fr_box = _card("Når vennene pleier å spille", "Fra når vennene dine har vært på de siste ukene.")
+        side.append(fc)
         vc, self.vac_box = _card("Ferieplanlegger", "Få mest mulig fri med færrest feriedager rundt de røde dagene.")
         self.vac_card = vc
         side.append(vc)
@@ -333,6 +335,7 @@ class CalendarPage(Gtk.Box):
                               " · dobbeltklikk på en dag for å legge til")
         self._render_day()
         self._render_upcoming()
+        self._render_friends()
         self._render_vacation()
 
     def _pick(self, d):
@@ -367,6 +370,16 @@ class CalendarPage(Gtk.Box):
                            + (f'  <span alpha="60%">{x["time"]}</span>' if x.get("time") else ""))
             row.append(lab)
             if x.get("src") == "egen":
+                if x.get("kind") == "dinner" and x.get("note"):
+                    sb = Gtk.Button(label="🛒", tooltip_text=i18n.tr("Legg notatet (ingrediensene) i handlelista"))
+                    sb.add_css_class("flat")
+                    sb.connect("clicked", lambda _b, xx=x: self._to_shop(xx))
+                    row.append(sb)
+                if x.get("kind") in ("gamenight", "stream", "event"):
+                    ib = Gtk.Button(label="💬", tooltip_text=i18n.tr("Inviter i chatten (svar: Kommer / Kanskje / Nei)"))
+                    ib.add_css_class("flat")
+                    ib.connect("clicked", lambda _b, xx=x: self._invite(xx, d))
+                    row.append(ib)
                 if x.get("kind") in ("todo", "routine"):
                     cb = Gtk.CheckButton(active=bool(x.get("done")), tooltip_text=i18n.tr("Gjort"))
                     cb.connect("toggled", lambda w, eid=x["id"]: _bg(lambda: K.mark_done(eid, d, w.get_active()),
@@ -412,6 +425,60 @@ class CalendarPage(Gtk.Box):
                 shown += 1
         if not shown:
             self.up_box.append(_dim(i18n.tr("Ingenting de neste ukene.")))
+
+    def _render_friends(self):
+        _clear(self.fr_box, 2)
+        try:
+            import kalender_extra
+            fu = kalender_extra.friends_usual()
+        except Exception:  # noqa: BLE001
+            fu = {}
+        if not fu:
+            self.fr_box.append(_dim(i18n.tr("Ingen data ennå – Kontrollsenter noterer når vennene er på (hvert 15. "
+                                            "minutt).")))
+        for name, slots in list(fu.items())[:6]:
+            self.fr_box.append(Gtk.Label(label=f"👤 {name}: " + ", ".join(slots), xalign=0, wrap=True))
+
+    def _to_shop(self, x):
+        import re
+        import chatlink
+        items = [i.strip() for i in re.split(r"[,\n;]", x.get("note") or "") if i.strip()]
+        for i in items:
+            chatlink.shop_add(i)
+        self._toast(f"🛒 {len(items)} ting lagt i handlelista")
+
+    def _invite(self, x, day):
+        import chat
+        rooms = [(r, n, i) for r, n, i, _u in chat.rooms() if r not in ("hjemme", "meg")]
+        dlg = Adw.AlertDialog(heading=i18n.tr("Inviter i chatten"), body=f"{x['title']} – {day.day}.{day.month}"
+                              + (f" kl. {x['time']}" if x.get("time") else ""))
+        dd = Gtk.DropDown.new_from_strings([f"{i} {n}" for _r, n, i in rooms] or [i18n.tr("Ingen samtaler")])
+        dlg.set_extra_child(dd)
+        dlg.add_response("cancel", i18n.tr("Avbryt"))
+        dlg.add_response("ok", i18n.tr("Send invitasjon"))
+        dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+
+        def go(_d, rr):
+            if rr != "ok" or not rooms:
+                return
+            room = rooms[dd.get_selected()][0]
+            hh, mm = (int(v) for v in (x.get("time") or "20:00").split(":"))
+            when = dt.datetime(day.year, day.month, day.day, hh, mm).timestamp()
+
+            def send():
+                bg = getattr(self.get_root(), "bg", None)
+                return chat.send(room, f"📅 {x['title']} – {WD_LONG[day.weekday()]} {day.day}.{day.month}"
+                                 + (f" kl. {x['time']}" if x.get("time") else ""), None, bg.notify if bg else None,
+                                 extra={"kind": "event", "event": {"title": x["title"], "when": when,
+                                                                    "options": ["Kommer", "Kanskje", "Nei"]}})
+            _bg(send, lambda r_: self._toast(("✗ " if isinstance(r_, Exception) else "💬 ") + str(r_)))
+        dlg.connect("response", go)
+        dlg.present(self.get_root())
+
+    def _toast(self, t):
+        root = self.get_root()
+        if hasattr(root, "toast"):
+            root.toast(t)
 
     def _render_vacation(self):
         _clear(self.vac_box, 2)
@@ -590,10 +657,7 @@ class CalendarPage(Gtk.Box):
 
                 def done(res):
                     if isinstance(res, Exception):
-                        t = Adw.Toast(title=f"✗ {res}")
-                        root = self.get_root()
-                        if hasattr(root, "toast"):
-                            root.toast(t)
+                        self._toast(f"✗ {res}")
                         return
                     self._load()
                 _bg(save, done)
