@@ -540,6 +540,10 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
             _th.Thread(target=_pt, daemon=True).start()
+        if time.time() - getattr(self, "_fam_t", 0) > 50:                        # familie+: leggetid, kø, pause …
+            self._fam_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("familyfun").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_house_t", 0) > 55:                      # huset: kveld, pris, glemte, sov
             self._house_t = time.time()
             import threading as _th

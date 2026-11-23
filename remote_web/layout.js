@@ -34,7 +34,7 @@
     ],
   };
   // panel → fane (hurtigkommandoene ligger på Hjem, rett under hurtigknappene)
-  const PANEL_TAB = { commands: "oversikt", updates: "oversikt", assistant: "oversikt", games: "spill", homepcs: "spill", radio: "kontroll", presence: "kontroll",
+  const PANEL_TAB = { commands: "oversikt", family: "spill", updates: "oversikt", assistant: "oversikt", games: "spill", homepcs: "spill", radio: "kontroll", presence: "kontroll",
     pctools: "mer", apps: "mer", gpu: "mer", version: "system" };
 
   const titleOf = (c) => ((c.querySelector(":scope > h2, :scope > .row h2, h2") || {}).textContent || "").trim();

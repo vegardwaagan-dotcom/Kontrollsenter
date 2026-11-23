@@ -265,8 +265,8 @@ def _goal_done_today(goal):
 
 def in_school_time(now=None):
     s = school_cfg()
-    if not s["enabled"]:
-        return False
+    if not s["enabled"] or s.get("free_day") == time.strftime("%Y-%m-%d", time.localtime(now)):
+        return False                                        # «Fri i dag» fra en voksen
     lt = time.localtime(now)
     if lt.tm_wday not in s["days"]:
         return False

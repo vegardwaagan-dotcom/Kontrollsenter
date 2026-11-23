@@ -604,6 +604,11 @@ def _feature_action(win, kind, a):
     if kind == "dinner":
         F.send_to(a.get("to") or "*", a.get("_dev") or "Mobil", a.get("text") or "🍽️ Middag! Kom og spis.",
                   _notify(win), urgent=True)
+        try:                                              # trapper opp etter 5 min (lyd ned + RGB blinker)
+            import familyfun
+            familyfun.dinner_sent()
+        except Exception:  # noqa: BLE001
+            pass
         return True, "«Middag!» er sendt"
     if kind == "bedtime":
         c = F.cfg()
@@ -1146,7 +1151,7 @@ def _handler(remote):
                     with open(cp, "rb") as f:
                         return self._send(200, f.read(), "image/jpeg", {"Cache-Control": "max-age=86400"})
                 if p in ("/api/house/status", "/api/house/update", "/api/house/updates", "/api/house/updateall",
-                         "/api/house/auto", "/api/house/system"):            # PC-ene hjemme (felles husnøkkel)
+                         "/api/house/auto", "/api/house/system", "/api/house/family"):            # PC-ene hjemme (felles husnøkkel)
                     import watch as W
                     q = parse_qs(u.query)
                     if not W.check_house_key((q.get("fk") or [""])[0]):
@@ -1154,6 +1159,14 @@ def _handler(remote):
                     if p == "/api/house/status":
                         import friends
                         return self._send(200, friends.snapshot(remote.win, full=True))
+                    if p == "/api/house/family":           # gi tid / pause / middag trinn 2 (fra mobilen via huset)
+                        import familyfun
+                        try:
+                            msg = familyfun.house_action(remote.win, (q.get("do") or [""])[0],
+                                                         **{k: v[0] for k, v in q.items() if k not in ("fk", "do")})
+                            return self._send(200, {"ok": True, "msg": msg})
+                        except ValueError as e:
+                            return self._send(400, {"error": str(e)})
                     if p == "/api/house/system":           # dvale / slå av / omstart (sovemodus, glemte PC-er)
                         what = (q.get("do") or [""])[0]
                         if what not in ("sleep", "shutdown", "restart", "lock"):

@@ -279,6 +279,15 @@ class FamilyPage(Gtk.ScrolledWindow):
         self._load_plan()
         self._show_shop()
         self.refresh()
+        try:                                              # Familie+ (gjøremål, kø, konkurranse, bursdager …)
+            import familyfun_ui
+            c, i = _card("Familie+", "Gjøremål med belønning, spillkø, familiekonkurranse, husprestasjoner, "
+                                     "pausevarsel og bursdager.")
+            i.append(familyfun_ui.FamilyPlus())
+            box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("familie+")
         GLib.timeout_add_seconds(30, lambda: (self.get_mapped() and (self.refresh(), self._show_goals(),
                                                                      self._show_shop()), True)[1])
 

@@ -316,7 +316,31 @@ def p_assistant(win):
             "items": items, "buttons": [_btn("Sjekk nå", {"do": "assistcheck"}, primary=not items)]}
 
 
-PANELS = [p_commands, p_assistant, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_radio, p_presence, p_version]
+def p_family(win):
+    """Hvem er på nå"""
+    import familyfun as FF
+    items = []
+    for x in FF.who_is_on():
+        if not x["online"]:
+            continue
+        h, m = divmod(int(x["play_s"]) // 60, 60)
+        items.append({"title": ("🎮 " if x["game"] else "🟢 ") + (x["name"] or "?"),
+                      "sub": (f"Spiller {x['game']} · " if x["game"] else "") + f"{h} t {m} min i dag",
+                      "buttons": [_btn("Gi 30 min", {"do": "fam", "what": "bonus", "name": x["name"], "min": 30}),
+                                  _btn("⏸️ Pause nå", {"do": "fam", "what": "pause", "name": x["name"]},
+                                       f"Lukke spillet på {x['name']} nå?")]})
+    lb = FF.leaderboard()
+    rows = [[f"{('🥇', '🥈', '🥉')[i] if i < 3 else str(i + 1) + '.'} {r[0]}", f"{r[1]} poeng"] for i, r in enumerate(lb)]
+    free = FF.is_free_today()
+    return {"id": "family", "icon": "👨‍👩‍👧", "title": "Hvem er på nå",
+            "desc": "PC-ene som er på, hva som spilles og spilletid i dag. Familiekonkurransen under.",
+            "items": items or [{"title": "Ingen PC-er er på", "sub": ""}], "rows": rows,
+            "buttons": [_btn("🍽️ Middag!", {"do": "fam_dinner"}, "Sende «Middag!» til alle PC-ene?", primary=True),
+                        _btn("Leksetid som vanlig" if free else "📚 Fri fra lekser i dag",
+                             {"do": "fam_free", "on": "0" if free else "1"})]}
+
+
+PANELS = [p_commands, p_family, p_assistant, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_radio, p_presence, p_version]
 
 
 _CACHE = {}
@@ -392,6 +416,25 @@ def run(win, a):
         import updates
         updates.set_auto(str(a.get("on")) == "1")
         return "Automatikk på" if updates.auto_on() else "Automatikk av – gjør alt manuelt"
+    if do == "fam":
+        import homepcs
+        import savegames
+        import familyfun as FF
+        q = {"min": str(int(a.get("min", 30)))} if a.get("what") == "bonus" else {}
+        if a.get("name") == savegames.pc_name():
+            return FF.house_action(win, a.get("what"), **q)
+        p = next((x for x in homepcs.fetch() or [] if x.get("name") == a.get("name")), None)
+        if not p:
+            raise ValueError("fant ikke PC-en")
+        ok, d = homepcs.house_call(p, "family", 20, do=a.get("what"), **q)
+        return (f"✓ {p['name']}: {d.get('msg', 'OK')}") if ok else f"✗ {d}"
+    if do == "fam_dinner":
+        import remote
+        ok, msg = remote.do_action(win, {"a": "dinner"})
+        return msg
+    if do == "fam_free":
+        import familyfun as FF
+        return FF.school_free_today(str(a.get("on")) == "1")
     if do in ("pc_wake", "pc_sleep"):
         import homepcs
         import house

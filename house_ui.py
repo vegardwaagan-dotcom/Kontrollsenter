@@ -122,17 +122,28 @@ def house_card(win_getter):
     _switch(box, "Testmodus for nye versjoner", "Nye versjoner av Kontrollsenter prøves først på én PC i 24 timer. "
                                                 "Rulles den tilbake der, får de andre den aldri.",
             pl["on"], lambda on: H.set_part("pilot", on=on))
-    names = [""]
-    try:
-        import homepcs
-        names += [p["name"] for p in homepcs.fetch() or []]
-    except Exception:  # noqa: BLE001
-        pass
-    if pl["pc"] and pl["pc"] not in names:
-        names.append(pl["pc"])
-    pd = Gtk.DropDown.new_from_strings([n or i18n.tr("(velg PC)") for n in names])
-    pd.set_selected(names.index(pl["pc"]) if pl["pc"] in names else 0)
-    pd.connect("notify::selected", lambda d, _p: H.set_part("pilot", pc=names[d.get_selected()]))
+    names = [""] + ([pl["pc"]] if pl["pc"] else [])
+    model = Gtk.StringList.new([n or i18n.tr("(velg PC)") for n in names])
+    pd = Gtk.DropDown(model=model)
+    pd.set_selected(1 if pl["pc"] else 0)
+    pd.connect("notify::selected", lambda d, _p: H.set_part("pilot", pc=names[d.get_selected()])
+               if d.get_selected() < len(names) else None)
+
+    def more(pcs):                                       # PC-lista hentes fra NAS-en i bakgrunnen (kan være treg)
+        for n in pcs:
+            if n and n not in names:
+                names.append(n)
+                model.append(n)
+        return False
+
+    def fetch():
+        try:
+            import homepcs
+            pcs = [p["name"] for p in homepcs.fetch() or []]
+        except Exception:  # noqa: BLE001
+            pcs = []
+        GLib.idle_add(more, pcs)
+    threading.Thread(target=fetch, daemon=True).start()
     _row(box, "Test-PC", pd)
     box.append(Gtk.Separator())
 

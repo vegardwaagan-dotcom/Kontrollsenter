@@ -13,6 +13,24 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.78.0", "Familie+", [
+        ("Nytt (Familie → Familie+)", [
+            "Gjøremål fra ukeplanen kan krysses av – en voksen godkjenner, og det gir stjerner og ekstra spilletid",
+            "Spillkø på én PC: hvem som står for tur, med beskjed inni spillet når tiden er ute",
+            "Familiekonkurranse (stjerner + dager under spilletiden) med premie, og husprestasjoner for hele huset",
+            "Leggetid som trapper ned: nattlys og varmt lys 30 min før, lavere lyd 15 min før, «lagre nå» 5 min før",
+            "Pausevarsel inni spillet etter 3 timer (på som standard der familiekontroll er på)",
+            "«Fri fra leksetid i dag» med ett trykk",
+            "Bursdager: konfetti, bursdagsfarger på RGB og ekstra spilletid i gave",
+            "Ukens oppsummering til barna søndag kveld, med en utfordring for neste uke",
+        ]),
+        ("Mobilappen", [
+            "«Hvem er på nå»: hver PC med spill og spilletid i dag – «Gi 30 min» og «Pause nå», «Middag!» og "
+            "«Fri fra lekser»",
+            "«Middag!» trapper opp: etter 5 min dempes lyden og RGB blinker på PC-ene",
+        ]),
+        ("Rettet", ["Innstillinger kunne fryse et par sekunder når NAS-en var treg (PC-lista hentes nå i bakgrunnen)"]),
+    ]),
     ("0.77.0", "Huset: natt, strøm og trygghet", [
         ("Nytt (Innstillinger → Automatikk → Huset)", [
             "Oppdateringskveld: én natt i uka vekkes PC-ene (Wake-on-LAN), alt oppdateres, de går i dvale igjen – "

@@ -105,6 +105,11 @@ def status(win):
 
 def _extra():
     out = {}
+    try:                                                   # familiekonkurransen
+        import familyfun
+        out.update(familyfun.status_fields())
+    except Exception:  # noqa: BLE001
+        pass
     try:                                                   # huset: WoL, inaktiv tid, strøm per måned
         import house
         out.update(house.status_fields())
