@@ -13,6 +13,21 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.92.0", "Webkamera i HD, Full HD, 1440p og 4K – opptil 120 bilder/s", [
+        ("Webkamera i talekanalene", [
+            "Oppløsning: 180p, 360p, HD 720p, Full HD 1080p, 1440p og 4K 2160p",
+            "Bilder per sekund: 15, 24, 30, 60, 90 eller 120",
+            "Koding på skjermkortet (NVIDIA NVENC eller AMD/Intel VA-API, H.264) – VP8 i prosessoren når det ikke "
+            "finnes (da høyst 1080p30)",
+            "Kontrollsenter spør kameraet hva det klarer og velger riktig modus (MJPEG ved høy hastighet) – ingen "
+            "oppskalering; «Kameraet klarer» og «Sendes som» (med Mbit/s per deltaker) vises under Lyd og video",
+            "Deltakerlista viser kvaliteten, f.eks. «📷 1080p60»",
+            "Bildet fra de andre vises høyst 720p/30 på skjermen, så 4K ikke spiser minne og prosessor",
+        ]),
+        ("Mobilkamera", [
+            "Android-appen: velg 480p, 720p HD eller 1080p Full HD med 📐-knappen",
+        ]),
+    ]),
     ("0.91.0", "Programmene installeres etter at du har valgt funksjoner", [
         ("Installasjon", [
             "Installasjonsskriptet (Linux) og Setup.exe (Windows) legger bare inn selve Kontrollsenter",

@@ -22,15 +22,20 @@ import time
 
 IS_WIN = sys.platform == "win32"
 CFG = os.path.expanduser("~/.config/systemmonitor/chat-av.json")
-DEFAULT = {"mic": "", "speaker": "", "camera": "", "quality": "middels", "fps": 15, "mic_vol": 100, "out_vol": 100,
+DEFAULT = {"mic": "", "speaker": "", "camera": "", "quality": "hd", "fps": 30, "codec": "auto", "mic_vol": 100, "out_vol": 100,
            "noise": True, "agc": True, "vad": False, "vad_level": -50}
-QUALITY = {"lav": (320, 180, 250), "middels": (640, 360, 600), "høy": (1280, 720, 1500)}   # bredde, høyde, kbit/s
-APORTS, VPORTS = range(27160, 27170), range(27170, 27180)
+# oppløsninger for webkameraet: nøkkel -> (bredde, høyde, navn)
+QUALITY = {"lav": (320, 180, "180p – svak nettlinje"), "middels": (640, 360, "360p"),
+           "hd": (1280, 720, "HD 720p"), "fullhd": (1920, 1080, "Full HD 1080p"), "qhd": (2560, 1440, "1440p"),
+           "4k": (3840, 2160, "4K 2160p")}
+_OLD_Q = {"høy": "hd"}                                    # eldre innstillinger
+FPS_CHOICES = [15, 24, 30, 60, 90, 120]
+APORTS, VPORTS, HPORTS = range(27160, 27170), range(27170, 27180), range(27180, 27190)
 TEST = os.environ.get("KS_VC_TEST") == "1"                # tester: tone og testbilde i stedet for mikrofon/kamera
 
 _ROSTER = {}             # (sid, ch) -> {mid: {name, ip, aport, vport, assrc, vssrc, cam, mute, deaf, t}}
 _S = {"sid": None, "ch": None, "mute": False, "deaf": False, "cam": False, "pipes": {}, "assrc": 0, "vssrc": 0,
-      "aport": 0, "vport": 0, "peers": set()}
+      "aport": 0, "vport": 0, "hport": 0, "peers": set(), "vcodec": "vp8", "vmode": ""}
 _FRAMES = {}             # mid («me» for meg selv) -> (bytes, w, h, stride, t)
 _SPEAK = {}              # mid -> sist hørt over terskelen
 _LISTENERS = []
@@ -62,9 +67,10 @@ def set_(**kw):
                 _restart_send_audio()
             if changed & {"speaker"}:
                 _restart_recv_audio()
-            if changed & {"camera", "quality", "fps"} and _S["cam"]:
+            if changed & {"camera", "quality", "fps", "codec"} and _S["cam"]:
                 _stop("send-v")
                 _start_camera()
+                _broadcast_state()
         except Exception as e:  # noqa: BLE001
             _S["error"] = str(e)
             _fire("error")
@@ -163,10 +169,11 @@ def roster(sid, ch):
         for mid in [m for m, v in r.items() if now - v["t"] > 45]:
             r.pop(mid, None)
         out = [{"id": mid, "name": v["name"], "mute": v.get("mute"), "deaf": v.get("deaf"), "cam": v.get("cam"),
+                "vmode": v.get("vmode") or "",
                 "speaking": now - _SPEAK.get(mid, 0) < 0.6, "me": False} for mid, v in r.items()]
     if _S["sid"] == sid and _S["ch"] == ch:
         out.insert(0, {"id": "me", "name": chatsrv.me()["name"], "mute": _S["mute"], "deaf": _S["deaf"],
-                       "cam": _S["cam"], "speaking": now - _SPEAK.get("me", 0) < 0.6, "me": True})
+                       "cam": _S["cam"], "vmode": _S["vmode"] if _S["cam"] else "", "speaking": now - _SPEAK.get("me", 0) < 0.6, "me": True})
     return out
 
 
@@ -199,17 +206,135 @@ def _send_audio_desc(c):
             f"multiudpsink name=out sync=false async=false")
 
 
+def encoder():
+    """Beste H.264-koder på skjermkortet: «nv» (NVIDIA NVENC), «va» (AMD/Intel VA-API) – eller None (VP8 i CPU-en)."""
+    if not gst_ok():
+        return None
+    if "enc" not in _GST:
+        F = _GST["Gst"].ElementFactory
+        _GST["enc"] = "nv" if F.find("nvh264enc") else "va" if F.find("vah264enc") else None
+    return _GST["enc"]
+
+
+def encoder_name():
+    return {"nv": "NVIDIA NVENC (H.264)", "va": "VA-API (H.264, AMD/Intel)"}.get(encoder(),
+                                                                                 "ingen – VP8 i prosessoren")
+
+
+def quality(c=None):
+    """(bredde, høyde, bilder/s, kodek) som faktisk brukes. Uten maskinvarekoding: høyst 1080p30."""
+    c = c or cfg()
+    q = _OLD_Q.get(c.get("quality"), c.get("quality"))
+    w, h, _n = QUALITY.get(q, QUALITY["hd"])
+    fps = max(5, min(120, int(c.get("fps") or 30)))
+    codec = "h264" if encoder() and c.get("codec", "auto") != "vp8" else "vp8"
+    if codec == "vp8":
+        if w * h > 1920 * 1080:
+            w, h = 1920, 1080
+        fps = min(fps, 30 if w * h > 1280 * 720 else 60)
+    cam = camera_choice(c)
+    if cam == "phone":                                      # Android-appen sender høyst 1080p, ca. 15–25 bilder/s
+        w, h, fps = min(w, 1920), min(h, 1080), min(fps, 30)
+    if cam and cam != "phone" and not TEST:                 # ikke mer enn kameraet klarer (ikke skaler opp)
+        m = best_mode(cam, w, h, fps)
+        if m:
+            w, h, fps = min(w, m[1]), min(h, m[2]), min(fps, m[3])
+    return w, h, fps, codec
+
+
+def bitrate_kbps(w, h, fps, codec):
+    k = (0.07 if codec == "h264" else 0.1) * w * h * fps / 1000
+    return int(max(250, min(40000, k)))
+
+
 def _send_video_desc(c):
-    w, h, kb = QUALITY.get(c["quality"], QUALITY["middels"])
-    fps = max(5, min(30, int(c.get("fps") or 15)))
-    return (f"{_cam_src(c)} ! videoconvert ! videoscale ! videorate ! "
-            f"video/x-raw,width={w},height={h},framerate={fps}/1 ! "
-            f"tee name=t t. ! queue leaky=downstream max-size-buffers=2 ! videoconvert ! "
-            f"video/x-raw,format=RGBA ! appsink name=self emit-signals=true max-buffers=1 drop=true sync=false "
-            f"t. ! queue leaky=downstream max-size-buffers=2 ! videoconvert ! "
-            f"vp8enc deadline=1 cpu-used=8 end-usage=cbr target-bitrate={kb * 1000} error-resilient=1 "
-            f"keyframe-max-dist={fps * 2} ! rtpvp8pay pt=97 mtu=1200 ssrc={_S['vssrc']} ! "
+    w, h, fps, codec = quality(c)
+    kb = bitrate_kbps(w, h, fps, codec)
+    _S["vcodec"], _S["vmode"] = codec, f"{h}p{fps}"
+    if codec == "h264":
+        enc = (f"nvh264enc preset=p1 tune=ultra-low-latency rc-mode=cbr bitrate={kb} gop-size={fps * 2} "
+               f"zerolatency=true bframes=0" if encoder() == "nv" else
+               f"vah264enc rate-control=cbr bitrate={kb} key-int-max={min(1024, fps * 2)} b-frames=0 target-usage=7")
+        tail = (f"videoconvert n-threads=0 ! video/x-raw,format=NV12 ! {enc} ! h264parse config-interval=-1 ! "
+                f"rtph264pay pt=98 mtu=1200 config-interval=-1 aggregate-mode=zero-latency ssrc={_S['vssrc']}")
+    else:
+        tail = (f"videoconvert n-threads=0 ! vp8enc deadline=1 cpu-used=8 end-usage=cbr target-bitrate={kb * 1000} "
+                f"error-resilient=1 threads=4 keyframe-max-dist={fps * 2} ! "
+                f"rtpvp8pay pt=97 mtu=1200 ssrc={_S['vssrc']}")
+    return (f"{_cam_src(c, w, h, fps)} ! videoconvert n-threads=0 ! videoscale n-threads=0 ! videorate ! "
+            f"video/x-raw,width={w},height={h},framerate={fps}/1 ! tee name=t "
+            # egen forhåndsvisning: liten og høyst 30 bilder/s (sparer minne og CPU også ved 4K120)
+            f"t. ! queue leaky=downstream max-size-buffers=2 ! videorate max-rate=30 drop-only=true ! videoscale ! "
+            f"videoconvert ! video/x-raw,format=RGBA,width=640,pixel-aspect-ratio=1/1 ! "
+            f"appsink name=self emit-signals=true max-buffers=1 drop=true sync=false "
+            f"t. ! queue leaky=downstream max-size-buffers=3 ! {tail} ! "
             f"multiudpsink name=out sync=false async=false")
+
+
+# --------------------------------------------------------------------------
+# Hva webkameraet klarer
+# --------------------------------------------------------------------------
+_MODES = {}
+
+
+def camera_modes(dev):
+    """[(mediatype, bredde, høyde, bilder/s)] som kameraet kan levere (GStreamer DeviceMonitor)."""
+    if dev in _MODES:
+        return _MODES[dev]
+    out = []
+    if gst_ok() and dev and dev != "phone":
+        import re as _re
+        Gst = _GST["Gst"]
+        mon = Gst.DeviceMonitor()
+        mon.add_filter("Video/Source", None)
+        mon.start()
+        try:
+            for d in mon.get_devices():
+                props = d.get_properties()
+                path = (props.get_string("api.v4l2.path") or props.get_string("device.path") or "") if props else ""
+                if path != dev:
+                    continue
+                caps = d.get_caps()
+                for i in range(caps.get_size() if caps else 0):
+                    st = caps.get_structure(i)
+                    name = st.get_name()
+                    if name not in ("video/x-raw", "image/jpeg"):
+                        continue
+                    ok1, w = st.get_int("width")
+                    ok2, h = st.get_int("height")
+                    if not (ok1 and ok2):
+                        continue
+                    txt = st.to_string()
+                    rates = [int(a) / max(1, int(b)) for a, b in _re.findall(r"(\d+)/(\d+)", txt.split("framerate", 1)[-1])]
+                    for fr in rates or [30]:
+                        if fr >= 1:
+                            out.append((name, w, h, int(round(fr))))
+        finally:
+            mon.stop()
+    _MODES[dev] = sorted(set(out), key=lambda m: (m[1] * m[2], m[3]), reverse=True)
+    return _MODES[dev]
+
+
+def best_mode(dev, w, h, fps):
+    """Kameramodus nærmest ønsket: samme eller mindre oppløsning, så høyest mulig bilder/s (MJPEG ved høy fart)."""
+    modes = camera_modes(dev)
+    if not modes:
+        return None
+    fits = [m for m in modes if m[1] <= w and m[2] <= h] or [min(modes, key=lambda m: m[1] * m[2])]
+    top = max(m[1] * m[2] for m in fits)
+    same = [m for m in fits if m[1] * m[2] == top]
+    enough = [m for m in same if m[3] >= fps]
+    pick = min(enough, key=lambda m: (m[3], m[0] != "image/jpeg")) if enough else max(same, key=lambda m: m[3])
+    return pick
+
+
+def mode_summary(dev):
+    """«4K 30 · 1080p 60 · 720p 120» – det beste kameraet klarer per oppløsning."""
+    best = {}
+    for _t, w, h, fr in camera_modes(dev):
+        best[h] = max(best.get(h, 0), fr)
+    lab = {2160: "4K", 1440: "1440p", 1080: "1080p", 720: "720p", 480: "480p", 360: "360p"}
+    return " · ".join(f"{lab.get(h, str(h) + 'p')} {fr}" for h, fr in sorted(best.items(), reverse=True)[:5])
 
 
 def camera_choice(c=None):
@@ -226,15 +351,21 @@ def camera_choice(c=None):
     return "phone" if phonecam.live() else ""
 
 
-def _cam_src(c):
-    """Kamerakilden: testbilde, mobilkameraet (Android-appen) eller et vanlig webkamera."""
+def _cam_src(c, w=None, h=None, fps=None):
+    """Kamerakilden: testbilde, mobilkameraet (Android-appen) eller et vanlig webkamera i riktig modus."""
     cam = camera_choice(c)
     if TEST and cam != "phone":
         return "videotestsrc is-live=true pattern=ball"
     if cam == "phone":
         import phonecam
         return phonecam.SRC_DESC
-    return "v4l2src" + (f' device="{cam}"' if cam else "") + " ! decodebin"
+    src = "v4l2src" + (f' device="{cam}"' if cam else "")
+    m = best_mode(cam, w, h, fps) if cam and w else None
+    if m:                                                   # be kameraet om akkurat denne modusen
+        t, mw, mh, mf = m
+        return f"{src} ! {t},width={mw},height={mh},framerate={mf}/1 ! " + ("jpegdec idct-method=ifast" if t == "image/jpeg"
+                                                                               else "videoconvert")
+    return src + " ! decodebin"
 
 
 def _attach_phone(p, key):
@@ -326,21 +457,37 @@ def _recv_audio_pipe(port):
     return pipe
 
 
-def _recv_video_pipe(port):
+_SHOW = "videorate max-rate=30 drop-only=true ! videoscale n-threads=0 ! videoconvert n-threads=0 ! " \
+        "video/x-raw,format=RGBA,width=[16,1280],height=[16,720],pixel-aspect-ratio=1/1"
+
+
+def _h264dec():
+    """Fast H.264-dekoder (ikke decodebin – den gir dynamiske pads som ikke kan kobles i en bin)."""
+    F = _GST["Gst"].ElementFactory
+    for e in ("nvh264dec", "vah264dec", "avdec_h264", "openh264dec"):
+        if F.find(e):
+            return e
+    return "avdec_h264"
+
+
+def _recv_video_pipe(port, codec="vp8"):
+    """Mottak av bilde fra de andre: VP8 (port vport) eller H.264 (port hport). Vises høyst 720p/30."""
     Gst = _GST["Gst"]
-    pipe = Gst.parse_launch(f"udpsrc port={port} caps=application/x-rtp,media=video,encoding-name=VP8,"
-                            f"clock-rate=90000,payload=97 ! rtpssrcdemux name=dmx")
+    enc, pt = ("H264", 98) if codec == "h264" else ("VP8", 97)
+    pipe = Gst.parse_launch(f"udpsrc port={port} caps=application/x-rtp,media=video,encoding-name={enc},"
+                            f"clock-rate=90000,payload={pt} ! rtpssrcdemux name=dmx")
+    dec = (f"rtph264depay ! h264parse ! {_h264dec()}" if codec == "h264" else "rtpvp8depay ! vp8dec")
 
     def new_pad(_d, ssrc, pad):
         b = Gst.parse_bin_from_description(
-            "rtpjitterbuffer latency=100 ! rtpvp8depay ! vp8dec ! videoconvert ! video/x-raw,format=RGBA ! "
+            f"rtpjitterbuffer latency=100 ! {dec} ! {_SHOW} ! "
             f"appsink name=vs_{ssrc} emit-signals=true max-buffers=1 drop=true sync=false", True)
         pipe.add(b)
         b.get_by_name(f"vs_{ssrc}").connect("new-sample", _on_sample, str(ssrc))
         b.sync_state_with_parent()
         pad.link(b.get_static_pad("sink"))
     pipe.get_by_name("dmx").connect("new-ssrc-pad", new_pad)
-    _bus(pipe, "recv-v")
+    _bus(pipe, "recv-h" if codec == "h264" else "recv-v")
     return pipe
 
 
@@ -362,15 +509,24 @@ def _apply_live(c=None):
                 el.set_property("volume", 0 if _S["deaf"] else c["out_vol"] / 100)
 
 
+def _vport_for(peer):
+    """Porten hos en deltaker for kodeken vi sender med (None = deltakeren kan ikke ta imot den)."""
+    ip, _a, vport, hport = peer
+    return (hport or None) if _S["vcodec"] == "h264" else vport
+
+
 def _start_camera():
     Gst = _GST["Gst"]
+    _S["vssrc"] = random.randint(1, 2 ** 31 - 1)
     p = Gst.parse_launch(_send_video_desc(cfg()))
     _attach_phone(p, "send-v")
     p.get_by_name("self").connect("new-sample", _on_sample, "me")
     _bus(p, "send-v")
     out = p.get_by_name("out")
-    for ip, _a, vport in _S["peers"]:
-        out.emit("add", ip, vport)
+    for peer in _S["peers"]:
+        port = _vport_for(peer)
+        if port:
+            out.emit("add", peer[0], port)
     p.set_state(Gst.State.PLAYING)
     _S["pipes"]["send-v"] = p
 
@@ -380,7 +536,7 @@ def _restart_send_audio():
     _stop("send-a")
     p = Gst.parse_launch(_send_audio_desc(cfg()))
     _bus(p, "send-a")
-    for ip, aport, _v in _S["peers"]:
+    for ip, aport, _v, _h in _S["peers"]:
         p.get_by_name("out").emit("add", ip, aport)
     p.set_state(Gst.State.PLAYING)
     _S["pipes"]["send-a"] = p
@@ -420,6 +576,7 @@ def _stop(name):
 # --------------------------------------------------------------------------
 def _payload(op):
     return {"type": "vc", "op": op, "ch": _S["ch"], "aport": _S["aport"], "vport": _S["vport"],
+            "hport": _S["hport"], "vcodec": _S["vcodec"], "vmode": _S["vmode"] if _S["cam"] else "",
             "assrc": _S["assrc"], "vssrc": _S["vssrc"], "cam": _S["cam"], "mute": _S["mute"], "deaf": _S["deaf"]}
 
 
@@ -458,9 +615,10 @@ def join(sid, ch):
     with _LOCK:
         _S.update(sid=sid, ch=ch, mute=False, deaf=False, cam=False, peers=set(), error=None,
                   assrc=random.randint(1, 2 ** 31 - 1), vssrc=random.randint(1, 2 ** 31 - 1),
-                  aport=_free(APORTS), vport=_free(VPORTS))
+                  aport=_free(APORTS), vport=_free(VPORTS), hport=_free(HPORTS))
         _S["pipes"]["recv-a"] = _recv_audio_pipe(_S["aport"])
         _S["pipes"]["recv-v"] = _recv_video_pipe(_S["vport"])
+        _S["pipes"]["recv-h"] = _recv_video_pipe(_S["hport"], "h264")
         sa = Gst.parse_launch(_send_audio_desc(cfg()))
         _bus(sa, "send-a")
         _S["pipes"]["send-a"] = sa
@@ -493,25 +651,31 @@ def leave():
     return "Du forlot talekanalen"
 
 
+def _peer_key(v):
+    return (v["ip"], int(v["aport"]), int(v["vport"]), int(v.get("hport") or 0))
+
+
 def _add_peer(v):
-    key = (v["ip"], int(v["aport"]), int(v["vport"]))
+    key = _peer_key(v)
     if key in _S["peers"]:
         return
+    for old in [k for k in _S["peers"] if k[0] == key[0] and k[1] == key[1]]:   # samme deltaker, nye porter
+        _drop_peer({"ip": old[0], "aport": old[1], "vport": old[2], "hport": old[3]})
     _S["peers"].add(key)
-    for name, port in (("send-a", key[1]), ("send-v", key[2])):
+    for name, port in (("send-a", key[1]), ("send-v", _vport_for(key))):
         p = _S["pipes"].get(name)
-        if p is not None:
+        if p is not None and port:
             p.get_by_name("out").emit("add", key[0], port)
 
 
 def _drop_peer(v):
-    key = (v["ip"], int(v["aport"]), int(v["vport"]))
+    key = _peer_key(v)
     if key not in _S["peers"]:
         return
     _S["peers"].discard(key)
-    for name, port in (("send-a", key[1]), ("send-v", key[2])):
+    for name, port in (("send-a", key[1]), ("send-v", _vport_for(key))):
         p = _S["pipes"].get(name)
-        if p is not None:
+        if p is not None and port:
             p.get_by_name("out").emit("remove", key[0], port)
 
 
@@ -594,7 +758,8 @@ def on_event(srv, sender, ev, src_ip):
         elif op in ("join", "state"):
             new = mid not in r
             v = {"name": sender.get("name", "?"), "ip": src_ip, "aport": int(ev.get("aport") or 0),
-                 "vport": int(ev.get("vport") or 0), "assrc": ev.get("assrc"), "vssrc": ev.get("vssrc"),
+                 "vport": int(ev.get("vport") or 0), "hport": int(ev.get("hport") or 0),
+                 "vmode": str(ev.get("vmode") or "")[:12], "assrc": ev.get("assrc"), "vssrc": ev.get("vssrc"),
                  "cam": bool(ev.get("cam")), "mute": bool(ev.get("mute")), "deaf": bool(ev.get("deaf")),
                  "t": time.time()}
             r[mid] = v
@@ -651,12 +816,11 @@ def cam_test(on, cb=None):
     if not on or Gst is None:
         return
     c = cfg()
-    w, h, _kb = QUALITY.get(c["quality"], QUALITY["middels"])
-    if _TEST.get("cam_detach"):
-        _TEST.pop("cam_detach")()
-    p = Gst.parse_launch(f"{_cam_src(c)} ! videoconvert ! videoscale ! video/x-raw,width={w},height={h} ! videoconvert ! "
-                         "video/x-raw,format=RGBA ! appsink name=a emit-signals=true max-buffers=1 drop=true "
-                         "sync=false")
+    w, h, fps, _codec = quality(c)
+    p = Gst.parse_launch(f"{_cam_src(c, w, h, fps)} ! videoconvert n-threads=0 ! videoscale n-threads=0 ! videorate ! "
+                         f"video/x-raw,width={w},height={h},framerate={fps}/1 ! videorate max-rate=30 drop-only=true ! "
+                         "videoscale ! videoconvert ! video/x-raw,format=RGBA,width=640,pixel-aspect-ratio=1/1 ! "
+                         "appsink name=a emit-signals=true max-buffers=1 drop=true sync=false")
 
     def sample(sink):
         s = sink.emit("pull-sample")

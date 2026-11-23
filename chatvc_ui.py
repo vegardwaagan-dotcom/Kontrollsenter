@@ -253,14 +253,40 @@ def open_settings(parent):
     g4 = Adw.PreferencesGroup(title=i18n.tr("Webkamera"))
     page.add(g4)
     g4.add(_combo("Kamera", "" if len(dev["camera"]) > 1 else "Fant ikke noe kamera", dev["camera"], c["camera"],
-                  lambda v: (VC.set_(camera=v), restart_cam())))
-    q_items = [("lav", "Lav (320×180) – svak nettlinje"), ("middels", "Middels (640×360)"), ("høy", "Høy (1280×720)")]
-    g4.add(_combo("Kvalitet", "", q_items, c["quality"], lambda v: (VC.set_(quality=v), restart_cam())))
-    fps = Adw.SpinRow.new_with_range(5, 30, 1)
-    fps.set_title(i18n.tr("Bilder per sekund"))
-    fps.set_value(c["fps"])
-    fps.connect("notify::value", lambda r, _p: VC.set_(fps=int(r.get_value())))
-    g4.add(fps)
+                  lambda v: (VC.set_(camera=v), restart_cam(), info())))
+    q_items = [(k, v[2]) for k, v in VC.QUALITY.items()]
+    cur_q = VC._OLD_Q.get(c["quality"], c["quality"])
+    g4.add(_combo("Oppløsning", "", q_items, cur_q, lambda v: (VC.set_(quality=v), restart_cam(), info())))
+    g4.add(_combo("Bilder per sekund", "", [(f, f"{f} bilder/s") for f in VC.FPS_CHOICES],
+                  c["fps"] if c["fps"] in VC.FPS_CHOICES else 30,
+                  lambda v: (VC.set_(fps=int(v)), restart_cam(), info())))
+    g4.add(_combo("Koding", "", [("auto", "Automatisk (skjermkortet når det kan)"), ("vp8", "VP8 i prosessoren")],
+                  c.get("codec", "auto"), lambda v: (VC.set_(codec=v), restart_cam(), info())))
+    enc_row = Adw.ActionRow(title=i18n.tr("Maskinvarekoding"), subtitle=i18n.tr(VC.encoder_name()))
+    g4.add(enc_row)
+    cam_row = Adw.ActionRow(title=i18n.tr("Kameraet klarer"), subtitle="…")
+    g4.add(cam_row)
+    send_row = Adw.ActionRow(title=i18n.tr("Sendes som"), subtitle="…")
+    g4.add(send_row)
+
+    def info():
+        try:
+            cc = VC.cfg()
+            dev = VC.camera_choice(cc)
+            w, h, fr, codec = VC.quality(cc)
+            kb = VC.bitrate_kbps(w, h, fr, codec)
+            cam_row.set_subtitle(i18n.tr("mobilkameraet – inntil 1080p fra Android-appen") if dev == "phone" else
+                                 VC.mode_summary(dev) or i18n.tr("ukjent (ingen kameramoduser funnet)"))
+            note = ""
+            want = VC.QUALITY.get(VC._OLD_Q.get(cc["quality"], cc["quality"]), (0, 0))
+            if (w, h) != tuple(want[:2]) or fr != int(cc["fps"]):
+                note = i18n.tr(" (begrenset av kameraet eller kodingen)")
+            send_row.set_subtitle(f"{w}×{h} · {fr} bilder/s · {codec.upper()} · ≈ {kb / 1000:.1f} Mbit/s "
+                                  + i18n.tr("per deltaker") + note)
+        except Exception as e:  # noqa: BLE001
+            send_row.set_subtitle(str(e))
+        return False
+    GLib.idle_add(info)
     prev_row = _switch_row("Forhåndsvis kameraet", "", False, lambda _v: restart_cam())
     g4.add(prev_row)
     pic = Gtk.Picture(content_fit=Gtk.ContentFit.CONTAIN, can_shrink=True, visible=False)
@@ -271,7 +297,7 @@ def open_settings(parent):
     # --- mobilen som webkamera
     import phonecam
     g5 = Adw.PreferencesGroup(title=i18n.tr("📱 Mobilen som webkamera"),
-                              description=i18n.tr("I Android-appen: Chat → «📷 Mobilkamera». Bildet kommer hit, og kan "
+                              description=i18n.tr("I Android-appen: Chat → «📷 Kamera». Bildet kommer hit, og kan "
                                                   "brukes i talekanalene (velg «📱 Mobilkamera» som kamera over), i "
                                                   "et eget vindu, eller som webkamera i andre programmer."))
     page.add(g5)

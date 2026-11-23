@@ -394,7 +394,7 @@ class ChatPage(Gtk.Box):
                 unread = sum(1 for m in C.messages(rid, 100) if m.get("t", 0) > read.get(rid, 0)
                              and m.get("from_id") != CS.me()["id"])
                 voice = ch.get("kind") == "voice"
-                people = tuple((p["id"], p["name"], p["mute"], p["deaf"], p["cam"])
+                people = tuple((p["id"], p["name"], p["mute"], p["deaf"], p["cam"] and (p.get("vmode") or True))
                                for p in chatvc.roster(srv["id"], ch["id"])) if voice else ()
                 chans.append((rid, ch["name"], voice, unread, CS.muted(rid), people))
             layout.append((cat["id"], cat["name"], tuple(chans)))
@@ -444,7 +444,8 @@ class ChatPage(Gtk.Box):
                     first = first or rid
                 self._row(rid, ("🔊  " if voice else "#  ") + name + ("  🔕" if muted else ""), unread, voice=voice)
                 for pid, pname, pmute, pdeaf, pcam in people:
-                    pl = Gtk.Label(label=f"{'🔇' if pmute or pdeaf else '🎙️'} {pname}{'  📷' if pcam else ''}",
+                    cam = f"  📷 {pcam}" if isinstance(pcam, str) else "  📷" if pcam else ""
+                    pl = Gtk.Label(label=f"{'🔇' if pmute or pdeaf else '🎙️'} {pname}{cam}",
                                    xalign=0, ellipsize=3)
                     pl.add_css_class("ks-vc-user")
                     self._vc_labels[pid] = pl

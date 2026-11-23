@@ -45,8 +45,11 @@ import java.util.Arrays;
  * webkamera i andre programmer (Linux, v4l2loopback).
  */
 public class CamActivity extends Activity {
-    private static final int W = 640, H = 480, QUALITY = 70;
-    private static final long MIN_GAP_MS = 80;            // høyst ~12 bilder/s
+    private static final int QUALITY = 70;
+    // oppløsninger mobilen kan sende: bredde, høyde, minste tid mellom bilder (ms) – JPEG over hjemmenettet
+    private static final int[][] MODES = {{640, 480, 40}, {1280, 720, 50}, {1920, 1080, 70}};
+    private static final String[] MODE_NAMES = {"480p", "720p HD", "1080p Full HD"};
+    private int mode = 1;
 
     private TextureView view;
     private TextView status;
@@ -84,6 +87,16 @@ public class CamActivity extends Activity {
         status.setTextColor(0xFFFFFFFF);
         status.setText("Starter kameraet …");
         bar.addView(status, new LinearLayout.LayoutParams(0, -2, 1));
+        final Button res = new Button(this);
+        mode = getPreferences(MODE_PRIVATE).getInt("mode", 1);
+        res.setText("📐 " + MODE_NAMES[mode]);
+        res.setOnClickListener(v -> {
+            mode = (mode + 1) % MODES.length;
+            getPreferences(MODE_PRIVATE).edit().putInt("mode", mode).apply();
+            res.setText("📐 " + MODE_NAMES[mode]);
+            restart();
+        });
+        bar.addView(res);
         Button flip = new Button(this);
         flip.setText("🔄 Bytt kamera");
         flip.setOnClickListener(v -> { front = !front; restart(); });
@@ -179,7 +192,7 @@ public class CamActivity extends Activity {
             Integer so = ch.get(CameraCharacteristics.SENSOR_ORIENTATION);
             sensor = so == null ? 90 : so;
             StreamConfigurationMap map = ch.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            Size size = pick(map.getOutputSizes(ImageFormat.YUV_420_888), W, H);
+            Size size = pick(map.getOutputSizes(ImageFormat.YUV_420_888), MODES[mode][0], MODES[mode][1]);
             reader = ImageReader.newInstance(size.getWidth(), size.getHeight(), ImageFormat.YUV_420_888, 3);
             reader.setOnImageAvailableListener(this::onImage, camHandler);
             SurfaceTexture st = view.getSurfaceTexture();
@@ -257,7 +270,7 @@ public class CamActivity extends Activity {
         if (img == null) return;
         try {
             long now = System.currentTimeMillis();
-            if (sending || now - lastFrame < MIN_GAP_MS) return;
+            if (sending || now - lastFrame < MODES[mode][2]) return;
             lastFrame = now;
             byte[] nv21 = toNv21(img);
             YuvImage y = new YuvImage(nv21, ImageFormat.NV21, img.getWidth(), img.getHeight(), null);
