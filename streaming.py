@@ -374,6 +374,29 @@ def rustdesk_state():
     return st
 
 
+_RD = {"t": 0, "v": None}
+
+
+def rustdesk_cached(max_age=600):
+    """rustdesk_state() mellomlagret (henting av ID kan ta mange sekunder)."""
+    if _RD["v"] is None or time.time() - _RD["t"] > max_age:
+        _RD.update(v=rustdesk_state(), t=time.time())
+    return _RD["v"]
+
+
+def rustdesk_connect(rid):
+    """Koble til en annen PC med RustDesk-ID."""
+    rid = re.sub(r"\s+", "", str(rid))
+    if not re.fullmatch(r"\d{6,12}", rid):
+        raise ValueError("RustDesk-ID er 9–10 siffer")
+    cmd = _rust_cmd()
+    if not cmd:
+        raise RuntimeError("RustDesk er ikke installert")
+    subprocess.Popen(cmd + ["--connect", rid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     **(FLAGS if IS_WIN else {"start_new_session": True}))
+    return f"Kobler til {rid} – godta på den andre PC-en"
+
+
 def rustdesk_open():
     cmd = _rust_cmd()
     if not cmd:

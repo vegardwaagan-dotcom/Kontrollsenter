@@ -27,7 +27,7 @@ GROUPS = [
 ]
 ICONS = {"spill": "🎮", "vr": "🥽", "stromming": "📡", "rgb": "🌈", "logitech": "🖱️", "cpuskjerm": "🖥️", "msi": "💻",
          "nettverk": "🌐", "wifi": "📶", "bluetooth": "🔵", "scener": "✨", "smarthjem": "🏠", "hjemme": "🏠",
-         "venner": "👥", "chat": "💬"}
+         "venner": "👥", "chat": "💬", "fjernhjelp": "🛟"}
 
 # side: [(nøkkel, navn, [titler – «=X» er nøyaktig, ellers starten av tittelen; «G:» = gruppe-overskrift])]
 PAGE_CATS = {

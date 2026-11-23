@@ -542,6 +542,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),
                 ("venner", "PC-er utenfor hjemmet", "ks-friends-symbolic", "friends_ui", "FriendsPage"),
                 ("chat", "Chat", "ks-chat-symbolic", "chat_ui", "ChatPage"),
+                ("fjernhjelp", "Fjernhjelp", "ks-remote-symbolic", "remotehelp_ui", "RemoteHelpPage"),
                 ("verktoy", "Vedlikehold", "ks-tools-symbolic", "tools", "ToolsPage"),
                 ("innstillinger", "Innstillinger", "ks-settings-symbolic", "tools", "SettingsPage")):
             if name == "bluetooth" and not self.hw["bluetooth"]:
@@ -970,7 +971,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         search.SearchDialog(self).present(self)
 
     # --- enkel modus: bare det viktigste i sidemenyen ---
-    SIMPLE_PAGES = {"oversikt", "lyd", "spill", "vr", "discord", "scener", "smarthjem", "familie", "chat",
+    SIMPLE_PAGES = {"oversikt", "lyd", "spill", "vr", "discord", "scener", "smarthjem", "familie", "chat", "fjernhjelp",
                     "innstillinger"}
 
     def simple_mode(self):

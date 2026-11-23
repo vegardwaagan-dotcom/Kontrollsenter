@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.82.2", "Fjernhjelp i sidemenyen", [
+        ("Nytt", [
+            "🛟 Fjernhjelp har fått sin egen side i sidemenyen (under Hjemmet): RustDesk-ID-en din stort og tydelig, "
+            "kopier, åpne eller installer RustDesk, og «Be om hjelp»",
+            "Koble til en annen PC med ID – eller trykk «Koble til» på en PC hjemme (ID-ene deles automatisk)",
+            "Andre programmer for fjernstyring (topp 5) samme sted",
+            "Strømming handler nå bare om å spille på telefonen og TV-en",
+        ]),
+    ]),
     ("0.82.1", "Større rullehjul", [
         ("Bedre", [
             "Rullehjulet for valg er like bredt som valget du trykker på, med større tekst og høyere rader som følger "

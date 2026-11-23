@@ -110,6 +110,13 @@ def _extra():
         out.update(equipment.status_fields())
     except Exception:  # noqa: BLE001
         pass
+    try:                                                   # RustDesk-ID (Fjernhjelp: koble til med ett trykk)
+        import streaming
+        rd = streaming.rustdesk_cached()
+        if rd.get("id"):
+            out["rustdesk_id"] = rd["id"]
+    except Exception:  # noqa: BLE001
+        pass
     try:                                                   # familiekonkurransen
         import familyfun
         out.update(familyfun.status_fields())

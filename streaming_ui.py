@@ -1,5 +1,5 @@
 """Fanen «Strømming»: spill fra PC-en på telefonen (Sunshine + Moonlight), innstillinger, Moonlight på PC-en
-og RustDesk for fjernhjelp."""
+(RustDesk har fått sin egen side: Fjernhjelp)."""
 import threading
 import webbrowser
 
@@ -182,33 +182,6 @@ class StreamingPage(Gtk.ScrolledWindow):
         mrow.append(self.moon_inst)
         i.append(mrow)
 
-        # ---- RustDesk ----
-        c, i = card("RustDesk – fjernhjelp",
-                    "Styr PC-en fra en annen PC eller telefon – eller la noen hjelpe deg. Den andre trenger ID-en "
-                    "under og passordet som vises i RustDesk. Til spill er Moonlight raskere; RustDesk er best til "
-                    "vanlig bruk og hjelp.")
-        box.append(c)
-        i.append(apps_ui.need("remote", on_done=lambda: self.refresh() if hasattr(self, "refresh") else None))
-        rrow = Gtk.Box(spacing=12)
-        idcol = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        idcol.append(Gtk.Label(label=_t("RustDesk-ID"), xalign=0, css_classes=["ks-sub"]))
-        self.rid = Gtk.Label(label="…", xalign=0, selectable=True)
-        self.rid.add_css_class("title-2")
-        self.rid.add_css_class("numeric")
-        idcol.append(self.rid)
-        rrow.append(idcol)
-        cp = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text=_t("Kopier ID"), valign=Gtk.Align.CENTER)
-        cp.connect("clicked", lambda *_: Gdk.Display.get_default().get_clipboard().set(self.rid.get_label()))
-        rrow.append(cp)
-        self.rust_btn = Gtk.Button(label=_t("Åpne RustDesk"), valign=Gtk.Align.CENTER)
-        self.rust_btn.connect("clicked", lambda *_: self._do(S.rustdesk_open))
-        rrow.append(self.rust_btn)
-        self.rust_inst = Gtk.Button(label=_t("Installer RustDesk"), valign=Gtk.Align.CENTER)
-        self.rust_inst.connect("clicked", lambda *_: self._do(lambda: S.install("rustdesk"),
-                                                              _t("RustDesk er installert ✓")))
-        rrow.append(self.rust_inst)
-        i.append(rrow)
-
         self._busy = False
         self.refresh()
         GLib.timeout_add_seconds(10, lambda: self.get_mapped() and self.refresh() or True)
@@ -217,7 +190,7 @@ class StreamingPage(Gtk.ScrolledWindow):
     def refresh(self):
         def work():
             st = S.sunshine_state()
-            rd = S.rustdesk_state()
+            rd = None
             ml = S.moonlight_installed()
             cl = S.clients() if st["running"] and st["has_login"] else None
             GLib.idle_add(self._show, st, rd, ml, cl)
@@ -251,9 +224,6 @@ class StreamingPage(Gtk.ScrolledWindow):
                 self.devs.append(r)
         self.moon_btn.set_visible(ml)
         self.moon_inst.set_visible(not ml)
-        self.rid.set_label(rd["id"] or ("–" if rd["installed"] else _t("ikke installert")))
-        self.rust_btn.set_visible(rd["installed"])
-        self.rust_inst.set_visible(not rd["installed"])
         self._busy = False
         return False
 

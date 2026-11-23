@@ -745,7 +745,7 @@ SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
     ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
     ("Spill", ["spill", "vr", "discord", "stromming"]),
-    ("Hjemmet", ["scener", "smarthjem", "familie", "chat", "hjemme", "venner"]),
+    ("Hjemmet", ["scener", "smarthjem", "familie", "chat", "fjernhjelp", "hjemme", "venner"]),
     ("System", ["nettverk", "programmer", "verktoy", "innstillinger"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
@@ -772,7 +772,8 @@ PAGE_HELP = {
     "venner": "Vennenes PC-er utenfor hjemmet – hva de spiller, temperaturer, CPU og minne (over Tailscale).",
     "chat": "Chat med alle som har Kontrollsenter: de hjemme, vennene dine, og privat med hver enkelt.",
     "vr": "Meta Quest 3 gjennom Steam og SteamVR – trådløst eller med kabel. Kontrollsenter installerer og retter alt.",
-    "stromming": "Spill og se PC-skjermen på telefonen (Sunshine + Moonlight), og fjernhjelp med RustDesk.",
+    "stromming": "Spill og se PC-skjermen på telefonen eller TV-en (Sunshine + Moonlight).",
+    "fjernhjelp": "Styr en annen PC eller få hjelp med RustDesk – din ID, PC-ene hjemme med ett trykk, og «Be om hjelp».",
     "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "
                "ekstra spilletid og leggetid.",
     "nettverk": "Hastighet, ping, hvilke programmer som bruker nettet, og enhetene på hjemmenettet.",
