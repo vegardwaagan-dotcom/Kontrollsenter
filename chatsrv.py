@@ -134,7 +134,23 @@ def _nid():
 # --------------------------------------------------------------------------
 # Lage og endre (eier/admin)
 # --------------------------------------------------------------------------
+def _split_icon(name, icon):
+    """«🎮Gaming» i ikonfeltet: emojien blir ikonet og teksten flyttes inn i navnet."""
+    icon = str(icon or "").strip()
+    lead = ""
+    for ch in icon:
+        if ch.isalnum() or ch.isspace():
+            break
+        lead += ch
+    rest = icon[len(lead):].strip()
+    name = str(name or "").strip()
+    if rest and rest.lower() not in name.lower():
+        name = f"{rest} {name}".strip()
+    return name, lead or "🎮"
+
+
 def create(name, icon="🎮"):
+    name, icon = _split_icon(name, icon)
     sid = secrets.token_hex(6)
     general = _nid()
     srv = {"id": sid, "name": str(name).strip()[:40] or "Server", "icon": icon or "🎮", "v": 1, "created": time.time(),
@@ -142,6 +158,8 @@ def create(name, icon="🎮"):
            "categories": [{"id": _nid(), "name": "Tekstkanaler", "channels": [
                {"id": general, "name": "generelt", "topic": "Alt mulig"},
                {"id": _nid(), "name": "spill", "topic": "Hva spiller vi?"}]},
+               {"id": _nid(), "name": "Talekanaler", "channels": [
+                   {"id": _nid(), "name": "lounge", "topic": "Prat og spill", "kind": "voice"}]},
                {"id": _nid(), "name": "Annet", "channels": [{"id": _nid(), "name": "klipp", "topic": "Høydepunkter"}]}],
            "invites": {}}
     _put(srv)
@@ -163,6 +181,8 @@ def _need_manage(srv):
 
 
 def rename(sid, name=None, icon=None):
+    if icon is not None:
+        name, icon = _split_icon(name if name is not None else get(sid)["name"], icon)
     srv = get(sid)
     _need_manage(srv)
     if name:
@@ -200,13 +220,15 @@ def _clean_channel(name):
     return n[:30] or "kanal"
 
 
-def add_channel(sid, cid, name, topic=""):
+def add_channel(sid, cid, name, topic="", kind="text"):
     srv = get(sid)
     _need_manage(srv)
     cat = next((c for c in srv["categories"] if c["id"] == cid), None)
     if not cat:
         raise ValueError("fant ikke kategorien")
     ch = {"id": _nid(), "name": _clean_channel(name), "topic": str(topic)[:80]}
+    if kind == "voice":                                   # talekanal: lyd og webkamera (chatvc.py)
+        ch["kind"] = "voice"
     cat["channels"].append(ch)
     _bump_and_send(srv)
     return ch
@@ -381,9 +403,11 @@ def _system_msg(srv, text):
 
 
 def first_channel(srv):
+    """Første tekstkanal (talekanaler hoppes over)."""
     for c in srv.get("categories", []):
         for ch in c.get("channels", []):
-            return ch
+            if ch.get("kind") != "voice":
+                return ch
     return None
 
 
@@ -546,6 +570,10 @@ def receive(payload, src_ip, notify=None):
         if payload.get("pub") and sender.get("pub") != payload.get("pub"):     # nøkkel til kryptering
             sender["pub"] = str(payload["pub"])[:60]
             _put(srv)
+        return True
+    if t == "vc":                                         # talekanal: hvem er inne, porter, kamera, demping
+        import chatvc
+        chatvc.on_event(srv, sender, payload, src_ip)
         return True
     if t in ("call", "call_ok", "call_end"):
         import chatvoice

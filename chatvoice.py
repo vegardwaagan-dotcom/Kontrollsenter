@@ -154,13 +154,19 @@ def _free_udp():
 
 
 def _pipes(peer_ip, peer_port, my_port):
-    send = ["gst-launch-1.0", "-q", "pipewiresrc", "!", "audioconvert", "!", "audioresample", "!",
+    try:                                                 # mikrofon og høyttaler fra «Lyd og video»
+        import chatvc
+        c = chatvc.cfg()
+    except Exception:  # noqa: BLE001
+        c = {"mic": "", "speaker": ""}
+    src = ["pulsesrc"] + ([f"device={c['mic']}"] if c.get("mic") else [])
+    sink = ["pulsesink"] + ([f"device={c['speaker']}"] if c.get("speaker") else [])
+    send = ["gst-launch-1.0", "-q", *src, "!", "audioconvert", "!", "audioresample", "!",
             "audio/x-raw,rate=48000,channels=1", "!", "opusenc", "bitrate=32000", "frame-size=20", "!",
             "rtpopuspay", "!", "udpsink", f"host={peer_ip}", f"port={peer_port}"]
     recv = ["gst-launch-1.0", "-q", "udpsrc", f"port={my_port}",
             "caps=application/x-rtp,media=audio,encoding-name=OPUS,clock-rate=48000,payload=96", "!",
-            "rtpjitterbuffer", "latency=60", "!", "rtpopusdepay", "!", "opusdec", "!", "audioconvert", "!",
-            "autoaudiosink"]
+            "rtpjitterbuffer", "latency=60", "!", "rtpopusdepay", "!", "opusdec", "!", "audioconvert", "!", *sink]
     return send, recv
 
 

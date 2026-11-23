@@ -109,7 +109,9 @@ def rooms():
         for srv in chatsrv.servers().values():
             for c in srv.get("categories", []):
                 for ch in c.get("channels", []):
-                    out.append((f"s:{srv['id']}:{ch['id']}", f"{srv['name']} › #{ch['name']}", srv.get("icon", "🎮")))
+                    out.append((f"s:{srv['id']}:{ch['id']}",
+                                f"{srv['name']} › {'🔊' if ch.get('kind') == 'voice' else '#'}{ch['name']}",
+                                srv.get("icon", "🎮")))
     except Exception:  # noqa: BLE001
         pass
     d = _load(FILE, {})

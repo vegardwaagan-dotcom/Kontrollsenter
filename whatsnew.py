@@ -13,6 +13,28 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.89.0", "Talekanaler og webkamera i chatten", [
+        ("Talekanaler", [
+            "🔊 Nye talekanaler i serverne – trykk på kanalen for å gå inn, og alle som er der snakker sammen",
+            "Se hvem som sitter i kanalen (også når du ikke er inne), hvem som snakker (grønn) og hvem som er dempet",
+            "Talelinje nederst: demp mikrofonen, slå av lyden, webkamera, lyd og video, legg på",
+            "📷 Webkamera: bildene til alle i kanalen vises over meldingene – klikk for større bilde",
+            "Nye servere får en talekanal («lounge») med en gang",
+        ]),
+        ("Lyd og video (🎛️)", [
+            "Velg mikrofon, høyttaler og kamera, med volum for begge veier",
+            "Lydmåler, «hør deg selv», testlyd og forhåndsvisning av kameraet",
+            "Støyreduksjon, automatisk forsterkning og stemmeaktivering med terskel",
+            "Kvalitet (lav/middels/høy) og bilder per sekund for kameraet – endringer gjelder med en gang",
+            "Taleanrop til én person bruker også mikrofonen og høyttaleren du har valgt",
+        ]),
+        ("Ryddigere kanaler", [
+            "+ ved hver kategori: ny tekstkanal eller talekanal rett i den kategorien (også tomme kategorier)",
+            "Kanallista bygges ikke lenger på nytt midt i et klikk – kanalene åpner seg første gang du trykker",
+            "Større trykkflater på kanalene",
+            "Skriver du tekst i ikonfeltet («🎮Gaming»), flyttes teksten inn i navnet",
+        ]),
+    ]),
     ("0.88.0", "Mindre minne, ryddigere chat og oppdatering for venner", [
         ("Raskere og lettere", [
             "CPU-skjerm-siden brukte 130–180 MB ekstra minne for forhåndsvisningen – nå under 30 MB, og bare mens "

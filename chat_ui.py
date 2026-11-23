@@ -30,7 +30,10 @@ _CSS = """
 .ks-rail button { min-width: 46px; min-height: 46px; border-radius: 16px; font-size: 22px; padding: 0; }
 .ks-rail button.ks-on { background: alpha(@accent_bg_color, 0.55); border-radius: 14px; }
 .ks-chan-cat { font-size: .78em; font-weight: 800; letter-spacing: .06em; opacity: .6; margin: 10px 6px 2px; }
-.ks-chan row { padding: 4px 6px; border-radius: 8px; }
+.ks-chan row { padding: 7px 10px; min-height: 34px; border-radius: 8px; }
+.ks-chan row.ks-cat-row { min-height: 0; padding: 0 4px 0 0; }
+.ks-chan row.ks-vc-row { min-height: 0; padding: 1px 10px; }
+.ks-cat-add { min-height: 22px; min-width: 22px; padding: 0 4px; margin-top: 8px; opacity: .7; }
 .ks-react { padding: 0 6px; min-height: 22px; border-radius: 11px; font-size: .9em; }
 """
 
@@ -94,6 +97,8 @@ class ChatPage(Gtk.Box):
         try:
             import theme
             theme.add_css(_CSS)
+            import chatvc_ui
+            theme.add_css(chatvc_ui.CSS)
         except Exception:  # noqa: BLE001
             pass
         self.view = "direct"                 # «direct» eller server-ID
@@ -122,6 +127,13 @@ class ChatPage(Gtk.Box):
         self.list.add_css_class("navigation-sidebar")
         self.list.add_css_class("ks-chan")
         self.list.connect("row-selected", self._pick)
+        self.list.connect("row-activated", self._activate)
+        self._last_press = 0
+        gp = Gtk.GestureClick(button=0, propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        gp.connect("pressed", lambda *_a: setattr(self, "_last_press", time.monotonic()))
+        self.list.add_controller(gp)
+        self._sig = None
+        self._vc_labels = {}
         ls = Gtk.ScrolledWindow(child=self.list, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER,
                                 propagate_natural_width=False)
         ls.set_size_request(240, -1)
@@ -129,6 +141,10 @@ class ChatPage(Gtk.Box):
         self.mid_hint = _dim("")
         self.mid_hint.set_max_width_chars(28)
         mid.append(self.mid_hint)
+        import chatvc_ui
+        self.status = _dim("")
+        self.vcbar = chatvc_ui.VoiceBar(self.status, self._av_settings)
+        mid.append(self.vcbar)
         self.append(mid)
         self.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
         # ---- meldinger ----
@@ -155,6 +171,8 @@ class ChatPage(Gtk.Box):
         self.callbar.append(self.call_ans)
         self.callbar.append(_btn("Legg på", lambda *_: self._call_do(CV.call_end)))
         right.append(self.callbar)
+        self.video = chatvc_ui.VideoGrid()
+        right.append(self.video)
         self.gamebar = Gtk.Box(spacing=8, visible=False)
         self.game_lab = _dim("")
         self.game_lab.set_hexpand(True)
@@ -208,7 +226,6 @@ class ChatPage(Gtk.Box):
         row.append(more)
         row.append(_btn("Send", self._send, True))
         right.append(row)
-        self.status = _dim("")
         right.append(self.status)
         self.append(right)
         # ---- medlemmer ----
@@ -228,6 +245,8 @@ class ChatPage(Gtk.Box):
         self._rail()
         self._channels(select=True)
         GLib.timeout_add_seconds(15, lambda: (self.get_mapped() and (self._channels(), self._load()), True)[1])
+        import chatvc
+        chatvc.on_change(self._vc_changed)
         GLib.timeout_add_seconds(2, lambda: (self.get_mapped() and self._bars(), True)[1])
         CS.on_change(lambda _sid: self._bars())
 
@@ -306,6 +325,7 @@ class ChatPage(Gtk.Box):
         add("🔗", "Bli med i en server (lim inn invitasjonslenke)", self._join)
         add("🔍", "Søk i alle samtalene", self._search)
         add("👤", "Profil, status og chat-innstillinger", self._profile)
+        add("🎛️", "Lyd og video: mikrofon, høyttaler og webkamera", self._av_settings)
         return False
 
     def _open(self, view):
@@ -315,10 +335,8 @@ class ChatPage(Gtk.Box):
 
     # ------------------------------------------------------------------ kanaler
     def _channels(self, select=False):
-        self._building = True
-        while (c := self.list.get_first_child()) is not None:
-            self.list.remove(c)
         if self.view == "direct":
+            self._vc_labels = {}
             self.head.set_label(i18n.tr("Direkte"))
             self.gear.set_visible(False)
             self.mem_btn.set_visible(False)
@@ -330,7 +348,13 @@ class ChatPage(Gtk.Box):
                 if isinstance(rs, Exception):
                     return
                 pins = CP.cfg()["pinned_rooms"]
-                self._rooms = sorted([r for r in rs if not r[0].startswith("s:")], key=lambda r: r[0] not in pins)
+                rooms = sorted([r for r in rs if not r[0].startswith("s:")], key=lambda r: r[0] not in pins)
+                sig = ("direct", tuple(rooms))
+                if self.view != "direct" or (not select and (sig == self._sig or
+                                                             time.monotonic() - self._last_press < 1.5)):
+                    return
+                self._sig = sig
+                self._rooms = rooms
                 self._building = True
                 while (c := self.list.get_first_child()) is not None:
                     self.list.remove(c)
@@ -350,33 +374,127 @@ class ChatPage(Gtk.Box):
         if not srv:
             self._open("direct")
             return
-        self.head.set_label(f"{srv.get('icon', '')} {srv['name']}")
+        self._building = True
+        import chatvc
+        read = (C._load(C.FILE, {}).get("_read") or {})
+        manage = CS.can_manage(srv)
+        layout = []
+        for cat in srv.get("categories", []):
+            chans = []
+            for ch in cat.get("channels", []):
+                rid = f"s:{srv['id']}:{ch['id']}"
+                unread = sum(1 for m in C.messages(rid, 100) if m.get("t", 0) > read.get(rid, 0)
+                             and m.get("from_id") != CS.me()["id"])
+                voice = ch.get("kind") == "voice"
+                people = tuple((p["id"], p["name"], p["mute"], p["deaf"], p["cam"])
+                               for p in chatvc.roster(srv["id"], ch["id"])) if voice else ()
+                chans.append((rid, ch["name"], voice, unread, CS.muted(rid), people))
+            layout.append((cat["id"], cat["name"], tuple(chans)))
+        sig = (srv["id"], srv.get("v"), manage, tuple(layout), srv.get("name"), srv.get("icon"))
+        # bygg bare om når noe faktisk er endret – og aldri rett etter et klikk (da forsvant klikket)
+        if not select and sig == self._sig:
+            self._building = False
+            return
+        if not select and time.monotonic() - self._last_press < 1.5:
+            self._building = False
+            GLib.timeout_add(1600, lambda: (self._channels(), False)[1])
+            return
+        self._sig = sig
+        while (c := self.list.get_first_child()) is not None:
+            self.list.remove(c)
+        self.head.set_label(f"{_short_icon(srv.get('icon'), srv['name'])} {srv['name']}")
         self.gear.set_visible(True)
         self.gear.set_popover(self._server_menu(srv))
         self.mem_btn.set_visible(True)
         self.mid_hint.set_label("")
-        read = (C._load(C.FILE, {}).get("_read") or {})
+        self._vc_labels = {}
         first = None
-        for cat in srv.get("categories", []):
-            lab = Gtk.Label(label=cat["name"].upper(), xalign=0)
+        for cid, cname, chans in layout:
+            hb = Gtk.Box(spacing=2)
+            lab = Gtk.Label(label=cname.upper(), xalign=0, hexpand=True, ellipsize=3)
             lab.add_css_class("ks-chan-cat")
-            r = Gtk.ListBoxRow(child=lab, selectable=False, activatable=False)
+            hb.append(lab)
+            if manage:
+                add = Gtk.MenuButton(icon_name="list-add-symbolic", tooltip_text=i18n.tr("Ny kanal i ") + cname,
+                                     valign=Gtk.Align.END)
+                add.add_css_class("flat")
+                add.add_css_class("ks-cat-add")
+                add.set_popover(self._cat_menu(srv["id"], cid, cname))
+                hb.append(add)
+            r = Gtk.ListBoxRow(child=hb, selectable=False, activatable=False)
+            r.add_css_class("ks-cat-row")
             self.list.append(r)
-            for ch in cat.get("channels", []):
-                rid = f"s:{srv['id']}:{ch['id']}"
-                first = first or rid
-                unread = sum(1 for m in C.messages(rid, 100) if m.get("t", 0) > read.get(rid, 0)
-                             and m.get("from_id") != CS.me()["id"])
-                self._row(rid, f"#  {ch['name']}" + ("  🔕" if CS.muted(rid) else ""), unread)
+            if not chans and manage:
+                hint = _dim("Tom – trykk + for å legge til en kanal")
+                hint.add_css_class("caption")
+                hint.set_margin_start(8)
+                hr = Gtk.ListBoxRow(child=hint, selectable=False, activatable=False)
+                hr.add_css_class("ks-vc-row")
+                self.list.append(hr)
+            for rid, name, voice, unread, muted, people in chans:
+                if not voice:
+                    first = first or rid
+                self._row(rid, ("🔊  " if voice else "#  ") + name + ("  🔕" if muted else ""), unread, voice=voice)
+                for pid, pname, pmute, pdeaf, pcam in people:
+                    pl = Gtk.Label(label=f"{'🔇' if pmute or pdeaf else '🎙️'} {pname}{'  📷' if pcam else ''}",
+                                   xalign=0, ellipsize=3)
+                    pl.add_css_class("ks-vc-user")
+                    self._vc_labels[pid] = pl
+                    pr = Gtk.ListBoxRow(child=pl, selectable=False, activatable=False)
+                    pr.add_css_class("ks-vc-row")
+                    self.list.append(pr)
+        if not first:
+            first = next((c[0] for _i, _n, chans in layout for c in chans), None)
         if select or not self.room.startswith(f"s:{srv['id']}:"):
             self.room = first or self.room
         self._select_current()
         self._show_members(srv)
         self._building = False
+        self._vc_speak()
         if select:
             self._load()
 
-    def _row(self, rid, text, unread):
+    def _vc_changed(self, what):
+        if what == "speak":
+            self._vc_speak()
+        elif what in ("roster", "error") and self.view != "direct":
+            self._channels()
+        return False
+
+    def _vc_speak(self):
+        import chatvc
+        cur = chatvc.current()
+        speaking = {p["id"] for p in chatvc.roster(*cur) if p["speaking"]} if cur else set()
+        for pid, lab in self._vc_labels.items():
+            (lab.add_css_class if pid in speaking else lab.remove_css_class)("speaking")
+        if speaking:
+            GLib.timeout_add(700, lambda: (self._vc_speak(), False)[1])
+
+    def _cat_menu(self, sid, cid, cname):
+        pop = Gtk.Popover()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
+                      margin_end=6)
+        for label, fn in (("# Ny tekstkanal", lambda: self._new_channel("text", cid)),
+                          ("🔊 Ny talekanal", lambda: self._new_channel("voice", cid)),
+                          ("✏️ Gi kategorien nytt navn", lambda: _ask(
+                              self.get_root(), "Kategori", "", [("n", "Navn", cname)],
+                              lambda v: self._call(lambda: CS.rename_category(sid, cid, v["n"])), "Lagre")),
+                          ("🗑️ Slett kategorien", lambda: self._confirm(
+                              f"Slette «{cname}» og kanalene i den?",
+                              lambda: self._call(lambda: CS.delete_category(sid, cid))))):
+            b = Gtk.Button(label=i18n.tr(label))
+            b.add_css_class("flat")
+            b.get_child().set_xalign(0)
+            b.connect("clicked", lambda _b, f=fn: (pop.popdown(), f()))
+            box.append(b)
+        pop.set_child(box)
+        return pop
+
+    def _av_settings(self):
+        import chatvc_ui
+        chatvc_ui.open_settings(self.get_root())
+
+    def _row(self, rid, text, unread, voice=False):
         r = Gtk.Box(spacing=8)
         r.append(Gtk.Label(label=text, xalign=0, hexpand=True, ellipsize=3))
         if unread:
@@ -385,6 +503,9 @@ class ChatPage(Gtk.Box):
             r.append(u)
         row = Gtk.ListBoxRow(child=r)
         row._rid = rid
+        row._voice = voice
+        if voice:
+            row.set_tooltip_text(i18n.tr("Trykk for å gå inn i talekanalen"))
         if rid.startswith("p:") or rid in ("alle", "hjemme", "meg"):
             g = Gtk.GestureClick(button=3)
             g.connect("pressed", lambda *_a, rr=rid, w=row: self._room_menu(w, rr))
@@ -456,8 +577,25 @@ class ChatPage(Gtk.Box):
     def _pick(self, _l, row):
         if row is None or getattr(self, "_building", False) or not getattr(row, "_rid", None):
             return
-        self.room = row._rid
-        self._load()
+        if row._rid != self.room:
+            self.room = row._rid
+            self._load()
+
+    def _activate(self, _l, row):
+        """Klikk på en kanal (også en som allerede er valgt): åpne den – talekanal: gå inn i talen."""
+        if row is None or not getattr(row, "_rid", None):
+            return
+        if row._rid != self.room:
+            self.room = row._rid
+            self._load()
+        if getattr(row, "_voice", False):
+            import chatvc
+            _x, sid, ch = row._rid.split(":", 2)
+            if chatvc.current() != (sid, ch):
+                self.status.set_label(i18n.tr("Kobler til talekanalen …"))
+                _bg(lambda: chatvc.join(sid, ch),
+                    lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)),
+                               self.vcbar.refresh()))
 
     def _show_members(self, srv):
         while (c := self.members.get_first_child()) is not None:
@@ -489,7 +627,7 @@ class ChatPage(Gtk.Box):
         if room.startswith("s:"):
             srv = CS.get(room.split(":")[1]) or {}
             ch = CS.channel(srv, room.split(":")[2]) or {}
-            self.title.set_label(f"# {ch.get('name', '?')}")
+            self.title.set_label(f"{'🔊' if ch.get('kind') == 'voice' else '#'} {ch.get('name', '?')}")
             self.topic.set_label(ch.get("topic", ""))
         else:
             self.title.set_label(next((n for r, n, _i, _u in self._rooms if r == room), room))
@@ -799,7 +937,7 @@ class ChatPage(Gtk.Box):
                      ("📺 Vis skjermen min", lambda: self._call_room(lambda: CL.share_screen(self.room))),
                      ("🔔 Ring", lambda: self._call_room(lambda: CL.send_ring(self.room))),
                      ("🆘 Be om hjelp", lambda: self._call_any(lambda: __import__("homeplus").ask_help())))),
-            ("Verktøy", (("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
+            ("Verktøy", (("🎛️ Lyd og video", self._av_settings), ("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
                          ("📝 Notater", self._notes), ("🛒 Handleliste", self._shop),
                          ("🌐 Oversett siste melding", self._translate),
                          ("🏠 Hvor er alle?", lambda: self.status.set_label(CL.where_is_everyone())),
@@ -1306,7 +1444,8 @@ class ChatPage(Gtk.Box):
         owner = CS.my_role(srv) == "owner"
         items = [("🔗 Inviter (lag lenke)", self._invite, manage),
                  ("✉️ Send invitasjon til en venn", self._invite_friend, manage),
-                 ("➕ Ny kanal", self._new_channel, manage),
+                 ("# Ny tekstkanal", lambda: self._new_channel("text"), manage),
+                 ("🔊 Ny talekanal", lambda: self._new_channel("voice"), manage),
                  ("📁 Ny kategori", lambda: _ask(self.get_root(), "Ny kategori", "", [("n", "Navn", "")],
                                                 lambda v: self._call(lambda: CS.add_category(sid, v["n"]))), manage),
                  ("✏️ Rediger kanalen", self._edit_channel, manage),
@@ -1388,27 +1527,46 @@ class ChatPage(Gtk.Box):
         dlg.connect("response", lambda _d, r: r == "ja" and go())
         dlg.present(self.get_root())
 
-    def _new_channel(self):
+    def _new_channel(self, kind="text", cid=None):
+        """Ny tekst- eller talekanal. Uten kategori: velg den i lista (ingen nedtrekksliste – den kunne gjemme seg
+        bak dialogen)."""
         srv = CS.get(self.view)
+        if not srv:
+            return
         cats = srv.get("categories", [])
         if not cats:
-            CS.add_category(self.view, "Tekstkanaler")
-            srv = CS.get(self.view)
-            cats = srv["categories"]
-        dlg = Adw.AlertDialog(heading=i18n.tr("Ny kanal"))
+            CS.add_category(self.view, "Talekanaler" if kind == "voice" else "Tekstkanaler")
+            cats = CS.get(self.view)["categories"]
+        voice = kind == "voice"
+        dlg = Adw.AlertDialog(heading=i18n.tr("Ny talekanal" if voice else "Ny tekstkanal"))
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        name = Gtk.Entry(placeholder_text=i18n.tr("navn, f.eks. cs2-kveld"))
+        name = Gtk.Entry(placeholder_text=i18n.tr("navn, f.eks. " + ("raid-prat" if voice else "cs2-kveld")),
+                         activates_default=True)
         topic = Gtk.Entry(placeholder_text=i18n.tr("Emne (valgfritt)"))
-        dd = Gtk.DropDown.new_from_strings([c["name"] for c in cats])
-        for w in (name, topic, dd):
-            box.append(w)
+        box.append(name)
+        box.append(topic)
+        picked = {"cid": cid or cats[0]["id"]}
+        if not cid and len(cats) > 1:
+            box.append(Gtk.Label(label=i18n.tr("Kategori"), xalign=0))
+            group = None
+            for c in cats:
+                rb = Gtk.CheckButton(label=c["name"], active=c["id"] == picked["cid"])
+                if group:
+                    rb.set_group(group)
+                group = group or rb
+                rb.connect("toggled", lambda b, i=c["id"]: b.get_active() and picked.update(cid=i))
+                box.append(rb)
+        elif cid:
+            box.append(_dim(i18n.tr("I kategorien ") + next((c["name"] for c in cats if c["id"] == cid), "")))
         dlg.set_extra_child(box)
         dlg.add_response("nei", i18n.tr("Avbryt"))
         dlg.add_response("ja", i18n.tr("Lag"))
+        dlg.set_default_response("ja")
         dlg.set_response_appearance("ja", Adw.ResponseAppearance.SUGGESTED)
         dlg.connect("response", lambda _d, r: r == "ja" and self._call(lambda: CS.add_channel(
-            self.view, cats[dd.get_selected()]["id"], name.get_text(), topic.get_text())))
+            self.view, picked["cid"], name.get_text() or ("lounge" if voice else "kanal"), topic.get_text(), kind)))
         dlg.present(self.get_root())
+        name.grab_focus()
 
     def _edit_channel(self):
         if not self.room.startswith(f"s:{self.view}:"):
