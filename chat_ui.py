@@ -408,7 +408,23 @@ class ChatPage(Gtk.Box):
                             pr.add_css_class("ks-vc-row")
                             self.list.append(pr)
                 for title, rs in groups:
-                    header(title)
+                    if title == "Må oppdateres":            # egen undermeny, lukket som standard
+                        open_ = getattr(self, "_old_open", False)
+                        tb = Gtk.Button(label=("▾ " if open_ else "▸ ") + i18n.tr("Må oppdateres").upper() +
+                                        f" ({len(rs)})", halign=Gtk.Align.START)
+                        tb.add_css_class("flat")
+                        tb.add_css_class("ks-chan-cat")
+                        tb.set_tooltip_text(i18n.tr("PC-er med for gammel Kontrollsenter – oppdater dem for å chatte"))
+                        tb.connect("clicked", lambda *_: (setattr(self, "_old_open", not getattr(self, "_old_open",
+                                                                                                  False)),
+                                                          setattr(self, "_sig", None), self._channels()))
+                        hr = Gtk.ListBoxRow(child=tb, selectable=False, activatable=False)
+                        hr.add_css_class("ks-cat-row")
+                        self.list.append(hr)
+                        if not open_:
+                            continue
+                    else:
+                        header(title)
                     for rid, name, icon, unread, note in rs:
                         self._row(rid, f"{icon}  {name}", unread, note=note)
                 ids = [r[0] for r in self._rooms]

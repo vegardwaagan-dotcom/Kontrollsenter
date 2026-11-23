@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.6", "Ryddigere chatliste", [
+        ("Chat", [
+            "PC-er med for gammel Kontrollsenter ligger under «▸ Må oppdateres» nederst i direktemeldingene – "
+            "lukket som standard, ett klikk åpner",
+            "En maskin der minst ett av systemene er oppdatert (dual boot) blir stående i lista, med varsel om det "
+            "andre",
+        ]),
+    ]),
     ("0.99.5", "Dual boot: Windows og Linux på samme PC er én PC", [
         ("Samme maskin", [
             "Kontrollsenter kjenner igjen samme maskin i Windows og Linux (nettverkskortet) – og deler det med de "

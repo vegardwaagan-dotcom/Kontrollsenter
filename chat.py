@@ -97,6 +97,7 @@ def room_groups(pins=()):
     flat = {rid: (rid, name, icon, unread) for rid, name, icon, unread in rooms() if not rid.startswith("s:")}
     old = {}
     home = []
+    outdated = []                                           # alle systemene er for gamle for chatten
     hidden = set()                                          # andre navn for samme maskin (dual boot)
     try:
         import machine
@@ -107,6 +108,9 @@ def room_groups(pins=()):
             n = p.get("name")
             if not n or n == _me() or n in me_al:
                 continue
+            vers = [q.get("version") for q in pcs_all if q.get("name") in (p.get("aliases") or [n])]
+            if vers and all(v and _ver(v) < MIN_CHAT for v in vers):
+                outdated.append(f"p:{n}")
             home.append(f"p:{n}")
             for a in p.get("aliases") or []:
                 if a != n:
@@ -130,8 +134,9 @@ def room_groups(pins=()):
         pass
     groups = [("Festet", [r for r in pins if r in flat]),
               ("Felles", [r for r in ("hjemme", "alle", "meg") if r in flat and r not in pins]),
-              ("PC-er hjemme", [r for r in home if r in flat and r not in pins]),
+              ("PC-er hjemme", [r for r in home if r in flat and r not in pins and r not in outdated]),
               ("Venner", [r for r in flat if r.startswith("p:") and r not in home and r not in pins])]
+    groups.append(("Må oppdateres", [r for r in outdated if r in flat and r not in pins]))
     out = []
     for title, ids in groups:
         if ids:
