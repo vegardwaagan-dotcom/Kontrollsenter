@@ -137,10 +137,17 @@ def room_groups(pins=()):
               ("PC-er hjemme", [r for r in home if r in flat and r not in pins and r not in outdated]),
               ("Venner", [r for r in flat if r.startswith("p:") and r not in home and r not in pins])]
     groups.append(("Må oppdateres", [r for r in outdated if r in flat and r not in pins]))
+    try:
+        import chatplus
+        nick = lambda r, nm: chatplus.display(nm) if r.startswith("p:") else nm  # noqa: E731
+    except Exception:  # noqa: BLE001
+        nick = lambda r, nm: nm  # noqa: E731
     out = []
     for title, ids in groups:
         if ids:
-            out.append((title, [(*flat[r], old.get(r, "")) for r in ids]))
+            out.append((title, [(r, nick(r, flat[r][1]), flat[r][2], flat[r][3],
+                                 (old.get(r, "") + (f"  ({flat[r][1]})" if nick(r, flat[r][1]) != flat[r][1] else "")
+                                  ).strip()) for r in ids]))
     return out
 
 

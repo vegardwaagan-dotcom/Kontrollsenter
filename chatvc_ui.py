@@ -262,7 +262,9 @@ class VideoGrid(Gtk.Box):
         for mid in sorted(live, key=lambda m: m != "me"):
             if mid not in self.tiles:
                 p = people.get(mid, {})
-                self._tile(mid, (p.get("name") or "?") + (i18n.tr(" (deg)") if mid == "me" else ""))
+                import chatplus
+                self._tile(mid, (chatplus.display(p.get("name") or "?", None if mid == "me" else mid)) +
+                           (i18n.tr(" (deg)") if mid == "me" else ""))
             wrap, pic, _lab = self.tiles[mid]
             try:
                 pic.set_paintable(_texture(frames[mid]))

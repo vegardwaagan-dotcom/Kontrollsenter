@@ -24,7 +24,7 @@ CFG = os.path.expanduser("~/.config/systemmonitor/chat-pluss.json")
 MAX_FILE = 8 * 1024 * 1024
 DEF = {"status": "", "color": "", "avatar": "", "autoreply": True, "autoreply_text": "",
        "sounds": {}, "pinned_rooms": [], "vanish": {}, "scheduled": [], "reminders": [], "notes": {},
-       "clean_days": 30, "celebrate": True, "stickers": []}
+       "clean_days": 30, "celebrate": True, "stickers": [], "nicks": {}}
 _TYPING = {}                 # rom -> {navn: tid}
 _READ = {}                   # rom -> {medlem-id: tid}
 _DELIV = {}                  # melding-id -> antall levert
@@ -44,6 +44,45 @@ def set_(**kw):
     os.makedirs(os.path.dirname(CFG), exist_ok=True)
     json.dump(d, open(CFG, "w"), ensure_ascii=False)
     return d
+
+
+# --------------------------------------------------------------------------
+# Kallenavn: ditt eget navn på den du chatter med (vises bare hos deg)
+# --------------------------------------------------------------------------
+def _names(name):
+    """Alle navnene samme person/maskin har (dual boot) – kallenavnet gjelder for alle."""
+    try:
+        import machine
+        return machine.home_aliases(name)
+    except Exception:  # noqa: BLE001
+        return [name]
+
+
+def nick(name=None, mid=None):
+    n = cfg().get("nicks") or {}
+    if mid and n.get(f"m:{mid}"):
+        return n[f"m:{mid}"]
+    if name and n.get(f"n:{name}"):
+        return n[f"n:{name}"]
+    return None
+
+
+def display(name, mid=None):
+    """Navnet som vises: kallenavnet hvis du har gitt et, ellers det vanlige."""
+    return nick(name, mid) or name
+
+
+def set_nick(name=None, mid=None, value=""):
+    n = dict(cfg().get("nicks") or {})
+    value = str(value or "").strip()[:40]
+    keys = ([f"m:{mid}"] if mid else []) + ([f"n:{a}" for a in _names(name)] if name else [])
+    for k in keys:
+        if value:
+            n[k] = value
+        else:
+            n.pop(k, None)
+    set_(nicks=n)
+    return value
 
 
 def _srv_ch(room):

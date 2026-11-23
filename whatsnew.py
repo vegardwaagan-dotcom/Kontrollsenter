@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.9", "Kallenavn i chatten", [
+        ("Chat", [
+            "Høyreklikk på en person i direktemeldingene (eller et medlem i en server) → «✏️ Gi kallenavn»",
+            "Kallenavnet vises bare hos deg – i lista, tittelen, meldingene, medlemslista, talekanalen og "
+            "webkamerabildene",
+            "Gjelder begge systemene på en dual boot-PC, og det vanlige navnet vises i liten skrift under",
+            "La feltet stå tomt for å bruke det vanlige navnet igjen",
+        ]),
+    ]),
     ("0.99.8", "Forlat talen – også av seg selv", [
         ("Chat", [
             "Tydelig «📞 Forlat talen»-knapp i talelinja, og «Forlat» ved talekanalen du er i",

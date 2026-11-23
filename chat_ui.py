@@ -509,7 +509,7 @@ class ChatPage(Gtk.Box):
                           extra=self._leave_btn(i18n.tr("Forlat"), "Forlat talekanalen", chatvc.leave) if here else None)
                 for pid, pname, pmute, pdeaf, pcam in people:
                     cam = f"  📷 {pcam}" if isinstance(pcam, str) else "  📷" if pcam else ""
-                    pl = Gtk.Label(label=f"{'🔇' if pmute or pdeaf else '🎙️'} {pname}{cam}",
+                    pl = Gtk.Label(label=f"{'🔇' if pmute or pdeaf else '🎙️'} {CP.display(pname, pid)}{cam}",
                                    xalign=0, ellipsize=3)
                     pl.add_css_class("ks-vc-user")
                     self._vc_labels[pid] = pl
@@ -647,7 +647,8 @@ class ChatPage(Gtk.Box):
         pop = Gtk.Popover()
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
                       margin_end=6)
-        items = [("📞 Ring med tale", lambda: self._call_do(lambda: CV.call_start(m, self.room)), CV.calls_ok()),
+        items = [("✏️ Gi kallenavn …", lambda: self._nick_dialog(name=m.get("name"), mid=m.get("id")), True),
+                 ("📞 Ring med tale", lambda: self._call_do(lambda: CV.call_start(m, self.room)), CV.calls_ok()),
                  ("🎵 Egen varsellyd …", lambda: self._pick_sound(m.get("name")), True),
                  ("🚫 Blokker", lambda: CL.block(m.get("name")), True)]
         for label, fn, ok in items:
@@ -670,7 +671,8 @@ class ChatPage(Gtk.Box):
             pinned_rooms=[x for x in pins if x != rid] if rid in pins else pins + [rid]))]
         if rid.startswith("p:"):
             name = rid[2:]
-            items += [("🔕 Demp 1 time / av", lambda: CS.set_mute(rid, 0 if CS.muted(rid) else 3600)),
+            items += [("✏️ Gi kallenavn …", lambda: self._nick_dialog(name=name)),
+                      ("🔕 Demp 1 time / av", lambda: CS.set_mute(rid, 0 if CS.muted(rid) else 3600)),
                       ("🎵 Egen varsellyd …", lambda: self._pick_sound(name)),
                       ("🚫 Blokker", lambda: CL.block(name))]
         for label, fn in items:
@@ -682,6 +684,31 @@ class ChatPage(Gtk.Box):
         pop.set_parent(widget)
         pop.connect("closed", lambda p: GLib.idle_add(p.unparent))
         pop.popup()
+
+    def _nick_dialog(self, name=None, mid=None):
+        """Ditt eget navn på personen (bare hos deg). Tomt = bruk det vanlige navnet igjen."""
+        dlg = Adw.AlertDialog(heading=i18n.tr("Gi kallenavn"),
+                              body=i18n.tr("Bare du ser kallenavnet. La feltet stå tomt for å bruke «{}» igjen.")
+                              .format(name or "?"))
+        e = Gtk.Entry(text=CP.nick(name, mid) or "", placeholder_text=name or "", activates_default=True)
+        dlg.set_extra_child(e)
+        dlg.add_response("nei", i18n.tr("Avbryt"))
+        dlg.add_response("ja", i18n.tr("Lagre"))
+        dlg.set_default_response("ja")
+        dlg.set_response_appearance("ja", Adw.ResponseAppearance.SUGGESTED)
+
+        def save():
+            v = CP.set_nick(name=name, mid=mid, value=e.get_text())
+            self.status.set_label(i18n.tr("Kallenavn: ") + v if v else i18n.tr("Kallenavnet er fjernet"))
+            self._sig = None
+            self._channels(force=True)
+            self._load()
+            srv = CS.get(self.view) if self.view != "direct" else None
+            if srv:
+                self._show_members(srv)
+        dlg.connect("response", lambda _d, r: r == "ja" and save())
+        dlg.present(self.get_root())
+        e.grab_focus()
 
     def _pick_sound(self, name):
         dlg = Gtk.FileDialog(title=i18n.tr("Varsellyd for ") + name)
@@ -741,7 +768,7 @@ class ChatPage(Gtk.Box):
             icon, what = CL.presence(mid)
             av, _col = CL.avatar(mid)
             row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-            row.append(Gtk.Label(label=f"{icon} {av + ' ' if av else ''}{badge}{m.get('name', '?')}" +
+            row.append(Gtk.Label(label=f"{icon} {av + ' ' if av else ''}{badge}{CP.display(m.get('name', '?'), mid)}" +
                                  (" (deg)" if mid == CS.me()["id"] else ""), xalign=0, ellipsize=3))
             sub = _dim(what)
             sub.set_margin_start(22)
@@ -765,7 +792,8 @@ class ChatPage(Gtk.Box):
             self.title.set_label(f"{'🔊' if ch.get('kind') == 'voice' else '#'} {ch.get('name', '?')}")
             self.topic.set_label(ch.get("topic", ""))
         else:
-            self.title.set_label(next((n for r, n, _i, _u in self._rooms if r == room), room))
+            self.title.set_label(CP.display(room[2:]) if room.startswith("p:") else
+                                 next((n for r, n, _i, _u in self._rooms if r == room), room))
             self.topic.set_label("")
 
         def work():
@@ -802,7 +830,8 @@ class ChatPage(Gtk.Box):
             col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2,
                           halign=Gtk.Align.END if mine else Gtk.Align.START)
             av, colr = CL.avatar(m.get("from_id")) if m.get("from_id") else ("", "")
-            who = Gtk.Label(label=("" if mine else f"{av + ' ' if av else ''}{m.get('from')}  ·  ") +
+            who = Gtk.Label(label=("" if mine else f"{av + ' ' if av else ''}"
+                                   f"{CP.display(m.get('pc') or m.get('from'), m.get('from_id')) if (CP.nick(m.get('pc') or m.get('from'), m.get('from_id'))) else m.get('from')}  ·  ") +
                             time.strftime("%d.%m %H:%M", time.localtime(m.get("t", 0))) +
                             ("  (redigert)" if m.get("edited") else "") + ("  📌" if m.get("pinned") else "") +
                             ("  🔒" if m.get("e2e") else ""),
