@@ -1,0 +1,281 @@
+"""Det Android-appen trenger fra PC-en for den nye chatten og AI-siden (samme funksjoner som på PC-en):
+lenkeforhåndsvisning, GIF-søk, reaksjoner/rediger/slett/fest/lest, vedlegg og talemeldinger, Ikke forstyrr, status,
+og AI-en: samtaler, spør (svaret følges live), «Godta / Avbryt».
+
+remote.py sender /api/x/<navn> hit (X) og handlinger fra /api/action (action).
+"""
+import base64
+import os
+import threading
+import time
+import uuid
+
+JOBS = {}                                  # AI-forespørsler fra mobilen: id -> {text, tools, done, cid, tool}
+
+
+# --------------------------------------------------------------------------
+# Chat
+# --------------------------------------------------------------------------
+def chatroom(arg):
+    import chat
+    import chatlink
+    import chatlook
+    import chatsrv
+    room = arg("room", "alle")
+    rd = chat._load(chat.FILE, {}).get("_read", {})
+    mark = max([rd.get(a, 0) for a in chat.aliases(room)] or [0])          # «Nye meldinger»-streken
+    msgs = chat.messages(room, 120)
+    chat.mark_read(room)
+    if room.startswith("p:") and any(m.get("t", 0) > mark and m.get("pc") != chat._me() for m in msgs):
+        threading.Thread(target=lambda: _safe(lambda: chat.send_event(room, {"type": "read", "t": time.time()})),
+                         daemon=True).start()
+    me = chatsrv.me()
+    out = {"room": room, "messages": msgs, "me_id": me["id"], "me": me["name"], "me_pc": chat._me(),
+           "newmark": mark, "seen_by": chat.seen_by(room) if room.startswith("p:") else 0,
+           "dnd": chatlook.dnd_text(), "playing": [], "colors": {}}
+    names = {m.get("from") for m in msgs if m.get("from")}
+    out["colors"] = {n: chatlook.color_for(n) for n in names}
+    if room.startswith("s:"):
+        srv = chatsrv.get(room.split(":")[1]) or {}
+        for mid, mem in (srv.get("members") or {}).items():
+            p = chatlink._PRES.get(mid)
+            if p and p.get("game") and time.time() - p.get("t", 0) < 600:
+                out["playing"].append({"name": mem.get("name"), "game": p["game"], "since": p.get("since") or 0})
+        out["avatars"] = {mid: chatlink.avatar(mid)[0] for mid in (srv.get("members") or {})}
+        out["presence"] = {mid: chatlink.presence(mid)[0] for mid in (srv.get("members") or {})}
+    return out
+
+
+def linkprev(arg):
+    import chatextra
+    pv = chatextra.link_preview(arg("url", ""))
+    if not pv:
+        return {"ok": False}
+    img = None
+    if pv.get("image") and os.path.getsize(pv["image"]) < 1_500_000:
+        with open(pv["image"], "rb") as f:
+            img = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+    return {"ok": True, "title": pv.get("title"), "desc": pv.get("desc"), "site": pv.get("site"), "image": img}
+
+
+def gifs(arg):
+    import chatextra
+    if not chatextra.gif_key():
+        return {"key": False, "results": []}
+    return {"key": True, "results": [{"tiny": t, "big": b} for t, b in chatextra.gif_search(arg("q", "hei"), 20)]}
+
+
+def chat_send(win, a, notify):
+    """Fra mobilen: vanlig melding, /-kommando eller @ai."""
+    import chat
+    room, text = str(a.get("room") or "alle"), str(a.get("text") or "").strip()
+    extra = {"reply": str(a["reply"])[:80]} if a.get("reply") else None
+    if text.lower().startswith("@ai "):
+        chat.send(room, text, a.get("_dev") or None, notify, extra=extra)
+
+        def run():
+            import aiextra
+            aiextra.chat_ai(room, text[4:].strip(), notify)
+        threading.Thread(target=lambda: _safe(run), daemon=True).start()
+        return "✨ AI-en svarer om litt …"
+    if text.startswith("/") and not text.startswith("//"):
+        import chatextra
+        txt, special = chatextra.command(room, text, win, notify)
+        if special and special[0] == "gif":
+            return "GIF:" + (special[1] or "")
+        return txt or "OK"
+    return chat.send(room, text, a.get("_dev") or None, notify, extra=extra)
+
+
+def chat_event(win, a):
+    """Reaksjon / rediger / slett / fest fra mobilen."""
+    import chat
+    room, kind, mid = str(a.get("room") or ""), str(a.get("type") or ""), str(a.get("mid") or "")
+    if kind not in ("react", "edit", "delete", "pin"):
+        raise ValueError("ukjent hendelse")
+    kw = {k: a[k] for k in ("emoji", "text", "on") if k in a}
+    if room.startswith("s:"):
+        import chatsrv
+        _s, sid, ch = room.split(":", 2)
+        srv = chatsrv.get(sid)
+        me = chatsrv.me()
+        ev = {"type": kind, "mid": mid, "ch": ch, "from": me["name"], "from_id": me["id"], **kw}
+        chat.apply_event(room, ev, (srv or {}).get("members", {}).get(me["id"]))
+        threading.Thread(target=lambda: _safe(lambda: chatsrv.broadcast(srv, ev)), daemon=True).start()
+    else:
+        threading.Thread(target=lambda: _safe(lambda: chat.send_event(room, {"type": kind, "mid": mid, **kw})),
+                         daemon=True).start()
+    return "OK"
+
+
+def chat_upload(body, notify):
+    """Bilde, fil eller talemelding fra mobilen (base64)."""
+    import chatplus
+    room = str(body.get("room") or "")
+    name = os.path.basename(str(body.get("name") or "fil"))[:80]
+    data = base64.b64decode(body.get("data") or "")
+    if not data or len(data) > chatplus.MAX_FILE:
+        raise ValueError("filen er tom eller for stor (maks 8 MB)")
+    if body.get("kind") == "audio":
+        path = os.path.join(chatplus.FILES, f"tale-mobil-{int(time.time())}" + (os.path.splitext(name)[1] or ".webm"))
+        os.makedirs(chatplus.FILES, exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(data)
+        import chatextra
+        wv = [max(0, min(9, int(x))) for x in (body.get("wave") or [])][:64] or None
+        return chatextra.send_voice(room, path, wv or [3] * 30, float(body.get("secs") or 0), notify)
+    d = os.path.join(chatplus.FILES, "fra-mobil")
+    os.makedirs(d, exist_ok=True)
+    path = os.path.join(d, name)
+    with open(path, "wb") as f:
+        f.write(data)
+    return chatplus.send_file(room, path, str(body.get("text") or ""), notify)
+
+
+def chat_gif(a, notify):
+    import chatextra
+    import chatplus
+    url = str(a.get("url") or "")
+    if not url.startswith("https://") or "tenor" not in url:
+        raise ValueError("ugyldig GIF")
+    return chatplus.send_file(str(a.get("room") or ""), chatextra.gif_file(url), "", notify)
+
+
+# --------------------------------------------------------------------------
+# AI fra mobilen (kjører på PC-en: samme assistenter, samme samtaler)
+# --------------------------------------------------------------------------
+def ai_state(arg):
+    import ai
+    import ai_store as S
+    c = ai.cfg()
+    tools = [{"id": t, "name": v["name"], "color": ai.TOOL_COLOR.get(t, "#888"),
+              "ok": bool(ai.binary(t)) and ai.logged_in(t)} for t, v in ai.TOOLS.items()]
+    return {"tool": c.get("tool"), "tools": tools, "persona": c.get("persona", "standard"),
+            "personas": [{"id": k, "name": v[0], "emoji": v[1]} for k, v in ai.PERSONAS.items()],
+            "confirm": c.get("confirm", True), "quota": ai.quota(), "convs": S.conversations()[:60],
+            "suggestions": _suggestions()}
+
+
+def _suggestions():
+    try:
+        import ai_ui
+        return [{"emoji": e, "text": t} for e, t in ai_ui.SUGGESTIONS]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def ai_conv(arg):
+    import ai_store as S
+    c = S.load(arg("id", "")) or {}
+    return {"id": c.get("id"), "title": c.get("title"), "tool": c.get("tool"),
+            "messages": [{k: m.get(k) for k in ("role", "text", "t", "tool", "tools")} for m in c.get("messages", [])]}
+
+
+def ai_ask(a):
+    import ai
+    import ai_store as S
+    tool = a.get("tool") if a.get("tool") in ai.TOOLS else ai.cfg().get("tool", "claude")
+    c = S.load(a.get("cid") or "") or S.new(tool)
+    q = str(a.get("text") or "").strip()
+    if not q:
+        raise ValueError("skriv et spørsmål")
+    imgs = []
+    for i, b64 in enumerate(a.get("images") or []):        # bilder fra mobilen
+        d = os.path.join(S.workdir(), "bilder")
+        os.makedirs(d, exist_ok=True)
+        p = os.path.join(d, time.strftime(f"mobil-%Y%m%d-%H%M%S-{i}.jpg"))
+        with open(p, "wb") as f:
+            f.write(base64.b64decode(str(b64).split(",")[-1]))
+        imgs.append(p)
+    c["tool"] = tool
+    c["messages"].append({"role": "user", "text": q, "t": time.time()})
+    S.save(c)
+    jid = uuid.uuid4().hex[:10]
+    job = {"text": "", "tools": [], "done": False, "cid": c["id"], "tool": tool, "t": time.time()}
+    JOBS[jid] = job
+
+    def done(code):
+        txt = job["text"].strip() or ("✗ Fikk ikke svar – er AI-en pålogget på PC-en?" if code else "")
+        c["messages"].append({"role": "assistant", "text": txt, "t": time.time(), "tool": tool,
+                              **({"tools": job["tools"]} if job["tools"] else {})})
+        S.save(c)
+        job["done"] = True
+    cfg = ai.cfg()
+    job["proc"] = ai.ask(tool, q, S.workdir(), cfg["allow_edit"], on_text=lambda t: job.__setitem__(
+        "text", job["text"] + t), on_done=done, history=S.history_text(c), control=cfg.get("control", True),
+        images=imgs, on_event=lambda k, d: k == "tool" and job["tools"].append(str(d)),
+        persona=a.get("persona"))
+    for k in [k for k, v in JOBS.items() if time.time() - v["t"] > 3600]:
+        JOBS.pop(k, None)
+    return {"job": jid, "cid": c["id"]}
+
+
+def ai_job(arg):
+    import ai_bridge
+    j = JOBS.get(arg("id", ""))
+    if not j:
+        return {"done": True, "text": "", "tools": [], "gone": True}
+    return {"done": j["done"], "text": j["text"], "tools": j["tools"], "cid": j["cid"], "tool": j["tool"],
+            "confirm": ai_bridge.pending()}
+
+
+def ai_stop(a):
+    j = JOBS.get(str(a.get("job") or ""))
+    if j and j.get("proc"):
+        try:
+            j["proc"].terminate()
+        except OSError:
+            pass
+    return "Stoppet"
+
+
+def _safe(fn):
+    try:
+        return fn()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+X = {"chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+
+
+def action(win, kind, a, notify):
+    """Handlingene fra mobilen. Returnerer (ok, tekst) eller None hvis ukjent."""
+    if kind == "chatev":
+        return True, chat_event(win, a)
+    if kind == "chatgif":
+        return True, chat_gif(a, notify)
+    if kind == "chatdnd":
+        import chatlook
+        chatlook.set_dnd(float(a.get("hours", 0)))
+        return True, chatlook.dnd_text() or "Ikke forstyrr er av"
+    if kind == "chatstatus":
+        import chatplus
+        chatplus.set_(status=str(a.get("text") or "")[:80])
+        return True, "Status lagret"
+    if kind == "tenorkey":
+        import chatplus
+        chatplus.set_(tenor_key=str(a.get("key") or "").strip()[:100])
+        return True, "Lagret"
+    if kind == "aiask":
+        import json
+        return True, json.dumps(ai_ask(a))
+    if kind == "aistop":
+        return True, ai_stop(a)
+    if kind == "aiconfirm":
+        import ai_bridge
+        return True, "OK" if ai_bridge.answer_pending(str(a.get("id") or ""), bool(a.get("ok"))) else "Allerede svart"
+    if kind == "aiset":
+        import ai
+        kw = {k: a[k] for k in ("tool", "persona", "confirm") if k in a}
+        ai.set_(**kw)
+        return True, "Lagret"
+    if kind == "aipin":
+        import ai_store as S
+        S.set_meta(str(a.get("id") or ""), **{k: a[k] for k in ("pinned", "emoji") if k in a})
+        return True, "OK"
+    if kind == "aidelete":
+        import ai_store as S
+        S.delete(str(a.get("id") or ""))
+        return True, "Slettet"
+    return None

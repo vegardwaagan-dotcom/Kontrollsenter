@@ -14,6 +14,7 @@
 """
 import json
 import os
+import time
 import sys
 import re
 import threading
@@ -126,13 +127,22 @@ def _confirm(win, what):
     except Exception:  # noqa: BLE001
         pass
     import threading
+    import uuid
     from gi.repository import GLib
     done = threading.Event()
     res = {"ok": False}
+    qid = uuid.uuid4().hex[:8]
+    ui = {"dlg": None}
 
     def answer(ok):
+        if done.is_set():
+            return
         res["ok"] = bool(ok)
         done.set()
+        _PENDING.pop(qid, None)
+        if ui["dlg"] is not None:                          # svart fra mobilen: lukk vinduet på PC-en
+            GLib.idle_add(lambda: (ui["dlg"].close(), False)[1])
+    _PENDING[qid] = {"id": qid, "what": what, "answer": answer, "t": time.time()}
 
     def ask():
         if _ASK["fn"]:
@@ -147,11 +157,28 @@ def _confirm(win, what):
         dlg.add_response("ja", "Godta")
         dlg.set_response_appearance("ja", Adw.ResponseAppearance.SUGGESTED)
         dlg.connect("response", lambda _d, r_: answer(r_ == "ja"))
+        ui["dlg"] = dlg
         dlg.present(win)
         return False
     GLib.idle_add(ask)
     done.wait(80)
+    _PENDING.pop(qid, None)
     return res["ok"]
+
+
+_PENDING = {}                            # «Godta / Avbryt» som venter – mobilen kan også svare
+
+
+def pending():
+    return [{"id": p["id"], "what": p["what"]} for p in _PENDING.values() if time.time() - p["t"] < 85]
+
+
+def answer_pending(qid, ok):
+    p = _PENDING.get(qid)
+    if not p:
+        return False
+    p["answer"](ok)
+    return True
 
 
 def _need_ok(win, what):

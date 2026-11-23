@@ -85,6 +85,42 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setSupportZoom(false);
         web.addJavascriptInterface(new Bridge(), "KS");
+        // bilder/filer i chatten og AI-en (<input type=file>) og mikrofonen til talemeldinger – bare egne sider
+        web.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, android.webkit.ValueCallback<Uri[]> cb, FileChooserParams p) {
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                try {
+                    startActivityForResult(p.createIntent(), REQ_FILE);
+                } catch (Exception e) {
+                    fileCb = null;
+                    return false;
+                }
+                return true;
+            }
+
+            @Override
+            public void onPermissionRequest(android.webkit.PermissionRequest req) {
+                runOnUiThread(() -> {
+                    Uri o = req.getOrigin();
+                    boolean mic = false;
+                    for (String r : req.getResources()) {
+                        if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) mic = true;
+                    }
+                    if (!mic || o == null || !isLocal(o.getHost())) {
+                        req.deny();
+                        return;
+                    }
+                    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        req.grant(new String[]{android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                    } else {
+                        pendingMic = req;
+                        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+                    }
+                });
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
@@ -381,7 +417,111 @@ public class MainActivity extends Activity {
     }
 
     /** Tilgjengelig for sidene som window.KS – bare ufarlige funksjoner. */
+    static final int REQ_FILE = 7, REQ_MIC = 8, REQ_LISTEN = 9;
+    android.webkit.ValueCallback<Uri[]> fileCb;
+    android.webkit.PermissionRequest pendingMic;
+    android.speech.tts.TextToSpeech tts;
+    android.speech.SpeechRecognizer recognizer;
+    String listenLang = "nb-NO";
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == REQ_FILE && fileCb != null) {
+            fileCb.onReceiveValue(android.webkit.WebChromeClient.FileChooserParams.parseResult(res, data));
+            fileCb = null;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        boolean ok = res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED;
+        if (req == REQ_MIC && pendingMic != null) {
+            if (ok) pendingMic.grant(new String[]{android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            else pendingMic.deny();
+            pendingMic = null;
+        } else if (req == REQ_LISTEN) {
+            if (ok) startListen(); else heard("", "Appen fikk ikke bruke mikrofonen");
+        }
+    }
+
+    void heard(String text, String err) {
+        String js = "window.ksHeard && window.ksHeard(" + JSONObject.quote(text == null ? "" : text) + ","
+                + (err == null ? "null" : JSONObject.quote(err)) + ")";
+        runOnUiThread(() -> web.evaluateJavascript(js, null));
+    }
+
+    void startListen() {
+        if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+            heard("", "Talegjenkjenning finnes ikke på denne telefonen");
+            return;
+        }
+        if (recognizer != null) recognizer.destroy();
+        recognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(this);
+        recognizer.setRecognitionListener(new android.speech.RecognitionListener() {
+            public void onReadyForSpeech(Bundle b) { }
+            public void onBeginningOfSpeech() { }
+            public void onRmsChanged(float v) { }
+            public void onBufferReceived(byte[] b) { }
+            public void onEndOfSpeech() { }
+            public void onError(int e) {
+                heard("", e == android.speech.SpeechRecognizer.ERROR_NO_MATCH
+                        || e == android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT ? "Hørte ingenting – prøv igjen"
+                        : "Talegjenkjenningen feilet (" + e + ")");
+            }
+            public void onResults(Bundle b) {
+                java.util.ArrayList<String> r = b.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                heard(r != null && !r.isEmpty() ? r.get(0) : "", r == null || r.isEmpty() ? "Hørte ingenting" : null);
+            }
+            public void onPartialResults(Bundle b) { }
+            public void onEvent(int t, Bundle b) { }
+        });
+        Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        i.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        i.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, listenLang);
+        recognizer.startListening(i);
+    }
+
     class Bridge {
+        /** Snakk inn tekst (AI og chat): telefonens egen talegjenkjenning. Svaret kommer i window.ksHeard(tekst). */
+        @JavascriptInterface
+        public void listen(String lang) {
+            if (lang != null && lang.matches("[a-zA-Z-]{2,10}")) listenLang = lang;
+            runOnUiThread(() -> {
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_LISTEN);
+                } else {
+                    startListen();
+                }
+            });
+        }
+
+        /** Les opp et svar (telefonens talesyntese, norsk om den finnes). */
+        @JavascriptInterface
+        public void speak(String text) {
+            if (text == null) return;
+            String t = text.length() > 3500 ? text.substring(0, 3500) : text;
+            runOnUiThread(() -> {
+                if (tts == null) {
+                    tts = new android.speech.tts.TextToSpeech(MainActivity.this, st -> {
+                        if (st == android.speech.tts.TextToSpeech.SUCCESS) {
+                            tts.setLanguage(new java.util.Locale("nb", "NO"));
+                            tts.speak(t, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "ks");
+                        }
+                    });
+                } else {
+                    tts.speak(t, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "ks");
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stopSpeak() {
+            runOnUiThread(() -> { if (tts != null) tts.stop(); });
+        }
+
         /** «Bruk mobilen som webkamera»: kamera-skjermen sender bildene til PC-en siden er hentet fra. */
         @JavascriptInterface
         public void camera(String token) {

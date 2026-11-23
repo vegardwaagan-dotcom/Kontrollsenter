@@ -13,6 +13,23 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.19", "Ny chat og AI i mobilappen", [
+        ("Android-appen – chat", [
+            "Samme utseende som på PC-en: grupperte bobler, profilbilder med farge og pålogget-prikk, datoskiller, "
+            "store emojier, «NYE MELDINGER»-strek og hopp-knapp, myk inn-animasjon",
+            "Hold inne en melding: reaksjoner, svar, kopier, fest, rediger, slett og «Spør AI om denne»",
+            "📎 Send bilder og filer · 🎙️ talemeldinger med lydbølge · lenkekort med bilde · GIF-søk",
+            "/-kommandoer og @ai virker også fra mobilen · ✓✓ Lest · festet melding og «spiller nå» øverst",
+            "⋯: bakgrunn per samtale, kompakt visning, Ikke forstyrr og status",
+        ]),
+        ("Android-appen – AI", [
+            "Ny AI-fane: samme AI-er og samtaler som på PC-en (Claude, Codex, Gemini, lokal)",
+            "Svaret kommer ord for ord, med «hva AI-en gjorde», kodeblokker med Kopier og forslagskort",
+            "«Godta / Avbryt» rett på mobilen når AI-en vil endre noe på PC-en",
+            "🎙️ Snakk inn spørsmålet (telefonens talegjenkjenning) og 🔊 få svaret lest opp",
+            "Legg ved bilder, velg personlighet, fest og slett samtaler",
+        ]),
+    ]),
     ("0.99.18", "Ny AI", [
         ("Utseende", [
             "Svaret kommer ord for ord mens AI-en skriver",

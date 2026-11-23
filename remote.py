@@ -617,9 +617,13 @@ def _feature_action(win, kind, a):
     if kind == "chat":
         F.send_to(a.get("to"), a.get("_dev") or "Mobil", a.get("text"), _notify(win), urgent=bool(a.get("urgent")))
         return True, "Sendt"
-    if kind == "chat2":                                  # chat for alle: hjemme, alle, privat
-        import chat
-        return True, chat.send(str(a.get("room") or "alle"), a.get("text"), a.get("_dev") or None, _notify(win))
+    if kind == "chat2":                                  # chat for alle: hjemme, alle, privat (+ /-kommandoer og @ai)
+        import app_api
+        return True, app_api.chat_send(win, a, _notify(win))
+    if kind in ("chatev", "chatgif", "chatdnd", "chatstatus", "tenorkey", "aiask", "aistop", "aiconfirm", "aiset",
+                "aipin", "aidelete"):
+        import app_api
+        return app_api.action(win, kind, a, _notify(win))
     if kind == "chatvote":                               # stemme i en avstemning fra mobilen
         import chat
         import chatplus
@@ -1356,7 +1360,8 @@ def _handler(remote):
                     return self._send(400, {"error": str(e)})
                 return self._send(200, {"ok": True})
             try:
-                body = self._body(12 * 1024 * 1024 if p in ("/api/chat/inbox", "/api/friend/chat", "/api/house/chat")
+                body = self._body(12 * 1024 * 1024 if p in ("/api/chat/inbox", "/api/friend/chat", "/api/house/chat",
+                                                            "/api/chatup")
                                   else 1024 * 1024
                                   if p in ("/api/house/setup", "/api/chat/join") else MAX_BODY)
                 if p == "/api/local/ai":                     # «ks» – AI-assistentene styrer Kontrollsenter (bare herfra)
@@ -1431,6 +1436,9 @@ def _handler(remote):
                         return self._send(400, {"error": str(e)})
                 if not self._auth():
                     return
+                if p == "/api/chatup":                     # bilde / fil / talemelding fra mobilen
+                    import app_api
+                    return self._send(200, {"ok": True, "msg": str(app_api.chat_upload(body, _notify(remote.win)))})
                 if p == "/api/action":
                     role = (getattr(self, "device", None) or {}).get("role", "full")
                     if role == "begrenset" and body.get("a") not in LIMITED_OK:
@@ -1598,6 +1606,9 @@ def _handler(remote):
             if what == "phonecam":                         # mobilkameraet: støtter PC-en det, og sender det nå?
                 import phonecam
                 return self._send(200, {"ok": True, "live": phonecam.live(), "status": phonecam.status()})
+            import app_api
+            if what in app_api.X:                          # ny chat og AI-siden i appen
+                return self._send(200, app_api.X[what](arg))
             if what == "chatrooms":
                 import chat
                 return self._send(200, {"rooms": [{"id": r, "name": n, "icon": i, "unread": u}
