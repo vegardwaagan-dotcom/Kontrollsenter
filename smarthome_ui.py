@@ -59,6 +59,11 @@ class SmartHomePage(Gtk.ScrolledWindow):
         self.status.add_css_class("dim-label")
         outer.append(self.status)
         outer.append(self._auto_card())
+        try:
+            import homeplus_ui
+            outer.append(homeplus_ui.guest_box())
+        except Exception:  # noqa: BLE001
+            pass
         self.body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
         self.body.set_margin_top(6)
         outer.append(self.body)

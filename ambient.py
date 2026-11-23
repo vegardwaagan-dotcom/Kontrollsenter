@@ -61,6 +61,11 @@ class Ambient(Gtk.Window):
         self.c_temp = self._card(grid, "PC-EN")
         self.c_today = self._card(grid, "I DAG")
         inner.append(grid)
+        grid2 = Gtk.Box(spacing=22, homogeneous=True)          # TV-modus: strømpris, ukeplanen og toppliste
+        self.c_price = self._card(grid2, "STRØMPRIS")
+        self.c_plan = self._card(grid2, "UKEPLANEN I DAG")
+        self.c_top = self._card(grid2, "MEST SPILT DENNE UKA")
+        inner.append(grid2)
         fam = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         fam.add_css_class("ks-amb-card")
         k = Gtk.Label(label=i18n.tr("HJEMME"), xalign=0)
@@ -133,6 +138,13 @@ class Ambient(Gtk.Window):
                 out["f"] = features.family().get("pcs", [])
             except Exception:  # noqa: BLE001
                 out["f"] = []
+            for k, fn in (("p", lambda: __import__("infotiles").price()),
+                          ("plan", lambda: __import__("familyplus").load_plan()["items"]),
+                          ("top", lambda: __import__("gamesplus").house_toplist())):
+                try:
+                    out[k] = fn()
+                except Exception:  # noqa: BLE001
+                    pass
             GLib.idle_add(self._show, out)
         threading.Thread(target=work, daemon=True).start()
         return True
@@ -151,6 +163,20 @@ class Ambient(Gtk.Window):
         if t:
             v.set_label(f"{t['play_s'] // 3600} t {t['play_s'] % 3600 // 60} min")
             s.set_label(" · ".join(x for x in ((t["top"] or ""), f"{t['kr']:.2f} kr strøm" if t.get("kr") else "") if x))
+        p = d.get("p") or {}
+        v, s = self.c_price
+        v.set_label(f"{p['now']:.2f} kr" if p.get("now") is not None else "–")
+        s.set_label((i18n.tr("billigst kl. ") + p["cheapest_at"]) if p.get("cheapest_at") else "")
+        lt = time.localtime()
+        items = [x for x in (d.get("plan") or []) if x.get("day") == lt.tm_wday]
+        v, s = self.c_plan
+        nxt = [x for x in items if x.get("at", "") >= time.strftime("%H:%M")]
+        v.set_label(f"{nxt[0]['at']} {nxt[0]['text']}" if nxt else (i18n.tr("Ingenting mer i dag") if items else "–"))
+        s.set_label(" · ".join(f"{x['at']} {x['text']}" for x in nxt[1:3]))
+        top = d.get("top") or []
+        v, s = self.c_top
+        v.set_label(top[0][0] if top else "–")
+        s.set_label(" · ".join(f"{g} {h:.0f} t" for g, h, _p in top[:3]) if top else "")
         while (ch := self.fam.get_first_child()) is not None:
             self.fam.remove(ch)
         now = time.time()

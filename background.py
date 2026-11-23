@@ -208,6 +208,11 @@ class Background:
             except Exception:  # noqa: BLE001
                 pass
         threading.Thread(target=_crash_check, daemon=True, name="krasjsjekk").start()
+        try:                                               # rommet følger PC-en (dvale → lys av)
+            import homeplus
+            homeplus.watch_sleep(win)
+        except Exception:  # noqa: BLE001
+            pass
         try:                                               # smart oppstart (om slått på)
             import gamesplus
             gamesplus.at_start(win)
@@ -558,6 +563,10 @@ class Background:
                     self.flush_held()
             except Exception:  # noqa: BLE001
                 pass
+        if time.time() - getattr(self, "_hp_t", 0) > 60:                         # hjem+: nettverksvakt, fartstest
+            self._hp_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("homeplus").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_gp_t", 0) > 30:                         # spill+: ping-vakt, spillkveld …
             self._gp_t = time.time()
             import threading as _th

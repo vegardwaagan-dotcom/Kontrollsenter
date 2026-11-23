@@ -1160,3 +1160,20 @@ setTab = function (t) {                              // eslint-disable-line no-g
 dashWire();
 if (tab === "system") loadNotify();
 if (tab === "kontroll") loadScenes();
+
+// ---------- si eller skriv en kommando (26) ----------
+{ const q = $("#quick"); if (q) {
+  const box = h(`<div class="card cmd-card"><h2>🎤 Si eller skriv hva PC-en skal gjøre</h2>
+    <div class="row"><input id="cmd-in" type="text" enterkeyhint="go" placeholder="f.eks. «demp lyden», «lagre klipp», «hvor varm er PC-en»"
+      autocomplete="off"><button class="btn primary" id="cmd-go">Kjør</button></div>
+    <p class="muted small">Trykk på mikrofonen på tastaturet for å snakke.</p><p id="cmd-out" class="small"></p></div>`);
+  q.parentElement.insertBefore(box, q.nextSibling);
+  const go = async () => {
+    const t = $("#cmd-in").value.trim(); if (!t) return;
+    $("#cmd-out").textContent = "…";
+    try { const r = await act({ a: "panel", do: "cmdtext", text: t }, true); $("#cmd-out").textContent = (r && (r.msg || r.message)) || "OK"; $("#cmd-in").value = ""; }
+    catch (e) { $("#cmd-out").textContent = "✗ " + (e.message || e); }
+  };
+  $("#cmd-go").onclick = go;
+  $("#cmd-in").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+} }

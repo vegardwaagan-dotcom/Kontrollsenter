@@ -13,6 +13,21 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.80.0", "Hjem+: trygghet, mobil og stue", [
+        ("Nytt", [
+            "🥽 «Klar for VR» med ett trykk (VR-siden, søket og mobilappen): Max Ytelse, sjekk og fiks, start alt",
+            "Vedlikehold → Trygghet og nett: be om hjelp (med RustDesk-ID), passordsjekk mot kjente lekkasjer "
+            "(passordet forlater aldri PC-en), kamera og mikrofon i bruk, svindel-skjold (Quad9), nettverksvakt og "
+            "fartstest (også hver natt)",
+            "PC-er: «Send oppsettet mitt» (vifter, RGB, overlay, lyd, utseende …) til en annen PC, og «Ny PC? Hent "
+            "oppsett» som også installerer de samme programmene",
+            "Smart Hjem: QR-kode for gjeste-Wi-Fi, og lysene slukkes når PC-en går i dvale (Linux)",
+            "Stue-modus viser også strømprisen, ukeplanen i dag og husets mest spilte",
+            "Mobilappen: si eller skriv hva PC-en skal gjøre («demp lyden», «hvor varm er PC-en», «hvem spiller»)",
+            "Familien-widgeten viser temperaturen på PC-ene",
+        ]),
+        ("Rettet", ["Varsel om ny enhet på hjemmenettet var aldri slått på – nå virker nettverksvakten"]),
+    ]),
     ("0.79.0", "Spill+", [
         ("Nytt (Spill → Spillene → Spill+)", [
             "Spillkveld: hvem hjemme og blant vennene spiller hva – «Spill sammen» starter spillet, inviterer og blir "

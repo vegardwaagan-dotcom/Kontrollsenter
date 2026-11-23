@@ -335,6 +335,10 @@ class HomePage(Gtk.ScrolledWindow):
                                               "system og fastvare"))
         self.all_btn.connect("clicked", self._update_everything)
         ur.append(self.all_btn)
+        npc = Gtk.Button(label=i18n.tr("Ny PC? Hent oppsett"))
+        npc.add_css_class("pill")
+        npc.connect("clicked", lambda *_: __import__("homeplus_ui").new_pc_dialog(self.get_root()))
+        ur.append(npc)
         self.upd_msg = Gtk.Label(xalign=0, wrap=True, hexpand=True)
         self.upd_msg.add_css_class("ks-sub")
         ur.append(self.upd_msg)
@@ -564,6 +568,11 @@ class HomePage(Gtk.ScrolledWindow):
                     wk.connect("clicked", do_wake)
                     pb.append(wk)
                 if on:
+                    so = Gtk.Button(label="📤 " + i18n.tr("Send oppsettet mitt"))
+                    so.add_css_class("pill")
+                    so.connect("clicked", lambda _b, pp=p: __import__("homeplus_ui").send_setup_dialog(
+                        self.get_root(), pp))
+                    pb.append(so)
                     sl = Gtk.Button(label="😴 " + i18n.tr("Sov"))
                     sl.add_css_class("pill")
 

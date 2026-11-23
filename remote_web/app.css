@@ -884,3 +884,5 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .cat-bar .picker b { font-size: 16px; }
 .cat-prev, .cat-next { width: 40px; height: 40px; border-radius: 12px; font-size: 22px; background: var(--card2); flex: none; }
 .pn-wheel { gap: 8px; align-items: center; } .pn-wheel .picker { flex: 1; }
+
+.cmd-card .row { display: flex; gap: 8px; } .cmd-card input { flex: 1; min-width: 0; }

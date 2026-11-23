@@ -63,7 +63,7 @@ def _family_bg():
             for p in homepcs.fetch() or []:
                 on = time.time() - (p.get("time") or 0) < 900 and not p.get("off")
                 pcs.append({"name": p.get("name"), "on": on, "game": p.get("game") if on else None,
-                            "me": p.get("name") == me})
+                            "me": p.get("name") == me, "t": p.get("cpu_t") if on else None})
             _FAM.update(t=time.time(), pcs=pcs)
         except Exception:  # noqa: BLE001
             pass

@@ -22,6 +22,7 @@ public class FamilyWidget extends KsWidget {
             boolean on = p.optBoolean("on");
             String game = p.optString("game", "");
             String what = !on ? "av" : (!game.isEmpty() && !"null".equals(game) ? "🎮 " + game : "på");
+            if (on && !p.isNull("t")) what += "  ·  " + Math.round(p.optDouble("t")) + "°";
             v.setTextViewText(ROWS[n], (on ? "🟢  " : "⚫  ") + p.optString("name") + (p.optBoolean("me") ? " (denne)" : "") + "   " + what);
             v.setViewVisibility(ROWS[n], View.VISIBLE);
             n++;

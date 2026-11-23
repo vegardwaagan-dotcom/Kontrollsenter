@@ -72,6 +72,25 @@ class VrPage(Gtk.ScrolledWindow):
             box.append(updates_ui.AppStrip("vr"))
         except Exception:  # noqa: BLE001
             pass
+        ready = Gtk.Button(label="🥽 " + _t("Klar for VR – alt med ett trykk"), halign=Gtk.Align.START)
+        ready.add_css_class("pill")
+        ready.add_css_class("suggested-action")
+        ready.set_tooltip_text(_t("Max Ytelse, sjekk og fiks (brannmur, Wi-Fi …) og start SteamVR og strømmingen"))
+
+        def _ready(b):
+            b.set_sensitive(False)
+            b.set_label("🥽 " + _t("Gjør klart …"))
+
+            def work():
+                import homeplus
+                try:
+                    msg = homeplus.vr_ready(self.get_root())
+                except Exception as e:  # noqa: BLE001
+                    msg = f"✗ {e}"
+                GLib.idle_add(lambda: (b.set_label(msg[:80]), b.set_sensitive(True), False)[2])
+            threading.Thread(target=work, daemon=True).start()
+        ready.connect("clicked", _ready)
+        box.append(ready)
 
         # ---- hodesettet ----
         c, i = card("Hodesettet", "Ser om Questen er koblet til med kabel eller er på Wi-Fi – og om den strømmer nå.")

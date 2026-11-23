@@ -1799,6 +1799,16 @@ class ToolsPage(TabbedPage, _Cards):
         self.tab("gjenoppretting", "Gjenoppretting")
         self._try(W._restore_card, self, card) if win else self._try(self._restore_card)
         self._try(self._nasbackup_card)
+        self.tab("trygghet", "Trygghet og nett")
+        try:
+            import homeplus_ui
+            c, i = card("Trygghet og nett", "Be om hjelp, passordsjekk, kamera og mikrofon, svindel-skjold, "
+                                            "nettverksvakt og fartstest.")
+            i.append(homeplus_ui.safety_box(lambda: self.get_root()))
+            self.box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("trygghet-kort")
         self.tab("feilsoking", "Feilsøking")
         self._try(self._slow_card)
         self._syscheck_card()

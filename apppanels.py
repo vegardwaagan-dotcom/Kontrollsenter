@@ -35,6 +35,46 @@ def p_commands(win):
                        "tap": {"a": "panel", "do": "cmd", "label": a[0]}} for a in acts]}
 
 
+def _norm(t):
+    import re
+    import unicodedata
+    t = unicodedata.normalize("NFKC", t.lower())
+    return re.sub(r"[^a-z0-9æøå ]+", " ", t).split()
+
+
+def run_text(win, text):
+    """26: «demp lyden», «lagre klipp», «hvor varm er PC-en», «hvem spiller» … → svar eller handling."""
+    w = _norm(text)
+    s = " ".join(w)
+    if any(x in s for x in ("hvor varm", "temperatur", "hvor het")):
+        nv = win.nvidia.data if getattr(win, "nvidia", None) and win.nvidia.available else {}
+        ct, gt = getattr(win, "_cpu_t", None), (nv or {}).get("temp")
+        return f"Prosessoren er {ct:.0f} °C" + (f" og skjermkortet {gt:.0f} °C" if gt is not None else "") if ct \
+            else "Vet ikke temperaturen akkurat nå"
+    if "hvem" in w and any(x in s for x in ("spiller", "på")):
+        import familyfun
+        on = [x for x in familyfun.who_is_on() if x["online"]]
+        return "; ".join(f"{x['name']}: {x['game'] or 'på'}" for x in on) or "Ingen PC-er er på"
+    if any(x in s for x in ("hvorfor treg", "hvorfor hakker", "er pc en treg")):
+        import assistant
+        return assistant.text_summary(assistant.why_slow(win))
+    if "oppdater alt" in s:
+        import updates
+        return "Oppdater alt er startet" if updates.update_all(win) else "Pågår allerede"
+    import search
+    best, score = None, 0
+    for label, words, fn in search.actions(win):
+        keys = set(_norm(label + " " + words))
+        hit = sum(1 for x in w if x in keys or any(k.startswith(x) and len(x) >= 4 for k in keys))
+        if hit > score:
+            best, score = (label, fn), hit
+    if not best or score == 0:
+        return "Skjønte ikke – prøv f.eks. «demp lyden», «lagre klipp» eller «hvor varm er PC-en»"
+    from gi.repository import GLib
+    GLib.idle_add(lambda: (best[1](), False)[1])
+    return f"{best[0]} ✓"
+
+
 def run_cmd(win, label):
     import search
     for text, _w, fn in search.actions(win):
@@ -384,6 +424,8 @@ def run(win, a):
         return ""
     if do == "cmd":
         return run_cmd(win, str(a.get("label", "")))
+    if do == "cmdtext":
+        return run_text(win, str(a.get("text", ""))[:200])
     if do == "launch":
         import launcher
         g = _game(str(a.get("id", "")))

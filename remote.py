@@ -1059,9 +1059,9 @@ def _handler(remote):
             if self.command != "HEAD":
                 self.wfile.write(data)
 
-        def _body(self):
+        def _body(self, limit=MAX_BODY):
             n = int(self.headers.get("Content-Length") or 0)
-            if n > MAX_BODY:
+            if n > limit:
                 raise ValueError("for stor forespørsel")
             raw = self.rfile.read(n) if n else b"{}"
             v = json.loads(raw or b"{}")
@@ -1273,7 +1273,7 @@ def _handler(remote):
                 return self._send(403, {"error": "bare hjemmenettet"})
             p = urlparse(self.path).path
             try:
-                body = self._body()
+                body = self._body(1024 * 1024 if p == "/api/house/setup" else MAX_BODY)
                 if p == "/api/local/action":                 # knapper i KDE-widgetene
                     if not self._local():
                         return self._send(403, {"error": "bare fra denne PC-en"})
@@ -1287,6 +1287,16 @@ def _handler(remote):
                         return self._send(403, {"error": msg})
                     import savegames
                     return self._send(200, {"token": token, "name": savegames.pc_name()})
+                if p == "/api/house/setup":                 # 14: oppsett fra en annen PC i huset (husnøkkel)
+                    import watch as W
+                    if not W.check_house_key((parse_qs(urlparse(self.path).query).get("fk") or [""])[0]):
+                        return self._send(403, {"error": "feil husnøkkel"})
+                    import homeplus
+                    try:
+                        return self._send(200, {"ok": True, "msg": homeplus.receive(body.get("files") or {},
+                                                                                   remote.win)})
+                    except ValueError as e:
+                        return self._send(400, {"error": str(e)})
                 if not self._auth():
                     return
                 if p == "/api/action":

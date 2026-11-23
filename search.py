@@ -3,6 +3,7 @@
 Indeksen lages fra det som faktisk vises i appen: alle sider og faner gjennomgås (sider som ikke er åpnet ennå
 bygges i bakgrunnen første gang du søker), og kortenes titler, beskrivelser og radene i dem tas med.
 """
+import threading
 import unicodedata
 
 import gi
@@ -186,6 +187,10 @@ def actions(win):
     def a(text, words, fn):
         out.append((text, words, fn))
     st = getattr(win, "bg", None)
+    a("🥽 Klar for VR", "vr quest steamvr alvr wivrn klar",
+      lambda: threading.Thread(target=lambda: __import__("homeplus").vr_ready(win), daemon=True).start())
+    a("🆘 Be om hjelp", "hjelp help fjernhjelp rustdesk",
+      lambda: threading.Thread(target=lambda: __import__("homeplus").ask_help(), daemon=True).start())
     a("🩺 Hvorfor er PC-en treg?", "treg hakker sakte assistent hjelp lag",
       lambda: __import__("assistant_ui").open_dialog(win))
     a("🎮 Spillmodus på/av", "spillmodus gamemode ytelse", lambda: _act(win, None, "Spillmodus"))
