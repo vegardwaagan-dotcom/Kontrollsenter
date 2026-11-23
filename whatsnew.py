@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.94.0", "Overlayet kan flyttes, låses og gjøres gjennomsiktig", [
+        ("Webkamera-overlay i spill", [
+            "Synlighet fra 0 til 100 %",
+            "Lås: når den er låst, går museklikk rett gjennom til spillet",
+            "Lås opp (Ctrl+Shift+O inne i spillet, eller i appen): dra overlayet dit du vil, endre størrelse med "
+            "musehjulet eller −/+, og trykk 🔒 for å låse – plassering og størrelse huskes",
+            "I appen: av/på, lås, hvem som vises, hjørne, bredde (120–1200 px), synlighet og «Tilbakestill plassering»",
+            "Mobilkameraet kan vises i overlayet også uten talekanal",
+            "Windows: overlayet ligger øverst over spill i vindu/«uten ramme», med klikk-gjennom og samme valg",
+        ]),
+    ]),
     ("0.93.0", "Webkamera-overlay i spill", [
         ("Overlay i spill", [
             "🖼️ i talelinjen (og under Lyd og video): vis webkameraene i et hjørne over spillet",

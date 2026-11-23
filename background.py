@@ -198,6 +198,12 @@ class Background:
                 except Exception:  # noqa: BLE001
                     pass
         threading.Thread(target=_warm, daemon=True, name="varm-opp").start()
+        try:                                               # webkamera-overlay i spill + hurtigtasten (hvis på)
+            import chatvc
+            if chatvc.ov_cfg()["on"]:
+                GLib.timeout_add_seconds(8, lambda: (chatvc.ov_sync(), False)[1])
+        except Exception:  # noqa: BLE001
+            pass
 
         def _crash_check():                                # stoppet PC-en uten å avslutte sist?
             try:

@@ -421,8 +421,10 @@ def _ssrc_owner(ssrc):
 # Webkamera-overlay i spill (webcam_overlay.py: eget lite program i overlay-laget over spillet)
 # --------------------------------------------------------------------------
 OV_CFG = os.path.expanduser("~/.config/systemmonitor/chat-overlay.json")
-OV_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "ks-vc-overlay")
-OV_DEFAULT = {"on": False, "show": "both", "corner": "top-right", "size": "middels", "opacity": 100}
+import tempfile as _tf
+OV_DIR = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or _tf.gettempdir(), "ks-vc-overlay")
+OV_DEFAULT = {"on": False, "show": "both", "corner": "top-right", "size": "middels", "width": 300, "x": 28, "y": 28,
+              "opacity": 100, "locked": True, "key": "Ctrl+Shift+O"}
 _OV = {"proc": None, "last": {}, "seq": 0, "t": 0}
 
 
@@ -444,17 +446,15 @@ def ov_set(**kw):
 
 
 def ov_supported():
-    """«layer-shell» (over fullskjermspill), «vindu» (alltid øverst – X11) eller None (Windows)."""
+    """«layer-shell» (over fullskjermspill), «vindu» (alltid øverst – X11 og Windows) eller None."""
     if IS_WIN:
-        return None
-    if "sup" not in _OV:
-        try:
-            out = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                               "webcam_overlay.py"), "--sjekk"],
-                                 capture_output=True, text=True, timeout=10).stdout.strip()
-            _OV["sup"] = out or None
-        except (OSError, subprocess.SubprocessError):
-            _OV["sup"] = None
+        return "vindu"
+    if "sup" not in _OV:                                   # rask sjekk – ikke start et eget program i hovedtråden
+        import glob as _g
+        has_ls = any(_g.glob(d + "/GtkLayerShell-0.1.typelib") for d in
+                     ("/usr/lib64/girepository-1.0", "/usr/lib/girepository-1.0",
+                      "/usr/lib/x86_64-linux-gnu/girepository-1.0"))
+        _OV["sup"] = "layer-shell" if has_ls and os.environ.get("WAYLAND_DISPLAY") else "vindu"
     return _OV["sup"]
 
 
@@ -463,18 +463,81 @@ def ov_running():
     return p is not None and p.poll() is None
 
 
+def ov_toggle_lock():
+    """Hurtigtasten (Ctrl+Shift+O): lås opp for å flytte/endre størrelse – eller lås igjen (klikk går gjennom)."""
+    c = ov_cfg()
+    if not c["on"]:
+        return ov_set(on=True, locked=False)
+    return ov_set(locked=not c["locked"])
+
+
+def _ov_hotkey(on):
+    """Global hurtigtast mens spillet har fokus (KDE: KGlobalAccel, Windows: RegisterHotKey)."""
+    h = _OV.get("hotkey")
+    if on and h is None:
+        try:
+            import clips
+            _OV["hotkey"] = clips.Hotkey(lambda: ov_toggle_lock(), ov_cfg()["key"],
+                                         ("webkamera-overlay", "Webkamera-overlay: lås / flytt"), 0x4B59)
+        except Exception as e:  # noqa: BLE001
+            _OV["hotkey_err"] = str(e)
+    elif h is not None and on and h.spec != ov_cfg()["key"]:
+        try:
+            h.set_key(ov_cfg()["key"])
+        except (ValueError, Exception):  # noqa: BLE001
+            pass
+
+
+def _ov_phone():
+    """Mobilkameraet (Android-appen) i overlayet også når du ikke er i en talekanal – og på Windows."""
+    if _S["sid"] and cfg().get("camera") == "phone" and _S["cam"]:
+        return                                              # i kanalen: bildet kommer fra kamerakjeden
+    import phonecam
+    jpeg, rot = phonecam.latest()
+    if not jpeg or not phonecam.live():
+        return
+    now = time.time()
+    if now - _OV["last"].get("phone", 0) < 1 / 15:
+        return
+    _OV["last"]["phone"] = now
+    try:
+        with open(os.path.join(OV_DIR, "me.jpg.tmp"), "wb") as f:
+            f.write(jpeg)
+        os.replace(os.path.join(OV_DIR, "me.jpg.tmp"), os.path.join(OV_DIR, "me.jpg"))
+        if not _S["sid"] and now - _OV["t"] > 0.5:
+            _OV["t"] = now
+            with open(os.path.join(OV_DIR, "kilder.json.tmp"), "w") as f:
+                json.dump([{"key": "me", "me": True, "name": "Deg", "talking": False, "rot": rot}], f)
+            os.replace(os.path.join(OV_DIR, "kilder.json.tmp"), os.path.join(OV_DIR, "kilder.json"))
+    except OSError:
+        pass
+
+
 def ov_sync():
-    """Start overlay-programmet når det er slått på og du er i en talekanal – ellers stopp det."""
-    want = ov_cfg()["on"] and bool(_S["sid"]) and not IS_WIN
+    """Start overlay-programmet når det er slått på – det viser seg selv bare når det har bilder (talekanal eller
+    mobilkamera), eller når det er låst opp for flytting. Ellers stopp det."""
+    want = ov_cfg()["on"] and bool(ov_supported())
+    _ov_hotkey(want)
     if want and not ov_running():
         import shutil as _sh
         _sh.rmtree(OV_DIR, ignore_errors=True)
         os.makedirs(OV_DIR, exist_ok=True)
         try:
-            _OV["proc"] = subprocess.Popen([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                                         "webcam_overlay.py"),
+            import phonecam
+            if not _OV.get("phone_hook"):
+                phonecam.on_frame(lambda: _OV["proc"] is not None and _ov_phone())
+                _OV["phone_hook"] = True
+        except Exception:  # noqa: BLE001
+            pass
+        kw = {"creationflags": 0x08000000} if IS_WIN else {}
+        exe = sys.executable
+        if IS_WIN and exe.lower().endswith("python.exe"):    # ikke noe svart konsollvindu
+            exe = exe[:-10] + "pythonw.exe"
+        try:
+            _OV["proc"] = subprocess.Popen([exe, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                              "webcam_overlay.py"),
                                             "--forelder", str(os.getpid())],
-                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
         except OSError:
             _OV["proc"] = None
     elif not want and ov_running():

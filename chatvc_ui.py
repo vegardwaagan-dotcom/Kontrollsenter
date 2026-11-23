@@ -123,37 +123,70 @@ def overlay_controls(changed=None):
     c = VC.ov_cfg()
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     sup = VC.ov_supported()
-    top = Gtk.Box(spacing=12)
-    col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-    t = Gtk.Label(label=i18n.tr("Webkamera-overlay i spill"), xalign=0)
-    t.add_css_class("heading")
-    col.append(t)
-    sub = Gtk.Label(xalign=0, wrap=True, max_width_chars=36)
-    sub.add_css_class("dim-label")
-    sub.add_css_class("caption")
-    sub.set_label(i18n.tr("Ligger over spillet (også fullskjerm) – klikk går rett gjennom" if sup == "layer-shell" else
-                          "Ligger øverst over vinduer – spill i «uten ramme»-modus" if sup == "vindu" else
-                          "Virker foreløpig bare på Linux"))
-    col.append(sub)
-    top.append(col)
-    sw = Gtk.Switch(active=c["on"], valign=Gtk.Align.CENTER, sensitive=bool(sup))
+
+    def row(title, sub, widget):
+        r = Gtk.Box(spacing=12)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        t = Gtk.Label(label=i18n.tr(title), xalign=0)
+        col.append(t)
+        if sub:
+            d = Gtk.Label(label=i18n.tr(sub), xalign=0, wrap=True, max_width_chars=38)
+            d.add_css_class("dim-label")
+            d.add_css_class("caption")
+            col.append(d)
+        r.append(col)
+        widget.set_valign(Gtk.Align.CENTER)
+        r.append(widget)
+        box.append(r)
+        return t
+
+    sw = Gtk.Switch(active=c["on"], sensitive=bool(sup))
     sw.connect("notify::active", lambda w, _p: (VC.ov_set(on=w.get_active()), changed and changed()))
-    top.append(sw)
-    box.append(top)
+    row("Webkamera-overlay i spill",
+        "Ligger over spillet (også fullskjerm)" if sup == "layer-shell" else
+        "Ligger øverst – spill i vindu eller «uten ramme» (eksklusiv fullskjerm kan dekke det)" if sup == "vindu" else
+        "Virker ikke her", sw)
+    lock = Gtk.Switch(active=c["locked"])
+    lock.connect("notify::active", lambda w, _p: VC.ov_set(locked=w.get_active()))
+    row("Lås (klikk går gjennom til spillet)",
+        f"Lås opp for å dra den dit du vil og endre størrelse med musehjulet. {c['key']} gjør det samme inne i "
+        "spillet.", lock)
     box.append(Gtk.Label(label=i18n.tr("Vis"), xalign=0))
     _seg(box, [("me", "Bare meg"), ("peer", "Bare motparten"), ("both", "Begge")], c["show"],
          lambda k: VC.ov_set(show=k))
-    box.append(Gtk.Label(label=i18n.tr("Hjørne"), xalign=0))
+    box.append(Gtk.Label(label=i18n.tr("Festet til hjørne"), xalign=0))
     _seg(box, [("top-left", "↖"), ("top-right", "↗"), ("bottom-left", "↙"), ("bottom-right", "↘")], c["corner"],
-         lambda k: VC.ov_set(corner=k))
-    box.append(Gtk.Label(label=i18n.tr("Størrelse"), xalign=0))
-    _seg(box, [("liten", "Liten"), ("middels", "Middels"), ("stor", "Stor")], c["size"],
-         lambda k: VC.ov_set(size=k))
-    op = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 20, 100, 5)
+         lambda k: VC.ov_set(corner=k, x=28, y=28))
+    wl = Gtk.Label(label=i18n.tr("Størrelse (bredde per bilde)"), xalign=0)
+    box.append(wl)
+    width = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 120, 1200, 10)
+    width.set_value(c["width"])
+    width.set_format_value_func(lambda _s, v: f"{v:.0f} px")
+    width.connect("value-changed", lambda sc: VC.ov_set(width=int(sc.get_value())))
+    box.append(width)
+    box.append(Gtk.Label(label=i18n.tr("Synlighet (0 % = usynlig, 100 % = helt dekkende)"), xalign=0))
+    op = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
     op.set_value(c["opacity"])
-    op.set_format_value_func(lambda _s, v: f"{v:.0f} % synlig")
+    op.set_format_value_func(lambda _s, v: f"{v:.0f} %")
     op.connect("value-changed", lambda sc: VC.ov_set(opacity=int(sc.get_value())))
     box.append(op)
+    reset = Gtk.Button(label=i18n.tr("Tilbakestill plassering og størrelse"), halign=Gtk.Align.START)
+    reset.add_css_class("flat")
+    reset.connect("clicked", lambda *_: (VC.ov_set(x=28, y=28, width=300), width.set_value(300)))
+    box.append(reset)
+
+    def sync():                                             # endret fra spillet (hurtigtast, dra, musehjul)
+        if not box.get_mapped():
+            return box.get_root() is not None
+        cc = VC.ov_cfg()
+        if lock.get_active() != cc["locked"]:
+            lock.set_active(cc["locked"])
+        if sw.get_active() != cc["on"]:
+            sw.set_active(cc["on"])
+        if abs(width.get_value() - cc["width"]) >= 10:
+            width.set_value(cc["width"])
+        return True
+    GLib.timeout_add(700, sync)
     return box
 
 
