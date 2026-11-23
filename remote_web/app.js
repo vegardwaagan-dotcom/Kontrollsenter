@@ -420,6 +420,17 @@ async function checkAppUpdate(force) {
   } catch (e) { if (force) $("#upd-msg").textContent = "Kunne ikke sjekke: " + e.message; }
 }
 $("#upd-check").onclick = () => { $("#upd-msg").textContent = "Sjekker NAS-en …"; checkAppUpdate(true); };
+if (KS && KS.githubLatest) {                 // appen: hent nyeste versjon rett fra GitHub
+  $("#upd-gh").hidden = false;
+  $("#upd-gh").onclick = async () => {
+    $("#upd-msg").textContent = "Sjekker GitHub …";
+    await new Promise((ok) => setTimeout(ok, 30));
+    let r = {}; try { r = JSON.parse(KS.githubLatest()); } catch (e) { r = { error: e.message }; }
+    if (r.error) { $("#upd-msg").textContent = "GitHub: " + r.error; return; }
+    if (r.code > appCode()) { $("#upd-msg").textContent = `Laster ned ${r.version} fra GitHub …`; KS.update(r.url); }
+    else $("#upd-msg").textContent = `Appen er oppdatert ✓ (nyeste på GitHub: ${r.version})`;
+  };
+}
 setInterval(() => checkAppUpdate(false), 30 * 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAppUpdate(false); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { poll(); pollExtra(); } });

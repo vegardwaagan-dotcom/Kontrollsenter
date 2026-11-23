@@ -205,6 +205,7 @@ button:not(:disabled):active svg { stroke:#fff; }
     <span class="logo"><svg viewBox="0 0 24 24"><path d="M5 18a8 8 0 1 1 14 0"/><path d="M12 14l4-5"/></svg></span>
     <div class="ht"><h1 id="title">Kontrollsenter</h1><div class="dim small sum" id="sum">Velg PC-en du vil styre</div></div>
     <button id="upd-check" class="ic-btn" title="Se etter oppdatering" aria-label="Se etter oppdatering"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+    <button id="upd-gh" class="ic-btn" title="Oppdater fra GitHub" aria-label="Oppdater fra GitHub" hidden><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></button>
   </header>
   <div id="upd" class="upd" hidden><span id="upd-t"></span><button id="upd-go">Oppdater</button></div>
 
@@ -658,6 +659,23 @@ async function checkUpdate(force, online) {
   return null;
 }
 $("#upd-check").onclick = async () => { $("#status").textContent = "Sjekker NAS-en via PC-ene …"; await checkUpdate(true); };
+// «Oppdater fra GitHub»: virker uten PC og hjemmenett – henter nyeste app rett fra GitHub
+if (KS && KS.githubLatest) {
+  $("#upd-gh").hidden = false;
+  $("#upd-gh").onclick = async () => {
+    $("#status").textContent = "Sjekker GitHub …";
+    await new Promise((ok) => setTimeout(ok, 30));
+    let r = {}; try { r = JSON.parse(KS.githubLatest()); } catch (e) { r = { error: e.message }; }
+    if (r.error) { $("#status").textContent = "GitHub: " + r.error; return; }
+    const have = KS.versionCode ? Number(KS.versionCode()) : 0;
+    if (r.code > have) {
+      $("#upd").hidden = false;
+      $("#upd-t").textContent = `Kontrollsenter ${r.version} på GitHub (du har ${KS.version ? KS.version() : "eldre"})`;
+      $("#upd-go").onclick = () => KS.update(r.url);
+      $("#status").textContent = `Versjon ${r.version} er klar – trykk «Oppdater»`;
+    } else $("#status").textContent = `Appen er oppdatert ✓ (nyeste på GitHub: ${r.version})`;
+  };
+}
 async function scan() {
   const sn = KS ? KS.subnet() : "";
   const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)\/(\d+)$/.exec(sn);

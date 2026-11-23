@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.13", "Oppdater appen fra GitHub", [
+        ("Android-appen", [
+            "Ny knapp «Oppdater fra GitHub» (pil ned øverst på startsiden, og under Mer → Appen)",
+            "Henter nyeste app rett fra GitHub og installerer den – virker også når du ikke er hjemme og ingen PC er på",
+            "Bare app-filer fra din egen GitHub-side godtas",
+        ]),
+    ]),
     ("0.99.12", "Glass og Aero på alle temaer", [
         ("Utseende", [
             "«Gjennomsiktig vindu (Aero)» virker nå med alle temaene – vinduet blir glass i temaets egne farger, "

@@ -213,9 +213,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** GitHub-siden der hver versjon legges ut med appen (samme som PC-ene oppdaterer fra). */
+    static final String GH_REPO = "vegardwaagan-dotcom/Kontrollsenter";
+
+    static boolean isGithub(Uri u) {
+        String h = u.getHost();
+        return "https".equals(u.getScheme()) && h != null
+                && (h.equals("github.com") || h.equals("api.github.com") || h.endsWith(".githubusercontent.com"));
+    }
+
     void installFrom(String url) {
         Uri u = Uri.parse(url);
-        if (!"http".equals(u.getScheme()) || !isLocal(u.getHost())) {
+        boolean gh = isGithub(u) && u.getPath() != null && u.getPath().startsWith("/" + GH_REPO + "/releases/download/")
+                && u.getPath().endsWith(".apk");
+        if (!gh && (!"http".equals(u.getScheme()) || !isLocal(u.getHost()))) {
             status("Ugyldig adresse");
             return;
         }
@@ -233,11 +244,16 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             HttpURLConnection con = null;
             try {
-                status("Laster ned oppdateringen …");
+                status(gh ? "Laster ned fra GitHub …" : "Laster ned oppdateringen …");
                 con = (HttpURLConnection) new URL(url).openConnection();
-                con.setConnectTimeout(5000);
+                con.setInstanceFollowRedirects(true);          // GitHub sender videre til nedlastingsserveren (https)
+                con.setRequestProperty("User-Agent", "Kontrollsenter-app");
+                con.setConnectTimeout(gh ? 15000 : 5000);
                 con.setReadTimeout(60000);
-                if (con.getResponseCode() != 200) throw new IOException("PC-en svarte " + con.getResponseCode());
+                if (con.getResponseCode() != 200) {
+                    throw new IOException((gh ? "GitHub" : "PC-en") + " svarte " + con.getResponseCode());
+                }
+                if (gh && !isGithub(Uri.parse(con.getURL().toString()))) throw new IOException("ukjent nedlastingsadresse");
                 PackageInstaller pi = getPackageManager().getPackageInstaller();
                 PackageInstaller.SessionParams sp =
                         new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
@@ -615,9 +631,48 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void update(String url) {
             Uri u = Uri.parse(url);
-            if (u.getPort() == 27100 && "/api/apk".equals(u.getPath())) {
+            if ((u.getPort() == 27100 && "/api/apk".equals(u.getPath())) || isGithub(u)) {
                 runOnUiThread(() -> installFrom(url));
             }
+        }
+
+        /** Nyeste app på GitHub: {"version","code","url"} eller {"error"}. Kjøres på JS-broens egen tråd. */
+        @JavascriptInterface
+        public String githubLatest() {
+            HttpURLConnection con = null;
+            JSONObject out = new JSONObject();
+            try {
+                con = (HttpURLConnection) new URL("https://api.github.com/repos/" + GH_REPO + "/releases/latest")
+                        .openConnection();
+                con.setRequestProperty("User-Agent", "Kontrollsenter-app");
+                con.setRequestProperty("Accept", "application/vnd.github+json");
+                con.setConnectTimeout(10000);
+                con.setReadTimeout(15000);
+                if (con.getResponseCode() != 200) throw new IOException("GitHub svarte " + con.getResponseCode());
+                StringBuilder sb = new StringBuilder();
+                try (InputStream in = con.getInputStream()) {
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = in.read(buf)) > 0) sb.append(new String(buf, 0, n, "UTF-8"));
+                }
+                JSONObject j = new JSONObject(sb.toString());
+                String ver = j.optString("tag_name", "").replaceFirst("^v", "");
+                String[] p = (ver + ".0.0").split("\\.");
+                long code = Long.parseLong(p[0]) * 10000 + Long.parseLong(p[1]) * 100 + Long.parseLong(p[2]);
+                JSONArray as = j.optJSONArray("assets");
+                String apk = null;
+                for (int i = 0; as != null && i < as.length(); i++) {
+                    String n = as.getJSONObject(i).optString("name");
+                    if (n.endsWith(".apk")) apk = as.getJSONObject(i).optString("browser_download_url");
+                }
+                if (apk == null) throw new IOException("ingen app i siste versjon på GitHub");
+                out.put("version", ver).put("code", code).put("url", apk);
+            } catch (Exception e) {
+                try { out.put("error", e.getMessage()); } catch (Exception ignored) { }
+            } finally {
+                if (con != null) con.disconnect();
+            }
+            return out.toString();
         }
 
         /** Nøkkelen fra paringen, lagret per PC (samme nøkkel hjemme og via Tailscale). */
