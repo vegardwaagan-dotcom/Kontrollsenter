@@ -356,7 +356,8 @@ class ChatPage(Gtk.Box):
         self._channels(select=True)
 
     # ------------------------------------------------------------------ kanaler
-    def _channels(self, select=False):
+    def _channels(self, select=False, force=False):
+        """force: bygg med en gang (et trykk i selve lista, f.eks. «Må oppdateres»)."""
         if self.view == "direct":
             self._vc_labels = {}
             self.head.set_label(i18n.tr("Direkte"))
@@ -379,8 +380,8 @@ class ChatPage(Gtk.Box):
                     return
                 groups, calls = res
                 sig = ("direct", tuple((g, tuple(rs)) for g, rs in groups), tuple(calls))
-                if self.view != "direct" or (not select and (sig == self._sig or
-                                                             time.monotonic() - self._last_press < 1.5)):
+                if self.view != "direct" or (not select and not force and (
+                        sig == self._sig or time.monotonic() - self._last_press < 1.5)):
                     return
                 self._sig = sig
                 self._rooms = [(rid, name, icon, unread) for _g, rs in groups for rid, name, icon, unread, _n in rs]
@@ -417,7 +418,7 @@ class ChatPage(Gtk.Box):
                         tb.set_tooltip_text(i18n.tr("PC-er med for gammel Kontrollsenter – oppdater dem for å chatte"))
                         tb.connect("clicked", lambda *_: (setattr(self, "_old_open", not getattr(self, "_old_open",
                                                                                                   False)),
-                                                          setattr(self, "_sig", None), self._channels()))
+                                                          self._channels(force=True)))
                         hr = Gtk.ListBoxRow(child=tb, selectable=False, activatable=False)
                         hr.add_css_class("ks-cat-row")
                         self.list.append(hr)
@@ -459,10 +460,10 @@ class ChatPage(Gtk.Box):
             layout.append((cat["id"], cat["name"], tuple(chans)))
         sig = (srv["id"], srv.get("v"), manage, tuple(layout), srv.get("name"), srv.get("icon"))
         # bygg bare om når noe faktisk er endret – og aldri rett etter et klikk (da forsvant klikket)
-        if not select and sig == self._sig:
+        if not select and not force and sig == self._sig:
             self._building = False
             return
-        if not select and time.monotonic() - self._last_press < 1.5:
+        if not select and not force and time.monotonic() - self._last_press < 1.5:
             self._building = False
             GLib.timeout_add(1600, lambda: (self._channels(), False)[1])
             return

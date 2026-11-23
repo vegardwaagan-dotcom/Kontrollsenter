@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.7", "«Må oppdateres» reagerer på trykk", [
+        ("Rettet", [
+            "Undermenyen «Må oppdateres» i chatten åpnes og lukkes med en gang du trykker (trykket ble ignorert av "
+            "sperren som hindrer at lista bygges om midt i et klikk)",
+        ]),
+    ]),
     ("0.99.6", "Ryddigere chatliste", [
         ("Chat", [
             "PC-er med for gammel Kontrollsenter ligger under «▸ Må oppdateres» nederst i direktemeldingene – "
