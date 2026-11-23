@@ -413,11 +413,24 @@ def version():
     return read(os.path.join(APP_DIR, "VERSION"), "?")
 
 
+DEFAULT_SOURCE = "https://github.com/vegardwaagan-dotcom/Kontrollsenter.git"
+
+
 def update_source():
     try:
-        return json.loads(UPDATE_CFG.read_text()).get("url", "")
+        return json.loads(UPDATE_CFG.read_text()).get("url", "") or DEFAULT_SOURCE
     except (OSError, ValueError):
-        return ""
+        return DEFAULT_SOURCE
+
+
+def update_from_github():
+    """«Oppdater fra GitHub»: sjekk GitHub (ikke NAS-en) og oppdater hvis det finnes noe nyere."""
+    _SOURCE[0] = "git"
+    txt, new = _check_git()
+    if not new:
+        return txt, False
+    ok, msg = do_update()
+    return ("Oppdatert fra GitHub ✓ – start Kontrollsenter på nytt" if ok else f"Feil: {msg}"), ok
 
 
 def set_update_source(url):
@@ -1759,13 +1772,20 @@ class _Cards:
 
     def _app_card(self):
         c, i = card("Kontrollsenter", f"Versjon {version()} · {APP_DIR}")
-        row = Gtk.Box(spacing=6)
-        self.url = Gtk.Entry(placeholder_text="Git-adresse for oppdateringer (f.eks. https://github.com/navn/systemmonitor)",
-                             hexpand=True, text=update_source())
-        row.append(self.url)
-        chk = Gtk.Button(label="Se etter oppdatering")
+        row = Gtk.Box(spacing=8)
+        chk = Gtk.Button(label="Se etter oppdatering", tooltip_text="Sjekker hjemmenettet (NAS) først, så GitHub")
+        chk.add_css_class("pill")
         chk.connect("clicked", self._check_update)
         row.append(chk)
+        gh = Gtk.Button(label="Oppdater fra GitHub", tooltip_text="Hent nyeste versjon direkte fra GitHub")
+        gh.add_css_class("pill")
+        gh.connect("clicked", self._update_github)
+        row.append(gh)
+        adr = Gtk.Button(icon_name="emblem-system-symbolic", tooltip_text="GitHub-adresse …", valign=Gtk.Align.CENTER)
+        adr.add_css_class("flat")
+        adr.add_css_class("circular")
+        adr.connect("clicked", self._edit_source)
+        row.append(adr)
         i.append(row)
         self.upd_btn = Gtk.Button(label="Oppdater nå", halign=Gtk.Align.START, visible=False)
         self.upd_btn.add_css_class("suggested-action")
@@ -1792,8 +1812,40 @@ class _Cards:
         i.append(self.pub_status)
         self.box.append(c)
 
+    def _edit_source(self, *_):
+        """GitHub-adressen ligger bak tannhjulet – dukker opp i et lite vindu."""
+        dlg = Adw.AlertDialog(heading="GitHub-adresse",
+                              body="Hvor Kontrollsenter henter oppdateringer fra når PC-en ikke er på hjemmenettet.")
+        e = Gtk.Entry(text=update_source(), activates_default=True, width_chars=46)
+        dlg.set_extra_child(e)
+        dlg.add_response("cancel", "Avbryt")
+        dlg.add_response("reset", "Standard")
+        dlg.add_response("ok", "Lagre")
+        dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+        dlg.set_default_response("ok")
+
+        def resp(_d, rr):
+            if rr == "ok":
+                set_update_source(e.get_text().strip())
+            elif rr == "reset":
+                set_update_source(DEFAULT_SOURCE)
+            if rr in ("ok", "reset"):
+                self.upd_status.set_label(f"Oppdateringer fra {update_source()}")
+        dlg.connect("response", resp)
+        dlg.present(self.get_root())
+
+    def _update_github(self, *_):
+        self.upd_status.set_label("Henter fra GitHub …")
+
+        def done(res):
+            txt, ok = res
+            self.upd_status.set_label(txt)
+            self.upd_btn.set_visible(False)
+            self.restart_btn.set_visible(bool(ok))
+            return False
+        self._bg(update_from_github, done)
+
     def _check_update(self, *_):
-        set_update_source(self.url.get_text().strip())
         self.upd_status.set_label("Sjekker …")
 
         def done(res):

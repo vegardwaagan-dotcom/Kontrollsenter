@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.11", "Ryddigere oppdatering", [
+        ("Innstillinger → Oppdatering", [
+            "Feltet for GitHub-adressen er borte – adressen ligger bak tannhjulet ⚙ og dukker opp når du trykker",
+            "Ny knapp «Oppdater fra GitHub» henter nyeste versjon rett fra GitHub",
+            "«Se etter oppdatering» sjekker hjemmenettet (NAS) først, så GitHub",
+        ]),
+        ("GitHub", [
+            "Hver versjon får en nedlastingsside på GitHub med Android-appen og Windows-installasjonen",
+        ]),
+    ]),
     ("0.99.10", "Liquid Glass", [
         ("Utseende", [
             "Nytt tema «Liquid Glass»: hele vinduet er gjennomsiktig glass med lys kant og myk glans – du ser det "
