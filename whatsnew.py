@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.84.0", "Chat+: bilder, tale, avstemninger og mer", [
+        ("Nytt i serverkanalene", [
+            "📎 Bilder og filer (opptil 8 MB) rett i chatten – klipp deles som lenke og strømmes fra PC-en som har dem",
+            "🎙️ Talemeldinger: trykk for å ta opp, trykk igjen for å sende",
+            "📊 Avstemninger og 📅 avtaler med svar (Kommer / Kanskje / Nei – legges også i ukeplanen)",
+            "✓ sendt · ✓✓ levert · 👁 lest av, og «… skriver …»",
+            "😊 Emoji-velger, ⏰ påminnelser og 🕒 «send senere» («i morgen 07:00», «om 10 min», «lørdag 18»)",
+            "🎲 Terning og ✊ stein–saks–papir, 🎉 feiring ved «gg» og «gratulerer»",
+            "📝 Notater per samtale, 🌐 oversett, 💨 meldinger som forsvinner og 💾 eksport",
+            "🔍 Søk i all chat, og 👤 profil: navn, status, autosvar når du spiller, statistikk, minner og «mens du "
+            "var borte»",
+        ]),
+    ]),
     ("0.83.0", "Servere i chatten – som Discord", [
         ("Nytt (Chat)", [
             "Lag egne servere (➕) med kategorier og kanaler – venner blir med via invitasjonslenke (🔗), eller du "

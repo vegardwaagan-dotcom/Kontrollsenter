@@ -567,6 +567,10 @@ class Background:
                     self.flush_held()
             except Exception:  # noqa: BLE001
                 pass
+        if time.time() - getattr(self, "_chatp_t", 0) > 60:                      # chat+: påminnelser, planlagte …
+            self._chatp_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("chatplus").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_chatq_t", 0) > 60:                      # chat: send det som ligger i kø
             self._chatq_t = time.time()
             import threading as _th

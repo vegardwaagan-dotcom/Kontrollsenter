@@ -175,9 +175,17 @@ def send(room, text, frm=None, notify=None, extra=None):
             raise ValueError("fant ikke kanalen")
         msg = {"id": f"{chatsrv.me()['id']}-{time.time_ns()}", "t": time.time(), "from": frm, "pc": me,
                "from_id": chatsrv.me()["id"], "text": text, "room": room, **(extra or {})}
-        _store(room, msg)
-        _fire(room, msg)
+        local = dict(msg)
+        if local.get("attach", {}).get("data"):
+            local["attach"] = {k: v for k, v in local["attach"].items() if k != "data"}
+        _store(room, local)
+        _fire(room, local)
         ok, q = chatsrv.broadcast(srv, {"type": "msg", "ch": ch, **{k: v for k, v in msg.items() if k != "room"}})
+        try:
+            import chatplus
+            chatplus.delivered(msg["id"], ok)
+        except Exception:  # noqa: BLE001
+            pass
         return f"Sendt til {ok}" + (f" · {q} får den når de er på igjen" if q else "")
     msg = {"id": f"{me}-{time.time_ns()}", "t": time.time(), "from": frm, "pc": me, "text": text, "room": room}
     _store(room, msg)
@@ -347,6 +355,13 @@ def receive_home(payload, notify=None):
 
 def _alert(room, msg, notify):
     _fire(room, msg)
+    try:
+        import chatplus
+        import remote
+        chatplus.autoreply(room, msg, getattr(remote, "win", None))
+        chatplus.play_notify_sound(msg.get("from"))
+    except Exception:  # noqa: BLE001
+        pass
     try:
         import remote_extra
         remote_extra.event("chat", f"💬 {msg['from']}", msg["text"], "info")

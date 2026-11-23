@@ -1276,8 +1276,8 @@ def _handler(remote):
                 return self._send(403, {"error": "bare hjemmenettet"})
             p = urlparse(self.path).path
             try:
-                body = self._body(1024 * 1024 if p in ("/api/house/setup", "/api/chat/inbox", "/api/chat/join")
-                                  else MAX_BODY)
+                body = self._body(12 * 1024 * 1024 if p == "/api/chat/inbox" else 1024 * 1024
+                                  if p in ("/api/house/setup", "/api/chat/join") else MAX_BODY)
                 if p == "/api/local/action":                 # knapper i KDE-widgetene
                     if not self._local():
                         return self._send(403, {"error": "bare fra denne PC-en"})

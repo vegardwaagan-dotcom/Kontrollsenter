@@ -1,5 +1,6 @@
 """Chat-siden – som Discord: serverlist til venstre (Direkte + dine servere), kanaler i kategorier, meldinger og
 medlemmer. Lag server, bli med via lenke, inviter venner, administrer kanaler, roller og medlemmer."""
+import os
 import threading
 import time
 
@@ -7,10 +8,14 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 import chat as C  # noqa: E402
+import chatplus as CP  # noqa: E402
 import chatsrv as CS  # noqa: E402
+
+EMOJI = ("😀 😂 🤣 😊 😍 😎 🤔 😮 😢 😡 👍 👎 👏 🙌 🙏 💪 🔥 🎉 🥳 ❤️ 💯 ✅ ❌ ⭐ 🎮 🕹️ 🎯 🏆 ⚔️ 🛡️ "
+         "🐉 🍕 🍔 🍿 ☕ 🍺 🎧 🎤 📸 🎬 💻 🖥️ ⏰ 📅 🏠 🚀 👀 🤝 😴 🤖").split()
 import i18n  # noqa: E402
 
 _CSS = """
@@ -139,10 +144,29 @@ class ChatPage(Gtk.Box):
         self.reply_bar.append(self.reply_lab)
         self.reply_bar.append(_btn("✕", lambda *_: self._set_reply(None), flat=True))
         right.append(self.reply_bar)
-        row = Gtk.Box(spacing=8)
+        self.typing_lab = _dim("")
+        right.append(self.typing_lab)
+        row = Gtk.Box(spacing=6)
+        self.emoji_btn = Gtk.MenuButton(label="😊", tooltip_text=i18n.tr("Emoji"), valign=Gtk.Align.CENTER)
+        self.emoji_btn.add_css_class("flat")
+        self.emoji_btn.set_popover(self._emoji_pop())
+        row.append(self.emoji_btn)
+        self.attach_btn = _btn("📎", self._attach, flat=True)
+        self.attach_btn.set_tooltip_text(i18n.tr("Legg ved bilde, fil eller klipp"))
+        row.append(self.attach_btn)
+        self.mic_btn = _btn("🎙️", self._voice, flat=True)
+        self.mic_btn.set_tooltip_text(i18n.tr("Talemelding: trykk for å starte, trykk igjen for å sende"))
+        row.append(self.mic_btn)
         self.entry = Gtk.Entry(placeholder_text=i18n.tr("Skriv en melding …"), hexpand=True, max_length=2000)
         self.entry.connect("activate", self._send)
+        self.entry.connect("changed", lambda e: self.room.startswith("s:") and e.get_text() and
+                           threading.Thread(target=CP.typing, args=(self.room,), daemon=True).start())
         row.append(self.entry)
+        more = Gtk.MenuButton(label="⋯", tooltip_text=i18n.tr("Mer: avstemning, avtale, påminnelse …"),
+                              valign=Gtk.Align.CENTER)
+        more.add_css_class("flat")
+        more.set_popover(self._more_pop())
+        row.append(more)
         row.append(_btn("Send", self._send, True))
         right.append(row)
         self.status = _dim("")
@@ -155,7 +179,8 @@ class ChatPage(Gtk.Box):
         self.members_rev = Gtk.Revealer(child=self.members, transition_type=Gtk.RevealerTransitionType.SLIDE_LEFT)
         self.append(self.members_rev)
         self.reply_to = None
-        C.on_message(lambda room, _m: (room == self.room and self._load(), self._rail()))
+        C.on_message(lambda room, m: (room == self.room and (self._typing() if m.get("event") == "typing"
+                                                             else self._load()), m.get("event") or self._rail()))
         CS.on_change(lambda sid: (self._rail(), sid == self.view and self._channels()))
         self._rail()
         self._channels(select=True)
@@ -179,6 +204,8 @@ class ChatPage(Gtk.Box):
         self.rail.append(Gtk.Separator())
         add("➕", "Lag en server", self._create)
         add("🔗", "Bli med i en server (lim inn invitasjonslenke)", self._join)
+        add("🔍", "Søk i alle samtalene", self._search)
+        add("👤", "Profil, status og chat-innstillinger", self._profile)
         return False
 
     def _open(self, view):
@@ -301,6 +328,9 @@ class ChatPage(Gtk.Box):
         def work():
             m = C.messages(room, 150)
             C.mark_read(room)
+            if room.startswith("s:") and time.time() - getattr(self, "_rd", {}).get(room, 0) > 20:
+                self.__dict__.setdefault("_rd", {})[room] = time.time()
+                CP.mark_read(room)
             return m
         _bg(work, lambda msgs: self._show(room, msgs))
         return False
@@ -342,6 +372,8 @@ class ChatPage(Gtk.Box):
             t = Gtk.Label(label=text, wrap=True, xalign=0, selectable=True, max_width_chars=60)
             t.add_css_class("ks-chat-me" if mine else "ks-chat-other")
             col.append(t)
+            if not m.get("deleted"):
+                self._extras(col, room, m, mine)
             if "ks-server://" in text and not m.get("deleted"):
                 col.append(_btn("Bli med i serveren", lambda _b, x=text: self._do_join(x), True))
             if m.get("reactions"):
@@ -355,12 +387,315 @@ class ChatPage(Gtk.Box):
             if room.startswith("s:") and not m.get("deleted"):
                 self._menu_for(col, m, mine)
             self.msgs.append(col)
+        mine_last = [m for m in msgs if m.get("from_id") == me_id and not m.get("deleted")]
+        if room.startswith("s:") and mine_last:
+            rc = _dim(CP.receipt(room, mine_last[-1]))
+            rc.set_xalign(1)
+            self.msgs.append(rc)
+        if msgs and CP.is_celebration(msgs[-1].get("text")) and time.time() - msgs[-1].get("t", 0) < 30:
+            self._confetti()
         q = C.queued_count()
         self.status.set_label(i18n.tr("{n} meldinger venter på at mottakeren skal bli på igjen").replace(
             "{n}", str(q)) if q else "")
         GLib.timeout_add(60, lambda: (self.scroll.get_vadjustment().set_value(1e9), False)[1])
         if self.view != "direct":                       # oppdater «uleste» nå som kanalen er lest
             GLib.idle_add(lambda: (self._channels(), False)[1])
+
+    def _extras(self, col, room, m, mine):
+        """Vedlegg, avstemning, avtale og lenker under en melding."""
+        al = Gtk.Align.END if mine else Gtk.Align.START
+        att = m.get("attach")
+        if att:
+            path = CP.file_path(att)
+            if att.get("kind") == "image" and path:
+                pic = Gtk.Picture.new_for_filename(path)
+                pic.set_size_request(260, 180)
+                pic.set_content_fit(Gtk.ContentFit.CONTAIN)
+                pic.set_halign(al)
+                col.append(pic)
+            elif att.get("kind") == "audio":
+                col.append(_btn("▶ Spill av", lambda _b, p=path: CP.play(p), flat=True))
+            if path:
+                col.append(_btn(f"📂 {att.get('name')} ({att.get('size', 0) // 1024} KB)",
+                                lambda _b, p=path: self._open_path(p), flat=True))
+        for key in ("poll", "event"):
+            data = m.get(key)
+            if not data:
+                continue
+            votes = m.get("votes" if key == "poll" else "rsvp") or {}
+            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, halign=al)
+            for i, opt in enumerate(data.get("options", [])):
+                who = votes.get(str(i), [])
+                b = Gtk.Button(label=f"{opt}   {len(who)}" + (f"  ({', '.join(who[:3])})" if who else ""))
+                b.add_css_class("pill")
+                b.connect("clicked", lambda _b, mm=m, ii=i: (CP.vote(self.room, mm, ii), self._load()))
+                box.append(b)
+            col.append(box)
+        import re
+        for url in re.findall(r"https?://\S+", m.get("text", ""))[:2]:
+            if "/api/clipfile" in url:
+                col.append(_btn("🎬 Se klippet", lambda _b, u=url: self._open_url(u), True))
+            else:
+                col.append(_btn("🔗 " + url[:50], lambda _b, u=url: self._open_url(u), flat=True))
+
+    def _open_url(self, url):
+        from gi.repository import Gio
+        Gio.AppInfo.launch_default_for_uri(url, None)
+
+    def _open_path(self, path):
+        from gi.repository import Gio
+        Gio.AppInfo.launch_default_for_uri("file://" + path, None)
+
+    def _confetti(self):
+        if getattr(self, "_conf_t", 0) > time.time() - 10:
+            return
+        self._conf_t = time.time()
+        self.typing_lab.set_label("🎉 🎊 🥳 🎉 🎊 🥳 🎉 🎊 🥳")
+        GLib.timeout_add_seconds(4, lambda: (self.typing_lab.set_label(""), False)[1])
+
+    def _typing(self):
+        who = CP.who_typing(self.room)
+        self.typing_lab.set_label((", ".join(who) + " " + i18n.tr("skriver …")) if who else "")
+        if who:
+            GLib.timeout_add_seconds(5, lambda: (self._typing(), False)[1])
+
+    def _emoji_pop(self):
+        pop = Gtk.Popover()
+        grid = Gtk.FlowBox(max_children_per_line=10, selection_mode=Gtk.SelectionMode.NONE, margin_top=6,
+                           margin_bottom=6, margin_start=6, margin_end=6)
+        for e in EMOJI:
+            b = Gtk.Button(label=e)
+            b.add_css_class("flat")
+            b.connect("clicked", lambda _b, ee=e: (self.entry.set_text(self.entry.get_text() + ee),
+                                                   self.entry.set_position(-1)))
+            grid.append(b)
+        pop.set_child(grid)
+        return pop
+
+    def _need_server(self):
+        if not self.room.startswith("s:"):
+            self.status.set_label(i18n.tr("Dette virker i serverkanaler – lag en server med ➕"))
+            return False
+        return True
+
+    def _attach(self, *_):
+        if not self._need_server():
+            return
+        dlg = Gtk.FileDialog(title=i18n.tr("Legg ved"))
+        try:
+            import clips
+            d = clips.clip_dir()
+            if d and os.path.isdir(d):
+                dlg.set_initial_folder(Gio.File.new_for_path(d))
+        except Exception:  # noqa: BLE001
+            pass
+
+        def done(d, res):
+            try:
+                f = d.open_finish(res)
+            except GLib.Error:
+                return
+            path = f.get_path()
+            self.status.set_label(i18n.tr("Sender …"))
+            _bg(lambda: CP.send_file(self.room, path), lambda r: (self.status.set_label(
+                ("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
+        dlg.open(self.get_root(), None, done)
+
+    def _voice(self, *_):
+        if not self._need_server():
+            return
+        if CP._REC["p"] is None:
+            try:
+                CP.record_start()
+                self.mic_btn.set_label("⏺️")
+                self.status.set_label(i18n.tr("Tar opp … trykk 🎙️ igjen for å sende"))
+            except Exception as e:  # noqa: BLE001
+                self.status.set_label(f"✗ {e}")
+            return
+        self.mic_btn.set_label("🎙️")
+        path = CP.record_stop()
+        if not path:
+            self.status.set_label(i18n.tr("For kort opptak"))
+            return
+        _bg(lambda: CP.send_file(self.room, path), lambda r: (self.status.set_label(
+            ("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
+
+    def _more_pop(self):
+        pop = Gtk.Popover()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
+                      margin_end=6)
+        items = (("📊 Avstemning", self._poll), ("📅 Avtale med svar", self._event_inv),
+                 ("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
+                 ("🎲 Kast terning", lambda: self._call_room(lambda: CP.dice(self.room))),
+                 ("✊ Stein–saks–papir", self._rps), ("📝 Notater for samtalen", self._notes),
+                 ("🌐 Oversett siste melding", self._translate), ("💨 Meldinger forsvinner …", self._vanish),
+                 ("💾 Eksporter samtalen", self._export))
+        for label, fn in items:
+            b = Gtk.Button(label=i18n.tr(label))
+            b.add_css_class("flat")
+            b.get_child().set_xalign(0)
+            b.connect("clicked", lambda _b, f=fn: (pop.popdown(), f()))
+            box.append(b)
+        pop.set_child(box)
+        return pop
+
+    def _call_room(self, fn):
+        if not self._need_server():
+            return
+        _bg(fn, lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
+
+    def _poll(self):
+        if not self._need_server():
+            return
+        _ask(self.get_root(), "Avstemning", "Skriv valgene adskilt med komma.",
+             [("q", "Spørsmål, f.eks. Hva spiller vi i kveld?", ""), ("o", "CS2, Minecraft, WoW", "")],
+             lambda v: self._call_room(lambda: CP.send_poll(self.room, v["q"], v["o"].split(","))), "Send")
+
+    def _event_inv(self):
+        if not self._need_server():
+            return
+        _ask(self.get_root(), "Avtale", "Alle kan svare Kommer / Kanskje / Nei. Den legges også i ukeplanen.",
+             [("t", "Hva, f.eks. LAN", ""), ("w", "Når, f.eks. lørdag 18:00", "")],
+             lambda v: self._call_room(lambda: CP.send_event_invite(self.room, v["t"], v["w"])), "Send")
+
+    def _remind(self):
+        _ask(self.get_root(), "Påminnelse", "", [("t", "Hva", ""), ("w", "Når – «i morgen 17:00» / «om 10 min»", "")],
+             lambda v: _bg(lambda: CP.remind(self.room, v["t"], v["w"]),
+                           lambda r: self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r))),
+             "Lagre")
+
+    def _schedule(self):
+        _ask(self.get_root(), "Send senere", "", [("t", "Melding", self.entry.get_text()),
+                                                  ("w", "Når – «i morgen 07:00»", "")],
+             lambda v: _bg(lambda: CP.schedule(self.room, v["t"], v["w"]),
+                           lambda r: (self.entry.set_text(""), self.status.set_label(
+                               ("✗ " if isinstance(r, Exception) else "") + str(r)))), "Planlegg")
+
+    def _rps(self):
+        _ask(self.get_root(), "Stein–saks–papir", "Skriv stein, saks eller papir.", [("c", "stein / saks / papir", "")],
+             lambda v: self._call_room(lambda: CP.rps(self.room, v["c"])), "Spill")
+
+    def _notes(self):
+        dlg = Adw.Dialog(title=i18n.tr("Notater for samtalen"), content_width=480, content_height=420)
+        tv = Gtk.TextView(wrap_mode=Gtk.WrapMode.WORD_CHAR, left_margin=12, right_margin=12, top_margin=12)
+        tv.get_buffer().set_text(CP.notes(self.room))
+        room = self.room
+        dlg.connect("closed", lambda *_: CP.set_notes(room, tv.get_buffer().get_property("text")))
+        dlg.set_child(Gtk.ScrolledWindow(child=tv, vexpand=True))
+        dlg.present(self.get_root())
+
+    def _translate(self):
+        msgs = [m for m in C.messages(self.room, 20) if m.get("text")]
+        if msgs:
+            self._open_url(CP.translate_url(msgs[-1]["text"]))
+
+    def _vanish(self):
+        opts = [(0, "Av"), (86400, "Etter 24 timer"), (7 * 86400, "Etter en uke")]
+        dlg = Adw.AlertDialog(heading=i18n.tr("Meldinger forsvinner"), body=i18n.tr("Gjelder denne samtalen på denne "
+                                                                                      "PC-en. Festede meldinger blir."))
+        for sec, label in opts:
+            dlg.add_response(str(sec), i18n.tr(label))
+        dlg.connect("response", lambda _d, r: r in [str(x[0]) for x in opts] and CP.set_vanish(self.room, int(r)))
+        dlg.present(self.get_root())
+
+    def _export(self):
+        dlg = Gtk.FileDialog(title=i18n.tr("Eksporter samtalen"), initial_name="chat.txt")
+
+        def done(d, res):
+            try:
+                f = d.save_finish(res)
+            except GLib.Error:
+                return
+            n = CP.export(self.room, f.get_path())
+            self.status.set_label(f"✓ {n} meldinger lagret")
+        dlg.save(self.get_root(), None, done)
+
+    def _search(self):
+        dlg = Adw.Dialog(title=i18n.tr("Søk i chatten"), content_width=560, content_height=520)
+        v = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_top=12, margin_bottom=12, margin_start=12,
+                    margin_end=12)
+        e = Gtk.SearchEntry(placeholder_text=i18n.tr("Søk etter ord eller navn"))
+        v.append(e)
+        res = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        v.append(Gtk.ScrolledWindow(child=res, vexpand=True))
+
+        def go(*_):
+            while (c := res.get_first_child()) is not None:
+                res.remove(c)
+            for room, m in CP.search(e.get_text()):
+                b = Gtk.Button()
+                b.add_css_class("flat")
+                lab = Gtk.Label(xalign=0, wrap=True, label=f"{time.strftime('%d.%m %H:%M', time.localtime(m.get('t', 0)))}"
+                                f"  {m.get('from')}: {str(m.get('text', ''))[:120]}")
+                b.set_child(lab)
+                b.connect("clicked", lambda _b, rr=room: (dlg.close(), self._goto(rr)))
+                res.append(b)
+        e.connect("search-changed", go)
+        dlg.set_child(v)
+        dlg.present(self.get_root())
+
+    def _goto(self, room):
+        if room.startswith("s:"):
+            self.view = room.split(":")[1]
+            self.room = room
+            self._rail()
+            self._channels()
+            self._load()
+        else:
+            self.view, self.room = "direct", room
+            self._rail()
+            self._channels()
+            self._load()
+
+    def _profile(self):
+        c = CP.cfg()
+        dlg = Adw.Dialog(title=i18n.tr("Profil og chat"), content_width=520, content_height=600)
+        v = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin_top=16, margin_bottom=16, margin_start=16,
+                    margin_end=16)
+        name = Gtk.Entry(text=CS.me()["name"], placeholder_text=i18n.tr("Visningsnavn"))
+        status = Gtk.Entry(text=c["status"], placeholder_text=i18n.tr("Status, f.eks. «På skolen til 15»"))
+        ar = Gtk.Entry(text=c["autoreply_text"], placeholder_text=i18n.tr("Autosvar mens du spiller (tom = standard)"))
+        for lab, w in (("Navn i chatten", name), ("Status", status), ("Autosvar", ar)):
+            v.append(Gtk.Label(label=i18n.tr(lab), xalign=0, css_classes=["heading"]))
+            v.append(w)
+        sw_rows = []
+        for key, title in (("autoreply", "Svar automatisk når jeg spiller"), ("celebrate", "Feiring ved «gg», «gratulerer» og 🎉")):
+            r = Gtk.Box(spacing=8)
+            r.append(Gtk.Label(label=i18n.tr(title), xalign=0, hexpand=True))
+            s_ = Gtk.Switch(active=bool(c[key]), valign=Gtk.Align.CENTER)
+            r.append(s_)
+            v.append(r)
+            sw_rows.append((key, s_))
+        st = CP.stats()
+        v.append(Gtk.Label(label=i18n.tr("Statistikk"), xalign=0, css_classes=["heading"]))
+        v.append(_dim(f"{st['total']} meldinger · mest aktive: " + ", ".join(f"{n} ({k})" for n, k in st["top"][:3]) +
+                      ("  ·  mest brukte emoji: " + " ".join(e for e, _n in st["emoji"]) if st["emoji"] else "")))
+        mem = CP.memories()
+        if mem:
+            v.append(Gtk.Label(label=i18n.tr("Minner"), xalign=0, css_classes=["heading"]))
+            for label, _room, m in mem[:3]:
+                v.append(_dim(f"{label}: {m.get('from')}: «{str(m.get('text'))[:80]}»"))
+        summ = CP.summary()
+        if summ:
+            v.append(Gtk.Label(label=i18n.tr("Mens du var borte"), xalign=0, css_classes=["heading"]))
+            for line in summ[:6]:
+                v.append(_dim(line))
+
+        def save(*_):
+            me_f = CS.ME_FILE
+            try:
+                import json as _j
+                d = _j.load(open(me_f))
+                d["display"] = name.get_text().strip()[:40]
+                _j.dump(d, open(me_f, "w"))
+            except Exception:  # noqa: BLE001
+                pass
+            CP.set_(status=status.get_text().strip()[:80], autoreply_text=ar.get_text().strip()[:120],
+                    **{k: w.get_active() for k, w in sw_rows})
+            dlg.close()
+        v.append(_btn("Lagre", save, True))
+        dlg.set_child(Gtk.ScrolledWindow(child=v, vexpand=True))
+        dlg.present(self.get_root())
 
     def _menu_for(self, widget, m, mine):
         """Høyreklikk på en melding: svar, reaksjoner, rediger, slett, fest."""

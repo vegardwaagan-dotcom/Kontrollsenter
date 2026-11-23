@@ -500,8 +500,11 @@ def receive(payload, src_ip, notify=None):
         if not channel(srv, ch):
             return True                                    # kanalen er slettet
         import chat
-        msg = {k: payload.get(k) for k in ("id", "t", "from", "text", "reply", "attach", "kind") if payload.get(k)
-               is not None}
+        msg = {k: payload.get(k) for k in ("id", "t", "from", "text", "reply", "attach", "kind", "poll", "event")
+               if payload.get(k) is not None}
+        if msg.get("attach"):                              # vedlegg: lagre fila, behold bare beskrivelsen
+            import chatplus
+            msg["attach"] = chatplus.receive_attach(msg["attach"])
         msg["id"] = str(msg.get("id") or time.time_ns())[:80]
         msg["t"] = time.time()
         msg["from"] = str(msg.get("from") or sender["name"])[:40]
@@ -513,7 +516,18 @@ def receive(payload, src_ip, notify=None):
         if chat._store(room, msg):
             chat._alert(room, msg, notify if not muted(room) else None)
         return True
-    if t in ("react", "edit", "delete", "read", "typing", "pin"):
+    if t in ("read", "typing"):
+        import chatplus
+        chatplus.on_event(f"s:{sid}:{payload.get('ch')}", payload, sender)
+        if t == "typing":
+            import chat
+            chat._fire(f"s:{sid}:{payload.get('ch')}", {"event": "typing"})
+        return True
+    if t == "vote":
+        import chatplus
+        chatplus._apply_vote(f"s:{sid}:{payload.get('ch')}", payload, sender["name"])
+        return True
+    if t in ("react", "edit", "delete", "pin"):
         import chat
         chat.apply_event(f"s:{sid}:{payload.get('ch')}", payload, sender)
         return True
