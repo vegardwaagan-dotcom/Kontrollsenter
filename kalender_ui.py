@@ -26,7 +26,8 @@ REPEATS = [("", "Ikke gjenta"), ("weekly", "Hver uke"), ("days:14", "Hver 2. uke
 REMINDS = [(-1, "Ingen påminnelse"), (0, "Når det starter"), (15, "15 min før"), (30, "30 min før"),
            (60, "1 time før"), (1440, "Dagen før")]
 CSS = """
-.ks-cal-day { min-width: 50px; min-height: 54px; border-radius: 12px; padding: 2px; font-weight: 600; }
+.ks-cal-day { min-width: 50px; min-height: 54px; border-radius: 12px; padding: 4px 6px; font-weight: 600; }
+.ks-cal-cellitem { font-size: .72em; font-weight: 500; opacity: .9; }
 .ks-cal-day.out { opacity: .35; }
 .ks-cal-day.red { color: #ff4d4d; }
 .ks-cal-day.holiday { background: alpha(#ff4d4d, 0.16); }
@@ -115,6 +116,10 @@ class CalendarPage(Gtk.Box):
         self.search = Gtk.SearchEntry(placeholder_text=i18n.tr("Søk i kalenderen …"), width_chars=18)
         self.search.connect("activate", lambda e: self._do_search(e.get_text()))
         bar.append(self.search)
+        self.show_btn = Gtk.MenuButton(label="👁 " + i18n.tr("Vis"), tooltip_text=i18n.tr("Velg hva som vises i "
+                                                                                       "kalenderen (røde dager vises alltid)"))
+        self.show_btn.set_popover(self._show_popover())
+        bar.append(self.show_btn)
         pr = Gtk.Button(icon_name="document-print-symbolic", tooltip_text=i18n.tr("Skriv ut / lagre som PDF"))
         pr.connect("clicked", lambda *_: self._print())
         bar.append(pr)
@@ -134,14 +139,42 @@ class CalendarPage(Gtk.Box):
         self.connect("unmap", lambda *_: self.diary.lock())
         self._load()
 
+    def _show_popover(self):
+        pop = Gtk.Popover()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_top=8, margin_bottom=8, margin_start=8,
+                      margin_end=8)
+        h = Gtk.Label(label=i18n.tr("Vis i kalenderen"), xalign=0)
+        h.add_css_class("heading")
+        box.append(h)
+        box.append(_dim(i18n.tr("🔴 Røde dager vises alltid.")))
+        sh = K.cfg()["show"]
+        checks = {}
+
+        def changed(*_):
+            K.set_cfg(show={k: w.get_active() for k, w in checks.items()})
+            self._load()
+        for key, label in K.CATS:
+            cb = Gtk.CheckButton(label=i18n.tr(label), active=bool(sh.get(key, True)))
+            cb.connect("toggled", changed)
+            checks[key] = cb
+            box.append(cb)
+        row = Gtk.Box(spacing=6, margin_top=4)
+        for lbl, val in (("Alt", True), ("Bare røde dager", False)):
+            b = Gtk.Button(label=i18n.tr(lbl))
+            b.add_css_class("flat")
+            b.connect("clicked", lambda _b, v=val: [w.set_active(v) for w in checks.values()])
+            row.append(b)
+        box.append(row)
+        pop.set_child(box)
+        return pop
+
     # ================= månedsvisning
     def _month_view(self):
-        sc = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
-        flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=2, min_children_per_line=1,
-                           column_spacing=12, row_spacing=12, margin_top=12, margin_bottom=12, margin_start=12,
-                           margin_end=12, homogeneous=False)
-        sc.set_child(flow)
+        outer = Gtk.Box(spacing=12, margin_top=12, margin_bottom=12, margin_start=12, margin_end=12, vexpand=True)
         mc, mi = _card("Kalender")
+        mc.set_hexpand(True)
+        mc.set_vexpand(True)
+        mi.set_vexpand(True)
         self.mcard = mc
         nav = Gtk.Box(spacing=6)
         prev = Gtk.Button(icon_name="go-previous-symbolic", tooltip_text=i18n.tr("Forrige måned"))
@@ -174,12 +207,13 @@ class CalendarPage(Gtk.Box):
         add.connect("clicked", lambda *_: self._edit_event(None, self.sel))
         jump.append(add)
         mi.append(jump)
-        self.grid = Gtk.Grid(column_spacing=4, row_spacing=4, halign=Gtk.Align.CENTER, margin_top=6)
+        self.grid = Gtk.Grid(column_spacing=4, row_spacing=4, margin_top=6, hexpand=True, vexpand=True,
+                             row_homogeneous=False)
         mi.append(self.grid)
         self.mstats = _dim("")
         mi.append(self.mstats)
-        flow.append(mc)
-        side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        outer.append(mc)
+        side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin_end=4)
         dc, self.day_box = _card("Dagen")
         self.day_card = dc
         side.append(dc)
@@ -190,8 +224,12 @@ class CalendarPage(Gtk.Box):
         vc, self.vac_box = _card("Ferieplanlegger", "Få mest mulig fri med færrest feriedager rundt de røde dagene.")
         self.vac_card = vc
         side.append(vc)
-        flow.append(side)
-        return sc
+        vp = Gtk.Viewport(child=side, scroll_to_focus=False)   # ikke hopp ned til knappen som har fokus
+        sc = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True, child=vp)
+        sc.set_size_request(440, -1)                        # bare denne kolonnen ruller – kalenderen står fast
+        side.set_size_request(420, -1)
+        outer.append(sc)
+        return outer
 
     # ================= ukevisning
     def _week_view(self):
@@ -319,14 +357,25 @@ class CalendarPage(Gtk.Box):
             self.grid.attach(wn, 0, r, 1, 1)
             for c, d in enumerate(week, start=1):
                 its = self._items.get(d, [])
-                b = Gtk.Button()
-                v = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-                v.append(Gtk.Label(label=str(d.day)))
+                b = Gtk.Button(hexpand=True, vexpand=True)
+                v = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1, valign=Gtk.Align.START)
+                top = Gtk.Box(spacing=4)
+                top.append(Gtk.Label(label=str(d.day), xalign=0, hexpand=True))
                 moon = next((x["icon"] for x in its if x.get("kind") == "moon"), "")
-                dots = Gtk.Label()
-                dots.set_markup(self._dots(d) + (" " + moon if moon else "") or " ")
-                dots.add_css_class("ks-cal-dots")
-                v.append(dots)
+                if moon:
+                    top.append(Gtk.Label(label=moon))
+                v.append(top)
+                shown = [x for x in its if x.get("kind") not in ("moon",)]
+                for x in shown[:3]:                           # titlene rett i ruten (som en vanlig kalender)
+                    lab = Gtk.Label(xalign=0, ellipsize=3, max_width_chars=14)
+                    lab.set_markup(f'<span foreground="{x.get("color") or "#888"}">●</span> '
+                                   f'{GLib.markup_escape_text(x["title"])}')
+                    lab.add_css_class("ks-cal-cellitem")
+                    v.append(lab)
+                if len(shown) > 3:
+                    more = Gtk.Label(label=f"+{len(shown) - 3}", xalign=0)
+                    more.add_css_class("ks-cal-cellitem")
+                    v.append(more)
                 b.set_child(v)
                 b.add_css_class("flat")
                 b.add_css_class("ks-cal-day")
@@ -421,7 +470,8 @@ class CalendarPage(Gtk.Box):
         shown = 0
         for d in sorted(x for x in self._items if x >= today):
             for x in self._items[d]:
-                if x.get("kind") in ("moon", "school", "special") or shown >= 8:
+                if x.get("kind") in ("moon", "school", "special", "weather", "price", "stat", "pclog", "clips") or \
+                        shown >= 8:
                     continue
                 b = Gtk.Button()
                 b.add_css_class("flat")
@@ -500,9 +550,8 @@ class CalendarPage(Gtk.Box):
             row = Gtk.Button()
             row.add_css_class("flat")
             h = Gtk.Box(spacing=8)
-            h.append(Gtk.Label(label=f"{name}", xalign=0, width_chars=14, ellipsize=3))
-            h.append(Gtk.Label(label=f"{took} {'dag' if took == 1 else 'dager'} fri → {length} dager", xalign=0,
-                               hexpand=True))
+            h.append(Gtk.Label(label=f"{name}", xalign=0, width_chars=12, max_width_chars=12, ellipsize=3))
+            h.append(Gtk.Label(label=f"{took} fri → {length} dager", xalign=0, hexpand=True, ellipsize=3))
             dl = Gtk.Label(label=f"{a.day}.{a.month}–{b.day}.{b.month}")
             dl.add_css_class("dim-label")
             h.append(dl)
@@ -749,15 +798,7 @@ class CalendarPage(Gtk.Box):
         hw.set_value(int(c["host_uke"]))
         r2.append(hw)
         box.append(r2)
-        shows = {}
-        for key, label in (("flagg", "🇳🇴 Flaggdager"), ("ferie", "🎒 Skoleferier"), ("mane", "🌕 Fullmåne og nymåne"),
-                           ("familie", "🎂 Bursdager fra Familie"), ("ukeplan", "🗓️ Ukeplanen fra Familie"),
-                           ("spill", "🎮 Spill (WoW-reset, gratis spill, salg, spilletid)"),
-                           ("pc", "🖥️ PC-en (dagbok, oppgaver, strøm og temperatur)"),
-                           ("ics", "📆 Google/Outlook-kalender (fra Oversikt-flisen)")):
-            cb = Gtk.CheckButton(label=i18n.tr(label), active=bool(c["show"].get(key, True)))
-            shows[key] = cb
-            box.append(cb)
+        box.append(_dim(i18n.tr("Hva som vises i kalenderen velger du med «👁 Vis» øverst.")))
         cd = Gtk.CheckButton(label=i18n.tr("⏳ Nedtelling til neste store dag på Oversikt"),
                              active=bool(c.get("countdown", True)))
         box.append(cd)
@@ -766,8 +807,8 @@ class CalendarPage(Gtk.Box):
         dlg.add_response("ok", i18n.tr("Lagre"))
         dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
         dlg.connect("response", lambda _d, rr: rr == "ok" and (
-            K.set_cfg(vinter_uke=int(vw.get_value()), host_uke=int(hw.get_value()), countdown=cd.get_active(),
-                      show={k: w.get_active() for k, w in shows.items()}), self._load()))
+            K.set_cfg(vinter_uke=int(vw.get_value()), host_uke=int(hw.get_value()), countdown=cd.get_active()),
+            self._load()))
         dlg.present(self.get_root())
 
     def _print(self):

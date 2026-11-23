@@ -259,17 +259,17 @@ def add_items(days, put, show):
                                                                   else ""),
                     time="", color="#ff9f43", kind="clips", icon="🎬", src="klipp")
     # hjemmet
-    w = _cached("w10", _weather10, 3600) or {}
+    w = (_cached("w10", _weather10, 3600) or {}) if show.get("vaer", True) else {}
     for d in days:
         x = w.get(d.isoformat())
         if x:
             put(d, title=f"{x[3]} {x[1]}–{x[2]}°", time="", color="#48dbfb", kind="weather", icon=x[0], src="vær")
-    if today in days or today + dt.timedelta(days=1) in days:
+    if show.get("strom", True) and (today in days or today + dt.timedelta(days=1) in days):
         p = _cached("price", _price, 600) or {}
         if p.get("cheapest") is not None:
             put(today, title=f"Strøm nå {p.get('now')} kr · billigst {p['cheapest']} kr kl. {p['cheapest_at']}",
                 time="", color="#feca57", kind="price", icon="⚡", src="strøm")
-    log = _log()
+    log = _log() if show.get("hjemme", True) else {}
     for d in days:
         who = log.get("home", {}).get(d.isoformat())
         if who and d <= today:

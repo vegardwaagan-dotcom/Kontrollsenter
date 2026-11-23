@@ -26,9 +26,25 @@ KINDS = {"event": ("📌", "Hendelse"), "trash": ("🗑️", "Søppel"), "dinner
          "routine": ("🔁", "Rutine"), "warranty": ("🧾", "Garanti"), "sub": ("💳", "Abonnement"),
          "stream": ("🎥", "Strømming"), "gamenight": ("🎮", "Spillkveld"), "scene": ("✨", "Scene"),
          "todo": ("✅", "Gjøremål"), "vacation": ("🏖️", "Ferie")}
+# hva som kan vises (røde dager vises alltid): nøkkel -> navn
+CATS = [("egen", "📌 Egne hendelser"), ("familie", "🎂 Bursdager"), ("ukeplan", "🗓️ Ukeplanen"),
+        ("merkedag", "⭐ Merkedager (morsdag, julaften …)"), ("flagg", "🇳🇴 Flaggdager"), ("ferie", "🎒 Skoleferier"),
+        ("mane", "🌕 Fullmåne og nymåne"), ("vaer", "☀️ Vær"), ("spill", "🎮 Spill (spilletid, WoW, Epic, Steam)"),
+        ("pc", "🖥️ PC-en (temperatur, strøm, dagbok, klipp)"), ("strom", "⚡ Strømpris"),
+        ("hjemme", "🏠 Hvem var hjemme"), ("ics", "📆 Google/Outlook-kalender")]
+SRC_CAT = {"egen": "egen", "familie": "familie", "ukeplan": "ukeplan", "merkedag": "merkedag", "flagg": "flagg",
+           "ferie": "ferie", "måne": "mane", "vær": "vaer", "spilletid": "spill", "epic": "spill", "steam": "spill",
+           "spill": "spill", "pc": "pc", "pc-dagbok": "pc", "planlagt": "pc", "klipp": "pc", "strøm": "strom",
+           "hjemme": "hjemme", "importert": "ics"}
+
+
+def cat_of(item):
+    """Kategorien til et element (None = vises alltid, f.eks. røde dager)."""
+    return SRC_CAT.get(item.get("src"))
+
+
 DEF_CFG = {"vinter_uke": 8, "host_uke": 40, "sommer": ["06-20", "08-17"], "jul": ["12-21", "01-02"],
-           "show": {"flagg": True, "ferie": True, "mane": True, "sol": True, "familie": True, "ukeplan": True,
-                    "spill": True, "pc": True, "ics": True}, "countdown": True}
+           "show": {k: True for k, _n in CATS}, "countdown": True}
 
 
 def cfg():
@@ -449,7 +465,8 @@ def items(start, end=None, extra=True):
             kalender_extra.add_items(days, put, sh)
         except Exception:  # noqa: BLE001
             pass
-    for k in out:
+    for k in list(out):                                    # bare det du har valgt å vise (røde dager alltid)
+        out[k] = [x for x in out[k] if cat_of(x) is None or sh.get(cat_of(x), True)]
         out[k].sort(key=lambda x: (x.get("time") or "99", 0 if x.get("red") else 1))
     return out
 

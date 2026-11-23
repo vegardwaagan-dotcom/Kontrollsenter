@@ -1062,3 +1062,5 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .cal-wk.even { background: color-mix(in srgb, var(--acc, #5b8cff) 22%, transparent); color: var(--acc, #5b8cff); }
 .cal-wk.odd { background: color-mix(in srgb, currentColor 8%, transparent); }
 .cal-wkbig { text-align: center; font-size: 15px; margin: 2px 0 6px; }
+
+.cal-show { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .cal-chk { font-size: 13px; display: flex; gap: 6px; align-items: center; }

@@ -44,6 +44,7 @@
     <div id="cal-wkbig" class="cal-wkbig"></div><div id="cal-cd" class="cal-cd" hidden></div>
     <div id="cal-grid" class="cal-grid"></div><div id="cal-info" class="cal-info"></div>
     <div id="cal-items"></div><button class="soft full-w" id="cal-add">＋ Ny hendelse</button>
+    <details><summary>👁 Vis i kalenderen</summary><p class="dim small">🔴 Røde dager vises alltid.</p><div id="cal-show" class="cal-show"></div></details>
     <details><summary>🏖️ Ferieplanlegger</summary><div id="cal-vac"></div></details>
     <div class="row"><input id="cal-q" class="search" placeholder="Søk i kalenderen …"></div><div id="cal-hits"></div>
     <div class="label">Neste røde dager</div><div id="cal-up"></div>
@@ -61,7 +62,21 @@
     try { const d = await X("kal", `y=${Y}&m=${M + 1}`); PC = Object.assign(PC, d.items || {}); PCmeta = d; render(); } catch (e) {}
   }
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  function pcItems(d) { return (PC[iso(d)] || []).filter((x) => !["red", "moon"].includes(x.kind)); }
+  // hva som vises (lagres på telefonen) – røde dager vises alltid
+  const CATS = [["egen", "📌 Egne hendelser"], ["familie", "🎂 Bursdager"], ["ukeplan", "🗓️ Ukeplanen"], ["merkedag", "⭐ Merkedager"],
+    ["flagg", "🇳🇴 Flaggdager"], ["ferie", "🎒 Skoleferier"], ["mane", "🌕 Månefaser"], ["vaer", "☀️ Vær"], ["spill", "🎮 Spill"],
+    ["pc", "🖥️ PC-en"], ["strom", "⚡ Strømpris"], ["hjemme", "🏠 Hvem var hjemme"], ["ics", "📆 Google/Outlook"]];
+  const SRC = { "egen": "egen", "familie": "familie", "ukeplan": "ukeplan", "merkedag": "merkedag", "flagg": "flagg", "ferie": "ferie",
+    "måne": "mane", "vær": "vaer", "spilletid": "spill", "epic": "spill", "steam": "spill", "spill": "spill", "pc": "pc", "pc-dagbok": "pc",
+    "planlagt": "pc", "klipp": "pc", "strøm": "strom", "hjemme": "hjemme", "importert": "ics" };
+  const showCfg = () => Object.assign(Object.fromEntries(CATS.map(([k]) => [k, true])), pref("cal_show", {}) || {});
+  const visible = (x) => { const c = SRC[x.src]; return !c || showCfg()[c] !== false; };
+  function drawShow() {
+    const sh = showCfg();
+    $("#cal-show").innerHTML = CATS.map(([k, n]) => `<label class="cal-chk"><input type="checkbox" data-show="${k}"${sh[k] !== false ? " checked" : ""}> ${n}</label>`).join("");
+    $$("#cal-show [data-show]").forEach((c) => (c.onchange = () => { const o = showCfg(); o[c.dataset.show] = c.checked; setPref("cal_show", o); render(); }));
+  }
+  function pcItems(d) { return (PC[iso(d)] || []).filter((x) => !["red", "moon"].includes(x.kind) && visible(x)); }
 
   function row(d, n, right) {
     return `<button class="cal-row" data-go="${d.getFullYear()}-${d.getMonth()}-${d.getDate()}"><span class="cal-red">${d.getDate()}. ${MND[d.getMonth()].slice(0, 3)}${d.getFullYear() !== Y ? " " + d.getFullYear() : ""}</span><span>${esc(n)}</span><span class="dim">${right}</span></button>`;
@@ -87,7 +102,7 @@
     $("#cal-info").innerHTML = `<b>${WDL[(sel.getDay() + 6) % 7].replace(/^./, (x) => x.toUpperCase())} ${sel.getDate()}. ${MND[sel.getMonth()]} ${sel.getFullYear()}</b> · uke ${week(sel)} (${week(sel) % 2 ? "oddetall" : "partall"}) · ` +
       (n === 0 ? "i dag" : n === 1 ? "i morgen" : n === -1 ? "i går" : n > 0 ? `om ${n} dager` : `for ${-n} dager siden`) +
       (nm ? `<br><span class="${hol ? "cal-red" : ""}">${esc(nm)}</span>` : sel.getDay() === 0 ? "<br>Søndag (rød dag)" : "");
-    const its = (PC[iso(sel)] || []).filter((x) => x.kind !== "red" || true);
+    const its = (PC[iso(sel)] || []).filter((x) => x.kind === "red" || visible(x));
     $("#cal-items").innerHTML = its.map((x) => `<div class="cal-it${x.done ? " done" : ""}"><span style="color:${x.color || "#888"}">●</span> ${esc(x.icon || "")} ${esc(x.title)}${x.time ? ` <span class="dim">${esc(x.time)}</span>` : ""}` +
       (x.src === "egen" ? `${["todo", "routine"].includes(x.kind) ? `<button class="soft small" data-done="${esc(x.id)}" data-on="${x.done ? 0 : 1}">${x.done ? "↺" : "✓"}</button>` : ""}<button class="soft small" data-edit="${esc(x.id)}">✏️</button>` : "") + "</div>").join("");
     $("#cal-cd").hidden = !(PCmeta && PCmeta.countdown); if (PCmeta) $("#cal-cd").textContent = "⏳ " + PCmeta.countdown;
@@ -192,6 +207,7 @@
     $$("#dg-body [data-del]").forEach((b) => (b.onclick = async () => { if (await confirmDlg("Slette innlegget?")) { await act({ a: "dagbok_delete", tok: dgTok, eid: b.dataset.del }, true); dgShow(); } }));
   }
   document.addEventListener("visibilitychange", () => { if (document.hidden && dgTok) { act({ a: "dagbok_lock", tok: dgTok }, true); dgTok = null; dgPeople(); } });
+  drawShow();
   setTimeout(() => { loadPC(); dgPeople(); }, 1500);
   $("#cal-prev").onclick = () => go(-1); $("#cal-next").onclick = () => go(1);
   $("#cal-today").onclick = () => { sel = today(); Y = sel.getFullYear(); M = sel.getMonth(); render(); };

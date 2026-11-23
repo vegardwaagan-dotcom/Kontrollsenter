@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.27", "Kalenderen: velg hva som vises", [
+        ("Kalender", [
+            "«👁 Vis» øverst: velg hva som vises hver dag – egne hendelser, bursdager, ukeplan, merkedager, flaggdager, "
+            "skoleferier, måne, vær, spill, PC-en, strømpris, hvem var hjemme og Google/Outlook. Røde dager vises alltid",
+            "Kalenderen fyller hele ruten sin, med titlene på hendelsene rett i dagene",
+            "Bare kolonnen til høyre ruller – kalenderen står fast",
+            "«Kommer snart» viser bare det som skjer (ikke vær og strømpris)",
+            "Mobilen: «👁 Vis i kalenderen» med de samme valgene",
+        ]),
+    ]),
     ("0.99.26", "Hendelser lagres – og tydelig ukenummer", [
         ("Kalender", [
             "Rettet: hendelser ble ikke lagret når klokkeslett eller dato var skrevet på en annen måte (f.eks. «14» "
