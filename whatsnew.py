@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.22", "Ryddet bort det som lå dobbelt", [
+        ("Ryddet", [
+            "«Gå tilbake til forrige systemversjon» ligger bare under Vedlikehold › Gjenoppretting (ikke også i Utstyr)",
+            "Kontrollere ligger bare under Spill › Kontrollere – nå med batteriet i selve kontrollerne "
+            "(mus og hodesett står under Batterier på Oversikt)",
+            "Wi-Fi-signalet er flyttet fra Vedlikehold › Utstyr til Nett og tilkobling › Nettverk",
+            "Én bryter for automatisk opprydding: «Automatisk oppdatering og opprydding» (før var det to, og den "
+            "månedlige oppryddingen trengte begge for å virke)",
+        ]),
+    ]),
     ("0.99.21", "Tydeligere klipp", [
         ("Spill › Klipp", [
             "Klippet du har valgt er tydelig markert: farget bakgrunn, ramme og «▶ Valgt» / «▶ Spilles nå»",

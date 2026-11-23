@@ -49,7 +49,7 @@ def _human(n):
 def auto_clean(force=False):
     """Kjør den trygge oppryddingen hvis det er over 30 dager siden sist. Returnerer rapport eller None."""
     c = cfg()
-    if not force and (not c.get("auto", True) or time.time() - c.get("last", 0) < 30 * 86400):
+    if not force and time.time() - c.get("last", 0) < 30 * 86400:   # av/på: updates.auto_on() (felles bryter)
         return None
     if IS_WIN:
         import wintools as T

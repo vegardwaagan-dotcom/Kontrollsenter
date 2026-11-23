@@ -989,10 +989,21 @@ class GamesPage(TabbedPage):
             b.connect("clicked", lambda *_, p=p: JoyTester(self.get_root(), p["dev"], p["name"]).present())
             row.append(b)
             self.ctrl_box.append(row)
-        if bats:
-            h = Gtk.Label(label="Batteri i trådløse enheter", xalign=0)
+        cb = getattr(self, "_ctrl_bats", None)               # batteri i kontrollerne (mus og hodesett: Oversikt)
+        if cb:
+            h = Gtk.Label(label="Batteri i kontrollerne", xalign=0)
             h.add_css_class("caption-heading")
             self.ctrl_box.append(h)
-            for model, lvl in bats:
-                self.ctrl_box.append(Gtk.Label(label=f"🔋 {model}: {lvl}", xalign=0))
+            for n, _p, t in cb:
+                self.ctrl_box.append(Gtk.Label(label=f"🔋 {n}: {t}", xalign=0))
+        if time.time() - getattr(self, "_ctrl_bt", 0) > 60:
+            self._ctrl_bt = time.time()
+
+            def work():
+                try:
+                    import equipment as EQ
+                    self._ctrl_bats = EQ.controller_batteries()
+                except Exception:  # noqa: BLE001
+                    self._ctrl_bats = []
+            threading.Thread(target=work, daemon=True).start()
         return True

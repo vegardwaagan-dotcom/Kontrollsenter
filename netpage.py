@@ -194,8 +194,32 @@ class NetworkPage(Gtk.ScrolledWindow):
         self.box = box
         self.set_child(box)
         self._ping_card()
+        self._wifi_card()
         self._speed_card()
         self._conn_card()
+
+    # --- Wi-Fi (flyttet hit fra Vedlikehold › Utstyr) ------------------------------
+    def _wifi_card(self):
+        c, i, _head = card("Wi-Fi", "Signalstyrken og snittet siste uke. Under 45 % merkes i spill.",
+                           "ks-network-symbolic")
+        lab = Gtk.Label(label="…", xalign=0, wrap=True)
+        i.append(lab)
+        self.box.append(c)
+
+        def work():
+            import equipment as EQ
+            try:
+                (ssid, sig), wsum = EQ.wifi_signal(), EQ.wifi_summary()
+            except Exception as e:  # noqa: BLE001
+                return f"Kunne ikke lese Wi-Fi: {e}"
+            if sig is None:
+                return i18n.tr("Bruker kabel (ikke Wi-Fi)")
+            return (f"{ssid}: {sig} %" + (f" · snitt siste uke {wsum['avg']} %, lavest {wsum['low']} %"
+                                           if wsum and wsum["n"] > 4 else "") +
+                    (" – svakt: flytt nærmere ruteren eller bruk kabel" if sig < 45 else ""))
+        import threading
+        threading.Thread(target=lambda: (lambda t: GLib.idle_add(lambda: (lab.set_label(t), False)[1]))(work()),
+                         daemon=True).start()
 
     # --- ping -----------------------------------------------------------------
     def _ping_card(self):

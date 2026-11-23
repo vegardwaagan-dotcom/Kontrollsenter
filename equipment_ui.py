@@ -51,19 +51,10 @@ class EquipmentBox(Gtk.Box):
         self.append(_h("🔋 Batteri"))
         self.bat = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         self.append(self.bat)
-        self.append(_h("📶 Wi-Fi"))
-        self.wifi = _dim("…")
-        self.append(self.wifi)
-        self.append(_h("🎮 Kontrollere"))
-        self.ctrl = _dim("…")
-        self.append(self.ctrl)
+        # Wi-Fi ligger under Nettverk, kontrollere under Spill › Kontrollere og forrige systemversjon under
+        # Vedlikehold › Gjenoppretting – ikke dobbelt her
         self.append(_h("🖥️ Skjerm"))
         self.append(_btn("Kalibrer skjermen", lambda _b: CalibrateWindow(self.get_root()).present()))
-        if EQ.can_rollback():
-            self.append(_h("⏪ Forrige systemversjon"))
-            self.append(_dim("Ble noe verre etter en oppdatering (f.eks. FPS etter ny skjermkortdriver)? Gå tilbake til "
-                             "forrige systemversjon – med de gamle driverne – fra neste omstart."))
-            self.append(_btn("Gå tilbake til forrige versjon", self._rollback))
         self.append(_h("⚙️ Innstillinger"))
         c = EQ.cfg()
         for key, title, sub in (("headset_switch", "Lyden følger hodesettet", "Når hodesettet slås på, går lyden dit – "
@@ -85,13 +76,13 @@ class EquipmentBox(Gtk.Box):
         self.refresh()
 
     def refresh(self):
-        _bg(lambda: (EQ.battery_health(), EQ.wifi_signal(), EQ.wifi_summary(), EQ.controller_batteries()), self._show)
+        _bg(lambda: EQ.battery_health(), self._show)
 
     def _show(self, r):
         if isinstance(r, Exception):
             self.msg.set_label(f"Feil: {r}")
             return
-        bats, (ssid, sig), wsum, ctrls = r
+        bats = r
         while (c := self.bat.get_first_child()) is not None:
             self.bat.remove(c)
         if not bats:
@@ -109,12 +100,6 @@ class EquipmentBox(Gtk.Box):
                                                                                     self._done)))
                 row.append(_btn("Lad til 100 %", lambda _b: _bg(lambda: EQ.set_charge_limit(100), self._done)))
                 self.bat.append(row)
-        self.wifi.set_label("Bruker kabel (ikke Wi-Fi)" if sig is None else
-                            f"{ssid}: {sig} %" + (f" · snitt siste uke {wsum['avg']} %, lavest {wsum['low']} %" if wsum
-                                                  and wsum["n"] > 4 else "") +
-                            (" – svakt: flytt nærmere ruteren eller bruk kabel" if sig < 45 else ""))
-        self.ctrl.set_label(" · ".join(f"{n}: {t}" for n, _p, t in ctrls) if ctrls else
-                            i18n.tr("Ingen trådløse kontrollere med batteri funnet."))
 
     def _done(self, r):
         self.msg.set_label(("✗ " if isinstance(r, Exception) else "✓ ") + str(r))

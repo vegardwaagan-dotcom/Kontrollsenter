@@ -2204,8 +2204,8 @@ class ToolsPage(TabbedPage, _Cards):
                                              "shader-cache for avinstallerte spill og midlertidige filer. Aldri "
                                              "filene dine eller papirkurven.")
         cf = upkeep.cfg()
-        self._switch_row(i, "Rydd automatisk hver måned", None, cf.get("auto", True),
-                         lambda w, _p: upkeep.save_cfg(auto=w.get_active()))
+        import updates_ui                                     # én felles bryter (samme som under Oppdatering)
+        i.append(updates_ui.auto_row())
         hist = cf.get("history") or []
         st = dim(("Sist: " + time.strftime("%d.%m.%Y", time.localtime(hist[-1]["t"])) + " – "
                   + upkeep.report_text(hist[-1])) if hist else "Ikke kjørt ennå.")
