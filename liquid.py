@@ -15,7 +15,14 @@ import sys
 
 IS_WIN = sys.platform == "win32"
 LOOK = os.path.expanduser("~/.config/systemmonitor/utseende.json")
-DEFAULT = {"liquid_clear": 50, "liquid_tint": "#7aa2ff", "liquid_blur": True}
+DEFAULT = {"liquid_clear": 50, "liquid_tint": "#7aa2ff", "liquid_blur": True,
+           "liquid_aero": False,          # gjennomsiktig vindu + uskarphet på ALLE temaer
+           "liquid_theme_tint": True}     # glasset får temaets farge (ellers liquid_tint)
+
+
+def wanted(td):
+    """Skal vinduet være gjennomsiktig glass med dette temaet?"""
+    return bool(td and (td.get("liquid") or cfg()["liquid_aero"]))
 
 
 def cfg():
@@ -56,24 +63,37 @@ def native_blur():
         return False
 
 
-def css():
-    """Stilarket for glasset. Jo mer gjennomsiktig, jo mer av det bak skinner gjennom."""
+def _mix(c1, c2, k):
+    return ",".join(str(int(x * (1 - k) + y * k)) for x, y in zip(c1, c2))
+
+
+def css(td=None):
+    """Stilarket for glasset. Jo mer gjennomsiktig, jo mer av det bak skinner gjennom.
+    td = None / «Liquid Glass»-temaet: glass i den valgte fargen. Ellers: et vanlig tema gjort om til glass
+    (Aero) – temaets egne farger, bare gjennomsiktige."""
     c = cfg()
     blur = (f"backdrop-filter: blur({18 + int(c['liquid_clear']) // 4}px);"
             if c["liquid_blur"] and native_blur() else "")
-    r, g, b = _rgb(c["liquid_tint"])
     a = max(0.05, 1 - min(95, max(0, int(c["liquid_clear"]))) / 100)     # dekkevne for selve vinduet
-    dark = (0.299 * r + 0.587 * g + 0.114 * b) < 215          # mørkt glass med lys tekst – med mindre glasset er nesten hvitt
+    if td is None or td.get("liquid"):
+        r, g, b = _rgb(c["liquid_tint"])
+        dark = (0.299 * r + 0.587 * g + 0.114 * b) < 215      # mørkt glass med lys tekst – med mindre det er nesten hvitt
+        base = _mix((12, 14, 22) if dark else (245, 247, 252), (r, g, b), 0.30)
+        side_rgb = base
+        fg = "#f5f7ff" if dark else "#14161f"
+        dim = "rgba(235,240,255,0.72)" if dark else "rgba(20,24,40,0.62)"
+        accent = True
+    else:
+        r, g, b = _rgb(td.get("a") if c["liquid_theme_tint"] else c["liquid_tint"])
+        dark = bool(td.get("dark", True))
+        base = _mix(_rgb(td.get("bg", "#101420")), (r, g, b), 0.18)
+        side_rgb = _mix(_rgb(td.get("side", td.get("bg", "#101420"))), (r, g, b), 0.18)
+        fg, dim = td.get("fg", "#f5f7ff"), td.get("dim", "#b9c2dc")
+        accent = False
     t = f"{r},{g},{b}"
-    # glasset: en mørk (eller lys) flate farget av glassfargen – dekkevnen følger gjennomsiktigheten
-    br, bg_, bb = (12, 14, 22) if dark else (245, 247, 252)
-    mix = 0.30
-    base = f"{int(br * (1 - mix) + r * mix)},{int(bg_ * (1 - mix) + g * mix)},{int(bb * (1 - mix) + b * mix)}"
-    fg = "#f5f7ff" if dark else "#14161f"
-    dim = "rgba(235,240,255,0.72)" if dark else "rgba(20,24,40,0.62)"
     # vinduet: glass i glassfargen, blandet med en mørk/lys base så teksten alltid kan leses
     win = f"rgba({base},{a:.3f})"
-    side = f"rgba({base},{min(0.95, a + 0.12):.3f})"
+    side = f"rgba({side_rgb},{min(0.95, a + 0.12):.3f})"
     card = f"rgba(255,255,255,{0.05 + a * 0.06:.3f})" if dark else f"rgba(255,255,255,{0.25 + a * 0.2:.3f})"
     pop = f"rgba({base},{max(0.88, a):.3f})"
     shadow = "label { text-shadow: 0 1px 2px rgba(0,0,0,0.35); }" if dark else ""
@@ -86,7 +106,8 @@ def css():
   --card-bg-color: {card}; --card-fg-color: {fg};
   --popover-bg-color: {pop}; --popover-fg-color: {fg};
   --dialog-bg-color: {pop}; --dialog-fg-color: {fg};
-  --accent-bg-color: rgb({t}); --accent-color: rgb({t}); --accent-fg-color: {'white' if dark else '#111'};
+  {f"--accent-bg-color: rgb({t}); --accent-color: rgb({t}); --accent-fg-color: {'white' if dark else '#111'};"
+   if accent else ""}
 }}
 window.sysmon, window.background {{
   background-color: {win}; color: {fg}; {blur}

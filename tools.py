@@ -1405,17 +1405,21 @@ class _Cards:
         self._try(self._game_theme_card)
 
     def _liquid_card(self):
-        """Liquid Glass: gjennomsiktighet, farge på glasset og uskarphet bak vinduet."""
+        """Liquid Glass og Aero for ALLE temaer: glanset glass, gjennomsiktig vindu, farge og uskarphet."""
         import liquid
         import theme as ks_theme
         lc = liquid.cfg()
-        c, i = card("Liquid Glass", "Gjelder temaet «Liquid Glass»: hele vinduet er glass, og du ser det som er bak. "
-                                    "Uskarpheten bak vinduet (som Aero) krever KDE Plasma eller Windows 11.")
+        c, i = card("Liquid Glass og Aero", "Virker med alle temaene. Uskarpheten bak vinduet (Aero) krever "
+                                            "KDE Plasma eller Windows 11.")
 
         def redraw():
-            if ks_theme.current_theme() == "liquid":
-                ks_theme.THEMES["liquid"] = liquid.theme_entry()
-                ks_theme.show("liquid")
+            ks_theme.THEMES["liquid"] = liquid.theme_entry()
+            ks_theme.show(ks_theme._SHOWN[0] or ks_theme.current_theme())
+        self._switch_row(i, "Flytende glass", "Glassaktige kort og knapper med lysrefleks i kanten og farger som "
+                         "skinner gjennom.", ks_theme.glass_on(), lambda w, _p: ks_theme.set_glass(w.get_active()))
+        self._switch_row(i, "Gjennomsiktig vindu (Aero)", "Hele vinduet blir glass i temaets farger – du ser det som "
+                         "er bak. «Liquid Glass»-temaet er alltid gjennomsiktig.",
+                         lc["liquid_aero"], lambda w, _p: (liquid.set_(liquid_aero=w.get_active()), redraw()))
         row = Gtk.Box(spacing=12)
         row.append(Gtk.Label(label="Gjennomsiktighet", xalign=0))
         sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 95, 5)
@@ -1425,6 +1429,15 @@ class _Cards:
         sc.connect("value-changed", lambda s_: (liquid.set_(liquid_clear=int(s_.get_value())), redraw()))
         row.append(sc)
         i.append(row)
+        tint_rows = []
+
+        def own_tint(w, _p):
+            liquid.set_(liquid_theme_tint=not w.get_active())
+            for x in tint_rows:
+                x.set_sensitive(w.get_active())
+            redraw()
+        self._switch_row(i, "Egen farge på glasset", "Av: glasset får fargen til temaet du bruker. "
+                         "«Liquid Glass»-temaet bruker alltid fargen under.", not lc["liquid_theme_tint"], own_tint)
         row2 = Gtk.Box(spacing=12)
         row2.append(Gtk.Label(label="Farge på glasset", xalign=0, hexpand=True))
         rgba = Gdk.RGBA()
@@ -1447,10 +1460,11 @@ class _Cards:
             sw.connect("clicked", lambda _b, h=hx: (rgba.parse(h), cb.set_rgba(rgba)))
             row2.append(sw)
         i.append(row2)
+        tint_rows.append(row2)
+        row2.set_sensitive(not lc["liquid_theme_tint"] or ks_theme.current_theme() == "liquid")
         self._switch_row(i, "Uskarphet bak vinduet", "Det bak blir mykt og uskarpt – lettere å lese, som frostet glass.",
                          lc["liquid_blur"], lambda w, _p: (liquid.set_(liquid_blur=w.get_active()), redraw(),
-                                                           ks_theme.current_theme() == "liquid" and
-                                                           liquid.apply(w.get_active())))
+                                                           liquid.apply(liquid.wanted(ks_theme._t(None)))))
         b = Gtk.Button(label="Bruk Liquid Glass nå", halign=Gtk.Align.START)
         b.add_css_class("pill")
         b.add_css_class("suggested-action")
@@ -1661,11 +1675,7 @@ class _Cards:
 
     def _look_card(self):
         import i18n
-        import theme as ks_theme
         c, i = card("Utseende og språk")
-        self._switch_row(i, "Flytende glass",
-                         "Glassaktige kort og knapper med lysrefleks i kanten og farger som skinner gjennom.",
-                         ks_theme.glass_on(), lambda w, _p: ks_theme.set_glass(w.get_active()))
         r = Gtk.Box(spacing=12)
         tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
         tb.append(Gtk.Label(label="Språk", xalign=0))

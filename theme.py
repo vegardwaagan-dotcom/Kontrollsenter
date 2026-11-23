@@ -521,10 +521,25 @@ def recolor(css, name=None):
 
 
 def theme_css(name=None):
-    """Ekstra stilark for temaet: flater, tekst og en bakgrunn med glød i temaets farger."""
+    """Ekstra stilark for temaet – pluss gjennomsiktig glass (Aero) oppå hvis det er slått på."""
     t = _t(name)
     if t.get("liquid") and _lq:
-        return _lq.css()
+        return _lq.css(t)
+    base = _theme_css_solid(t)
+    try:
+        if _lq and _lq.wanted(t):
+            if "bg" not in t:                              # «Standard» følger systemet: lyst eller mørkt glass
+                from gi.repository import Adw
+                t = dict(t, **(dict(DARK_DEFAULT, dark=True) if Adw.StyleManager.get_default().get_dark() else
+                               {"bg": "#f4f5fa", "side": "#eceef5", "card": "#ffffff", "fg": "#15161d",
+                                "dim": "#5d6070", "dark": False}))
+            base += _lq.css(t)
+    except Exception:  # noqa: BLE001
+        pass
+    return base
+
+
+def _theme_css_solid(t):
     if "bg" not in t:
         return ""
     mid = _mix(t["a"], t["b"])
@@ -718,9 +733,9 @@ def show(t):
     except Exception:  # noqa: BLE001
         pass
     try:                                                   # glasset: uskarphet bak vinduet av/på
-        was = _t(_SHOWN[0]).get("liquid") if _SHOWN[0] else False
-        if _lq and (td.get("liquid") or was):
-            _lq.apply(bool(td.get("liquid")))
+        was = _lq.wanted(_t(_SHOWN[0])) if (_lq and _SHOWN[0]) else False
+        if _lq and (_lq.wanted(td) or was):
+            _lq.apply(_lq.wanted(td))
     except Exception:  # noqa: BLE001
         pass
     _SHOWN[0] = t
