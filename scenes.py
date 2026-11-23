@@ -266,6 +266,8 @@ _FIRED = {}
 
 def on_event(win, kind, game=None):
     """kind = «game_start»/«game_end» (spillprofilene), «home»/«away» (presence) eller «cheap_power» (pricejobs)."""
+    if not __import__("funksjoner").on("scener"):          # funksjonen er slått av
+        return
     for s in load()["scenes"]:
         t = s.get("trigger") or {}
         if t.get("auto") and t.get("type") == kind:
@@ -274,6 +276,8 @@ def on_event(win, kind, game=None):
 
 def tick(win):
     """Kalles jevnlig (ca. hvert 5. sekund) – kjører scener med klokkeslett."""
+    if not __import__("funksjoner").on("scener"):          # funksjonen er slått av
+        return
     now = time.localtime()
     hhmm = f"{now.tm_hour:02d}:{now.tm_min:02d}"
     day = time.strftime("%Y-%m-%d")

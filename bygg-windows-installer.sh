@@ -27,6 +27,7 @@ mkdir -p "$B"
 cp -r "$STAGE/Kontrollsenter/program" "$B/program"
 rm -rf "$B/program/Windows"
 cp pakke-windows/installer.ps1 pakke-windows/kontrollsenter.nsi icons/kontrollsenter.ico msi_wmi.ps1 "$B/"
+python3 pakke-windows/lag-funksjoner-nsh.py "$B/funksjoner.nsh"
 python3 pakke-windows/lag-velkomstbilde.py "$HERE/icons/no.waagan.Systemmonitor.svg" "$B/velkommen.bmp" >/dev/null 2>&1
 podman run --rm -v "$B:/b:Z" "$IMAGE" makensis -V2 -DVERSION="$VER" -DVIVERSION="$VIVER" /b/kontrollsenter.nsi
 mkdir -p dist

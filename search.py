@@ -71,6 +71,8 @@ def build_index(win):
     for i in range(pages.get_n_items()):
         pg = pages.get_item(i)
         name, title, child = pg.get_name(), pg.get_title() or pg.get_name(), pg.get_child()
+        if not __import__("funksjoner").page_on(name):     # slått av under Funksjoner
+            continue
         tps = []
 
         def find(w, d=0):
@@ -275,7 +277,8 @@ class SearchDialog(Adw.Dialog):
 
     def _prepare(self):
         """Bygg sidene som ikke er åpnet ennå (én om gangen, så vinduet ikke fryser), så indeksen."""
-        lazy = [n for n, lz in getattr(self.win, "_lazy", {}).items() if lz[3] is None and n not in SKIP_PAGES]
+        lazy = [n for n, lz in getattr(self.win, "_lazy", {}).items() if lz[3] is None and n not in SKIP_PAGES
+                and __import__("funksjoner").page_on(n)]
 
         def step():
             if lazy:

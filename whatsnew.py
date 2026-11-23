@@ -13,6 +13,23 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.90.0", "Velg funksjoner og bruk mobilen som webkamera", [
+        ("Velg funksjoner", [
+            "Velkomstveiviseren spør første gang: Fullstendig, Medium (uten Discord, Scener, Smart Hjem og CPU-skjerm), "
+            "Minimal (Oversikt, Historikk, GPU, Lyd, Spill, Chat, PC-er, Fjernhjelp og System) eller Egendefinert",
+            "Det du velger bort er helt av: borte fra menyen og søket, sidene lastes aldri, og bakgrunnsarbeidet "
+            "(tidsstyrte scener, Smart Hjem-automatikk, RGB ved oppstart, chat, VR-vakt …) stopper",
+            "Windows-installasjonen har de samme valgene (installasjonstype + én boks per funksjon)",
+            "Endres når som helst under Innstillinger → Generelt → Funksjoner (familiekoden spørres om hvis den er på)",
+        ]),
+        ("📱 Mobilen som webkamera", [
+            "Android-appen: Chat → 📷 åpner kameraet og sender bildet til PC-en (bytt mellom front- og bakkamera)",
+            "Velg «📱 Mobilkamera» under Lyd og video for å bruke det i talekanalene",
+            "Vis mobilkameraet i et eget vindu – virker også på Windows",
+            "Linux: bruk det som vanlig webkamera i Discord, nettleseren og OBS (v4l2loopback, f.eks. OBS sitt "
+            "virtuelle kamera)",
+        ]),
+    ]),
     ("0.89.0", "Talekanaler og webkamera i chatten", [
         ("Talekanaler", [
             "🔊 Nye talekanaler i serverne – trykk på kanalen for å gå inn, og alle som er der snakker sammen",

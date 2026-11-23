@@ -758,6 +758,9 @@ def _feature_action(win, kind, a):
         _call_main(go)
         return True, "Varsler på PC-en: " + ("på" if on else "av")
     if kind == "discord":                        # Discord: mikrofon, lyd av, volum, enheter, demping …
+        import funksjoner
+        if not funksjoner.on("discord"):
+            return False, "Discord er slått av i Kontrollsenter (Innstillinger → Funksjoner)"
         import discord_ctl
         return True, discord_ctl.action(a)
     if kind == "goal_req":                       # «ferdig med lekser» – barna kan be om ekstra spilletid
@@ -1327,6 +1330,20 @@ def _handler(remote):
             if not self._allowed():
                 return self._send(403, {"error": "bare hjemmenettet"})
             p = urlparse(self.path).path
+            if p == "/api/phonecam":                       # mobilen som webkamera: ett JPEG-bilde per kall
+                q = parse_qs(urlparse(self.path).query)
+                if not remote.check((q.get("k") or [""])[0]):
+                    return self._send(401, {"error": "ikke paret"})
+                n = int(self.headers.get("Content-Length") or 0)
+                if not 0 < n <= 3 * 1024 * 1024:
+                    return self._send(413, {"error": "for stort bilde"})
+                try:
+                    import phonecam
+                    phonecam.push(self.rfile.read(n), int((q.get("rot") or ["0"])[0] or 0),
+                                  (q.get("dev") or [""])[0][:40])
+                except ValueError as e:
+                    return self._send(400, {"error": str(e)})
+                return self._send(200, {"ok": True})
             try:
                 body = self._body(12 * 1024 * 1024 if p == "/api/chat/inbox" else 1024 * 1024
                                   if p in ("/api/house/setup", "/api/chat/join") else MAX_BODY)

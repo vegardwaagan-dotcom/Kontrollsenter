@@ -9,6 +9,7 @@ ManifestDPIAware true
 SetCompressor /SOLID lzma
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
+!include "funksjoner.nsh"        ; installasjonstyper (Fullstendig/Medium/Minimal/Egendefinert) – lages ved bygging
 
 !ifndef VIVERSION
   !define VIVERSION "0.0.0.0"
@@ -39,6 +40,8 @@ VIAddVersionKey /LANG=1044 "ProductVersion" "${VERSION}"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "velkommen.bmp"
 !define MUI_ABORTWARNING
 !define MUI_COMPONENTSPAGE_NODESC
+!define MUI_COMPONENTSPAGE_TEXT_TOP "Velg hvor mye Kontrollsenter skal ha med. Funksjoner du ikke tar med, er helt av – de vises ikke og bruker verken minne eller prosessor. Du kan endre det senere under Innstillinger → Funksjoner."
+!define MUI_COMPONENTSPAGE_TEXT_INSTTYPE "Type:"
 
 !define MUI_WELCOMEPAGE_TITLE "Velkommen til Kontrollsenter ${VERSION}"
 !define MUI_WELCOMEPAGE_TEXT "Kontrollsenter viser og styrer PC-en din: ytelse, temperaturer, strøm, strømmodus, historikk og PC-ene på hjemmenettet.$\r$\n$\r$\nFørste gang lastes GTK4 (MSYS2) og LibreHardwareMonitor ned. Det tar noen minutter, og Windows ber om administratortilgang én gang.$\r$\n$\r$\nTrykk Neste for å fortsette."
@@ -126,12 +129,16 @@ Section "Kontrollsenter (påkrevd)" SecMain
 SectionEnd
 
 Section "Snarvei på skrivebordet" SecDesktop
+  SectionIn 1 2 3
   CreateShortCut "$DESKTOP\Kontrollsenter.lnk" "${PYW}" '-X utf8 "$INSTDIR\systemmonitor.py"' "$INSTDIR\icons\kontrollsenter.ico" 0
 SectionEnd
 
 Section "Start Kontrollsenter ved innlogging (skjult i systemstatusfeltet)" SecAutostart
+  SectionIn 1 2 3
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Kontrollsenter" '"${PYW}" -X utf8 "$INSTDIR\systemmonitor.py" --hidden'
 SectionEnd
+
+!insertmacro KS_FUNKSJONER
 
 ; ---------------------------------------------------------------------------------------------
 Section "Uninstall"

@@ -866,6 +866,9 @@ class MonitorWindow(Adw.ApplicationWindow):
 
     def rgb_restore(self, why=""):
         """Send de lagrede RGB-fargene til enhetene (oppretter RGB-siden i bakgrunnen ved behov)."""
+        import funksjoner
+        if not funksjoner.on("utstyr"):
+            return False
         try:
             import rgb
             st = rgb.load_state()
@@ -922,6 +925,9 @@ class MonitorWindow(Adw.ApplicationWindow):
                 self.stack.get_page(self.stack.get_child_by_name(m)).get_title() for m in present))
 
     def _row_visible(self, row):
+        import funksjoner
+        if not funksjoner.page_on(row.page_name):           # funksjonen er slått av (veiviser/innstillinger)
+            return False
         if self.simple_mode() and row.page_name not in self.SIMPLE_PAGES:
             return False
         lead = getattr(self, "_leader", {}).get(row.page_name)

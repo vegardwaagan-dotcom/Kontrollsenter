@@ -1026,6 +1026,36 @@ class _Cards:
                          perf.flag("ssd"), lambda w, _p: perf.set_flag("ssd", w.get_active()))
         self.box.append(c)
 
+    def _features_card(self):
+        import funksjoner as F
+        c, i = card("Funksjoner", "Velg hva Kontrollsenter skal ha med: Fullstendig, Medium, Minimal eller "
+                                  "Egendefinert. Det som er av, vises ikke og gjør ingenting i bakgrunnen.")
+        lab = Gtk.Label(xalign=0, wrap=True)
+        lab.add_css_class("dim-label")
+
+        def show():
+            cf = F.cfg()
+            lab.set_label(f"{F.PROFILES[cf['profile']][0]} – {len(F.enabled())} av {len(F.KEYS)} funksjoner er på")
+            return False
+        show()
+        b = Gtk.Button(label="Velg funksjoner …", halign=Gtk.Align.START)
+        b.add_css_class("pill")
+
+        def open_(*_):
+            import familylock
+            import funksjoner_ui
+            root = self.get_root()
+
+            def go():
+                funksjoner_ui.open_dialog(root)
+                GLib.timeout_add(1500, show)
+                GLib.timeout_add(6000, show)
+            familylock.ask(root, "Skriv familiekoden for å endre funksjonene.", go)
+        b.connect("clicked", open_)
+        i.append(lab)
+        i.append(b)
+        self.box.append(c)
+
     def _simple_card(self):
         c, i = card("Enkel modus", "Bare det viktigste i sidemenyen – fint på barnas PC-er. Alt annet er der "
                                    "fortsatt, og søket (Ctrl+K) finner også de skjulte sidene.")
@@ -2060,6 +2090,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._general_card)
         self._try(self._perf_card)
         self._try(self._disk_card)
+        self._try(self._features_card)
         self._try(self._simple_card)
         self._try(self._apps_card)
         self._try(self._infotiles_card)

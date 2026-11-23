@@ -100,7 +100,7 @@ def devices():
         pass
     std = [("", "Standard")]
     return {"mic": std + _pactl("sources"), "speaker": std + _pactl("sinks"),
-            "camera": [("", "Første kamera")] + cams}
+            "camera": [("", "Første kamera")] + cams + [("phone", "📱 Mobilkamera (Android-appen)")]}
 
 
 def gst_ok():
@@ -202,15 +202,31 @@ def _send_audio_desc(c):
 def _send_video_desc(c):
     w, h, kb = QUALITY.get(c["quality"], QUALITY["middels"])
     fps = max(5, min(30, int(c.get("fps") or 15)))
-    src = ("videotestsrc is-live=true pattern=ball" if TEST else
-           "v4l2src" + (f' device="{c["camera"]}"' if c["camera"] else "") + " ! decodebin")
-    return (f"{src} ! videoconvert ! videoscale ! videorate ! video/x-raw,width={w},height={h},framerate={fps}/1 ! "
+    return (f"{_cam_src(c)} ! videoconvert ! videoscale ! videorate ! "
+            f"video/x-raw,width={w},height={h},framerate={fps}/1 ! "
             f"tee name=t t. ! queue leaky=downstream max-size-buffers=2 ! videoconvert ! "
             f"video/x-raw,format=RGBA ! appsink name=self emit-signals=true max-buffers=1 drop=true sync=false "
             f"t. ! queue leaky=downstream max-size-buffers=2 ! videoconvert ! "
             f"vp8enc deadline=1 cpu-used=8 end-usage=cbr target-bitrate={kb * 1000} error-resilient=1 "
             f"keyframe-max-dist={fps * 2} ! rtpvp8pay pt=97 mtu=1200 ssrc={_S['vssrc']} ! "
             f"multiudpsink name=out sync=false async=false")
+
+
+def _cam_src(c):
+    """Kamerakilden: testbilde, mobilkameraet (Android-appen) eller et vanlig webkamera."""
+    if TEST and c.get("camera") != "phone":
+        return "videotestsrc is-live=true pattern=ball"
+    if c.get("camera") == "phone":
+        import phonecam
+        return phonecam.SRC_DESC
+    return "v4l2src" + (f' device="{c["camera"]}"' if c["camera"] else "") + " ! decodebin"
+
+
+def _attach_phone(p, key):
+    """Mobilkameraet: koble kjeden til bildene som kommer fra Android-appen."""
+    if p.get_by_name("phsrc") is not None:
+        import phonecam
+        _S.setdefault("detach", {})[key] = phonecam.attach(p)
 
 
 def _bus(pipe, name):
@@ -334,6 +350,7 @@ def _apply_live(c=None):
 def _start_camera():
     Gst = _GST["Gst"]
     p = Gst.parse_launch(_send_video_desc(cfg()))
+    _attach_phone(p, "send-v")
     p.get_by_name("self").connect("new-sample", _on_sample, "me")
     _bus(p, "send-v")
     out = p.get_by_name("out")
@@ -375,6 +392,9 @@ def play_test():
 
 
 def _stop(name):
+    det = (_S.get("detach") or {}).pop(name, None)
+    if det:
+        det()
     p = _S["pipes"].pop(name, None)
     if p is not None:
         p.set_state(_GST["Gst"].State.NULL)
@@ -526,8 +546,12 @@ def toggle_camera():
         _S["cam"] = False
         _FRAMES.pop("me", None)
     else:
-        if not TEST and not any(d for d, _n in devices()["camera"] if d):
-            raise RuntimeError("fant ikke noe webkamera")
+        if cfg()["camera"] == "phone":
+            import phonecam
+            if not phonecam.live():
+                raise RuntimeError("mobilkameraet sender ikke – åpne Chat i Android-appen og trykk «📷 Mobilkamera»")
+        elif not TEST and not any(d for d, _n in devices()["camera"] if d and d != "phone"):
+            raise RuntimeError("fant ikke noe webkamera – velg «📱 Mobilkamera» under Lyd og video for å bruke mobilen")
         _start_camera()
         _S["cam"] = True
     _broadcast_state()
@@ -606,13 +630,15 @@ def cam_test(on, cb=None):
     Gst = _GST["Gst"] if gst_ok() else None
     if _TEST.get("cam") is not None:
         _TEST.pop("cam").set_state(Gst.State.NULL)
+    if _TEST.get("cam_detach"):
+        _TEST.pop("cam_detach")()
     if not on or Gst is None:
         return
     c = cfg()
     w, h, _kb = QUALITY.get(c["quality"], QUALITY["middels"])
-    src = ("videotestsrc is-live=true pattern=ball" if TEST else
-           "v4l2src" + (f' device="{c["camera"]}"' if c["camera"] else "") + " ! decodebin")
-    p = Gst.parse_launch(f"{src} ! videoconvert ! videoscale ! video/x-raw,width={w},height={h} ! videoconvert ! "
+    if _TEST.get("cam_detach"):
+        _TEST.pop("cam_detach")()
+    p = Gst.parse_launch(f"{_cam_src(c)} ! videoconvert ! videoscale ! video/x-raw,width={w},height={h} ! videoconvert ! "
                          "video/x-raw,format=RGBA ! appsink name=a emit-signals=true max-buffers=1 drop=true "
                          "sync=false")
 
@@ -629,6 +655,9 @@ def cam_test(on, cb=None):
             buf.unmap(info)
         return 0
     p.get_by_name("a").connect("new-sample", sample)
+    if p.get_by_name("phsrc") is not None:
+        import phonecam
+        _TEST["cam_detach"] = phonecam.attach(p)
     p.set_state(Gst.State.PLAYING)
     _TEST["cam"] = p
 

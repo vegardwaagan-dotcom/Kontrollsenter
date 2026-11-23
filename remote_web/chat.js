@@ -7,7 +7,7 @@ const chatSec = h(`<section id="chattab" class="page" hidden>
     <button id="ct-ts" class="primary">Installer Tailscale på PC-en</button>
     <button id="ct-ts-check" class="soft">Sjekk igjen</button><p id="ct-ts-msg" class="dim small"></p></div></div>
   <div class="card chat-card" id="ct-card">
-    <div class="row between"><select id="ct-room" class="search"></select><button id="ct-ref" class="soft small">↻</button></div>
+    <div class="row between"><select id="ct-room" class="search"></select><button id="ct-cam" class="soft small" title="Bruk mobilen som webkamera for PC-en">📷</button><button id="ct-ref" class="soft small">↻</button></div>
     <div id="ct-msgs" class="ct-msgs"></div>
     <div class="row"><select id="ct-quick" class="ct-qsel" aria-label="Hurtigsvar"></select>
       <input id="ct-text" maxlength="2000" placeholder="Skriv en melding …" enterkeyhint="send">
@@ -94,6 +94,10 @@ $("#ct-ts").onclick = async () => { $("#ct-ts-msg").textContent = "Installerer p
   try { const r = await api("/api/action", { a: "panel", do: "appinstall", key: "tailscale" }); $("#ct-ts-msg").textContent = r.msg || "Startet – logg inn i Tailscale på PC-en"; }
   catch (e) { $("#ct-ts-msg").textContent = "✗ " + e.message; } };
 $("#ct-ts-check").onclick = () => ctRooms();
+$("#ct-cam").onclick = () => {                           // mobilen som webkamera (kamera-skjerm i Android-appen)
+  if (window.KS && typeof KS.camera === "function") { KS.camera(token); return; }
+  $("#ct-status").textContent = "Mobilkamera virker i Android-appen (oppdater appen hvis knappen ikke gjør noe).";
+};
 { const _st3 = setTab; setTab = function (t) {                  // eslint-disable-line no-global-assign
   _st3(t);
   $("#chattab").hidden = t !== "chat" || !token;

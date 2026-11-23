@@ -268,6 +268,38 @@ def open_settings(parent):
     pic.set_size_request(-1, 220)
     g4.add(pic)
 
+    # --- mobilen som webkamera
+    import phonecam
+    g5 = Adw.PreferencesGroup(title=i18n.tr("📱 Mobilen som webkamera"),
+                              description=i18n.tr("I Android-appen: Chat → «📷 Mobilkamera». Bildet kommer hit, og kan "
+                                                  "brukes i talekanalene (velg «📱 Mobilkamera» som kamera over), i "
+                                                  "et eget vindu, eller som webkamera i andre programmer."))
+    page.add(g5)
+    st_row = Adw.ActionRow(title=i18n.tr("Status"), subtitle=i18n.tr(phonecam.status()))
+    g5.add(st_row)
+    wrow = Adw.ActionRow(title=i18n.tr("Vis i eget vindu"),
+                         subtitle=i18n.tr("Virker også på Windows – kan fanges som vindu i OBS eller Discord"))
+    wb = Gtk.Button(label=i18n.tr("Åpne"), valign=Gtk.Align.CENTER)
+    wb.connect("clicked", lambda *_: phonecam.open_window(parent))
+    wrow.add_suffix(wb)
+    g5.add(wrow)
+    if not VC.IS_WIN:
+        loops = phonecam.loopback_devices()
+        vsub = (i18n.tr("Vises som «{}» i Discord, nettleseren, OBS …").format(loops[0][1]) if loops else
+                i18n.tr("Krever v4l2loopback (f.eks. OBS sitt virtuelle kamera) – fant ingen"))
+        vrow = Adw.SwitchRow(title=i18n.tr("Bruk som webkamera i andre programmer"), subtitle=vsub,
+                             active=phonecam.virtual_on(), sensitive=bool(loops) and ok)
+        vmsg = st_row
+
+        def virt(r, _p):
+            try:
+                vmsg.set_subtitle(phonecam.set_virtual(r.get_active()))
+            except Exception as e:  # noqa: BLE001
+                vmsg.set_subtitle("✗ " + str(e))
+        vrow.connect("notify::active", virt)
+        g5.add(vrow)
+    ph_tick = GLib.timeout_add_seconds(2, lambda: (st_row.set_subtitle(i18n.tr(phonecam.status())), True)[1])
+
     def level(db):
         GLib.idle_add(lambda: (meter.set_value(max(0.0, min(1.0, (db + 60) / 60))), False)[1])
 
@@ -284,6 +316,7 @@ def open_settings(parent):
         VC.cam_test(on, cb=frame)
 
     def closed(*_a):
+        GLib.source_remove(ph_tick)
         VC.mic_test(False)
         VC.cam_test(False)
     dlg.connect("closed", closed)

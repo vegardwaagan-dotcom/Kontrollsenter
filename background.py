@@ -570,15 +570,18 @@ class Background:
         if time.time() - getattr(self, "_chatl_t", 0) > 60:                      # chat: status, ukesinnlegg …
             self._chatl_t = time.time()
             import threading as _th
-            _th.Thread(target=lambda: __import__("chatlink").tick(self.win), daemon=True).start()
+            if __import__("funksjoner").on("chat"):
+                _th.Thread(target=lambda: __import__("chatlink").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_chatp_t", 0) > 60:                      # chat+: påminnelser, planlagte …
             self._chatp_t = time.time()
             import threading as _th
-            _th.Thread(target=lambda: __import__("chatplus").tick(self.win), daemon=True).start()
+            if __import__("funksjoner").on("chat"):
+                _th.Thread(target=lambda: __import__("chatplus").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_chatq_t", 0) > 60:                      # chat: send det som ligger i kø
             self._chatq_t = time.time()
             import threading as _th
-            _th.Thread(target=lambda: __import__("chat").retry_outbox(), daemon=True).start()
+            if __import__("funksjoner").on("chat"):
+                _th.Thread(target=lambda: __import__("chat").retry_outbox(), daemon=True).start()
         if time.time() - getattr(self, "_eq_t", 0) > 15:                         # utstyr+: hodesett, kontrollere …
             self._eq_t = time.time()
             import threading as _th
@@ -590,15 +593,18 @@ class Background:
         if time.time() - getattr(self, "_gp_t", 0) > 30:                         # spill+: ping-vakt, spillkveld …
             self._gp_t = time.time()
             import threading as _th
-            _th.Thread(target=lambda: __import__("gamesplus").tick(self.win), daemon=True).start()
+            if __import__("funksjoner").on("spill"):
+                _th.Thread(target=lambda: __import__("gamesplus").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_fam_t", 0) > 50:                        # familie+: leggetid, kø, pause …
             self._fam_t = time.time()
             import threading as _th
-            _th.Thread(target=lambda: __import__("familyfun").tick(self.win), daemon=True).start()
+            if __import__("funksjoner").on("familie"):
+                _th.Thread(target=lambda: __import__("familyfun").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_house_t", 0) > 55:                      # huset: kveld, pris, glemte, sov
             self._house_t = time.time()
             import threading as _th
-            _th.Thread(target=lambda: __import__("house").tick(self.win), daemon=True).start()
+            if __import__("funksjoner").on("pcer"):
+                _th.Thread(target=lambda: __import__("house").tick(self.win), daemon=True).start()
         if time.time() - getattr(self, "_assist_t", 0) > 60:                     # PC-assistenten lærer og varsler
             self._assist_t = time.time()
             import threading as _th
@@ -629,7 +635,8 @@ class Background:
                     vr.watch_tick(lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1]))
                 except Exception:  # noqa: BLE001
                     pass
-            _th.Thread(target=vrw, daemon=True).start()
+            if __import__("funksjoner").on("vr"):
+                _th.Thread(target=vrw, daemon=True).start()
         for mod in (() if lite else ("presence", "pricejobs")):
             try:
                 m = __import__(mod)

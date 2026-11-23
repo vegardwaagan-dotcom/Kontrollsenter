@@ -40,6 +40,8 @@ def _bg(fn):
 # ---- Hue følger spillet ----------------------------------------------------------------------------------
 def on_game(name, color=None):
     """name = spillet som startet (None = avsluttet). color = temafargen (hex) for spillet, eller None."""
+    if not __import__("funksjoner").on("smarthjem"):          # funksjonen er slått av
+        return
     if not opt("game_hue"):
         return
 
@@ -111,6 +113,8 @@ def _on_prepare(_c, _s, _p, _i, sig, params):
 # ---- synk RGB og Hue -----------------------------------------------------------------------------------------
 def rgb_changed(color):
     """Kalles når Kontrollsenter setter RGB-farge (r, g, b) – eller None for «av»."""
+    if not __import__("funksjoner").on("smarthjem"):          # funksjonen er slått av
+        return
     if not opt("sync_rgb_hue"):
         return
     hexc = None if color is None else "#%02x%02x%02x" % tuple(int(c) for c in color)
@@ -154,6 +158,8 @@ def _poll_hue():
 
 
 def start():
+    if not __import__("funksjoner").on("smarthjem"):          # funksjonen er slått av
+        return
     if _STATE["started"]:
         return
     _STATE["started"] = True

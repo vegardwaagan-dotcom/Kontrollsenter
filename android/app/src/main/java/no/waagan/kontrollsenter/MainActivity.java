@@ -343,6 +343,20 @@ public class MainActivity extends Activity {
 
     /** Tilgjengelig for sidene som window.KS – bare ufarlige funksjoner. */
     class Bridge {
+        /** «Bruk mobilen som webkamera»: kamera-skjermen sender bildene til PC-en siden er hentet fra. */
+        @JavascriptInterface
+        public void camera(String token) {
+            runOnUiThread(() -> {
+                Uri u = Uri.parse(web.getUrl() == null ? "" : web.getUrl());
+                if (u.getScheme() == null || !u.getScheme().startsWith("http") || u.getHost() == null) return;
+                String base = u.getScheme() + "://" + u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "");
+                android.content.Intent i = new android.content.Intent(MainActivity.this, CamActivity.class);
+                i.putExtra("base", base);
+                i.putExtra("token", token);
+                startActivity(i);
+            });
+        }
+
         @JavascriptInterface
         public void home() {
             runOnUiThread(() -> web.loadUrl(START + "?hjem=1"));

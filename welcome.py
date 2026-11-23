@@ -36,10 +36,11 @@ def _page(icon, title, text, extra=None, pixel=72):
                   halign=Gtk.Align.CENTER, hexpand=True)
     for side in ("start", "end"):
         getattr(box, f"set_margin_{side}")(36)
-    img = Gtk.Image(icon_name=icon, pixel_size=pixel)
-    if icon.endswith("-symbolic"):
-        img.add_css_class("tile-icon")
-    box.append(img)
+    if pixel:
+        img = Gtk.Image(icon_name=icon, pixel_size=pixel)
+        if icon.endswith("-symbolic"):
+            img.add_css_class("tile-icon")
+        box.append(img)
     t = Gtk.Label(label=i18n.tr(title), wrap=True, justify=Gtk.Justification.CENTER)
     t.add_css_class("title-1")
     box.append(t)
@@ -55,7 +56,7 @@ def _page(icon, title, text, extra=None, pixel=72):
 
 class WelcomeDialog(Adw.Dialog):
     def __init__(self, win):
-        super().__init__(title=i18n.tr("Velkommen"), content_width=620, content_height=520)
+        super().__init__(title=i18n.tr("Velkommen"), content_width=640, content_height=600)
         self.win = win
         self.lang = i18n.CHOICE
         tv = Adw.ToolbarView()
@@ -80,7 +81,15 @@ class WelcomeDialog(Adw.Dialog):
             seg.append(b)
         self.car.append(_page("ks-network-symbolic", "Språk",
                               "Automatisk følger språket i Linux: norsk gir norsk, alt annet gir engelsk.", seg))
-        # 3. Oppstart
+        # 3. Funksjoner: hva skal Kontrollsenter ha med?
+        import funksjoner_ui
+        self.features = funksjoner_ui.FeaturePicker()
+        self.features.set_size_request(480, -1)
+        self.car.append(_page("ks-overview-symbolic", "Hvilke funksjoner vil du ha?",
+                              "Det du ikke tar med, slås helt av: det vises ikke i menyen og bruker verken minne "
+                              "eller prosessor. Du kan endre det senere under Innstillinger → Funksjoner.",
+                              self.features, pixel=0))
+        # 4. Oppstart
         import sys
         self.win32 = sys.platform == "win32"
         if self.win32:
@@ -173,6 +182,11 @@ class WelcomeDialog(Adw.Dialog):
                 pass
         if not self.win32 and self.ov_sw.get_active() != self.win.ov_button.get_active():
             self.win.ov_button.set_active(self.ov_sw.get_active())
+        try:
+            import funksjoner_ui
+            funksjoner_ui.apply(self.win, *self.features.get())
+        except Exception:  # noqa: BLE001
+            pass
         mark_done()
         self.close()
         if self.lang != i18n.CHOICE:
