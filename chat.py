@@ -209,11 +209,22 @@ def _home_pc(name):
 
 
 def _post_friend(f, payload, timeout=6):
-    url = (f"http://{f['addr']}:{f.get('port', 27100)}/api/friend/chat?k=" + urllib.parse.quote(f["key"]))
-    req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST",
-                                 headers={"Content-Type": "application/json", "User-Agent": "Kontrollsenter"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.load(r)
+    import friends
+    last = None
+    for a in friends.addrs(f)[:4]:
+        url = f"http://{a}:{f.get('port', 27100)}/api/friend/chat?k=" + urllib.parse.quote(f["key"])
+        req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST",
+                                     headers={"Content-Type": "application/json", "User-Agent": "Kontrollsenter"})
+        try:
+            with urllib.request.urlopen(req, timeout=min(timeout, 4)) as r:
+                d = json.load(r)
+            friends.good(f, a)
+            return d
+        except urllib.error.HTTPError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            last = e
+    raise last or RuntimeError("svarer ikke")
 
 
 def send(room, text, frm=None, notify=None, extra=None):
@@ -506,6 +517,14 @@ def _alert(room, msg, notify):
         pass
     if quiet:
         notify = None                                       # stille timer: ingen varsel etter leggetid
+    try:                                                    # du ser på akkurat denne samtalen nå: ikke varsle
+        import remote
+        w = getattr(remote, "win", None)
+        if w is not None and w.is_active() and w.stack.get_visible_child_name() == "chat" and \
+                getattr(w, "_chat_room", None) == room:
+            notify = None
+    except Exception:  # noqa: BLE001
+        pass
     try:
         import remote_extra
         remote_extra.event("chat", f"💬 {msg['from']}", msg["text"], "info", room=room)

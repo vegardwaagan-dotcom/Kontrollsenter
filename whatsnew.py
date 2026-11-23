@@ -13,6 +13,20 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.96.0", "Varsler for anrop og chat, og vennene vises igjen", [
+        ("Varsler", [
+            "Når noen ringer: varsel med 📞 Svar, 🔕 Demp (stopper ringingen) og ❌ Legg på",
+            "Varsel for nye meldinger både i servere og direkte – også når de andre varslene er slått av eller "
+            "«Ikke forstyrr» er på (egen bryter: «Chat og anrop» under varslene)",
+            "Ingen varsel for samtalen du allerede ser på i Kontrollsenter",
+        ]),
+        ("Venner", [
+            "Venner som også er en PC i huset (eller er på et annet Tailscale-nett) vises igjen med status, "
+            "temperaturer og spill – Kontrollsenter prøver hjemmenettet, adressene fra invitasjonen og Tailscale",
+            "Nye venne-invitasjoner har med adressen på hjemmenettet",
+            "Chat til venner prøver de samme adressene",
+        ]),
+    ]),
     ("0.95.1", "Chat begge veier mellom PC-ene hjemme", [
         ("Rettet", [
             "Meldinger til en PC hjemme som også står som venn gikk via vennens Tailscale-navn – på et annet "

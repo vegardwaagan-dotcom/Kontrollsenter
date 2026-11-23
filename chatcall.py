@@ -75,10 +75,66 @@ def on_message(msg):
             chatlink.start_ring(f"📞 {msg.get('from')}")
         except Exception:  # noqa: BLE001
             pass
+        _notify_call(cid, msg.get("from"))
     elif msg.get("kind") in ("call_end", "call_no"):
         if _IN.pop(cid, None):
             _stop_ring()
+            _withdraw()
     _fire()
+
+
+def _notify_call(cid, who):
+    """Varsel med Svar / Legg på / Demp (vises selv om andre varsler er av – egen bryter for chat og anrop)."""
+    try:
+        import remote
+        from gi.repository import GLib
+        bg = getattr(getattr(remote, "win", None), "bg", None)
+        if not bg:
+            return
+        GLib.idle_add(lambda: (bg.notify("call", f"📞 {who} ringer deg", "Svar, legg på eller demp ringingen",
+                                         force=True, action="app.chat",
+                                         buttons=[("📞 Svar", "app.call-answer", cid),
+                                                  ("🔕 Demp", "app.call-mute", cid),
+                                                  ("❌ Legg på", "app.call-decline", cid)], urgent=True), False)[1])
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _withdraw():
+    try:
+        from gi.repository import Gio
+        app = Gio.Application.get_default()
+        if app:
+            app.withdraw_notification("call")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def from_notification(action, cid, app=None):
+    """Knappene i varselet."""
+    if action == "call-mute":                               # bare stopp ringelyden – Svar/Legg på virker fortsatt
+        _stop_ring()
+        if cid in _IN:
+            _IN[cid]["muted"] = True
+        return
+    if action == "call-decline":
+        decline(cid)
+        return
+
+    def work():
+        try:
+            answer(cid)
+        except Exception as e:  # noqa: BLE001
+            import applog
+            applog.log.warning("svar på anrop: %s", e)
+    threading.Thread(target=work, daemon=True).start()
+    try:                                                    # vis chatten
+        win = app.get_active_window() if app else None
+        if win:
+            win.present()
+            win.stack.set_visible_child_name("chat")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _stop_ring():
@@ -95,6 +151,7 @@ def incoming():
     for cid in [c for c, v in _IN.items() if now - v["t"] > RING_SECONDS]:
         _IN.pop(cid, None)
         _stop_ring()
+        _withdraw()
     return sorted(((c, v["from"], v["room"]) for c, v in _IN.items()), key=lambda x: -_IN[x[0]]["t"])
 
 
@@ -103,6 +160,7 @@ def answer(cid):
     import chatvc
     inc = _IN.pop(cid, None)
     _stop_ring()
+    _withdraw()
     if not inc:
         raise RuntimeError("samtalen ringer ikke lenger")
     srv = chatsrv.get(cid) or chatsrv.join(inc["invite"])
@@ -118,6 +176,7 @@ def decline(cid):
     import chat
     inc = _IN.pop(cid, None)
     _stop_ring()
+    _withdraw()
     if inc and inc.get("room"):
         threading.Thread(target=lambda: _quiet(lambda: chat.send(inc["room"], "📵 Kan ikke ta samtalen nå",
                                                                  extra={"kind": "call_no", "call_id": cid})),

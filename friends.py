@@ -107,21 +107,73 @@ def my_name():
         return socket.gethostname()
 
 
+def _lan_ips():
+    try:
+        import remote
+        return [ip for ip in remote.local_ips() if ip.startswith(("192.168.", "10.", "172."))][:2]
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def invite():
-    """«ks-venn://adresse:port/kode?navn=…» – sendes til vennen."""
+    """«ks-venn://adresse:port/kode?alt=…&navn=…» – sendes til vennen. alt = hjemmenettet (virker uten Tailscale
+    hjemme, og når dere er på hvert deres Tailscale-nett)."""
     t = tailscale_self()
     addr = t["dns"] or t["ip"]
-    if not addr:
+    lan = _lan_ips()
+    if not addr and not lan:
         return None
-    return f"ks-venn://{addr}:{PORT}/{cfg()['key']}?navn={urllib.parse.quote(my_name())}"
+    alt = [a for a in ([t["ip"]] if t["dns"] and t["ip"] else []) + lan if a and a != addr]
+    addr = addr or lan[0]
+    return (f"ks-venn://{addr}:{PORT}/{cfg()['key']}?" + (f"alt={','.join(alt)}&" if alt else "") +
+            f"navn={urllib.parse.quote(my_name())}")
 
 
 def parse_invite(text):
-    m = re.search(r"ks-venn://([\w.\-]+):(\d+)/([\w\-]+)(?:\?navn=([^\s]+))?", (text or "").strip())
+    m = re.search(r"ks-venn://([\w.\-]+):(\d+)/([\w\-]+)(\?\S*)?", (text or "").strip())
     if not m:
         raise ValueError("ugyldig invitasjon – den skal starte med ks-venn://")
-    return {"addr": m.group(1), "port": int(m.group(2)), "key": m.group(3),
-            "name": urllib.parse.unquote(m.group(4) or m.group(1).split(".")[0])}
+    q = urllib.parse.parse_qs((m.group(4) or "?")[1:])
+    alt = [a for a in (q.get("alt") or [""])[0].split(",") if re.fullmatch(r"[\w.\-]+", a)]
+    f = {"addr": m.group(1), "port": int(m.group(2)), "key": m.group(3),
+         "name": (q.get("navn") or [m.group(1).split(".")[0]])[0][:40]}
+    if alt:
+        f["alt"] = alt[:4]
+    return f
+
+
+_GOOD = {}                                          # venn -> adressen som virket sist
+
+
+def addrs(f):
+    """Adressene vi kan prøve for en venn: den som virket sist, hjemmenettet (hvis vennen også er en PC i huset
+    eller har gitt oss LAN-adresser), så Tailscale."""
+    out = []
+    good = _GOOD.get(f.get("key"))
+    if good:
+        out.append(good)
+    try:
+        import homepcs
+        n = (f.get("name") or "").lower()
+        host = (f.get("addr") or "").split(".")[0].lower()
+        for p in homepcs.fetch() or []:
+            if (p.get("name") or "").lower() in (n, host):
+                out += p.get("ips") or []
+    except Exception:  # noqa: BLE001
+        pass
+    lan = [a for a in f.get("alt") or [] if a.startswith(("192.168.", "10.", "172."))]
+    mine = [x.rsplit(".", 1)[0] for x in _lan_ips()]
+    out += [a for a in lan if a.rsplit(".", 1)[0] in mine]
+    out += [f.get("addr")] + [a for a in f.get("alt") or [] if a not in out]
+    seen = []
+    for a in out:
+        if a and a not in seen:
+            seen.append(a)
+    return seen
+
+
+def good(f, addr):
+    _GOOD[f.get("key")] = addr
 
 
 def add_friend(text, name=None):
@@ -271,11 +323,23 @@ def _hw():
 # Vennenes PC-er (henter /api/friend fra hver venn)
 # --------------------------------------------------------------------------
 def fetch_one(f, timeout=4):
-    url = f"http://{f['addr']}:{f.get('port', PORT)}/api/friend?k={urllib.parse.quote(f['key'])}"
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Kontrollsenter"}),
-                                    timeout=timeout) as r:
-            d = json.load(r)
+        d, err = None, None
+        for a in addrs(f)[:4]:
+            url = f"http://{a}:{f.get('port', PORT)}/api/friend?k={urllib.parse.quote(f['key'])}"
+            try:
+                with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Kontrollsenter"}),
+                                            timeout=timeout if a == addrs(f)[0] else 3) as r:
+                    d = json.load(r)
+                good(f, a)
+                break
+            except urllib.error.HTTPError as e:            # svarte, men sa nei (feil kode / deling av)
+                err = e
+                break
+            except Exception as e:  # noqa: BLE001
+                err = e
+        if d is None:
+            raise err or RuntimeError("svarer ikke")
         d["online"] = True
         d["_seen"] = time.time()
     except Exception as e:  # noqa: BLE001

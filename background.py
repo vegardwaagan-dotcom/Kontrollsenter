@@ -31,8 +31,9 @@ KINDS = [
      ["gamecheck", "weekly", "anomaly", "lowend", "crash", "house", "price"]),
     ("updates", "Oppdateringer", "Nye programoppdateringer og nye versjoner av Kontrollsenter.",
      ["updates", "lanupdate", "lanpublish", "restart"]),
-    ("chat", "Familie-chat og «Middag!»", "Meldinger fra de andre i huset – og «Spill sammen»-invitasjoner.",
-     ["chat", "invite"]),
+    ("chat", "Chat og anrop", "Meldinger i servere og direkte, anrop (Svar / Legg på / Demp), «Middag!» og «Spill "
+     "sammen». Virker også når de andre varslene er slått av.",
+     ["chat", "invite", "call"]),
     ("game", "Spillprofil", "Når spillmodus slås på automatisk fordi et spill startet.", ["game"]),
     ("session", "Rapport etter spilløkt", "FPS, temperaturer og strøm når du er ferdig med et spill.", ["session"]),
     ("clip", "Klipp lagret", "Når et klipp av de siste minuttene er lagret.", ["clip"]),
@@ -75,6 +76,8 @@ def wants(cfg, key):
                 return True
         except Exception:  # noqa: BLE001
             pass
+    if kid == "chat":                                      # chat og anrop: egen bryter (Chat → profil), ikke hovedbryteren
+        return bool((cfg.get("kinds") or {}).get("chat", True))
     if not cfg.get("notify", True):
         return False
     if cfg.get("dnd") and kid not in ("playtime", "chat"):    # scene med «ingen varsler» (chat slipper gjennom)
@@ -391,7 +394,7 @@ class Background:
                 self.tray.set_items(items)
 
     # --- varsler ---------------------------------------------------------------
-    def notify(self, key, title, body, force=False, action=None):
+    def notify(self, key, title, body, force=False, action=None, buttons=None, urgent=False):
         try:                                              # alt som varsles havner også i tidslinjen (appen)
             import remote_extra
             if key not in ("bg",) and time.time() - self.sent.get("ev:" + key, 0) > REPEAT:
@@ -433,6 +436,10 @@ class Background:
         n.set_body(i18n.tr(body))
         n.set_icon(Gio.ThemedIcon.new("no.waagan.Systemmonitor"))
         n.set_default_action(action or "app.show")
+        for label, act, target in buttons or []:            # f.eks. Svar / Legg på / Demp ved anrop
+            n.add_button_with_target(i18n.tr(label), act, GLib.Variant("s", str(target)))
+        if urgent:
+            n.set_priority(Gio.NotificationPriority.URGENT)
         self.app.send_notification(key, n)
 
     def flush_held(self):

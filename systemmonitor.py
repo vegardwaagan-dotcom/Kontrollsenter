@@ -1698,6 +1698,11 @@ class MonitorApp(Adw.Application):
 
     def do_startup(self):
         Adw.Application.do_startup(self)
+        for name in ("call-answer", "call-decline", "call-mute"):            # knappene i anropsvarselet
+            ca = Gio.SimpleAction.new(name, GLib.VariantType.new("s"))
+            ca.connect("activate", lambda _a, v, n=name: __import__("chatcall").from_notification(n, v.get_string(),
+                                                                                                    self))
+            self.add_action(ca)
         act = Gio.SimpleAction.new("joingame", GLib.VariantType.new("s"))      # «Spill sammen» fra varselet
 
         def join(_a, v):

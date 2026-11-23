@@ -723,6 +723,10 @@ class ChatPage(Gtk.Box):
     # ------------------------------------------------------------------ meldinger
     def _load(self):
         room = self.room
+        try:                                                # chat.py: ikke varsle for rommet du ser på
+            self.get_root()._chat_room = room
+        except Exception:  # noqa: BLE001
+            pass
         if room.startswith("s:"):
             srv = CS.get(room.split(":")[1]) or {}
             ch = CS.channel(srv, room.split(":")[2]) or {}
