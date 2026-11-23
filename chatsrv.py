@@ -97,6 +97,11 @@ def _save(d):
     os.replace(tmp, FILE)
 
 
+def visible_servers():
+    """Servere i serverlista (uten skjulte samtaler)."""
+    return {k: v for k, v in servers().items() if not v.get("hidden")}
+
+
 def servers():
     return _load()
 
@@ -149,7 +154,8 @@ def _split_icon(name, icon):
     return name, lead or "🎮"
 
 
-def create(name, icon="🎮"):
+def create(name, icon="🎮", hidden=False):
+    """Ny server. hidden=True: samtale uten server (chatcall.py) – vises ikke i serverlista, bare én talekanal."""
     name, icon = _split_icon(name, icon)
     sid = secrets.token_hex(6)
     general = _nid()
@@ -162,6 +168,9 @@ def create(name, icon="🎮"):
                    {"id": _nid(), "name": "lounge", "topic": "Prat og spill", "kind": "voice"}]},
                {"id": _nid(), "name": "Annet", "channels": [{"id": _nid(), "name": "klipp", "topic": "Høydepunkter"}]}],
            "invites": {}}
+    if hidden:
+        srv.update(hidden=True, categories=[{"id": _nid(), "name": "Samtale", "channels": [
+            {"id": _nid(), "name": "samtale", "topic": "", "kind": "voice"}]}])
     _put(srv)
     return srv
 
@@ -169,7 +178,8 @@ def create(name, icon="🎮"):
 def _bump_and_send(srv):
     srv["v"] = int(srv.get("v", 0)) + 1
     _put(srv)
-    broadcast_meta(srv)
+    snap = json.loads(json.dumps(srv))                     # send i bakgrunnen (medlemmer som er av tar tid)
+    threading.Thread(target=broadcast_meta, args=(snap,), daemon=True).start()
     return srv
 
 
@@ -334,16 +344,21 @@ def make_invite(sid, uses=0, hours=168):
     srv.setdefault("invites", {})[tok] = {"by": me()["id"], "t": time.time(), "until": time.time() + hours * 3600,
                                           "uses": int(uses), "used": 0}
     _put(srv)
-    addr = (my_addrs() or ["?"])[0]
-    return f"ks-server://{addr}:{PORT}/{sid}/{tok}?navn={urllib.parse.quote(srv['name'])}"
+    addrs = my_addrs() or ["?"]
+    alt = ",".join(addrs[1:4])
+    # alle adressene mine: Tailscale (utenfor huset) og hjemmenettet – den som blir med prøver alle
+    return (f"ks-server://{addrs[0]}:{PORT}/{sid}/{tok}?" + (f"alt={alt}&" if alt else "") +
+            f"navn={urllib.parse.quote(srv['name'])}")
 
 
 def parse_invite(text):
-    m = re.search(r"ks-server://([\w.\-]+):(\d+)/([0-9a-f]+)/([\w\-]+)(?:\?navn=(\S+))?", (text or "").strip())
+    m = re.search(r"ks-server://([\w.\-]+):(\d+)/([0-9a-f]+)/([\w\-]+)(\?\S*)?", (text or "").strip())
     if not m:
         return None
-    return {"addr": m.group(1), "port": int(m.group(2)), "srv": m.group(3), "tok": m.group(4),
-            "name": urllib.parse.unquote(m.group(5) or "Server")}
+    q = urllib.parse.parse_qs((m.group(5) or "?")[1:])
+    alt = [a for a in (q.get("alt") or [""])[0].split(",") if re.fullmatch(r"[\w.\-]+", a)]
+    return {"addr": m.group(1), "addrs": [m.group(1)] + alt, "port": int(m.group(2)), "srv": m.group(3),
+            "tok": m.group(4), "name": (q.get("navn") or ["Server"])[0]}
 
 
 def join(text):
@@ -352,15 +367,28 @@ def join(text):
     if not inv:
         raise ValueError("ugyldig invitasjonslenke (skal starte med ks-server://)")
     body = json.dumps({"srv": inv["srv"], "tok": inv["tok"], "member": me_member()}).encode()
-    req = urllib.request.Request(f"http://{inv['addr']}:{inv['port']}/api/chat/join", data=body, method="POST",
-                                 headers={"Content-Type": "application/json", "User-Agent": "Kontrollsenter"})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            d = json.load(r)
-    except Exception as e:  # noqa: BLE001
-        if "403" in str(e) or "410" in str(e):
-            raise RuntimeError("invitasjonen er brukt opp, utløpt eller ugyldig") from e
-        raise RuntimeError(f"fikk ikke kontakt med eieren av serveren ({e})") from e
+    d, errs = None, []
+    # hjemmenettet først hvis vi er på samme nett (raskest), ellers Tailscale – prøv alle adressene
+    mine = set(my_addrs())
+    order = sorted(inv["addrs"], key=lambda a: (not any(a.rsplit(".", 1)[0] == x.rsplit(".", 1)[0] for x in mine),))
+    for addr in order:
+        req = urllib.request.Request(f"http://{addr}:{inv['port']}/api/chat/join", data=body, method="POST",
+                                     headers={"Content-Type": "application/json", "User-Agent": "Kontrollsenter"})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                d = json.load(r)
+            break
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 410):
+                raise RuntimeError("invitasjonen er brukt opp, utløpt eller ugyldig – be om en ny") from e
+            if e.code == 404:
+                raise RuntimeError("eieren har en for gammel Kontrollsenter (servere krever 0.83 eller nyere)") from e
+            errs.append(f"{addr}: {e.code}")
+        except Exception as e:  # noqa: BLE001
+            errs.append(f"{addr}: {'svarer ikke' if 'timed out' in str(e) else 'ingen kontakt'}")
+    if d is None:
+        raise RuntimeError("fikk ikke kontakt med eieren av serveren (" + "; ".join(errs) + "). Er PC-en deres på, "
+                           "med Kontrollsenter startet? Utenfor huset må begge ha Tailscale pålogget.")
     srv = d.get("server")
     if not srv:
         raise RuntimeError(d.get("error") or "ble ikke med")
@@ -373,7 +401,16 @@ def join(text):
 
 
 def handle_join(body):
-    """Hos eieren: godkjenn en invitasjon og legg til medlemmet."""
+    """Hos eieren: godkjenn en invitasjon og legg til medlemmet (én om gangen – ellers kan to som blir med
+    samtidig skrive over hverandre, og den ene forsvinner fra medlemslista)."""
+    with _JOIN_LOCK:
+        return _handle_join(body)
+
+
+_JOIN_LOCK = threading.Lock()
+
+
+def _handle_join(body):
     srv = get(str(body.get("srv")))
     if not srv or my_role(srv) not in ("owner", "admin"):
         raise PermissionError("ukjent server")
@@ -422,15 +459,35 @@ def channel(srv, chid):
 # --------------------------------------------------------------------------
 # Sende til medlemmene (direkte, med kø)
 # --------------------------------------------------------------------------
-def _post(m, payload, timeout=6):
+_GOOD = {}                                          # medlem -> adressen som virket sist
+
+
+def _order(addrs, key=None):
+    """Adressen som virket sist først, så samme hjemmenett som meg, så resten (Tailscale)."""
+    mine = [x.rsplit(".", 1)[0] for x in my_addrs_cached()]
+    good = _GOOD.get(key)
+    return sorted(addrs, key=lambda a: (a != good, a.rsplit(".", 1)[0] not in mine))
+
+
+_MA = {"t": 0, "v": []}
+
+
+def my_addrs_cached():
+    if time.time() - _MA["t"] > 120:
+        _MA.update(t=time.time(), v=my_addrs())
+    return _MA["v"]
+
+
+def _post(m, payload, timeout=4):
     last = None
-    for a in (m.get("addrs") or [])[:3]:
+    for a in _order((m.get("addrs") or [])[:4], m.get("id")):
         try:
             url = f"http://{a}:{m.get('port', PORT)}/api/chat/inbox?k=" + urllib.parse.quote(m["key"])
             req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST",
                                          headers={"Content-Type": "application/json", "User-Agent": "Kontrollsenter"})
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 if json.load(r).get("ok"):
+                    _GOOD[m.get("id")] = a
                     return True
         except Exception as e:  # noqa: BLE001
             last = e

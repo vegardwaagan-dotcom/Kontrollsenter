@@ -1107,7 +1107,16 @@ def _handler(remote):
             return (ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") and self.headers.get("X-KS-Local") == "1"
                     and not self.headers.get("Origin"))
 
+        def _remote_on(self):
+            """Fjernstyring fra mobilen er slått av: tjenesten kjører bare for chatten (egne nøkler)."""
+            if load_cfg()["enabled"]:
+                return True
+            self._send(403, {"error": "Fjernstyring er slått av på denne PC-en (Hjemme-fanen)"})
+            return False
+
         def _auth(self):
+            if not self._remote_on():
+                return False
             h = self.headers.get("Authorization", "")
             tok = h[7:].strip() if h.startswith("Bearer ") else ""
             d = remote.check(tok)
@@ -1331,6 +1340,8 @@ def _handler(remote):
                 return self._send(403, {"error": "bare hjemmenettet"})
             p = urlparse(self.path).path
             if p == "/api/phonecam":                       # mobilen som webkamera: ett JPEG-bilde per kall
+                if not self._remote_on():
+                    return
                 q = parse_qs(urlparse(self.path).query)
                 if not remote.check((q.get("k") or [""])[0]):
                     return self._send(401, {"error": "ikke paret"})
@@ -1354,6 +1365,8 @@ def _handler(remote):
                     ok, msg = widgets.local_action(remote.win, body)
                     return self._send(200, {"ok": bool(ok), "msg": str(msg)})
                 if p == "/api/pair":
+                    if not self._remote_on():
+                        return
                     token, msg = remote.pair(body.get("code", ""), body.get("device", ""))
                     if not token:
                         time.sleep(1)                       # bremser gjetting
@@ -1389,6 +1402,13 @@ def _handler(remote):
                         return self._send(200, {"ok": True})
                     except PermissionError as e:
                         return self._send(403, {"error": str(e)})
+                if p == "/api/house/chat":                  # chat fra en PC i huset – direkte (raskere enn NAS-en)
+                    import watch as W
+                    if not W.check_house_key((parse_qs(urlparse(self.path).query).get("fk") or [""])[0]):
+                        return self._send(403, {"error": "feil husnøkkel"})
+                    import chat
+                    chat.receive_home(body.get("_chat2") or body, _notify(remote.win))
+                    return self._send(200, {"ok": True})
                 if p == "/api/house/setup":                 # 14: oppsett fra en annen PC i huset (husnøkkel)
                     import watch as W
                     if not W.check_house_key((parse_qs(urlparse(self.path).query).get("fk") or [""])[0]):

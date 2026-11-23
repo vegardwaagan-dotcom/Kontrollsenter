@@ -65,7 +65,7 @@ def my_presence(win=None):
 def broadcast_presence(win):
     import chatsrv
     pres = my_presence(win)
-    for srv in chatsrv.servers().values():
+    for srv in chatsrv.visible_servers().values():
         threading.Thread(target=chatsrv.broadcast, args=(srv, {"type": "presence", **pres}), daemon=True).start()
 
 

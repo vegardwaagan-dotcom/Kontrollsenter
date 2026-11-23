@@ -253,7 +253,9 @@ class Background:
             remote.INSTANCE = remote.Remote(win)
             import remote_extra
             remote_extra.event("power", "Kontrollsenter startet", "", "info")
-            if remote.load_cfg()["enabled"]:
+            # chatten trenger tjenesten (meldinger, servere, talekanaler) – også når fjernstyring fra mobilen er av
+            chat_on = __import__("funksjoner").on("chat")
+            if remote.load_cfg()["enabled"] or chat_on:
                 ok, err = remote.INSTANCE.start()
                 if not ok:
                     import applog
@@ -583,6 +585,10 @@ class Background:
             import threading as _th
             if __import__("funksjoner").on("chat"):
                 _th.Thread(target=lambda: __import__("chatplus").tick(self.win), daemon=True).start()
+        if time.time() - getattr(self, "_callc_t", 0) > 3600 and __import__("funksjoner").on("chat"):
+            self._callc_t = time.time()                                          # gamle samtaler uten server
+            import threading as _th
+            _th.Thread(target=lambda: __import__("chatcall").cleanup(), daemon=True).start()
         if time.time() - getattr(self, "_chatq_t", 0) > 60:                      # chat: send det som ligger i kø
             self._chatq_t = time.time()
             import threading as _th

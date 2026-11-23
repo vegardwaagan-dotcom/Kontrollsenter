@@ -13,6 +13,30 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.95.0", "Stabil chat, ring uten server og ryddigere direktemeldinger", [
+        ("Tilkobling", [
+            "Chatten virker også når fjernstyring fra mobilen er av (tjenesten kjører for chatten, mobilen holdes ute)",
+            "Invitasjonslenker har alle adressene (Tailscale og hjemmenettet) – den som blir med prøver alle, "
+            "hjemmenettet først",
+            "Meldinger til PC-ene hjemme går direkte (sekunder) i stedet for via NAS-postkassen (opptil et minutt)",
+            "Raskere levering til medlemmer: adressen som virket sist brukes først",
+            "Rettet: to som ble med i en server samtidig kunne skrive over hverandre (den ene forsvant)",
+            "Tydelige feilmeldinger når man ikke kommer inn (gammel versjon, utløpt invitasjon, PC-en svarer ikke)",
+        ]),
+        ("Ring uten server", [
+            "📞 i en direktemelding ringer personen – tale, webkamera og overlay som i talekanalene",
+            "👥📞 Gruppesamtale: velg flere og ring alle",
+            "Den som blir ringt får «📞 … ringer deg» med Svar / Avvis, og kan bli med senere fra meldingen",
+            "Samtalene vises under «Samtaler» med hvem som er inne, og ryddes bort etter et døgn",
+        ]),
+        ("Direktemeldinger", [
+            "Gruppert: Festet, Felles, PC-er hjemme og Venner",
+            "PC-er med for gammel Kontrollsenter vises med «⚠️ versjon – må oppdateres»",
+        ]),
+        ("Mobilappen", [
+            "Chat: Send-knappen får alltid plass (hurtigsvar-hjulet er smalt)",
+        ]),
+    ]),
     ("0.94.0", "Overlayet kan flyttes, låses og gjøres gjennomsiktig", [
         ("Webkamera-overlay i spill", [
             "Synlighet fra 0 til 100 %",

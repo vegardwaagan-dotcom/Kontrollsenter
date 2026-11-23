@@ -907,3 +907,8 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .chat-card .row input { flex: 1; min-width: 0; }
 .ct-qsel { flex: 0 0 auto; width: 56px; padding-left: 8px; padding-right: 4px; }
 .ct-gate-in { text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 18px 6px; }
+/* chat: skrivefeltet krymper, så Send alltid får plass (også på smale telefoner) */
+#ct-card .row { flex-wrap: nowrap; }
+#ct-text { flex: 1 1 auto; min-width: 0; width: auto; }
+#ct-send { flex: 0 0 auto; }
+#ct-quick + .picker { flex: 0 0 auto; width: 58px; min-width: 0; padding-left: 8px; padding-right: 8px; overflow: hidden; }

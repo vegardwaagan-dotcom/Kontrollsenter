@@ -344,6 +344,8 @@ class RemoteCard(Gtk.Box):
             if sw.get_active():
                 ok, err = r.start()
                 self.msg.set_label("" if ok else err)
+            elif __import__("funksjoner").on("chat"):     # chatten trenger tjenesten – mobilen stenges ute
+                self.msg.set_label("Mobilappen kan ikke lenger styre PC-en (chatten virker fortsatt)")
             else:
                 r.stop()
                 self.msg.set_label("")

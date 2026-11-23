@@ -82,6 +82,42 @@ def tailscale():
     return _TS["v"]
 
 
+MIN_CHAT = (0, 83, 0)                                   # eldre versjoner kan ikke servere, tale eller samtaler
+
+
+def _ver(v):
+    try:
+        return tuple(int(x) for x in str(v).split(".")[:3])
+    except ValueError:
+        return (0, 0, 0)
+
+
+def room_groups(pins=()):
+    """Direktemeldingene gruppert: [(gruppenavn, [(rom-id, navn, ikon, uleste, merknad)])]."""
+    flat = {rid: (rid, name, icon, unread) for rid, name, icon, unread in rooms() if not rid.startswith("s:")}
+    old = {}
+    home = []
+    try:
+        import homepcs
+        for p in homepcs.fetch() or []:
+            n = p.get("name")
+            if n and n != _me():
+                home.append(f"p:{n}")
+                if p.get("version") and _ver(p["version"]) < MIN_CHAT:
+                    old[f"p:{n}"] = f"⚠️ {p['version']} – må oppdateres"
+    except Exception:  # noqa: BLE001
+        pass
+    groups = [("Festet", [r for r in pins if r in flat]),
+              ("Felles", [r for r in ("hjemme", "alle", "meg") if r in flat and r not in pins]),
+              ("PC-er hjemme", [r for r in home if r in flat and r not in pins]),
+              ("Venner", [r for r in flat if r.startswith("p:") and r not in home and r not in pins])]
+    out = []
+    for title, ids in groups:
+        if ids:
+            out.append((title, [(*flat[r], old.get(r, "")) for r in ids]))
+    return out
+
+
 def rooms():
     """[(rom-id, visningsnavn, ikon, uleste)]"""
     out = [("hjemme", "Hjemme", "🏠"), ("alle", "Alle (hjemme + venner)", "🌍"), ("meg", "Meg (notater og lenker)", "📌")]
@@ -106,7 +142,7 @@ def rooms():
         pass
     try:                                                  # serverkanaler («Server › #kanal»)
         import chatsrv
-        for srv in chatsrv.servers().values():
+        for srv in chatsrv.visible_servers().values():
             for c in srv.get("categories", []):
                 for ch in c.get("channels", []):
                     out.append((f"s:{srv['id']}:{ch['id']}",
@@ -212,6 +248,9 @@ def send(room, text, frm=None, notify=None, extra=None):
             pass
         return f"Sendt til {ok}" + (f" · {q} får den når de er på igjen" if q else "")
     msg = {"id": f"{me}-{time.time_ns()}", "t": time.time(), "from": frm, "pc": me, "text": text, "room": room}
+    for k in ("kind", "invite", "call_id"):                # samtaler uten server (chatcall.py)
+        if (extra or {}).get(k):
+            msg[k] = str(extra[k])[:400]
     _store(room, msg)
     _fire(room, msg)
     if room == "meg":                                     # bare her (og mobilappen din)
@@ -250,10 +289,37 @@ def send(room, text, frm=None, notify=None, extra=None):
     return f"Sendt til {ok}" + (f" · {queued} får den når de er på igjen" if queued else "")
 
 
+def _home_direct(name, payload):
+    """Rett til PC-en hjemme over hjemmenettet (husnøkkelen) – sekunder i stedet for NAS-postkassen."""
+    try:
+        import homepcs
+        import watch
+        key = watch.house_key()
+        pc = next((p for p in homepcs.fetch() or [] if p.get("name") == name), None)
+        if not key or not pc:
+            return False
+        for ip in (pc.get("ips") or [])[:3]:
+            try:
+                req = urllib.request.Request(
+                    f"http://{ip}:27100/api/house/chat?fk=" + urllib.parse.quote(key),
+                    data=json.dumps(payload, ensure_ascii=False).encode(), method="POST",
+                    headers={"Content-Type": "application/json", "User-Agent": "Kontrollsenter"})
+                with urllib.request.urlopen(req, timeout=3) as r:
+                    if json.load(r).get("ok"):
+                        return True
+            except Exception:  # noqa: BLE001 – eldre versjon eller av: NAS-postkassen tar den
+                continue
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
 def _deliver(kind, target, payload):
     try:
         if kind == "venn":
             return bool(_post_friend(target, payload).get("ok"))
+        if _home_direct(target, payload):
+            return True
         import features
         features.nas_send(target, payload["from"], json.dumps({"_chat2": payload}, ensure_ascii=False))
         return True
@@ -311,6 +377,19 @@ def queued_count():
 # --------------------------------------------------------------------------
 # Motta
 # --------------------------------------------------------------------------
+def _call_fields(payload, msg):
+    """Samtale-invitasjon i en direktemelding: ta vare på feltene og si fra (chatcall.on_message)."""
+    if payload.get("kind") in ("call", "call_end", "call_no") and payload.get("call_id"):
+        for k in ("kind", "invite", "call_id"):
+            if payload.get(k):
+                msg[k] = str(payload[k])[:400]
+        try:
+            import chatcall
+            chatcall.on_message(msg)
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def receive_friend(payload, src_ip, notify=None):
     """POST /api/friend/chat: bare fra adresser i vennelista."""
     import friends
@@ -336,6 +415,7 @@ def receive_friend(payload, src_ip, notify=None):
     msg = {"id": str(payload.get("id") or time.time_ns())[:80], "t": time.time(),
            "from": str(payload.get("from") or f["name"])[:40], "pc": f["name"], "text": str(payload.get("text"))[:500],
            "room": room}
+    _call_fields(payload, msg)
     if _store(room, msg):
         _alert(room, msg, notify)
     return True
@@ -378,6 +458,7 @@ def receive_home(payload, notify=None):
         room = "alle"
     msg = {"id": str(payload.get("id"))[:80], "t": time.time(), "from": str(payload.get("from"))[:40],
            "pc": str(payload.get("pc"))[:40], "text": str(payload.get("text"))[:500], "room": room}
+    _call_fields(payload, msg)
     if _store(room, msg):
         _alert(room, msg, notify)
 

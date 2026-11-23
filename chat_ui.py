@@ -162,14 +162,27 @@ class ChatPage(Gtk.Box):
         self.mem_btn.add_css_class("flat")
         self.mem_btn.connect("toggled", lambda b: self.members_rev.set_reveal_child(b.get_active()))
         th.append(self.mem_btn)
+        self.call_btn = Gtk.Button(label="📞", tooltip_text=i18n.tr("Ring (tale og webkamera – uten server)"),
+                                   valign=Gtk.Align.CENTER, visible=False)
+        self.call_btn.add_css_class("flat")
+        self.call_btn.connect("clicked", lambda *_: self._call_room_now())
+        th.append(self.call_btn)
+        self.group_call_btn = Gtk.Button(label="👥📞", tooltip_text=i18n.tr("Gruppesamtale – velg hvem"),
+                                         valign=Gtk.Align.CENTER, visible=False)
+        self.group_call_btn.add_css_class("flat")
+        self.group_call_btn.connect("clicked", lambda *_: self._group_call())
+        th.append(self.group_call_btn)
         right.append(th)
         self.callbar = Gtk.Box(spacing=8, visible=False)
         self.callbar.add_css_class("card")
         self.call_lab = Gtk.Label(xalign=0, hexpand=True, margin_start=12)
         self.callbar.append(self.call_lab)
-        self.call_ans = _btn("📞 Svar", lambda *_: self._call_do(CV.call_answer), True)
+        self._inc = None
+        self.call_ans = _btn("📞 Svar", lambda *_: self._answer(self._inc) if self._inc else
+                             self._call_do(CV.call_answer), True)
         self.callbar.append(self.call_ans)
-        self.callbar.append(_btn("Legg på", lambda *_: self._call_do(CV.call_end)))
+        self.callbar.append(_btn("Avvis / legg på", lambda *_: (__import__("chatcall").decline(self._inc), self._bars())
+                                 if self._inc else self._call_do(CV.call_end)))
         right.append(self.callbar)
         self.phonebar = Gtk.Box(spacing=8, visible=False)
         self.phonebar.add_css_class("card")
@@ -254,6 +267,7 @@ class ChatPage(Gtk.Box):
         GLib.timeout_add_seconds(15, lambda: (self.get_mapped() and (self._channels(), self._load()), True)[1])
         import chatvc
         chatvc.on_change(self._vc_changed)
+        __import__("chatcall").on_change(lambda: (self._bars(), self.view == "direct" and self._channels()))
         GLib.timeout_add_seconds(2, lambda: (self.get_mapped() and self._bars(), True)[1])
         CS.on_change(lambda _sid: self._bars())
 
@@ -324,7 +338,7 @@ class ChatPage(Gtk.Box):
             self.rail.append(b)
         add("💬", "Direkte: hjemme, alle og privat", lambda: self._open("direct"), self.view == "direct")
         self.rail.append(Gtk.Separator())
-        for sid, srv in sorted(CS.servers().items(), key=lambda kv: kv[1].get("created", 0)):
+        for sid, srv in sorted(CS.visible_servers().items(), key=lambda kv: kv[1].get("created", 0)):
             add(_short_icon(srv.get("icon"), srv.get("name", "Server")), srv.get("name", "Server"),
                 lambda s=sid: self._open(s), self.view == sid)
         self.rail.append(Gtk.Separator())
@@ -352,31 +366,60 @@ class ChatPage(Gtk.Box):
             self.mid_hint.set_label(i18n.tr("Venner legges til under PC-er utenfor hjemmet. Bare vennene dine kan "
                                             "skrive til deg."))
 
-            def done(rs):
-                if isinstance(rs, Exception):
+            pins = tuple(CP.cfg()["pinned_rooms"])
+
+            def load():
+                import chatcall
+                calls = [(sid, chid, name, tuple((p["id"], p["name"], p["mute"], p["cam"] and (p.get("vmode") or True))
+                                                 for p in ppl)) for sid, chid, name, ppl in chatcall.active()]
+                return C.room_groups(pins), calls
+
+            def done(res):
+                if isinstance(res, Exception):
                     return
-                pins = CP.cfg()["pinned_rooms"]
-                rooms = sorted([r for r in rs if not r[0].startswith("s:")], key=lambda r: r[0] not in pins)
-                sig = ("direct", tuple(rooms))
+                groups, calls = res
+                sig = ("direct", tuple((g, tuple(rs)) for g, rs in groups), tuple(calls))
                 if self.view != "direct" or (not select and (sig == self._sig or
                                                              time.monotonic() - self._last_press < 1.5)):
                     return
                 self._sig = sig
-                self._rooms = rooms
+                self._rooms = [(rid, name, icon, unread) for _g, rs in groups for rid, name, icon, unread, _n in rs]
                 self._building = True
+                self._vc_labels = {}
                 while (c := self.list.get_first_child()) is not None:
                     self.list.remove(c)
-                for rid, name, icon, unread in self._rooms:
-                    self._row(rid, f"{icon}  {name}", unread)
-                if select and not self.room.startswith("s:") and self.room not in [r[0] for r in self._rooms]:
-                    self.room = "alle"
-                if select and self.room.startswith("s:"):
+
+                def header(title):
+                    lab = Gtk.Label(label=i18n.tr(title).upper(), xalign=0)
+                    lab.add_css_class("ks-chan-cat")
+                    hr = Gtk.ListBoxRow(child=lab, selectable=False, activatable=False)
+                    hr.add_css_class("ks-cat-row")
+                    self.list.append(hr)
+                if calls:                                   # samtaler uten server (📞)
+                    header("Samtaler")
+                    for sid, chid, name, people in calls:
+                        self._row(f"s:{sid}:{chid}", f"🔊  {name.lstrip('📞 ')}", 0, voice=True)
+                        for pid, pname, pmute, pcam in people:
+                            cam = f"  📷 {pcam}" if isinstance(pcam, str) else "  📷" if pcam else ""
+                            pl = Gtk.Label(label=f"{'🔇' if pmute else '🎙️'} {pname}{cam}", xalign=0, ellipsize=3)
+                            pl.add_css_class("ks-vc-user")
+                            self._vc_labels[pid] = pl
+                            pr = Gtk.ListBoxRow(child=pl, selectable=False, activatable=False)
+                            pr.add_css_class("ks-vc-row")
+                            self.list.append(pr)
+                for title, rs in groups:
+                    header(title)
+                    for rid, name, icon, unread, note in rs:
+                        self._row(rid, f"{icon}  {name}", unread, note=note)
+                ids = [r[0] for r in self._rooms]
+                if select and (self.room not in ids):
                     self.room = "alle"
                 self._select_current()
                 self._building = False
+                self._vc_speak()
                 if select:
                     self._load()
-            _bg(C.rooms, done)
+            _bg(load, done)
             return
         srv = CS.get(self.view)
         if not srv:
@@ -541,9 +584,18 @@ class ChatPage(Gtk.Box):
         import chatvc_ui
         chatvc_ui.open_settings(self.get_root())
 
-    def _row(self, rid, text, unread, voice=False):
+    def _row(self, rid, text, unread, voice=False, note=""):
         r = Gtk.Box(spacing=8)
-        r.append(Gtk.Label(label=text, xalign=0, hexpand=True, ellipsize=3))
+        if note:
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            col.append(Gtk.Label(label=text, xalign=0, ellipsize=3))
+            nl = Gtk.Label(label=note, xalign=0, ellipsize=3)
+            nl.add_css_class("caption")
+            nl.add_css_class("warning")
+            col.append(nl)
+            r.append(col)
+        else:
+            r.append(Gtk.Label(label=text, xalign=0, hexpand=True, ellipsize=3))
         if unread:
             u = Gtk.Label(label=str(unread))
             u.add_css_class("ks-chip")
@@ -733,7 +785,7 @@ class ChatPage(Gtk.Box):
             col.append(t)
             if not m.get("deleted"):
                 self._extras(col, room, m, mine)
-            if "ks-server://" in text and not m.get("deleted"):
+            if "ks-server://" in text and not m.get("deleted") and not mine and m.get("kind") != "call":
                 col.append(_btn("Bli med i serveren", lambda _b, x=text: self._do_join(x), True))
             if m.get("reactions"):
                 rr = Gtk.Box(spacing=4, halign=Gtk.Align.END if mine else Gtk.Align.START)
@@ -801,6 +853,15 @@ class ChatPage(Gtk.Box):
             col.append(_btn("📺 Se på", lambda _b, pc=m["screen"].get("pc"): self._watch(pc), True))
         if m.get("kind") == "ring" and not mine:
             col.append(_btn("📞 Svar", lambda _b: (CL.stop_ring(), self._quick("Kommer! 🏃")), True))
+        if m.get("kind") == "call" and not mine and m.get("invite"):   # samtale uten server: bli med
+            def join_call(_b, mm=m):
+                import chatcall
+                cid = mm.get("call_id")
+                if cid not in dict((c, 1) for c, _f, _r in chatcall.incoming()):
+                    chatcall._IN[cid] = {"from": mm.get("from"), "room": self.room, "invite": mm["invite"],
+                                         "t": time.time()}
+                self._answer(cid)
+            col.append(_btn("📞 Bli med i samtalen", join_call, True))
         import re
         for url in re.findall(r"https?://\S+", m.get("text", ""))[:2]:
             if "/api/clipfile" in url:
@@ -826,6 +887,49 @@ class ChatPage(Gtk.Box):
         self.typing_lab.set_label("🎉 🎊 🥳 🎉 🎊 🥳 🎉 🎊 🥳")
         GLib.timeout_add_seconds(4, lambda: (self.typing_lab.set_label(""), False)[1])
 
+    def _call_room_now(self):
+        import chatcall
+        room = self.room
+        self.status.set_label(i18n.tr("Ringer …"))
+        _bg(lambda: chatcall.call([room]), lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "")
+                                                                          + str(r)), self.vcbar.refresh(),
+                                                      self._channels()))
+
+    def _group_call(self):
+        import chatcall
+        people = [(rid, name) for rid, name, _i, _u in self._rooms if rid.startswith("p:")] if self._rooms else []
+        if not people:
+            self.status.set_label(i18n.tr("Ingen å ringe ennå"))
+            return
+        dlg = Adw.AlertDialog(heading=i18n.tr("Gruppesamtale"),
+                              body=i18n.tr("Velg hvem som skal være med – de får «📞 Svar» med en gang."))
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        checks = []
+        for rid, name in people:
+            cb = Gtk.CheckButton(label=name, active=rid == self.room)
+            box.append(cb)
+            checks.append((cb, rid))
+        sc = Gtk.ScrolledWindow(child=box, hscrollbar_policy=Gtk.PolicyType.NEVER, propagate_natural_height=True,
+                                max_content_height=320)
+        dlg.set_extra_child(sc)
+        dlg.add_response("nei", i18n.tr("Avbryt"))
+        dlg.add_response("ja", i18n.tr("📞 Ring"))
+        dlg.set_response_appearance("ja", Adw.ResponseAppearance.SUGGESTED)
+
+        def go():
+            rooms = [rid for cb, rid in checks if cb.get_active()]
+            _bg(lambda: chatcall.call(rooms),
+                lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "") + str(r)),
+                           self.vcbar.refresh(), self._channels()))
+        dlg.connect("response", lambda _d, r: r == "ja" and go())
+        dlg.present(self.get_root())
+
+    def _answer(self, cid):
+        import chatcall
+        _bg(lambda: chatcall.answer(cid), lambda r: (self.status.set_label(("✗ " if isinstance(r, Exception) else "")
+                                                                           + str(r)), self.vcbar.refresh(),
+                                                     self._bars(), self._channels()))
+
     def _bars(self):
         import phonecam
         live = phonecam.live()
@@ -833,10 +937,19 @@ class ChatPage(Gtk.Box):
         if live:
             self.phone_lab.set_label(phonecam.status())
         st = CV.call_state()
-        self.callbar.set_visible(bool(st))
-        if st:
+        import chatcall
+        inc = chatcall.incoming()
+        self._inc = inc[0][0] if inc else None
+        self.callbar.set_visible(bool(st) or bool(inc))
+        if inc:
+            self.call_lab.set_label(f"📞 {inc[0][1]} ringer deg")
+            self.call_ans.set_visible(True)
+        elif st:
             self.call_lab.set_label(st)
             self.call_ans.set_visible(bool(CV._CALL.get("incoming")))
+        in_dm = self.view == "direct" and self.room.startswith("p:")
+        self.call_btn.set_visible(in_dm)
+        self.group_call_btn.set_visible(self.view == "direct")
         game, names = CV.same_game(self.get_root())
         self.gamebar.set_visible(bool(names))
         if names:
