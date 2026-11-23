@@ -1386,9 +1386,64 @@ class _Cards:
             self._swatches[key] = b
         i.append(flow)
         self.box.append(c)
+        self._try(self._liquid_card)
         self._try(self._custom_card)
         self._try(self._time_card)
         self._try(self._game_theme_card)
+
+    def _liquid_card(self):
+        """Liquid Glass: gjennomsiktighet, farge på glasset og uskarphet bak vinduet."""
+        import liquid
+        import theme as ks_theme
+        lc = liquid.cfg()
+        c, i = card("Liquid Glass", "Gjelder temaet «Liquid Glass»: hele vinduet er glass, og du ser det som er bak. "
+                                    "Uskarpheten bak vinduet (som Aero) krever KDE Plasma eller Windows 11.")
+
+        def redraw():
+            if ks_theme.current_theme() == "liquid":
+                ks_theme.THEMES["liquid"] = liquid.theme_entry()
+                ks_theme.show("liquid")
+        row = Gtk.Box(spacing=12)
+        row.append(Gtk.Label(label="Gjennomsiktighet", xalign=0))
+        sc = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 95, 5)
+        sc.set_value(lc["liquid_clear"])
+        sc.set_hexpand(True)
+        sc.set_format_value_func(lambda _s, v: f"{v:.0f} %")
+        sc.connect("value-changed", lambda s_: (liquid.set_(liquid_clear=int(s_.get_value())), redraw()))
+        row.append(sc)
+        i.append(row)
+        row2 = Gtk.Box(spacing=12)
+        row2.append(Gtk.Label(label="Farge på glasset", xalign=0, hexpand=True))
+        rgba = Gdk.RGBA()
+        rgba.parse(lc["liquid_tint"])
+        cb = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog(with_alpha=False), rgba=rgba, valign=Gtk.Align.CENTER)
+
+        def color(btn, _p):
+            v = btn.get_rgba()
+            liquid.set_(liquid_tint="#%02x%02x%02x" % (int(v.red * 255), int(v.green * 255), int(v.blue * 255)))
+            redraw()
+        cb.connect("notify::rgba", color)
+        row2.append(cb)
+        for hx in ("#7aa2ff", "#ff7ab8", "#7affc4", "#ffd27a", "#b48cff", "#ffffff"):
+            sw = Gtk.Button(valign=Gtk.Align.CENTER, tooltip_text=hx)
+            sw.add_css_class("circular")
+            sw.set_size_request(26, 26)
+            prov = Gtk.CssProvider()
+            prov.load_from_data(f"button {{ background: {hx}; min-width: 22px; min-height: 22px; }}".encode())
+            sw.get_style_context().add_provider(prov, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 9)
+            sw.connect("clicked", lambda _b, h=hx: (rgba.parse(h), cb.set_rgba(rgba)))
+            row2.append(sw)
+        i.append(row2)
+        self._switch_row(i, "Uskarphet bak vinduet", "Det bak blir mykt og uskarpt – lettere å lese, som frostet glass.",
+                         lc["liquid_blur"], lambda w, _p: (liquid.set_(liquid_blur=w.get_active()), redraw(),
+                                                           ks_theme.current_theme() == "liquid" and
+                                                           liquid.apply(w.get_active())))
+        b = Gtk.Button(label="Bruk Liquid Glass nå", halign=Gtk.Align.START)
+        b.add_css_class("pill")
+        b.add_css_class("suggested-action")
+        b.connect("clicked", lambda *_: (self._swatches.get("liquid") and self._swatches["liquid"].set_active(True)))
+        i.append(b)
+        self.box.append(c)
 
     def _pick_theme(self, key):
         import theme as ks_theme

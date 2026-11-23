@@ -1707,6 +1707,10 @@ class MonitorApp(Adw.Application):
 
     def do_startup(self):
         Adw.Application.do_startup(self)
+        try:                                                                   # ✕ på alle vinduer som spretter opp
+            __import__("dialogx").install()
+        except Exception:  # noqa: BLE001
+            pass
         for name in ("call-answer", "call-decline", "call-mute"):            # knappene i anropsvarselet
             ca = Gio.SimpleAction.new(name, GLib.VariantType.new("s"))
             ca.connect("activate", lambda _a, v, n=name: __import__("chatcall").from_notification(n, v.get_string(),

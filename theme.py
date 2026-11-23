@@ -495,6 +495,13 @@ def _load_custom():
         THEMES["eget"] = make_custom(c["a"], c["b"], c.get("dark", True))
 
 
+try:                                                   # «Liquid Glass»: gjennomsiktig glass (liquid.py)
+    import liquid as _lq
+    THEMES["liquid"] = _lq.theme_entry()
+except Exception:  # noqa: BLE001
+    _lq = None
+
+
 def current_theme():
     try:
         t = json.load(open(LOOK)).get("theme", "standard")
@@ -516,6 +523,8 @@ def recolor(css, name=None):
 def theme_css(name=None):
     """Ekstra stilark for temaet: flater, tekst og en bakgrunn med glød i temaets farger."""
     t = _t(name)
+    if t.get("liquid") and _lq:
+        return _lq.css()
     if "bg" not in t:
         return ""
     mid = _mix(t["a"], t["b"])
@@ -706,6 +715,12 @@ def show(t):
         Adw.StyleManager.get_default().set_color_scheme(
             Adw.ColorScheme.DEFAULT if dark is None else
             Adw.ColorScheme.FORCE_DARK if dark else Adw.ColorScheme.FORCE_LIGHT)
+    except Exception:  # noqa: BLE001
+        pass
+    try:                                                   # glasset: uskarphet bak vinduet av/på
+        was = _t(_SHOWN[0]).get("liquid") if _SHOWN[0] else False
+        if _lq and (td.get("liquid") or was):
+            _lq.apply(bool(td.get("liquid")))
     except Exception:  # noqa: BLE001
         pass
     _SHOWN[0] = t

@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.10", "Liquid Glass", [
+        ("Utseende", [
+            "Nytt tema «Liquid Glass»: hele vinduet er gjennomsiktig glass med lys kant og myk glans – du ser det "
+            "som er bak",
+            "Velg hvor gjennomsiktig (0–95 %) og hvilken farge glasset skal ha under Innstillinger → Utseende",
+            "Uskarphet bak vinduet som Aero i Windows 7 – bare bedre (KDE Plasma og Windows 11). Kan slås av",
+        ]),
+        ("Vinduer", [
+            "Alle vinduer som spretter opp har nå en ✕ øverst til høyre, og Esc lukker dem",
+            "Funksjoner-vinduet (og andre med lange lister) ruller, så Avbryt/Bruk alltid er synlige",
+        ]),
+    ]),
     ("0.99.9", "Kallenavn i chatten", [
         ("Chat", [
             "Høyreklikk på en person i direktemeldingene (eller et medlem i en server) → «✏️ Gi kallenavn»",
