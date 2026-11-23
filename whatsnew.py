@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.0", "AI som styrer Kontrollsenter – med samtaler på NAS-en", [
+        ("AI", [
+            "Ser ut som iMessage: samtalene til venstre, blå og grå bobler, rundt skrivefelt med ↑",
+            "Flere samtaler, og hver samtale husker det som er sagt (også fra en annen PC)",
+            "Samtalene og arbeidsmappa lagres på NAS-en (Kontrollsenter/AI/<PC-navn>) – eller lokalt hvis du vil",
+            "🛠️ Styrer appen (på som standard): assistenten leser temperaturer og status, endrer innstillinger, kjører "
+            "systemsjekk og diagnose, og sier – og viser – hvor innstillingene ligger",
+            "Endringer i innstillingsfiler tas vare på i tidsmaskinen først, så de kan angres",
+            "Ny kommando «ks» i terminalen (samme muligheter – f.eks. «ks status», «ks finn vifter»)",
+            "Høyreklikk på en samtale: gi nytt navn eller slett",
+        ]),
+    ]),
     ("0.98.0", "AI-siden: mer plass og Gemini", [
         ("AI", [
             "Valghjul for Claude Code, Codex og Gemini – status og knapper på én linje øverst",

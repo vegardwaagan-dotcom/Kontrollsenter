@@ -775,8 +775,8 @@ PAGE_HELP = {
     "chat": "Chat med alle som har Kontrollsenter: de hjemme, vennene dine, og privat med hver enkelt.",
     "vr": "Meta Quest 3 gjennom Steam og SteamVR – trådløst eller med kabel. Kontrollsenter installerer og retter alt.",
     "stromming": "Spill og se PC-skjermen på telefonen eller TV-en (Sunshine + Moonlight).",
-    "ai": "Claude Code, Codex og Gemini: velg assistent, skriv nederst og få svaret rett i appen – eller åpne den i "
-          "terminalen.",
+    "ai": "Spør Claude Code, Codex eller Gemini – de kan lese temperaturene, endre innstillinger, rette feil og vise "
+          "hvor ting ligger. Samtalene lagres på NAS-en.",
     "fjernhjelp": "Styr en annen PC eller få hjelp med RustDesk – din ID, PC-ene hjemme med ett trykk, og «Be om hjelp».",
     "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "
                "ekstra spilletid og leggetid.",

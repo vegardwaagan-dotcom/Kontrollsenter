@@ -1358,6 +1358,15 @@ def _handler(remote):
             try:
                 body = self._body(12 * 1024 * 1024 if p == "/api/chat/inbox" else 1024 * 1024
                                   if p in ("/api/house/setup", "/api/chat/join") else MAX_BODY)
+                if p == "/api/local/ai":                     # «ks» – AI-assistentene styrer Kontrollsenter (bare herfra)
+                    if not self._local():
+                        return self._send(403, {"error": "bare fra denne PC-en"})
+                    import ai_bridge
+                    try:
+                        res = ai_bridge.run(remote.win, body.get("cmd"), [str(x) for x in body.get("args") or []])
+                        return self._send(200, {"result": res})
+                    except Exception as e:  # noqa: BLE001
+                        return self._send(400, {"error": str(e)})
                 if p == "/api/local/action":                 # knapper i KDE-widgetene
                     if not self._local():
                         return self._send(403, {"error": "bare fra denne PC-en"})

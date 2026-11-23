@@ -48,6 +48,8 @@ def cfg():
     c.setdefault("recent", [])
     c.setdefault("allow_edit", False)
     c.setdefault("tool", "claude")
+    c.setdefault("storage", "nas")                     # samtaler og arbeidsmappe: NAS-en som standard
+    c.setdefault("control", True)                      # assistenten kan styre Kontrollsenter med «ks»
     return c
 
 
@@ -173,10 +175,53 @@ def uninstall(tool):
 
 
 # --------------------------------------------------------------------------
+# «ks»: assistentens hender i Kontrollsenter (ks.py → /api/local/ai → ai_bridge.py)
+# --------------------------------------------------------------------------
+BIN = os.path.expanduser("~/.local/share/systemmonitor/ai-bin")
+SYSTEM = """Du er assistenten i Kontrollsenter – appen brukeren styrer PC-en med (temperaturer, vifter, strømmodus,
+skjermkort, RGB, lyd, spill, chat, Smart Hjem, familie, oppdateringer m.m.). Svar på norsk, kort og vennlig.
+
+Du har full tilgang til Kontrollsenter med kommandoen «ks» i terminalen (kjør den med skallverktøyet ditt):
+  ks status                       temperaturer, last, strøm, vifter, strømmodus – bruk denne når brukeren spør om PC-en
+  ks finn <ord>                   hvor en innstilling ligger i appen («Side › Fane»), nummerert
+  ks vis <nr>                     åpne Kontrollsenter akkurat der (etter «ks finn»)
+  ks sider / ks side <navn>       lista over sider / åpne en side
+  ks handlinger [ord]             alt appen kan gjøre (samme som knappene), med parametre
+  ks gjør <handling> nøkkel=verdi …   gjør det, f.eks. «ks gjør power mode=performance»
+  ks innstillinger / ks les <fil> / ks sett <fil> <nøkkel> <verdi>   innstillingsfilene
+  ks diagnose                     hva er galt / hvorfor er PC-en treg
+  ks systemsjekk                  kjør systemsjekken (retter vanlige feil)
+Regler: Når brukeren spør hvor noe er, bruk «ks finn» og si «Side › Fane», og tilby «ks vis». Når brukeren ber deg
+endre noe, gjør det med ks og si hva du endret og hvor det kan endres tilbake. Spør før du slår av, starter på nytt
+eller sletter noe. Ikke vis nøkler eller passord."""
+
+
+def ks_bin():
+    """Lag «ks» i en egen mappe som legges først i PATH for assistentene."""
+    os.makedirs(BIN, exist_ok=True)
+    here = os.path.dirname(os.path.abspath(__file__))
+    if IS_WIN:
+        p = os.path.join(BIN, "ks.cmd")
+        body = f'@"{sys.executable}" "{os.path.join(here, "ks.py")}" %*\r\n'
+    else:
+        p = os.path.join(BIN, "ks")
+        body = f'#!/bin/sh\nexec "{sys.executable}" "{os.path.join(here, "ks.py")}" "$@"\n'
+    try:
+        if not os.path.exists(p) or open(p).read() != body:
+            with open(p, "w") as f:
+                f.write(body)
+            os.chmod(p, 0o755)
+    except OSError:
+        pass
+    return BIN
+
+
+# --------------------------------------------------------------------------
 # «Spør» – uten terminal, svaret strømmes inn
 # --------------------------------------------------------------------------
-def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None):
-    """Start en forespørsel. Returnerer prosessen (kan stoppes med .terminate())."""
+def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None, history="", control=True):
+    """Start en forespørsel. history: det som er sagt før i samtalen (så assistenten husker). control: gi tilgang
+    til Kontrollsenter med «ks». Returnerer prosessen (kan stoppes med .terminate())."""
     b = binary(tool)
     if not b:
         raise RuntimeError(f"{TOOLS[tool]['name']} er ikke installert")
@@ -184,18 +229,38 @@ def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None)
     if not prompt:
         raise ValueError("skriv et spørsmål")
     folder = folder if folder and os.path.isdir(folder) else HOME
+    rules = SYSTEM if control else ""
+    if not allow_edit:
+        rules += "\nIkke opprett eller endre filer i mappa (brukeren har ikke slått på «Kan endre filer»)."
+    asked = (f"Tidligere i samtalen:\n{history}\n\nNytt fra brukeren:\n{prompt}" if history else prompt)
     if tool == "claude":
-        cmd = [b, "-p", prompt, "--output-format", "text"]
+        cmd = [b, "-p", asked, "--output-format", "text", "--append-system-prompt", rules]
+        if control:
+            cmd += ["--allowedTools", "Bash(ks:*)", "Bash(ks *)"]
         if allow_edit:
             cmd += ["--permission-mode", "acceptEdits"]
     elif tool == "gemini":
-        cmd = [b, "-p", prompt] + (["--approval-mode", "auto_edit"] if allow_edit else [])
+        cmd = [b, "-p", f"{rules}\n\n{asked}"]
+        if allow_edit:
+            cmd += ["--approval-mode", "auto_edit"]
+        if control:
+            cmd += ["--allowed-tools", "run_shell_command(ks)"]
     else:
-        cmd = [b, "exec", "--skip-git-repo-check", "--sandbox", "workspace-write" if allow_edit else "read-only",
-               prompt]
+        # ks snakker med appen over 127.0.0.1 – det krever nettilgang i Codex sin sandkasse
+        sandbox = "workspace-write" if (allow_edit or control) else "read-only"
+        cmd = [b, "exec", "--skip-git-repo-check", "--sandbox", sandbox]
+        if control:
+            cmd += ["-c", "sandbox_workspace_write.network_access=true"]
+        cmd += [f"{rules}\n\n{asked}"]
     kw = {"creationflags": 0x08000000} if IS_WIN else {"start_new_session": True}
+    env = {**os.environ, "PATH": (ks_bin() + os.pathsep if control else "") + PATH, "NO_COLOR": "1"}
+    try:
+        import remote
+        env["KS_PORT"] = str(remote.PORT)
+    except Exception:  # noqa: BLE001
+        pass
     p = subprocess.Popen(cmd, cwd=folder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                         env={**os.environ, "PATH": PATH, "NO_COLOR": "1"}, **kw)
+                         env=env, **kw)
 
     def pump():
         while True:
