@@ -13,6 +13,29 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.24", "Kalender med hendelser – og dagbok", [
+        ("Kalender", [
+            "Egne hendelser: tid, farge, påminnelse og gjentakelse (hver uke, måned, år …) – delt med hele huset på NAS-en",
+            "Typer: hendelse, søppel (varsel kvelden før), middag, rutine (f.eks. «støvsug PC-en hver 3. måned»), "
+            "garanti, abonnement, spillkveld, gjøremål med avkrysning og Smart Hjem-scene som kjøres på tiden",
+            "Bursdager og ukeplanen fra Familie, flaggdager 🇳🇴, skoleferier (still inn ukene under ⚙️), "
+            "fullmåne/nymåne og sol opp/ned",
+            "Visning: Måned, Uke og År – pluss søk, ferieplanlegger («ta 4 dager fri i påsken = 11 dager») og "
+            "antall arbeidsdager",
+            "Skriv ut hele året som PDF 🖨️",
+            "Oversikt viser dagens hendelser og nedtelling («30 dager til 🎄 jul»)",
+        ]),
+        ("Dagbok", [
+            "Hver i familien får sin egen dagbok med egen kode på 4–6 sifre (Kalender › Dagbok)",
+            "Kryptert (AES-256) – ingen kan lese den uten koden, heller ikke fra NAS-en. Glemt kode kan ikke hentes tilbake",
+            "Fem feil koder låser dagboken en stund · låses når du går fra siden eller etter 5 minutter",
+            "Humør-emoji per innlegg, bytt kode, slett innlegg",
+        ]),
+        ("Mobilappen", [
+            "Spill-fanen › 📅 Kalender og dagbok: hendelsene fra huset, legg til/endre, søk, ferieplanlegger",
+            "Dagboken med tallpanel for koden",
+        ]),
+    ]),
     ("0.99.23", "Kalender med røde dager", [
         ("Ny: Hjemmet › Kalender", [
             "Kalender med alle norske røde dager markert i rødt (nyttår, påske, 1. og 17. mai, Kristi himmelfart, "

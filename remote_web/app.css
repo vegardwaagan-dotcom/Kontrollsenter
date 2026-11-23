@@ -1044,3 +1044,16 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .cal-info { margin: 10px 2px; font-size: 14px; }
 .cal-row { display: grid; grid-template-columns: 104px 1fr auto; gap: 8px; width: 100%; text-align: left; background: transparent; border: 0;
   border-bottom: 1px solid var(--line); padding: 8px 2px; color: inherit; font-size: 14px; min-height: 0; border-radius: 0; }
+.cal-cd { font-weight: 800; margin: 4px 0 8px; } .cal-day.school { box-shadow: inset 0 -3px rgba(29,209,161,.8); }
+.cal-day i b { font-weight: 400; } .cal-it { display: flex; align-items: center; gap: 6px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.cal-it.done { opacity: .55; text-decoration: line-through; } .cal-it button { margin-left: auto; }
+.full-w { width: 100%; margin: 6px 0; }
+.ev-cols { gap: 6px; flex-wrap: wrap; } .ev-col { width: 30px; height: 30px; border-radius: 50%; border: 0; min-height: 0; padding: 0; }
+.ev-col.on { box-shadow: 0 0 0 3px #fff; }
+.dg-people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; } .dg-people button { padding: 14px 6px; font-size: 15px; }
+.pin-dots { text-align: center; font-size: 30px; letter-spacing: 10px; min-height: 40px; }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; } .pin-pad button { font-size: 24px; height: 58px; }
+.dg-moods { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; } .dg-moods button.on { outline: 2px solid var(--acc); }
+#dg-text { width: 100%; border-radius: 14px; padding: 10px; font: inherit; margin-bottom: 6px; }
+.dg-e { position: relative; padding: 8px 40px 8px 4px; border-bottom: 1px solid var(--line); white-space: pre-wrap; }
+.dg-e button { position: absolute; right: 0; top: 8px; }

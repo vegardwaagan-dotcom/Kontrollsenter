@@ -1687,6 +1687,22 @@ class MonitorWindow(Adw.ApplicationWindow):
                 parts.append(mode)
             if watts:
                 parts.append(f"{watts:.0f} W")
+            if _t.time() - getattr(self, "_cal_t", 0) > 300 and __import__("funksjoner").on("kalender"):
+                self._cal_t = _t.time()                         # dagens linje fra kalenderen (i bakgrunnen)
+
+                def cal_work():
+                    try:
+                        import kalender as KAL
+                        line = KAL.today_line()
+                        cd = KAL.countdown() if KAL.cfg().get("countdown", True) else None
+                        self._cal_line = "  ·  ".join(x for x in (("📅 " + line) if line else "",
+                                                                  ("⏳ " + cd[1]) if cd else "") if x)
+                    except Exception:  # noqa: BLE001
+                        self._cal_line = ""
+                import threading as _th
+                _th.Thread(target=cal_work, daemon=True).start()
+            if getattr(self, "_cal_line", ""):
+                parts.append(self._cal_line)
             self.hello_sub.set_label("  ·  ".join(parts))
             hot = max((x for x in (ct, gt) if x is not None), default=None)
             lvl, txt = ("", i18n.tr("Alt ser bra ut"))

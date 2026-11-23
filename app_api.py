@@ -236,7 +236,43 @@ def _safe(fn):
         return None
 
 
-X = {"chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+# --------------------------------------------------------------------------
+# Kalender og dagbok
+# --------------------------------------------------------------------------
+def kal(arg):
+    import calendar as C
+    import datetime as dt
+    import kalender as K
+    y, m = int(arg("y", dt.date.today().year)), int(arg("m", dt.date.today().month))
+    a = dt.date(y, m, 1) - dt.timedelta(days=7)
+    b = dt.date(y, m, C.monthrange(y, m)[1]) + dt.timedelta(days=14)
+    it = K.items(a, b)
+    out = {d.isoformat(): [{k: v for k, v in x.items() if k in ("title", "time", "color", "kind", "icon", "src", "id",
+                                                                "done", "note", "red")} for x in lst]
+           for d, lst in it.items()}
+    cd = K.countdown()
+    return {"items": out, "countdown": cd[1] if cd else "", "workdays": K.workdays(y, m),
+            "vacation": [{"name": n, "took": t, "from": f.isoformat(), "to": e.isoformat(), "len": ln}
+                         for n, t, f, e, ln in K.vacation_tips(y)],
+            "events": [e for e in K.load()["events"]], "kinds": {k: list(v) for k, v in K.KINDS.items()},
+            "colors": K.COLORS}
+
+
+def kalsok(arg):
+    import kalender as K
+    return {"hits": [{"d": d.isoformat(), "time": t, "title": n} for d, t, n in K.search(arg("q", ""))[:60]]}
+
+
+def dagbok_people(arg):
+    import dagbok as D
+    try:
+        D.sync_down()
+    except Exception:  # noqa: BLE001
+        pass
+    return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
+
+
+X = {"kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -274,6 +310,40 @@ def action(win, kind, a, notify):
         import ai_store as S
         S.set_meta(str(a.get("id") or ""), **{k: a[k] for k in ("pinned", "emoji") if k in a})
         return True, "OK"
+    if kind == "kaladd":
+        import kalender as K
+        e = K.add({k: a.get(k) for k in ("id", "title", "date", "time", "end", "repeat", "remind", "color", "kind",
+                                         "note", "done") if a.get(k) is not None})
+        return True, f"Lagret: {e['title']}"
+    if kind == "kaldel":
+        import kalender as K
+        K.remove(str(a.get("id") or ""))
+        return True, "Slettet"
+    if kind == "kaldone":
+        import datetime as dt
+        import kalender as K
+        K.mark_done(str(a.get("id") or ""), dt.date.fromisoformat(str(a.get("day"))), bool(a.get("on", True)))
+        return True, "OK"
+    if kind.startswith("dagbok_"):
+        import json
+        import dagbok as D
+        sub = kind[7:]
+        if sub == "open":
+            return True, json.dumps({"tok": D.unlock(str(a.get("id")), str(a.get("pin")))})
+        if sub == "create":
+            return True, json.dumps({"tok": D.create(str(a.get("name")), str(a.get("pin")))})
+        if sub == "list":
+            return True, json.dumps(D.entries(str(a.get("tok"))), ensure_ascii=False)
+        if sub == "write":
+            return True, D.write(str(a.get("tok")), a.get("text"), str(a.get("mood") or ""))
+        if sub == "delete":
+            return True, D.delete_entry(str(a.get("tok")), str(a.get("eid")))
+        if sub == "pin":
+            return True, D.change_pin(str(a.get("tok")), str(a.get("pin")))
+        if sub == "lock":
+            D.lock(str(a.get("tok")))
+            return True, "Låst"
+        raise ValueError("ukjent dagbok-handling")
     if kind == "aidelete":
         import ai_store as S
         S.delete(str(a.get("id") or ""))

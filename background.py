@@ -602,6 +602,12 @@ class Background:
                 aiextra.hotkey_setup(self.win)
             except Exception:  # noqa: BLE001
                 pass
+        if time.time() - getattr(self, "_kal_t", 0) > 55 and __import__("funksjoner").on("kalender"):
+            self._kal_t = time.time()                                            # kalender: påminnelser og scener
+            import threading as _th
+            _th.Thread(target=lambda: __import__("kalender").tick(
+                lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1]), self.win),
+                daemon=True).start()
         if time.time() - getattr(self, "_airule_t", 0) > 30 and __import__("funksjoner").on("ai"):
             self._airule_t = time.time()                                         # automatiske oppgaver fra AI-en
             try:
