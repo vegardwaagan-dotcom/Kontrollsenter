@@ -297,9 +297,15 @@ class PanCircle(Gtk.Box):
         self.area.set_draw_func(self._draw)
         self.append(self.area)
         dr = Gtk.GestureDrag()
-        dr.connect("drag-begin", lambda g, x, y: self._at(x, y, start=True))
+        dr.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)   # sirkelen tar dra-bevegelsen før vinduet gjør det
+
+        def begin(g, x, y):
+            g.set_state(Gtk.EventSequenceState.CLAIMED)          # ellers flytter KDE hele vinduet
+            self._at(x, y, start=True)
+        dr.connect("drag-begin", begin)
         dr.connect("drag-update", lambda g, dx, dy: self._at(*self._origin(g, dx, dy)))
         self.area.add_controller(dr)
+        self._redraw = False
         row = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
         self.play = Gtk.Button(label=i18n.tr("▶ Start"))
         self.play.add_css_class("suggested-action")
@@ -333,7 +339,10 @@ class PanCircle(Gtk.Box):
             self.spin.set_active(False)
         if start and not L.PAN.running():
             self._start()
-        self.area.queue_draw()
+        if not self._redraw:                                    # tegn maks én gang per skjermbilde
+            self._redraw = True
+            self.area.add_tick_callback(lambda *_: (setattr(self, "_redraw", False), self.area.queue_draw(),
+                                                   False)[2])
 
     def _start(self):
         try:

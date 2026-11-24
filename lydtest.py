@@ -642,17 +642,52 @@ class Panner:
         caps = f"audio/x-raw,format=F32LE,rate={RATE},channels={n},layout=interleaved" + \
             (f",channel-mask=(bitmask)0x{mask:x}" if n > 1 else "")
         sk = sink if sink is not None else default_sink()
-        if IS_WIN:
-            out = "autoaudiosink"
-        else:
-            out = f'pulsesink device="{sk}"' if sk else "autoaudiosink"
+        out = "autoaudiosink" if IS_WIN or not sk else f'pulsesink device="{sk}"'
+        self._stop.clear()
+        try:                                               # GStreamer lager støyen selv; vi endrer bare miksen
+            self.pipe = Gst.parse_launch(
+                f"audiotestsrc wave=pink-noise is-live=true volume={level} samplesperbuffer=480 ! "
+                f"audio/x-raw,format=F32LE,channels=1,rate={RATE} ! audioconvert name=ac ! {caps} ! "
+                f"queue max-size-time=150000000 ! {out}")
+            ac = self.pipe.get_by_name("ac")
+            Gst.util_set_object_arg(ac, "mix-matrix", self._mm(pan_gains(self.chans, self.angle)))
+            self.pipe.set_state(Gst.State.PLAYING)
+            threading.Thread(target=self._mix, args=(ac,), daemon=True).start()
+            return
+        except Exception:  # noqa: BLE001 – eldre GStreamer: lag lyden i Python i stedet
+            if self.pipe is not None:
+                self.pipe.set_state(Gst.State.NULL)
         self.pipe = Gst.parse_launch(f"appsrc name=src is-live=true block=true format=time caps=\"{caps}\" "
-                                     f"max-bytes={n * 4 * 960 * 4} ! audioconvert ! audioresample ! {out}")
+                                     f"max-bytes={n * 4 * 960 * 12} ! audioconvert ! audioresample ! "
+                                     f"queue max-size-time=300000000 ! {out}")
         src = self.pipe.get_by_name("src")
         self.pipe.set_state(Gst.State.PLAYING)
-        self._stop.clear()
         noise = [v * level for v in _noise(4.0, 11)]
         threading.Thread(target=self._run, args=(src, noise, n), daemon=True).start()
+
+    @staticmethod
+    def _mm(g):
+        return "<" + ", ".join(f"<(float){x:.4f}>" for x in g) + ">"
+
+    def _mix(self, ac):
+        """100 ganger i sekundet: flytt miksen et lite steg mot vinkelen (myke overganger, ingen knepp)."""
+        from gi.repository import Gst
+        cur = pan_gains(self.chans, self.angle)
+        last = time.monotonic()
+        while not self._stop.is_set():
+            time.sleep(0.01)
+            now = time.monotonic()
+            if self.spin:
+                self.angle = (self.angle + self.spin * (now - last) + 180) % 360 - 180
+            last = now
+            want = pan_gains(self.chans, self.angle)
+            step = [max(-0.12, min(0.12, w - c)) for w, c in zip(want, cur)]
+            if any(abs(x) > 1e-4 for x in step):
+                cur = [c + d for c, d in zip(cur, step)]
+                try:
+                    Gst.util_set_object_arg(ac, "mix-matrix", self._mm(cur))
+                except Exception:  # noqa: BLE001
+                    break
 
     def _run(self, src, noise, n):
         from gi.repository import Gst

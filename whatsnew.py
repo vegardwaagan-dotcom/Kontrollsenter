@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.41", "Jevnere lydsirkel", [
+            "Lydsirkelen: når du drar knappen, flyttes ikke lenger hele vinduet",
+            "Lyden hakker ikke lenger mens du drar: støyen lages nå av lydsystemet selv, og Kontrollsenter flytter "
+            "bare miksen mellom høyttalerne – 100 ganger i sekundet, med myke overganger",
+            "Sirkelen tegnes maks én gang per skjermbilde mens du drar",
+        ]),
     ("0.99.40", "Drivere", [
             "Ny fane Vedlikehold › Drivere: «🌐 Åpne driversiden» går rett til ASUS-siden for ROG STRIX X870E-E "
             "GAMING WIFI (⚙ for å endre adressen), med hovedkortet og BIOS-versjonen du har nå",
