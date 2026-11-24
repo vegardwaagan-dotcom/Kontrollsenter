@@ -869,7 +869,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 _sp.Popen([exe, *extra, os.path.abspath(__file__), "--restarted", *tray],
                           creationflags=0x00000008 | 0x00000200, close_fds=True)   # DETACHED | NEW_PROCESS_GROUP
                 os._exit(0)
-            os.execv(sys.executable, [sys.executable, *extra, os.path.abspath(__file__), *tray])
+            os.execv(sys.executable, [sys.executable, *extra, os.path.abspath(__file__), "--restarted", *tray])
         GLib.timeout_add(400, restart)
 
     def check_installed_version(self):
@@ -1883,6 +1883,11 @@ class MonitorApp(Adw.Application):
             if IS_WIN:
                 import winsupport
                 winsupport.listen_for_show(win.bg.show)
+            try:                                          # ny versjon? installer og start på nytt (kan slås av)
+                import selfupdate
+                selfupdate.run_at_start(win, getattr(win.bg, "notify", None))
+            except Exception:  # noqa: BLE001
+                applog.log.exception("automatisk oppdatering ved oppstart")
             if "--hidden" in sys.argv and win.bg.cfg["background"] and not win.bg.cfg.get("show_on_login", True):
                 return                      # startet ved innlogging: bare ikon i statusfeltet
             if "--tray" in sys.argv and win.bg.cfg["background"]:

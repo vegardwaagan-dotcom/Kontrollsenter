@@ -1843,6 +1843,17 @@ class _Cards:
         adr.connect("clicked", self._edit_source)
         row.append(adr)
         i.append(row)
+        import selfupdate
+        ar = Gtk.Box(spacing=12)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        col.append(Gtk.Label(label="Oppdater automatisk når Kontrollsenter starter", xalign=0))
+        col.append(dim("Når PC-en har vært av, eller du har lukket programmet helt: finnes det en ny versjon, "
+                       "installeres den og Kontrollsenter starter på nytt av seg selv. Venter hvis du spiller."))
+        ar.append(col)
+        asw = Gtk.Switch(active=selfupdate.enabled(), valign=Gtk.Align.CENTER)
+        asw.connect("notify::active", lambda s, _p: selfupdate.set_(on=s.get_active()))
+        ar.append(asw)
+        i.append(ar)
         self.upd_btn = Gtk.Button(label="Oppdater nå", halign=Gtk.Align.START, visible=False)
         self.upd_btn.add_css_class("suggested-action")
         self.upd_btn.connect("clicked", self._update)

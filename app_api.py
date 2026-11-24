@@ -282,6 +282,12 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+def selfupd(_arg):
+    import selfupdate
+    c = selfupdate.cfg()
+    return {"on": c["on"], "last": c["last"], "t": c["t"]}
+
+
 def drivers(_arg):
     import features
     import pcplus
@@ -387,7 +393,7 @@ def lydtest(_arg):
             "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
-X = {"drivers": drivers, "tvdash": tvdash, "aimissed": aimissed, "hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"selfupd": selfupd, "drivers": drivers, "tvdash": tvdash, "aimissed": aimissed, "hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -411,6 +417,10 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind == "selfupd":                                # automatisk oppdatering ved oppstart av/på
+        import selfupdate
+        selfupdate.set_(on=bool(a.get("on")))
+        return True, "Automatisk oppdatering ved oppstart er " + ("på" if a.get("on") else "av")
     if kind == "voice":                                  # talekommando fra TV-fjernkontrollen / telefonen
         import voicecmd
         return voicecmd.run(win, str(a.get("text") or ""), a.get("_dev") or "Fjernkontrollen")

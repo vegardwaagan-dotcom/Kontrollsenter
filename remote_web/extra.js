@@ -1313,3 +1313,22 @@ if (tab === "oversikt") loadHealth(false);
   }
   setTimeout(load, 3000);
 })();
+
+// ---- automatisk oppdatering av Kontrollsenter når PC-en starter (bryter, samme som på PC-en) ----
+(() => {
+  async function load() {
+    const card = [...document.querySelectorAll("#system .card")].find((c) => (c.querySelector("h2") || {}).textContent === "PC-en");
+    if (!card) return;
+    let d; try { d = await api("/api/x/selfupd"); } catch (e) { return; }
+    let row = document.getElementById("su-row");
+    if (!row) {
+      row = document.createElement("div"); row.id = "su-row";
+      row.innerHTML = `<div class="row"><span style="flex:1">Oppdater Kontrollsenter automatisk når PC-en starter</span><label class="switch"><input type="checkbox" id="su-on"><i></i></label></div>
+        <div class="dim small">Finnes det en ny versjon, installeres den og Kontrollsenter starter på nytt av seg selv. Venter hvis noen spiller.</div>`;
+      card.appendChild(row);
+      $("#su-on").onchange = (e) => act({ a: "selfupd", on: e.target.checked });
+    }
+    $("#su-on").checked = !!d.on;
+  }
+  setTimeout(load, 3000);
+})();

@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.50", "Oppdaterer seg selv ved oppstart", [
+            "Ny bryter i Innstillinger › Oppdatering: «Oppdater automatisk når Kontrollsenter starter». Når PC-en har "
+            "vært av eller du har lukket programmet helt, ser det etter ny versjon (hjemmenettet først, så GitHub), "
+            "installerer den og starter på nytt av seg selv",
+            "Den venter hvis noen spiller, og sjekker ikke igjen rett etter sin egen omstart",
+            "Også i mobilappen: Innstillinger › PC-en og appen › PC-en",
+        ]),
     ("0.99.49", "Endre driveradressene selv", [
             "Vedlikehold › Drivere: ⚙ ved «NVIDIA-drivere» og «AMD-drivere» – lim inn ny adresse hvis siden flytter, "
             "eller trykk «Standard» for å gå tilbake",
