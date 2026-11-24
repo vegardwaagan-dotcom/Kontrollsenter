@@ -297,13 +297,41 @@ def apply_graphics(window=None):
         pass
 
 
-def looks_old():
-    """Grovt anslag: få kjerner eller lite minne → «Eldre PC» anbefales."""
+def old_reason():
+    """Hvorfor «Eldre PC» anbefales – tom tekst hvis den ikke gjør det.
+
+    Antall kjerner alene sier lite (en moderne 8-kjerner er rask), så vi ser på kjerner, minne, klokkefrekvens og –
+    hvis du har kjørt den – ytelsestesten."""
     try:
         import psutil
-        return (psutil.cpu_count() or 8) <= 8 or psutil.virtual_memory().total < 12 * 2 ** 30
+        cores = psutil.cpu_count() or 8
+        mem = psutil.virtual_memory().total / 2 ** 30
+        try:
+            mhz = (psutil.cpu_freq() or None).max or 0
+        except (AttributeError, NotImplementedError, OSError):
+            mhz = 0
     except Exception:  # noqa: BLE001
-        return False
+        return ""
+    why = []
+    if cores <= 4:
+        why.append(f"{cores} kjerner")
+    if mem < 7.5:
+        why.append(f"{mem:.0f} GB minne")
+    if mhz and mhz < 2500 and cores <= 8:
+        why.append(f"{mhz / 1000:.1f} GHz")
+    try:
+        import pctools
+        b = (pctools.cfg().get("bench") or [None])[-1]
+        if b and b.get("cpuN") and b["cpuN"] < 600:              # ytelsestesten: tregt totalt
+            why.append("lav score i ytelsestesten")
+    except Exception:  # noqa: BLE001
+        pass
+    return ", ".join(why)
+
+
+def looks_old():
+    """Grovt anslag: få kjerner, lite minne, lav klokkefrekvens eller lav ytelsestest → «Eldre PC» anbefales."""
+    return bool(old_reason())
 
 
 def interval_factor():

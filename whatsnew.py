@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.46", "Riktig anbefaling for «Eldre PC»", [
+            "«Eldre PC – lett grafikk» anbefales bare når PC-en faktisk trenger det: 4 kjerner eller færre, under 8 GB "
+            "minne, lav klokkefrekvens eller lav score i ytelsestesten – og det står hvorfor",
+            "Før ble alle PC-er med 8 kjerner eller færre regnet som gamle – også raske X3D-prosessorer med bare én "
+            "CCD slått på",
+        ]),
     ("0.99.45", "Gjennomgang: testet, ryddet og enklere tekst", [
             "Alle funksjonene er testet: 79 funksjonstester, 75 app-endepunkter, alle sider og faner på PC-en og alle "
             "faner og kategorier i mobilappen på telefonbredde",

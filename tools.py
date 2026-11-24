@@ -1046,7 +1046,8 @@ class _Cards:
                               "vifter, mobilappen og familiekontroll virker som før.",
                               perf.save_all(), save_all)
         sa.get_parent().add_css_class("ks-strong")
-        self._switch_row(i, "Eldre PC – lett grafikk" + ("  ·  anbefalt for denne PC-en" if perf.looks_old() else ""),
+        why = perf.old_reason()
+        self._switch_row(i, "Eldre PC – lett grafikk" + (f"  ·  anbefalt for denne PC-en ({why})" if why else ""),
                          "Slår av alt det grafiske som tar ytelse: animasjoner, overganger, skygger, glød, levende "
                          "bakgrunn, lys som følger musa og minigrafene i flisene. Vinduet oppdateres hvert 2. sekund, "
                          "og minne frigjøres når vinduet har vært lukket en stund. Alle funksjonene virker som før.",
