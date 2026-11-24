@@ -192,13 +192,21 @@ def compare():
 
 
 # ------------------------------------------------------------------ 21 – spilloppdatering om natten (Steam)
-def night_updates(on, start=2, end=6):
+def night_updates(on, start=None, end=None):
     """Steam oppdaterer spillene bare mellom start og end (om natten). Steam må være lukket."""
     import games
     import shutil
     import vdf
     if games.steam_running():
         raise RuntimeError("lukk Steam først – Steam skriver over innstillingene sine når den avsluttes")
+    if start is None:                                    # de billigste strømtimene i natt (pricejobs), 4 timer
+        try:
+            import pricejobs
+            start = pricejobs.cheapest_night_hour()
+        except Exception:  # noqa: BLE001
+            start = 2
+        start = max(0, min(start, 4)) if start < 12 else 2
+        end = start + 4
     path = games.STEAM / "config/config.vdf"
     shutil.copy2(path, f"{path}.bak-systemmonitor-{time.strftime('%Y%m%d-%H%M%S')}")
     conf = vdf.load(path)

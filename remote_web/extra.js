@@ -644,6 +644,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   baseSetTab(t);
   if (t === "kontroll") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
   if (t === "kontroll") { loadMedia(); try { spkLoad(); dispLoad(); pcplusLoad(); } catch (e) {} }
+  if (t === "mer") { try { hjem5Load(); } catch (e) {} }
   if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); try { spill3Load(); } catch (e) {} }
   if (t === "mer") loadGoals();
   if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length); }).catch(() => {});
@@ -930,7 +931,7 @@ if (tab === "oversikt") loadHealth(false);
         `<div>${g.pct > 2 ? "🟢 +" : g.pct < -2 ? "🔴 " : "⚪ "}${g.pct} % ${esc(g.game)}: ${g.before} → ${g.after} FPS</div>`).join("") : "<div class='dim small'>Spill noen økter først.</div>");
     // plass
     const s = d.storage || {};
-    mk("c-storage", "<h2>💾 Plass per spill</h2><div id='st-h' class='dim small'></div><div id='st-l'></div><div class='row' id='st-nr'><span style='flex:1'>Spilloppdateringer bare om natten (02–06)</span><label class='switch'><input type='checkbox' id='st-night'><i></i></label></div>");
+    mk("c-storage", "<h2>💾 Plass per spill</h2><div id='st-h' class='dim small'></div><div id='st-l'></div><div class='row' id='st-nr'><span style='flex:1'>Spilloppdateringer bare om natten (billigste strøm)</span><label class='switch'><input type='checkbox' id='st-night'><i></i></label></div>");
     $("#st-h").textContent = `Spillene bruker ${Math.round(s.total_gb || 0)} GB. Ikke spilt på 6 måneder: ${(s.old || []).length} spill, ${Math.round(s.old_gb || 0)} GB.`;
     $("#st-l").innerHTML = (s.old || []).slice(0, 10).map((g) => `<div class="row"><span style="flex:1">${esc(g.name)} · ${g.gb} GB · ${g.days == null ? "aldri spilt" : g.days + " d siden"}</span><button class="soft" data-uninst="${g.appid}">Avinstaller</button></div>`).join("");
     $("#st-night").checked = !!d.night; $("#st-nr").hidden = !!d.win;
@@ -995,4 +996,77 @@ if (tab === "oversikt") loadHealth(false);
   });
   document.addEventListener("change", (e) => { if (e.target.id === "bg-kr") act({ a: "pcbudget", kr: +e.target.value }).then(load); });
   setTimeout(load, 3000);
+})();
+
+// ---- hjemmet runde 5: middagsplan, pakker, beskjed til alle, søvnrapport og minnevegg ----
+(() => {
+  const host = () => { const s = $("#mer"); return s && (s.querySelector(":scope > .grid") || s); };
+  const mk = (id, html) => { let c = document.getElementById(id); if (!c && host()) { c = document.createElement("div");
+    c.className = "card"; c.id = id; c.innerHTML = html; host().appendChild(c); } return c; };
+  let d = null, lastSay = 0, firstSay = true;
+  const typing = (sel) => document.activeElement && document.activeElement.closest && document.activeElement.closest(sel);
+  function render() {
+    if (!d) return;
+    mk("c-meals", "<h2>🍽️ Middagsplan</h2><div id='ml-l'></div><div class='row wrap'><button class='soft' id='ml-shop'>🛒 Ukas ingredienser til handlelista</button></div>");
+    if (!typing("#c-meals")) $("#ml-l").innerHTML = d.menu.map((m) => `<div class="row"><span style="width:48px">${m.wd} ${+m.day.slice(8)}.</span>
+      <input data-ml="${m.day}" data-f="dish" value="${esc(m.dish)}" placeholder="Rett" style="flex:1"><input data-ml="${m.day}" data-f="ing" value="${esc(m.ing)}" placeholder="Ingredienser" style="flex:1"></div>`).join("");
+    mk("c-pkgs", "<h2>📦 Pakker</h2><div class='row'><input id='pk-nr' placeholder='Sporingsnummer' style='flex:1'><button class='primary' id='pk-add'>Legg til</button></div><div class='row'><input id='pk-name' placeholder='Hva er det?' style='flex:1'><input id='pk-eta' type='date'></div><div id='pk-l'></div>");
+    $("#pk-l").innerHTML = d.packages.length ? d.packages.map((p) => `<div class="row"><span style="flex:1">${p.done ? "✅" : "📦"} ${esc(p.name)} · ${esc(p.carrier)}${p.eta ? " · " + p.eta.slice(8) + "." + p.eta.slice(5, 7) : ""}</span>
+      <a class="btn soft" href="${esc(p.url)}" target="_blank" rel="noopener">Spor →</a><button class="soft" data-pk="${esc(p.nr)}" data-rm="${p.done ? 1 : 0}">${p.done ? "Fjern" : "Hentet"}</button></div>`).join("") : "<div class='dim small'>Ingen pakker på vei.</div>";
+    mk("c-say", "<h2>📢 Beskjed til alle</h2><div class='dim small'>Vises på alle PC-ene (over spillet), telefonene og TV-en.</div><div class='row'><input id='say-t' placeholder='Skriv en beskjed …' style='flex:1'><button class='primary' id='say-go'>Send</button></div><div class='row wrap'><button class='soft' data-say='Kom ned nå'>Kom ned nå</button><button class='soft' data-say='Middag om 5 min'>Middag om 5 min</button><button class='soft' data-say='Legg dere nå 😴'>Legg dere nå</button></div>");
+    const s = d.sleep || { rows: [], days: [] };
+    mk("c-sleep", "<h2>😴 Søvnrapport</h2><div id='sl-t'></div><div class='row'><span style='flex:1'>Slå av TV-en ved leggetid</span><label class='switch'><input type='checkbox' id='sl-tv'><i></i></label></div>");
+    $("#sl-t").innerHTML = s.rows.length ? `<table class="small" style="width:100%"><tr><td></td>${s.days.map((x) => `<td class="dim">${["Søn", "Man", "Tir", "Ons", "Tor", "Fre", "Lør"][new Date(x).getDay()]}</td>`).join("")}</tr>` +
+      s.rows.map((r) => `<tr><td>${esc(r.pc)}</td>${r.nights.map((n) => `<td style="${n.over > 0 ? "color:#e01b24;font-weight:700" : ""}">${n.off || "–"}</td>`).join("")}</tr>`).join("") + "</table>"
+      : "<div class='dim small'>Ingen kvelder logget ennå.</div>";
+    $("#sl-tv").checked = !!d.tv_bedtime;
+    mk("c-mem", "<h2>🖼️ Minnevegg</h2><div id='mem-n' class='dim small'></div><button class='primary' id='mem-go'>Start lysbildeshow</button>");
+    $("#mem-n").textContent = d.mem.length ? `${d.mem.length} bilder fra chatten` : "Ingen bilder i chatten ennå.";
+    $("#mem-go").disabled = !d.mem.length;
+    // beskjed til alle: vis stort på TV-en / i appen når en ny kommer
+    if (d.say && d.say.t > lastSay) { if (!firstSay && d.say.t > Date.now() / 1000 - 300) bigSay(d.say); lastSay = d.say.t; }
+    firstSay = false;
+  }
+  function bigSay(s) {
+    const o = document.createElement("div");
+    o.style.cssText = "position:fixed;inset:0;z-index:9998;display:grid;place-items:center;background:rgba(0,0,0,.82);color:#fff;text-align:center;padding:24px";
+    o.innerHTML = `<div><div style="font-size:3em">📢</div><div style="font-size:2em;font-weight:800;margin:12px 0">${esc(s.text)}</div><div class="dim">fra ${esc(s.frm)} · trykk for å lukke</div></div>`;
+    o.tabIndex = 0; o.onclick = () => o.remove(); o.onkeydown = () => o.remove();
+    document.body.append(o); o.focus(); setTimeout(() => o.remove(), 60000);
+  }
+  function slideshow() {
+    if (!d || !d.mem.length) return;
+    let i = 0;
+    const o = document.createElement("div"); o.tabIndex = 0;
+    o.style.cssText = "position:fixed;inset:0;z-index:9999;background:#000;display:grid;place-items:center";
+    const img = document.createElement("img"); img.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;transition:opacity .6s";
+    o.append(img); document.body.append(o);
+    try { o.requestFullscreen && o.requestFullscreen(); } catch (e) {}
+    const show = () => { const m = d.mem[i % d.mem.length]; img.style.opacity = 0;
+      setTimeout(() => { img.src = "/api/chatfile?k=" + encodeURIComponent(token) + "&sha=" + encodeURIComponent(m.sha) + "&name=" + encodeURIComponent(m.name); img.style.opacity = 1; }, 300); };
+    show(); const tm = setInterval(() => { i++; show(); }, 7000);
+    const close = () => { clearInterval(tm); o.remove(); try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} };
+    o.onclick = () => { i++; show(); };
+    o.onkeydown = (e) => { if (e.key === "Escape" || e.key === "Backspace" || e.keyCode === 4) close(); else { i += e.key === "ArrowLeft" ? -1 : 1; show(); } e.preventDefault(); };
+    o.focus();
+  }
+  async function load() { try { d = await api("/api/x/hjem5"); render(); } catch (e) {} }
+  window.hjem5Load = load;
+  document.addEventListener("change", (e) => {
+    const m = e.target.closest && e.target.closest("[data-ml]");
+    if (m) { const day = m.dataset.ml, row = [...document.querySelectorAll(`[data-ml="${day}"]`)];
+      act({ a: "h5meal", day, dish: row.find((x) => x.dataset.f === "dish").value, ing: row.find((x) => x.dataset.f === "ing").value }, true); }
+    if (e.target.id === "sl-tv") act({ a: "h5tv", on: e.target.checked });
+  });
+  document.addEventListener("click", async (e) => {
+    const id = e.target.id;
+    if (id === "ml-shop") act({ a: "h5shop" });
+    else if (id === "pk-add") { await act({ a: "h5pkg", nr: $("#pk-nr").value, name: $("#pk-name").value, eta: $("#pk-eta").value }); $("#pk-nr").value = ""; $("#pk-name").value = ""; load(); }
+    else if (id === "say-go") { await act({ a: "h5say", text: $("#say-t").value }); $("#say-t").value = ""; }
+    else if (id === "mem-go") slideshow();
+    const p = e.target.closest("[data-pk]"); if (p) { await act({ a: "h5pkgdone", nr: p.dataset.pk, remove: p.dataset.rm === "1" }); load(); }
+    const s = e.target.closest("[data-say]"); if (s) act({ a: "h5say", text: s.dataset.say });
+  });
+  setTimeout(load, 3500);
+  setInterval(() => !document.hidden && (tab === "mer" || (KS && KS.isTv && KS.isTv())) && load(), 20000);
 })();

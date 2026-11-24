@@ -272,6 +272,14 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+def hjem5(_arg):
+    import hjem5 as H
+    import os
+    mem = [{"sha": os.path.splitext(m["name"])[0], "name": m["name"]} for m in H.memories(60)]
+    return {"menu": H.week_menu(), "packages": H.packages(), "sleep": H.sleep_report(), "say": H.BROADCAST,
+            "mem": mem, "tv_bedtime": H.cfg()["tv_bedtime"]}
+
+
 def pcplus(_arg):
     import pcplus as P
     h = P.LAST["health"]
@@ -317,7 +325,7 @@ def lydtest(_arg):
             "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
-X = {"pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -341,6 +349,23 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind.startswith("h5"):                            # hjemmet runde 5 fra mobilen
+        import hjem5 as H
+        if kind == "h5meal":
+            H.set_meal(str(a.get("day")), str(a.get("dish") or ""), str(a.get("ing") or ""))
+            return True, "Lagret"
+        if kind == "h5shop":
+            return True, H.menu_to_shop()
+        if kind == "h5pkg":
+            return True, H.add_package(str(a.get("nr") or ""), str(a.get("name") or ""), str(a.get("eta") or ""))
+        if kind == "h5pkgdone":
+            return True, H.done_package(str(a.get("nr") or ""), bool(a.get("remove")))
+        if kind == "h5say":
+            return True, H.broadcast(str(a.get("text") or ""), a.get("_dev") or "Mobil")
+        if kind == "h5tv":
+            H.set_(tv_bedtime=bool(a.get("on")))
+            return True, "Lagret"
+        raise ValueError("ukjent")
     if kind in ("pcquiet", "pcbudget", "pcstress"):     # PC runde 4 fra mobilen
         import pcplus as P
         if kind == "pcquiet":

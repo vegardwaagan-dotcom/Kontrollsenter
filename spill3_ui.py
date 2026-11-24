@@ -196,7 +196,7 @@ def storage_card(card):
         r = Gtk.Box(spacing=12)
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
         col.append(Gtk.Label(label=_t("Spilloppdateringer om natten"), xalign=0))
-        col.append(_dim(_t("Steam laster ned spilloppdateringer bare mellom kl. 02 og 06, så de er klare når du vil "
+        col.append(_dim(_t("Steam laster ned spilloppdateringer bare i de 4 billigste strømtimene i natt, så de er klare når du vil "
                            "spille. Steam må være lukket når du slår det på.")))
         r.append(col)
         sw = Gtk.Switch(active=S.cfg()["night_updates"], valign=Gtk.Align.CENTER)

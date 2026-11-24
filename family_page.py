@@ -288,6 +288,14 @@ class FamilyPage(Gtk.ScrolledWindow):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("familie+")
+        try:                                              # hverdagen: middag, pakker, beskjed, søvn og minnevegg
+            import hjem5_ui
+            for fn in (hjem5_ui.meals_card, hjem5_ui.packages_card, hjem5_ui.broadcast_card, hjem5_ui.sleep_card,
+                       hjem5_ui.memories_card):
+                box.append(fn(lambda t, d: _card(t, d)))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("hjem5")
         GLib.timeout_add_seconds(30, lambda: (self.get_mapped() and (self.refresh(), self._show_goals(),
                                                                      self._show_shop()), True)[1])
 

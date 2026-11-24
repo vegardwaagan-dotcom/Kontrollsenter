@@ -683,6 +683,17 @@ class Background:
             self._af_t = time.time()
             import threading as _th
             _th.Thread(target=lambda: __import__("audiofollow").tick(), daemon=True).start()
+        if time.time() - getattr(self, "_h5_t", 0) > 60:     # hjemmet: TV av ved leggetid (hvert min), søvnlogg
+            self._h5_t = time.time()
+            import threading as _th
+
+            def h5():
+                import hjem5
+                hjem5.tv_tick()
+                if time.time() - getattr(self, "_h5s_t", 0) > 600:
+                    self._h5s_t = time.time()
+                    hjem5.tick()
+            _th.Thread(target=h5, daemon=True).start()
         if time.time() - getattr(self, "_pcp_t", time.time() - 540) > 600:   # støvlogg, strømbudsjett (hvert 10. min)
             self._pcp_t = time.time()
             import threading as _th

@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.35", "Middagsplan, pakker, beskjed til alle og søvnrapport", [
+            "🍽️ Middagsplan (Familie › Hverdagen): ukas middager med ingredienser som huskes – «Ukas ingredienser "
+            "til handlelista» og 🎲 forslag. Vises i kalenderen hos alle",
+            "📦 Pakker: lim inn sporingsnummeret – Posten/Bring, PostNord, UPS og DHL kjennes igjen, «Spor →» åpner "
+            "riktig side, og leveringsdagen havner i kalenderen",
+            "📢 Beskjed til alle: vises på alle PC-ene (over spillet), telefonene og i stort på TV-en",
+            "😴 Søvnrapport: når PC-ene i huset sist var på hver kveld mot leggetiden – og «Slå av TV-en ved leggetid» "
+            "(Samsung-TV-en, med 10 min varsel)",
+            "🖼️ Minnevegg: bildene fra chatten som lysbildeshow i fullskjerm – på PC-en eller TV-en",
+            "Spilloppdateringer om natten følger nå de billigste strømtimene",
+            "Mobilappen og TV-en: Hjemmet › 🍽️ Hverdagen og 📢 Beskjed og minnevegg. Kategorilinja får ikke lenger "
+            "plass-problemer med lange navn",
+        ]),
     ("0.99.34", "PC-ens helse, stresstest og strømbudsjett", [
             "❤️ PC-ens helse (Vedlikehold › System og på Oversikt): ett tall 0–100 ut fra temperaturer, diskene, "
             "ledig plass, krasj, oppdateringer, støv og sikkerhetskopi – med «Fiks →» på hvert punkt",

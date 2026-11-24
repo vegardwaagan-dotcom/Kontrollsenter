@@ -31,11 +31,11 @@ CATS = [("egen", "📌 Egne hendelser"), ("familie", "🎂 Bursdager"), ("ukepla
         ("merkedag", "⭐ Merkedager (morsdag, julaften …)"), ("flagg", "🇳🇴 Flaggdager"), ("ferie", "🎒 Skoleferier"),
         ("mane", "🌕 Fullmåne og nymåne"), ("vaer", "☀️ Vær"), ("spill", "🎮 Spill (spilletid, WoW, Epic, Steam)"),
         ("pc", "🖥️ PC-en (temperatur, strøm, dagbok, klipp)"), ("strom", "⚡ Strømpris"),
-        ("hjemme", "🏠 Hvem var hjemme"), ("ics", "📆 Google/Outlook-kalender")]
+        ("hjemme", "🏠 Hvem var hjemme"), ("middag", "🍽️ Middag og pakker"), ("ics", "📆 Google/Outlook-kalender")]
 SRC_CAT = {"egen": "egen", "familie": "familie", "ukeplan": "ukeplan", "merkedag": "merkedag", "flagg": "flagg",
            "ferie": "ferie", "måne": "mane", "vær": "vaer", "spilletid": "spill", "epic": "spill", "steam": "spill",
            "spill": "spill", "pc": "pc", "pc-dagbok": "pc", "planlagt": "pc", "klipp": "pc", "strøm": "strom",
-           "hjemme": "hjemme", "importert": "ics"}
+           "hjemme": "hjemme", "importert": "ics", "middag": "middag"}
 
 
 def cat_of(item):
@@ -457,6 +457,12 @@ def items(start, end=None, extra=True):
                     if day.weekday() == int(it.get("day", -1)):
                         put(day, title=it.get("text", ""), time=it.get("at", ""), color="#a970ff", kind="plan",
                             icon="🗓️", src="ukeplan", who=it.get("who"))
+        except Exception:  # noqa: BLE001
+            pass
+    if sh.get("middag", True):                              # middagsplanen og pakker som kommer
+        try:
+            import hjem5
+            hjem5.calendar_items(days, put)
         except Exception:  # noqa: BLE001
             pass
     if extra:

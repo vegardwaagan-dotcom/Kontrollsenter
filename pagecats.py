@@ -31,9 +31,10 @@ ICONS = {"spill": "🎮", "vr": "🥽", "stromming": "📡", "rgb": "🌈", "log
 
 # side: [(nøkkel, navn, [titler – «=X» er nøyaktig, ellers starten av tittelen; «G:» = gruppe-overskrift])]
 PAGE_CATS = {
-    "familie": [("kontroll", "🛡️ Kontroll og trygghet", ["Familiekontroll", "Trygg på nettet"]),
-                ("sammen", "💬 Sammen", ["=Familie", "Se på", "Ukeplan"]),
-                ("mal", "⭐ Mål og belønning", ["Mål og belønning", "Belønningsbutikk", "Ukesrapport"])],
+    "familie": [("kontroll", "🛡️ Kontroll og trygghet", ["Familiekontroll", "Trygg på nettet", "Søvnrapport"]),
+                ("sammen", "💬 Sammen", ["=Familie", "Se på", "Ukeplan", "Beskjed til alle", "Minnevegg"]),
+                ("hverdag", "🍽️ Hverdagen", ["Middagsplan", "Pakker"]),
+                ("mal", "⭐ Mål og belønning", ["Mål og belønning", "Belønningsbutikk", "Ukesrapport", "Familie+"])],
     "gpu": [("kort", "🎛️ Skjermkortene", ["NVIDIA", "AMD", "Intel", "Spillinnstillinger", "Ved oppstart",
                                           "Gi Kontrollsenter", "Fant ingen"]),
             ("skjerm", "🖥️ Skjerm og lys", ["Oppløsning og Hz", "Hovedskjermkort", "Skjermprofiler", "Nattlys"])],
