@@ -56,7 +56,7 @@ function setTab(t) {
   tab = t;
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   ["oversikt", "kontroll", "spill", "mer", "system"].forEach((id) => ($("#" + id).hidden = id !== t || !token));
-  if (t === "mer") loadHistory();
+  if (t === "kontroll") loadHistory();
   window.scrollTo(0, 0);
   if (t === "spill") loadGames();
   if (t === "kontroll") pollExtra();
@@ -434,7 +434,7 @@ if (KS && KS.githubLatest) {                 // appen: hent nyeste versjon rett 
 setInterval(() => checkAppUpdate(false), 30 * 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) checkAppUpdate(false); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { poll(); pollExtra(); } });
-window.addEventListener("resize", () => tab === "mer" && loadHistory());
+window.addEventListener("resize", () => tab === "kontroll" && loadHistory());
 setInterval(() => poll(), 2000);
 setInterval(() => tab === "kontroll" && pollExtra(), 8000);
 

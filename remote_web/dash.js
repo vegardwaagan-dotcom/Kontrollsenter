@@ -528,7 +528,7 @@ async function loadScenes() {
     setTimeout(loadScenes, 2500);
   }));
 }
-setInterval(() => tab === "kontroll" && !document.hidden && loadScenes(), 15000);
+setInterval(() => tab === "mer" && !document.hidden && loadScenes(), 15000);
 
 // ---------- mål og belønning + ukesrapport (familie) ----------
 const goalCard = document.createElement("div");
@@ -1149,15 +1149,17 @@ setTab = function (t) {                              // eslint-disable-line no-g
   dashSetTab(t);
   fxEnter(t);
   if (t === "system") loadNotify();
-  if (t === "kontroll") { loadScenes(); loadDiscord(); loadAv(); pushScenesToPhone(); }
+  if (t === "kontroll") { loadDiscord(); loadAv(); }
+  if (t === "mer") { loadScenes(); pushScenesToPhone(); }
   if (t === "system") loadPush();
-  if (t === "mer") loadPanels();
-  if (t === "spill") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadVr(); loadToday(); loadFriends(); }
+  if (t === "mer" || t === "kontroll") loadPanels();
+  if (t === "spill") { loadVr(); loadToday(); }
+  if (t === "mer") { loadGoals(); loadWeekly(); loadPlan(); loadShop(); loadSafe(); loadFriends(); }
   if (t === "oversikt") loadToday();
 };
 dashWire();
 if (tab === "system") loadNotify();
-if (tab === "kontroll") loadScenes();
+if (tab === "mer") loadScenes();
 
 // ---------- si eller skriv en kommando (26) ----------
 { const q = $("#quick"); if (q) {

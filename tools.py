@@ -1993,20 +1993,20 @@ class ToolsPage(TabbedPage, _Cards):
         self.tab("gjenoppretting", "Gjenoppretting")
         self._try(W._restore_card, self, card) if win else self._try(self._restore_card)
         self._try(self._nasbackup_card)
-        self.tab("utstyr", "Utstyr")
-        try:                                              # utstyr+: batteri, Wi-Fi, kontrollere, skjerm …
+        self.tab("utstyr", "Batteri og skjerm")
+        try:                                              # batterihelse og skjermkalibrering
             import equipment_ui
-            c, i = card("Utstyr+", "Batterihelse og ladegrense, Wi-Fi-signal, kontrollere, skjermkalibrering og "
-                                   "forrige systemversjon.")
+            c, i = card("Batteri og skjerm", "Batterihelse og ladegrense på bærbare, og kalibrering av skjermen. "
+                                             "(Wi-Fi ligger under Nett og tilkobling, kontrollere under Spill.)")
             i.append(equipment_ui.EquipmentBox())
             self.box.append(c)
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("utstyr+")
-        self.tab("trygghet", "Trygghet og nett")
+        self.tab("trygghet", "Sikkerhet")
         try:
             import homeplus_ui
-            c, i = card("Trygghet og nett", "Be om hjelp, passordsjekk, kamera og mikrofon, svindel-skjold, "
+            c, i = card("Sikkerhet", "Be om hjelp, passordsjekk, kamera og mikrofon, svindel-skjold, "
                                             "nettverksvakt og fartstest.")
             i.append(homeplus_ui.safety_box(lambda: self.get_root()))
             self.box.append(c)
@@ -2273,6 +2273,14 @@ class SettingsPage(TabbedPage, _Cards):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("stille om natten")
+        try:                                              # flyttet hit fra Vedlikehold › Utstyr
+            import equipment_ui
+            c, i = card("Lyd, spill og ukens video", "Små automatikker som før lå under Vedlikehold.")
+            i.append(equipment_ui.settings_box())
+            self.box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("utstyr-valg")
         self.tab("widgets", "Widgets")
         self._try(self._widgets_card)
         self.tab("mobil", "Mobil")

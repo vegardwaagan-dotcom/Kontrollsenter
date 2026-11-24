@@ -44,6 +44,28 @@ def _btn(label, cb, primary=False):
     return b
 
 
+def settings_box():
+    """Lyden følger hodesettet, vent mens noen spiller, ukens beste øyeblikk (Innstillinger › Automatikk)."""
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    c = EQ.cfg()
+    for key, title, sub in (("headset_switch", "Lyden følger hodesettet", "Når hodesettet slås på, går lyden dit – "
+                             "og tilbake når det slås av (Linux)."),
+                            ("wait_for_gamers", "Vent mens noen spiller", "Oppdateringskvelden, NAS-sikkerhetskopien "
+                             "og fartstesten venter til ingen i huset spiller."),
+                            ("weekly_video", "Ukens beste øyeblikk", "Søndag kveld lages en video av ukas beste "
+                             "klipp, og familien får beskjed.")):
+        r = Gtk.Box(spacing=12)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+        col.append(Gtk.Label(label=i18n.tr(title), xalign=0))
+        col.append(_dim(sub))
+        r.append(col)
+        sw = Gtk.Switch(active=bool(c[key]), valign=Gtk.Align.CENTER)
+        sw.connect("notify::active", lambda w, _p, k=key: EQ.set_(**{k: w.get_active()}))
+        r.append(sw)
+        box.append(r)
+    return box
+
+
 class EquipmentBox(Gtk.Box):
     def __init__(self):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
@@ -55,23 +77,6 @@ class EquipmentBox(Gtk.Box):
         # Vedlikehold › Gjenoppretting – ikke dobbelt her
         self.append(_h("🖥️ Skjerm"))
         self.append(_btn("Kalibrer skjermen", lambda _b: CalibrateWindow(self.get_root()).present()))
-        self.append(_h("⚙️ Innstillinger"))
-        c = EQ.cfg()
-        for key, title, sub in (("headset_switch", "Lyden følger hodesettet", "Når hodesettet slås på, går lyden dit – "
-                                 "og tilbake når det slås av (Linux)."),
-                                ("wait_for_gamers", "Vent mens noen spiller", "Oppdateringskvelden, NAS-sikkerhetskopien "
-                                 "og fartstesten venter til ingen i huset spiller."),
-                                ("weekly_video", "Ukens beste øyeblikk", "Søndag kveld lages en video av ukas beste "
-                                 "klipp, og familien får beskjed.")):
-            r = Gtk.Box(spacing=12)
-            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
-            col.append(Gtk.Label(label=i18n.tr(title), xalign=0))
-            col.append(_dim(sub))
-            r.append(col)
-            sw = Gtk.Switch(active=bool(c[key]), valign=Gtk.Align.CENTER)
-            sw.connect("notify::active", lambda w, _p, k=key: EQ.set_(**{k: w.get_active()}))
-            r.append(sw)
-            self.append(r)
         self.append(self.msg)
         self.refresh()
 

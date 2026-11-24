@@ -331,7 +331,7 @@ function renderWidgets() {
 }
 
 // ---------- søk ----------
-const TABNAME = { oversikt: "Hjem", kontroll: "Styr", spill: "Spill", mer: "Verktøy", system: "Innstillinger" };
+const TABNAME = { oversikt: "Hjem", kontroll: "PC-en", spill: "Spill", mer: "Hjemmet", system: "Innstillinger" };
 $("#btn-search").onclick = () => { $("#search").hidden = false; $("#search-q").value = ""; $("#search-res").innerHTML = ""; $("#search-q").focus(); };
 $("#search-close").onclick = () => ($("#search").hidden = true);
 $("#search-q").oninput = () => {
@@ -543,13 +543,14 @@ function checkWide() {
 const famSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   famSetTab(t);
-  if (t === "spill") { loadFamily(); loadGameExtras(); loadStream(); }
-  if (t === "mer") { loadLan(); loadStartup(); loadHue(); loadStream(); }
+  if (t === "spill") { loadGameExtras(); loadStream(); }
+  if (t === "mer") { loadFamily(); loadHue(); }
+  if (t === "kontroll") { loadLan(); loadStartup(); }
   if (t === "system") { loadBackups(); renderWidgets(); loadFamily(); }
   applyWidgets();
   setTimeout(checkWide, 2500);
 };
 $$("#tabs button").forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
-setInterval(() => tab === "spill" && !document.hidden && loadChat(), 15000);
+setInterval(() => tab === "mer" && !document.hidden && loadChat(), 15000);
 applyDash(); applyWidgets();
 if (tab === "spill") { loadFamily(); loadGameExtras(); }

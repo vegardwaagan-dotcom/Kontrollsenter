@@ -8,7 +8,11 @@
     kontroll: [
       ["pc", "🖥️ PC-en", ["c-gamemode", "c-power", "c-fans", "c-rgb", "c-msi"]],
       ["lyd", "🔊 Lyd og skjerm", ["c-audio", "c-avprof"]],
-      ["hjem", "🏠 Scener og hjemmet", ["c-scenes", "t:Hue", "pn:radio", "pn:presence"]],
+      ["verktoy", "🔧 PC-verktøy", ["pn:pctools", "pn:apps", "pn:gpu", "t:Programmer", "t:Oppstartsprogrammer",
+        "t:Sikkerhetssjekk", "t:Selvtest"]],
+      ["historikk", "📈 Historikk og strøm", ["t:Historikk", "t:Strømkostnad", "t:Tidslinje"]],
+      ["nett", "🌐 Nett og NAS", ["t:Nettverk", "t:Hjemmenett", "t:NAS"]],
+      ["fjern", "🕹️ Fjernstyring", ["c-deck", "t:Send til PC", "t:Skjermen live", "t:Skjermbilde", "c-rust"]],
       ["discord", "💬 Discord", ["c-discord"]],
     ],
     spill: [
@@ -17,16 +21,12 @@
       ["klipp", "🎬 Klipp", ["c-clips"]],
       ["prest", "🏆 Prestasjoner", ["c-ach", "t:Prestasjoner"]],
       ["vr", "🥽 VR og strømming", ["c-vr", "c-stream"]],
-      ["familie", "👨‍👩‍👧 Familie", ["c-family", "c-goals", "c-shop", "c-plan", "c-week", "c-safe"]],
-      ["kalender", "📅 Kalender og dagbok", ["c-cal", "c-diary"]],
-      ["venner", "👥 Venner og PC-er", ["c-friends", "pn:homepcs"]],
     ],
     mer: [
-      ["verktoy", "🔧 PC-verktøy", ["pn:pctools", "pn:apps", "pn:gpu", "t:Programmer", "t:Oppstartsprogrammer",
-        "t:Sikkerhetssjekk", "t:Selvtest"]],
-      ["historikk", "📈 Historikk og strøm", ["t:Historikk", "t:Strømkostnad", "t:Tidslinje"]],
-      ["nett", "🌐 Nett og NAS", ["t:Nettverk", "t:Hjemmenett", "t:NAS"]],
-      ["fjern", "🕹️ Fjernstyring", ["c-deck", "t:Send til PC", "t:Skjermen live", "t:Skjermbilde", "c-rust"]],
+      ["kalender", "📅 Kalender og dagbok", ["c-cal", "c-diary"]],
+      ["familie", "👨‍👩‍👧 Familie", ["c-family", "c-goals", "c-shop", "c-plan", "c-week", "c-safe"]],
+      ["hjem", "🏠 Scener og smarthus", ["c-scenes", "t:Hue", "pn:radio", "pn:presence"]],
+      ["venner", "👥 Venner og PC-er", ["c-friends", "pn:homepcs"]],
     ],
     system: [
       ["utseende", "🎨 Utseende", ["c-fx", "t:Utseende"]],
@@ -35,8 +35,8 @@
     ],
   };
   // panel → fane (hurtigkommandoene ligger på Hjem, rett under hurtigknappene)
-  const PANEL_TAB = { commands: "oversikt", family: "spill", updates: "oversikt", assistant: "oversikt", games: "spill", homepcs: "spill", radio: "kontroll", presence: "kontroll",
-    pctools: "mer", apps: "mer", gpu: "mer", version: "system" };
+  const PANEL_TAB = { commands: "oversikt", family: "mer", updates: "oversikt", assistant: "oversikt", games: "spill", homepcs: "mer", radio: "mer", presence: "mer",
+    pctools: "kontroll", apps: "kontroll", gpu: "kontroll", version: "system" };
 
   const titleOf = (c) => ((c.querySelector(":scope > h2, :scope > .row h2, h2") || {}).textContent || "").trim();
   function catOf(tab, c) {
@@ -78,9 +78,21 @@
   }
 
   let busy = false;
+  // kort som hører til en kategori i en annen fane flyttes dit (f.eks. Kalender og Familie → Hjemmet)
+  function relocate() {
+    Object.keys(CATS).forEach((tab) => {
+      cardsIn(tab).forEach((c) => {
+        if (catOf(tab, c) !== "annet") return;
+        const to = Object.keys(CATS).find((t2) => t2 !== tab && catOf(t2, c) !== "annet");
+        const box = to && container(to);
+        if (box && c.parentElement !== box) box.appendChild(c);
+      });
+    });
+  }
   function apply(tab, anim) {
     if (!CATS[tab]) return;
     busy = true;
+    relocate();
     const b = bar(tab), sel = b.querySelector("select");
     const cards = cardsIn(tab);
     const counts = {};
@@ -126,11 +138,6 @@
       .observe(s, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
     apply(tab);
   });
-  // Hue-lys hører hjemme under Styr → Scener og hjemmet
-  setTimeout(() => {
-    const hue = cardsIn("mer").find((c) => titleOf(c).startsWith("Hue"));
-    const box = container("kontroll"); if (hue && box) box.appendChild(hue);
-  }, 1500);
   // panelene lastes for alle faner (de ligger nå spredt)
   setTimeout(() => { try { loadPanels(); } catch (e) {} }, 2500);
   const _st = setTab;

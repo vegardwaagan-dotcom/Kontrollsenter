@@ -132,7 +132,7 @@ $("#auto-second").onchange = () => setPref("auto_second", $("#auto-second").chec
 $("#bio").onchange = () => setPref("bio", $("#bio").checked);
 
 const EN = {
-  "Hjem": "Home", "Styr": "Control", "Verktøy": "Tools", "Innstillinger": "Settings", "Statistikk": "Statistics",
+  "Hjem": "Home", "Styr": "Control", "Verktøy": "Tools", "PC-en": "PC", "Hjemmet": "Household", "Innstillinger": "Settings", "Statistikk": "Statistics",
   "Lås PC-en": "Lock PC", "Andreskjerm": "Second screen", "Vis alle": "Show all", "Hver vifte": "Each fan",
   "Volum per program": "Volume per app", "Grense per dag": "Daily limit", "Nytt mål": "New goal", "Start et spill": "Start a game",
   "Programmer som bruker nettet": "Programs using the network", "Åpne lenke": "Open link", "Kopier": "Copy", "Hent utklipp": "Get clipboard",
@@ -338,7 +338,7 @@ $("#get-clip").onclick = async () => {
   try { const r = await X("clipboard"); $("#clip-out").textContent = r.text || "(tom)"; if (r.text && navigator.clipboard) navigator.clipboard.writeText(r.text).catch(() => {}); }
   catch (e) { $("#clip-out").textContent = e.message; }
 };
-window.ksShared = (t) => { $("#send-text").value = t; setTab("mer"); toast("Trykk «Åpne lenke» eller «Kopier» for å sende til PC-en"); };
+window.ksShared = (t) => { $("#send-text").value = t; setPref("cat_kontroll", "fjern"); setTab("kontroll"); toast("Trykk «Åpne lenke» eller «Kopier» for å sende til PC-en"); };
 if (KS && KS.sharedText) { const st = KS.sharedText(); if (st) setTimeout(() => window.ksShared(st), 400); }
 if (KS && KS.setActive) setTimeout(() => KS.setActive(pcName || ($("#pc-name").textContent || ""), location.origin), 1500);
 
@@ -642,9 +642,10 @@ $("#o-watermark").onchange = () => optSave("watermark", $("#o-watermark").value)
 const baseSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   baseSetTab(t);
-  if (t === "mer") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
+  if (t === "kontroll") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
   if (t === "kontroll") loadMedia();
-  if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); loadGoals(); }
+  if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); }
+  if (t === "mer") loadGoals();
   if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length); }).catch(() => {});
   if (t === "oversikt") loadHealth(false);
   applyLang();

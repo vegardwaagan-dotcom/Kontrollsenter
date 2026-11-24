@@ -632,7 +632,8 @@ class CalendarPage(Gtk.Box):
         ev = next((e for e in K.load()["events"] if e.get("id") == eid), None) if eid else None
         dlg = Adw.AlertDialog(heading=i18n.tr("Endre hendelse") if ev else i18n.tr("Ny hendelse"))
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        title = Gtk.Entry(text=(ev or {}).get("title", ""), placeholder_text=i18n.tr("Hva skjer? f.eks. Tannlege"))
+        title = Gtk.Entry(text=(ev or {}).get("title", ""), placeholder_text=i18n.tr("Hva skjer? f.eks. Tannlege"),
+                          activates_default=True)            # Enter = Lagre (før lukket Enter vinduet uten å lagre)
         box.append(title)
         kinds = list(K.KINDS)
         kd = Gtk.DropDown.new_from_strings([f"{v[0]} {i18n.tr(v[1])}" for v in K.KINDS.values()])
@@ -731,6 +732,9 @@ class CalendarPage(Gtk.Box):
             dlg.set_response_appearance("del", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.add_response("ok", i18n.tr("Lagre"))
         dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+        dlg.set_default_response("ok")
+        dlg.set_close_response("cancel")
+        note.set_activates_default(True)
 
         def resp(_d, r):
             if r == "del":
@@ -751,9 +755,12 @@ class CalendarPage(Gtk.Box):
                     if isinstance(res, Exception):
                         self._toast(f"✗ {res}")
                         return
-                    self._load()
+                    self._toast(f"✓ Lagret: {res['title']} ({res['date'][8:]}.{res['date'][5:7]})")
+                    self._goto(dt.date.fromisoformat(res["date"]))     # vis dagen hendelsen ble lagt på
                 _bg(save, done)
         dlg.connect("response", resp)
+        for w in (title, note):                             # Enter i et felt = Lagre
+            w.connect("activate", lambda *_: (resp(dlg, "ok"), dlg.close()))
         dlg.present(self.get_root())
 
     # ================= søk, innstillinger, utskrift

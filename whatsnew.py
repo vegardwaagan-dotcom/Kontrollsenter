@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.29", "Ryddigere app og kalender som lagrer", [
+            "Mobilappen har nye faner: «PC-en» (styring, verktøy, historikk, nett og fjernstyring), «Spill» (bare "
+            "spill, klipp, prestasjoner og VR) og «Hjemmet» (kalender og dagbok, familie, scener og smarthus, venner)",
+            "Kalenderen ligger nå under Hjemmet i appen – ikke under Spill",
+            "Ny hendelse i kalenderen på PC-en: Enter lagrer, du får «✓ Lagret», og kalenderen hopper til dagen "
+            "hendelsen ble lagt på",
+            "Vedlikehold: «Utstyr» heter nå «Batteri og skjerm» og «Trygghet og nett» heter «Sikkerhet», så de ikke "
+            "forveksles med Utstyr-siden og Nettverk",
+            "Lyden følger hodesettet, vent mens noen spiller og ukens beste øyeblikk er flyttet til Innstillinger › "
+            "Automatikk, der de andre automatikkene ligger",
+            "Har du ikke startet på nytt etter en oppdatering, bruker du fortsatt den gamle versjonen – trykk "
+            "«Start på nytt» i den blå linjen øverst",
+        ]),
     ("0.99.28", "Opprydding, rettelser og Google TV", [
         ("Google TV", [
             "Android-appen kan nå installeres på Google TV / Android TV og vises i TV-ens appliste med eget banner",
