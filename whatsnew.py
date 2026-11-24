@@ -13,6 +13,10 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.48", "Riktig NVIDIA-lenke", [
+            "Vedlikehold › Drivere: «NVIDIA-drivere» åpner nå nvidia.com/en-eu/drivers (den gamle norske adressen "
+            "ga «Not Found»)",
+        ]),
     ("0.99.47", "«Hva er nytt?» og «Om» virker igjen", [
             "☰-menyen: «Hva er nytt?» og «Om Kontrollsenter» åpnet seg ikke – nå virker de igjen",
             "Selvtesten åpner nå menyvalgene før hver ny versjon, så en slik feil ikke slipper ut igjen",

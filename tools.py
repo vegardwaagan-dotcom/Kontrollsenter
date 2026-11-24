@@ -2123,7 +2123,7 @@ class ToolsPage(TabbedPage, _Cards):
         i.append(gl)
         gr = Gtk.Box(spacing=8)
         nv = Gtk.Button(label="🌐 NVIDIA-drivere")
-        nv.connect("clicked", lambda *_: open_url("https://www.nvidia.com/no-no/drivers/"))
+        nv.connect("clicked", lambda *_: open_url("https://www.nvidia.com/en-eu/drivers/"))
         gr.append(nv)
         amd = Gtk.Button(label="🌐 AMD-drivere")
         amd.connect("clicked", lambda *_: open_url("https://www.amd.com/en/support/download/drivers.html"))
