@@ -100,7 +100,13 @@
         <div class="dim small">Trykk på en høyttaler – den sier navnet sitt på PC-en, der den står i rommet.</div>
         <div class="row wrap"><select id="spk-sink" data-title="Utgang"></select><select id="spk-lay" data-title="Oppsett"></select><select id="spk-snd" data-title="Lyd"></select></div>
         <div id="spk-room" class="spk-room"></div>
-        <div class="row wrap"><button class="soft" data-spk="seq">▶ Én og én</button><button class="soft" data-spk="all">🔊 Alle</button><button class="soft" data-spk="bass">〰 Bass</button><button class="soft" data-spk="hp-phase">🎧 Motfase</button><button class="danger" data-spk="stop">■ Stopp</button></div>
+        <div class="row wrap"><button class="soft" data-spk="seq">▶ Én og én</button><button class="soft" data-spk="all">🔊 Alle</button><button class="soft" data-spk="bass">〰 Bass</button><button class="soft" data-spk="hp-phase">🎧 Motfase</button><button class="soft" id="spk-cal">🎯 Kalibrer</button><button class="danger" data-spk="stop">■ Stopp</button></div>
+        <div id="spk-calres" class="dim small"></div>
+        <div id="spk-filters" hidden><h3>Lydfiltre</h3>
+          <div class="row"><span style="flex:1">Virtuell 7.1 i hodesettet</span><label class="switch"><input type="checkbox" data-lf="surround"><i></i></label></div>
+          <div class="row"><span style="flex:1">Støyfilter på mikrofonen</span><label class="switch"><input type="checkbox" data-lf="noise"><i></i></label></div>
+          <div class="row"><span style="flex:1">Equalizer</span><label class="switch"><input type="checkbox" data-lf="eq"><i></i></label></div>
+          <select id="spk-eq" data-title="Equalizer"></select></div>
         <details><summary>🎧 Test hodesettet på telefonen</summary>
           <div class="dim small">Spilles på telefonen. Venstre skal bare høres i venstre øre.</div>
           <div class="row wrap"><button class="soft" data-hp="-1">◀ Venstre</button><button class="soft" data-hp="0">● Begge</button><button class="soft" data-hp="1">Høyre ▶</button><button class="soft" data-hp="phase">Motfase</button></div></details></div>

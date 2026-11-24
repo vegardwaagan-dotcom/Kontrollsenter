@@ -70,6 +70,13 @@ class GamesPlus(Gtk.Box):
         self.audio_dd = Gtk.DropDown.new_from_strings([i18n.tr("(ingen lydprofil)")])
         row.append(self.audio_dd)
         row.append(_btn("Bruk lydprofilen", self._link_audio))
+        self.disp_dd = Gtk.DropDown.new_from_strings([i18n.tr("(ingen skjermprofil)")])
+        self.disp_dd.set_tooltip_text(i18n.tr("Skjermprofil for spillet – f.eks. HDR på og høyeste Hz. Lag profiler "
+                                              "under GPU-innstillinger › Skjerm og lys."))
+        self.append(row)
+        row = Gtk.Box(spacing=6)                             # skjermprofil på egen linje (ellers for bredt)
+        row.append(self.disp_dd)
+        row.append(_btn("Bruk skjermprofilen", self._link_display))
         self.append(row)
         drow = Gtk.Box(spacing=6)
         self.dpi = Gtk.SpinButton.new_with_range(0, 25600, 100)
@@ -205,7 +212,16 @@ class GamesPlus(Gtk.Box):
         c = G.cfg()
         self.game_lab.set_label(i18n.tr("Sist spilte: ") + (lg or "–") +
                                 (" · Discord-kanal koblet" if lg and c["discord_map"].get(lg) else "") +
-                                (" · lydprofil koblet" if lg and c["audio_map"].get(lg) else ""))
+                                (" · lydprofil koblet" if lg and c["audio_map"].get(lg) else "") +
+                                (" · skjermprofil koblet" if lg and c.get("display_map", {}).get(lg) else ""))
+        try:
+            import avprofiles
+            disp = avprofiles.cfg()["display"]
+        except Exception:  # noqa: BLE001
+            disp = []
+        self._disp_ids = [d["id"] for d in disp]
+        self.disp_dd.set_model(Gtk.StringList.new([i18n.tr("(ingen skjermprofil)")] +
+                                                  [f"{d.get('icon', '')} {d['name']}" for d in disp]))
         self._audio_ids = [a["id"] for a in audio]
         self.audio_dd.set_model(Gtk.StringList.new([i18n.tr("(ingen lydprofil)")] +
                                                    [f"{a.get('icon', '')} {a['name']}" for a in audio]))
@@ -272,6 +288,21 @@ class GamesPlus(Gtk.Box):
             m[self._target] = self._audio_ids[i - 1]
         G.set_(audio_map=m)
         self.msg.set_label(f"{self._target}: " + (i18n.tr("ingen lydprofil") if i == 0 else i18n.tr("lydprofil koblet ✓")))
+        self.refresh()
+
+    def _link_display(self, *_):
+        i = self.disp_dd.get_selected()
+        if not self._target:
+            self.msg.set_label(i18n.tr("Spill et spill først"))
+            return
+        m = G.cfg().get("display_map", {})
+        if i == 0:
+            m.pop(self._target, None)
+        else:
+            m[self._target] = self._disp_ids[i - 1]
+        G.set_(display_map=m)
+        self.msg.set_label(f"{self._target}: " + (i18n.tr("ingen skjermprofil") if i == 0 else
+                                                  i18n.tr("skjermprofil koblet ✓ – byttes når spillet starter")))
         self.refresh()
 
     def _save_dpi(self, *_):

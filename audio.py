@@ -219,6 +219,10 @@ class AudioPage(Gtk.ScrolledWindow):
                                         "råd om hva du bør justere.")
             i.append(lydtest_ui.MicTestBox())
             box.append(c)
+            import lydfilter_ui
+            c, i = card("Lydfiltre", "Virtuell 7.1 i hodesettet, equalizer og støyfilter på mikrofonen.")
+            i.append(lydfilter_ui.FilterBox())
+            box.append(c)
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("lydtest")

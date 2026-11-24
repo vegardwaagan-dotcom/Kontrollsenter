@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.32", "Lydfiltre, nivåkalibrering og skjermprofil per spill", [
+            "Lyd › Lydfiltre: virtuell 7.1 i et vanlig stereohodesett, equalizer (10 bånd, med «Spill», «Film», "
+            "«Musikk», «Tale» og «Ekstra bass») og støyfilter på mikrofonen – alt med PipeWire, ingenting installeres",
+            "«🎯 Kalibrer nivåer» i høyttalertesten: mikrofonen måler hver høyttaler der du sitter, og volumet justeres "
+            "per kanal så alle blir like høye",
+            "Skjermprofil per spill (Spill › Per spill): f.eks. HDR på og høyeste Hz når spillet starter, tilbake "
+            "etterpå – ved siden av lydprofil per spill",
+            "Batteriet i hodesettet, musa, tastaturet og kontrolleren vises på Oversikt (⚠ under 15 %)",
+            "Mobilappen og TV-en: lydfiltrene, equalizer og kalibrering under PC-en › Lyd og skjerm",
+            "Windows: Lydfiltre-kortet åpner Windows' egne (Windows Sonic, lydforbedringer), og kalibreringen "
+            "justerer volumet per kanal",
+        ]),
     ("0.99.31", "Oppløsning og Hz, og tester for skjerm, mikrofon, mus og kontroller", [
             "GPU-innstillinger › Skjerm og lys › «Oppløsning og Hz»: velg oppløsning og oppdateringsfrekvens for hver "
             "skjerm, og HDR og VRR. Går tilbake av seg selv etter 15 sekunder hvis du ikke trykker «Behold»",

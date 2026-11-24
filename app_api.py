@@ -280,7 +280,9 @@ def skjerm(_arg):
 
 def lydtest(_arg):
     import lydtest as L
-    return L.info()
+    import lydfilter as F
+    return {**L.info(), "cal": {"running": L.CAL["running"], "step": L.CAL["step"], "result": L.CAL["result"]},
+            "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
 X = {"skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
@@ -325,6 +327,29 @@ def action(win, kind, a, notify):
             return False
         GLib.idle_add(show)
         return True, "Skjermtesten er startet på PC-en (Esc avslutter)"
+    if kind == "lydfilter":                              # 7.1 / EQ / støyfilter fra mobilen
+        import lydfilter as F
+        if a.get("preset"):
+            F.set_eq(preset=str(a["preset"]))
+            return True, "Equalizer: " + F.PRESETS.get(str(a["preset"]), ("",))[0]
+        return True, F.enable(str(a.get("kind")), bool(a.get("on")))
+    if kind == "lydkal":                                 # nivåkalibrering med mikrofonen (tar ca. 20 s)
+        import threading
+        import lydtest as L
+        if L.CAL["running"]:
+            return True, "Kalibrerer allerede"
+        if a.get("reset"):
+            return True, L.apply_levels({}, a.get("sink"), a.get("layout"))
+
+        def run():
+            try:
+                r = L.calibrate(str(a.get("layout") or "7.1"), a.get("sink"))
+                if len(r["weak"]) < len(r["levels"]):
+                    L.apply_levels(r["adjust"], r["sink"], r["layout"])
+            except Exception as e:  # noqa: BLE001
+                L.CAL.update(running=False, step="", result={"error": str(e)})
+        threading.Thread(target=run, daemon=True).start()
+        return True, "Kalibrerer – vær stille og hold telefonen der du sitter"
     if kind == "lydtest":                                # test av høyttalerne på PC-en fra mobilen
         import lydtest as L
         if a.get("ch") == "stop":

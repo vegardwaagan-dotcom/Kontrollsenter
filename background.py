@@ -683,6 +683,11 @@ class Background:
             self._af_t = time.time()
             import threading as _th
             _th.Thread(target=lambda: __import__("audiofollow").tick(), daemon=True).start()
+        if sys.platform != "win32" and time.time() - getattr(self, "_lf_t", 0) > 60:  # lydfiltrene (7.1, EQ, støy)
+            self._lf_t = time.time()
+            import threading as _th
+            if __import__("funksjoner").on("lyd"):
+                _th.Thread(target=lambda: __import__("lydfilter").tick(), daemon=True).start()
         if not lite and time.time() - getattr(self, "_vr_t", 0) > 20:  # VR-vakten: hold VR i gang
             self._vr_t = time.time()
             import threading as _th

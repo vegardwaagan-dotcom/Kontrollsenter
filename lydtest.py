@@ -448,3 +448,125 @@ class MicTest:
         bus = pb.get_bus()
         bus.add_signal_watch()
         bus.connect("message::eos", lambda *_: pb.set_state(Gst.State.NULL))
+
+
+# ------------------------------------------------------------------ nivåkalibrering med mikrofonen
+CAL = {"running": False, "step": "", "result": None}
+
+
+def _raw_mic():
+    """Mikrofonen uten Kontrollsenters støyfilter (det har automatisk nivå, som ville ødelagt målingen)."""
+    if IS_WIN:
+        return None
+    try:
+        import lydfilter
+        prev = lydfilter.cfg().get("noise_prev_default")
+        cur = subprocess.run(["pactl", "get-default-source"], capture_output=True, text=True, timeout=5).stdout.strip()
+        return prev if cur.startswith("ks_") and prev else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def calibrate(layout, sink=None, on_step=None):
+    """Spiller støy fra én høyttaler om gangen og måler med mikrofonen. Returnerer {kanal: dB} og forslag til
+    justering (dB per kanal) så alle høres like høye ut der du sitter. Subwooferen måles ikke (mikrofonen er for
+    dårlig på bass)."""
+    import gi
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+    Gst.init(None)
+    import chatextra
+    chans = [c for c in LAYOUT[layout][1] if c not in ("LFE", "MONO")]
+    if len(chans) < 2:
+        raise ValueError("kalibrering trenger minst to høyttalere")
+    raw = _raw_mic()
+    src = f'pulsesrc device="{raw}"' if raw else chatextra.SRC
+    pipe = Gst.parse_launch(f"{src} ! audioconvert ! audio/x-raw,channels=1 ! "
+                            "level interval=50000000 post-messages=true ! fakesink sync=false")
+    samples = []
+    bus = pipe.get_bus()
+    if pipe.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
+        raise RuntimeError("fant ingen mikrofon")
+
+    def collect(secs):
+        end = time.time() + secs
+        out = []
+        while time.time() < end:
+            m = bus.timed_pop_filtered(100 * Gst.MSECOND, Gst.MessageType.ELEMENT)
+            if m and m.get_structure().get_name() == "level":
+                try:
+                    out.append(max(m.get_structure().get_value("rms")))
+                except (TypeError, ValueError):
+                    pass
+        return out
+    CAL.update(running=True, step="Måler stillheten i rommet …", result=None)
+    try:
+        on_step and on_step(CAL["step"])
+        collect(0.6)
+        quiet = collect(1.2)
+        amb = sorted(quiet)[len(quiet) // 2] if quiet else -90
+        res = {}
+        sk = sink if sink is not None else default_sink()
+        for c in chans:
+            CAL["step"] = f"Måler {CH[c][0]} …"
+            on_step and on_step(CAL["step"])
+            path = make(layout, c, "noise")
+            t = threading.Thread(target=_play_file, args=(path, LAYOUT[layout][1], sk), daemon=True)
+            t.start()
+            collect(0.35)                                     # hopp over innfading
+            lv = collect(1.0)
+            t.join(3)
+            samples.append(lv)
+            res[c] = round(sorted(lv)[len(lv) // 2], 1) if lv else -90.0
+            time.sleep(0.25)
+    finally:
+        pipe.set_state(Gst.State.NULL)
+        CAL["running"] = False
+    weak = [c for c, v in res.items() if v < amb + 6]
+    ok = [v for c, v in res.items() if c not in weak]
+    target = sorted(ok)[len(ok) // 2] if ok else None
+    adj = {c: (0.0 if c in weak or target is None else round(max(-10.0, min(10.0, target - v)), 1))
+           for c, v in res.items()}
+    r = {"levels": res, "ambient": round(amb, 1), "adjust": adj, "weak": weak, "layout": layout, "sink": sk}
+    CAL.update(step="", result=r)
+    return r
+
+
+def _sink_channels(sink):
+    import json as _j
+    out = subprocess.run(["pactl", "-f", "json", "list", "sinks"], capture_output=True, text=True, timeout=5).stdout
+    for s in _j.loads(out or "[]"):
+        if s["name"] == sink:
+            m = [_PA.get(x, x) for x in (s.get("channel_map") or "").split(",") if x]
+            vols = [int(str(v["value_percent"]).rstrip("%")) for v in s["volume"].values()]
+            return m, vols
+    raise RuntimeError("fant ikke utgangen")
+
+
+def apply_levels(adjust, sink=None, layout=None):
+    """Setter volumet per kanal ut fra kalibreringen. adjust = {kanal: dB} (tom = nullstill: alle like)."""
+    if IS_WIN:
+        import winaudio
+        ep = winaudio.Endpoint(winaudio.E_RENDER)
+        try:
+            n = ep.channels()
+            chans = LAYOUT.get(layout or "", (None, []))[1]
+            base = max(ep.get_channel(i) for i in range(n)) if n else 1.0
+            for i in range(n):
+                c = chans[i] if i < len(chans) else None
+                g = adjust.get(c, 0.0) if c else 0.0
+                ep.set_channel(i, base * 10 ** (min(0.0, g - max([0.0] + list(adjust.values()))) / 20))
+        finally:
+            ep.close()
+        return "Nivåene er justert" if adjust else "Alle kanaler er like igjen"
+    sk = sink or default_sink()
+    m, vols = _sink_channels(sk)
+    base = max(vols) if vols else 100
+    top = max([0.0] + list(adjust.values()))
+    new = []
+    for c in m:                                             # høyeste kanal beholder volumet, de andre senkes
+        g = adjust.get(c, 0.0) - top if adjust else 0.0
+        new.append(f"{max(1, round(base * 10 ** (g / 20)))}%")
+    subprocess.run(["pactl", "set-sink-volume", sk, *new], capture_output=True, timeout=5)
+    return "Nivåene er justert – alle høyttalerne er like høye der du sitter" if adjust else \
+        "Alle kanaler er like igjen"

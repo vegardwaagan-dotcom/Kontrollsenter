@@ -204,6 +204,15 @@ def _stop_disabled(newly_off=()):
                 aitale.uninstall_stt()
         except Exception:  # noqa: BLE001
             pass
+    if "lyd" in newly_off:                                  # lydfiltrene (7.1, EQ, støyfilter): stopp og fjern
+        try:
+            import lydfilter
+            for k in ("surround", "eq", "noise"):
+                if lydfilter.cfg().get(k):
+                    lydfilter.enable(k, False)
+            lydfilter.uninstall()
+        except Exception:  # noqa: BLE001
+            pass
     if sys.platform == "win32":
         return
     for feat in newly_off:

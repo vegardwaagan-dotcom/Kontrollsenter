@@ -77,6 +77,14 @@ class SpeakerTest(Gtk.Box):
             b = Gtk.Button(label=i18n.tr(lab), tooltip_text=i18n.tr(tip))
             b.connect("clicked", lambda _b, c=ch: self._play(c))
             bb.append(b)
+        cal = Gtk.Button(label=i18n.tr("🎯 Kalibrer nivåer"),
+                         tooltip_text=i18n.tr("Mikrofonen måler hver høyttaler der du sitter, og volumet justeres per "
+                                              "kanal så alle blir like høye. Sett mikrofonen der hodet ditt er."))
+        cal.connect("clicked", lambda *_: self._calibrate())
+        bb.append(cal)
+        rs = Gtk.Button(label=i18n.tr("↺ Like nivåer"), tooltip_text=i18n.tr("Nullstill kalibreringen"))
+        rs.connect("clicked", lambda *_: self._apply_levels({}))
+        bb.append(rs)
         st = Gtk.Button(label=i18n.tr("■ Stopp"))
         st.add_css_class("destructive-action")
         st.connect("clicked", lambda *_: (L.stop(), self._mark(None)))
@@ -146,6 +154,49 @@ class SpeakerTest(Gtk.Box):
             self.status.set_label("")
         elif ch in L.CH:
             self.status.set_label(i18n.tr(f"Spiller: {L.CH[ch][0]}"))
+
+    def _calibrate(self):
+        lay = self._layout()
+        sink = self._sink()[0]
+        self.status.set_label(i18n.tr("Kalibrerer – vær stille, sett mikrofonen der du sitter …"))
+
+        def work():
+            r = L.calibrate(lay, sink, on_step=lambda s: GLib.idle_add(lambda: (self.status.set_label(i18n.tr(s)),
+                                                                              False)[1]))
+            msg = L.apply_levels(r["adjust"], sink, lay) if not len(r["weak"]) == len(r["levels"]) else ""
+            return r, msg
+
+        def done(res):
+            if isinstance(res, Exception):
+                self.status.set_label(f"✗ {res}")
+                return
+            r, msg = res
+            parts = [f"{L.CH[c][0]}: {r['adjust'][c]:+.1f} dB" for c in r["levels"] if c not in r["weak"]]
+            txt = (msg + "\n" + " · ".join(parts)) if msg else ""
+            if r["weak"]:
+                txt += ("\n" if txt else "") + i18n.tr("⚠ Mikrofonen hørte ikke: ") + ", ".join(
+                    L.CH[c][0] for c in r["weak"]) + i18n.tr(" – er de koblet til, eller er rommet for bråkete?")
+            self.status.set_label(txt)
+
+        def run():
+            try:
+                r = work()
+            except Exception as e:  # noqa: BLE001
+                r = e
+            GLib.idle_add(lambda: (done(r), False)[1])
+        threading.Thread(target=run, daemon=True).start()
+
+    def _apply_levels(self, adj):
+        sink = self._sink()[0]
+        lay = self._layout()
+
+        def run():
+            try:
+                m = L.apply_levels(adj, sink, lay)
+            except Exception as e:  # noqa: BLE001
+                m = f"✗ {e}"
+            GLib.idle_add(lambda: (self.status.set_label(i18n.tr(m)), False)[1])
+        threading.Thread(target=run, daemon=True).start()
 
     def _play(self, ch):
         snd = L.SOUNDS[self.snd_dd.get_selected()][0]

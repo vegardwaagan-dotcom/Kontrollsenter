@@ -136,6 +136,20 @@ class Endpoint:
     def set_mute(self, on):
         _call(self.vol, 14, W.BOOL(on), None, argtypes=(W.BOOL, c_void_p))
 
+    def channels(self):
+        n = c_uint()
+        _call(self.vol, 5, byref(n), argtypes=(POINTER(c_uint),))
+        return n.value
+
+    def get_channel(self, i):
+        v = c_float()
+        _call(self.vol, 13, c_uint(i), byref(v), argtypes=(c_uint, POINTER(c_float)))
+        return v.value
+
+    def set_channel(self, i, scalar):
+        _call(self.vol, 11, c_uint(i), c_float(max(0.0, min(1.0, scalar))), None,
+              argtypes=(c_uint, c_float, c_void_p))
+
     def close(self):
         _release(self.vol)
         _release(self.dev)
@@ -244,6 +258,11 @@ class AudioWinPage(Gtk.ScrolledWindow):
             c, i, _h = automation.card("Mikrofontest", "Ta opp 5 sekunder og hør hvordan du høres ut – med nivå, "
                                        "bakgrunnsstøy og råd om hva du bør justere.", "audio-input-microphone-symbolic")
             i.append(lydtest_ui.MicTestBox())
+            box.append(c)
+            import lydfilter_ui
+            c, i, _h = automation.card("Lydfiltre", "Romlyd i hodesettet, lydforbedringer og støyfilter på "
+                                       "mikrofonen.", "ks-sound-symbolic")
+            i.append(lydfilter_ui.FilterBox())
             box.append(c)
         except Exception:  # noqa: BLE001
             import applog

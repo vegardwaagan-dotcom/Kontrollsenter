@@ -1710,6 +1710,15 @@ class MonitorWindow(Adw.ApplicationWindow):
                 _th.Thread(target=cal_work, daemon=True).start()
             if getattr(self, "_cal_line", ""):
                 parts.append(self._cal_line)
+            try:                                                  # batteri i hodesett, mus, tastatur og kontroller
+                import batteries
+                ic = {"headset": "🎧", "mouse": "🖱️", "keyboard": "⌨️", "gamepad": "🎮", "controller": "🎮"}
+                bl = [f"{ic.get(d.get('kind'), '🔋')} {d['pct']:.0f} %" + (" ⚠" if d["pct"] <= 15 else "")
+                      for d in batteries.cached() if d.get("pct") is not None][:4]
+                if bl:
+                    parts.append("  ".join(bl))
+            except Exception:  # noqa: BLE001
+                pass
             self.hello_sub.set_label("  ·  ".join(parts))
             hot = max((x for x in (ct, gt) if x is not None), default=None)
             lvl, txt = ("", i18n.tr("Alt ser bra ut"))

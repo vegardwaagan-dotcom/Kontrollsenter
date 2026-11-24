@@ -29,9 +29,9 @@ import time
 IS_WIN = sys.platform == "win32"
 HOME = os.path.expanduser("~")
 CFG = os.path.expanduser("~/.config/systemmonitor/spill-pluss.json")
-DEF = {"discord_map": {}, "audio_map": {}, "ping_watch": True, "lightshow": True, "predict": True, "predict_prep": False,
+DEF = {"discord_map": {}, "audio_map": {}, "display_map": {}, "ping_watch": True, "lightshow": True, "predict": True, "predict_prep": False,
        "smart_start": False, "seen_start": [], "dnd_meetings": True}
-_STATE = {"ping": {}, "prev_audio": None, "predicted": None, "boot_seen": False}
+_STATE = {"ping": {}, "prev_audio": None, "prev_display": None, "predicted": None, "boot_seen": False}
 
 
 def cfg():
@@ -216,6 +216,16 @@ def on_game_start(win, game):
             avprofiles.apply_audio(pid)
         except Exception:  # noqa: BLE001
             pass
+    dp = c.get("display_map", {}).get(game)              # skjermprofil per spill (HDR, Hz, oppløsning)
+    if dp:
+        try:
+            import avprofiles
+            _STATE["prev_display"] = [{k: o.get(k) for k in ("id", "w", "h", "hz", "hdr", "vrr")}
+                                      for o in avprofiles.displays()]
+            avprofiles.apply_display(dp)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("skjermprofil for spill")
     ch = c["discord_map"].get(game)
     if ch:
         def j():
@@ -228,6 +238,15 @@ def on_game_start(win, game):
 
 
 def on_game_end(win, game):
+    pd, _STATE["prev_display"] = _STATE.get("prev_display"), None
+    if pd:                                                 # skjermen tilbake slik den var før spillet
+        try:
+            import avprofiles
+            for o in pd:
+                avprofiles._set_display(o)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("skjerm tilbake etter spill")
     prev, _STATE["prev_audio"] = _STATE["prev_audio"], None
     if prev:
         try:

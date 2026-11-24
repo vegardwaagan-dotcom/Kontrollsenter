@@ -683,7 +683,35 @@ if (tab === "oversikt") loadHealth(false);
       $("#spk-snd").innerHTML = info.sounds.map((x) => `<option value="${x.key}">${esc(x.name)}</option>`).join("");
     }
     room();
+    const f = info.filter || {};                    // lydfiltrene (Linux)
+    $("#spk-filters").hidden = !f.available;
+    if (f.available) {
+      document.querySelectorAll("[data-lf]").forEach((x) => (x.checked = !!f[x.dataset.lf]));
+      const e = $("#spk-eq"); if (!e.options.length) e.innerHTML = f.presets.map((p) => `<option value="${p.key}">${esc(p.name)}</option>`).join("");
+      e.value = f.eq_preset;
+    }
+    calShow(info.cal);
   }
+  function calShow(c) {
+    const el = $("#spk-calres"); if (!el || !c) return;
+    if (c.running) { el.textContent = "🎯 " + c.step; setTimeout(async () => { try { const j = await api("/api/x/lydtest"); calShow(j.cal); } catch (e) {} }, 1000); return; }
+    const r = c.result; if (!r) return;
+    if (r.error) { el.textContent = "✗ " + r.error; return; }
+    const ok = Object.keys(r.levels).filter((k) => !r.weak.includes(k));
+    el.textContent = (ok.length ? "✓ Justert: " + ok.map((k) => `${info.ch[k].short} ${r.adjust[k] > 0 ? "+" : ""}${r.adjust[k]} dB`).join(" · ") : "") +
+      (r.weak.length ? ` ⚠ Mikrofonen hørte ikke: ${r.weak.map((k) => info.ch[k].short).join(", ")}` : "");
+  }
+  document.addEventListener("change", (e) => {
+    const lf = e.target.closest && e.target.closest("[data-lf]");
+    if (lf) act({ a: "lydfilter", kind: lf.dataset.lf, on: lf.checked });
+    if (e.target.id === "spk-eq") act({ a: "lydfilter", preset: e.target.value });
+  });
+  document.addEventListener("click", async (e) => {
+    if (e.target.id !== "spk-cal") return;
+    if (!(await confirmDlg("Kalibrere nivåene? PC-en spiller støy fra hver høyttaler, og mikrofonen på PC-en måler. Vær stille i rommet i ca. 20 sekunder."))) return;
+    await act({ a: "lydkal", layout: $("#spk-lay").value, sink: $("#spk-sink").value || null });
+    setTimeout(async () => { try { const j = await api("/api/x/lydtest"); calShow(j.cal); } catch (e) {} }, 600);
+  });
   async function poll() {                       // marker høyttaleren som spiller, så lenge noe spilles
     clearTimeout(pollT);
     try { const j = await api("/api/x/lydtest"); info.playing = j.playing; room(); if (j.playing) pollT = setTimeout(poll, 700); } catch (e) {}
