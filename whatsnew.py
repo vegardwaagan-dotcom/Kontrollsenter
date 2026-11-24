@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.43", "Skrolling endrer ikke lenger glidere", [
+            "PC-en (Linux og Windows): musehjulet over en glider (volum, lysstyrke, vifter …) eller et tallfelt ruller "
+            "siden i stedet for å endre verdien. Gliderne justeres ved å dra, klikke eller med piltastene",
+            "Mobilappen: fingeren må dra sidelengs før en glider endres – drar du opp eller ned, skroller siden og "
+            "verdien blir som den var, også om du kommer borti glideren",
+            "TV-en: opp/ned på fjernkontrollen over en glider går videre til neste knapp i stedet for å endre verdien",
+        ]),
     ("0.99.42", "7.1 i hodesettet med én knapp", [
             "Lyd › «🎧 7.1 i hodesettet»: én knapp som gir virtuell 7.1 i hodesettet – PRO X 2 og andre hodesett "
             "finnes automatisk. Spill og filmer ser en 7.1-utgang, og du hører lyden rundt deg",

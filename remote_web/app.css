@@ -150,7 +150,7 @@ main { padding: 4px 14px 24px; max-width: 1500px; margin: 0 auto; }
 .fan { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .fan .h { display: flex; gap: 8px; } .fan .h span:first-child { flex: 1; }
 .fan .r { display: flex; gap: 10px; align-items: center; } .fan input[type=range] { flex: 1; }
-input[type=range] { accent-color: var(--acc); height: 34px; }
+input[type=range] { accent-color: var(--acc); height: 34px; touch-action: pan-y; }   /* opp/ned = skroll siden */
 .switch { position: relative; width: 52px; height: 30px; flex: none; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .switch i { position: absolute; inset: 0; background: var(--card2); border-radius: 999px; transition: .2s; border: 1px solid var(--line); }

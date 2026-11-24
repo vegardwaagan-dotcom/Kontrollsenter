@@ -195,6 +195,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             spotlight.attach(self)
             import effects
             effects.apply(self)
+            import scrollguard                                 # musehjulet over glidere ruller siden
+            scrollguard.install(self)
             import perf
             if perf.lowend():                            # «Eldre PC»: animasjoner av fra start
                 perf.apply_graphics(self)

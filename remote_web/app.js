@@ -467,3 +467,38 @@ setInterval(() => tab === "kontroll" && pollExtra(), 8000);
   let t = "oversikt"; try { t = sessionStorage.getItem("ks_tab") || t; } catch (e) {}
   setTab(t); poll(); pollExtra(); checkAppUpdate(false);
 })();
+
+// ---- glidere: skrolling skal ikke endre verdien ----
+// Fingeren må dra sidelengs før glideren endres. Går den opp/ned, er det skrolling – verdien blir som den var.
+(() => {
+  let g = null;
+  const rangeOf = (t) => t && t.closest && t.closest('input[type="range"]');
+  document.addEventListener("touchstart", (e) => {
+    const r = rangeOf(e.target); if (!r) { g = null; return; }
+    const t = e.touches[0]; g = { r, x: t.clientX, y: t.clientY, v: r.value, ok: false };
+  }, { capture: true, passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!g || g.ok) return;
+    const t = e.touches[0], dx = Math.abs(t.clientX - g.x), dy = Math.abs(t.clientY - g.y);
+    if (dx > 10 && dx > dy * 1.3) g.ok = true;                 // tydelig sidelengs: nå får glideren lov
+    else if (dy > 6) g.r.value = g.v;                          // skrolling: hold verdien
+  }, { capture: true, passive: true });
+  const block = (e) => { if (g && e.target === g.r && !g.ok) { e.stopImmediatePropagation(); g.r.value = g.v; } };
+  document.addEventListener("input", block, true);
+  document.addEventListener("change", block, true);
+  document.addEventListener("touchend", () => { if (g && !g.ok) g.r.value = g.v; setTimeout(() => (g = null), 0); },
+    { capture: true, passive: true });
+  // TV-fjernkontrollen: opp/ned over en glider flytter fokus videre i stedet for å endre verdien
+  document.addEventListener("keydown", (e) => {
+    const r = rangeOf(e.target); if (!r || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    e.preventDefault();
+    const me = r.getBoundingClientRect(), down = e.key === "ArrowDown";
+    const all = [...document.querySelectorAll("button, a[href], input, select, textarea, [tabindex]")]
+      .filter((x) => x !== r && x.offsetParent && x.tabIndex >= 0 && !x.disabled);
+    let best = null, bd = 1e9;
+    for (const x of all) { const b = x.getBoundingClientRect(), dy = down ? b.top - me.bottom : me.top - b.bottom;
+      if (dy < -2) continue; const d = dy * 3 + Math.abs((b.left + b.right) / 2 - (me.left + me.right) / 2);
+      if (d < bd) { bd = d; best = x; } }
+    if (best) { best.focus(); best.scrollIntoView({ block: "nearest" }); }
+  }, true);
+})();
