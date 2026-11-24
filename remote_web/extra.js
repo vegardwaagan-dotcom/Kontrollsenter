@@ -643,7 +643,7 @@ const baseSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   baseSetTab(t);
   if (t === "kontroll") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
-  if (t === "kontroll") { loadMedia(); try { spkLoad(); dispLoad(); } catch (e) {} }
+  if (t === "kontroll") { loadMedia(); try { spkLoad(); dispLoad(); pcplusLoad(); } catch (e) {} }
   if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); try { spill3Load(); } catch (e) {} }
   if (t === "mer") loadGoals();
   if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length); }).catch(() => {});
@@ -952,4 +952,47 @@ if (tab === "oversikt") loadHealth(false);
   document.addEventListener("change", (e) => { if (e.target.id === "st-night") act({ a: "spill3night", on: e.target.checked }); });
   setTimeout(load, 2500);
   setInterval(() => tab === "spill" && !document.hidden && load(), 20000);
+})();
+
+// ---- PC runde 4: helse, stille nå, strømbudsjett og stresstest ----
+(() => {
+  const host = () => { const s = $("#kontroll"); return s && (s.querySelector(":scope > .grid") || s); };
+  const mk = (id, html) => { let c = document.getElementById(id); if (!c && host()) { c = document.createElement("div");
+    c.className = "card"; c.id = id; c.innerHTML = html; host().appendChild(c); } return c; };
+  let st = 0;
+  async function load() {
+    let d; try { d = await api("/api/x/pcplus"); } catch (e) { return; }
+    const h = d.health || { score: "…", word: "regner ut", items: [] };
+    if (!d.health) setTimeout(load, 4000);
+    const tile = document.getElementById("c-health");    // helsepoengene i den samme Helse-flisen på Hjem
+    if (tile && !document.getElementById("hl-s")) {
+      const x = document.createElement("div"); x.className = "hp-box";
+      x.innerHTML = "<div id='hl-s'></div><div id='hl-i' class='small'></div><div id='hl-b' class='dim small'></div>";
+      tile.querySelector("h2").after(x);
+    }
+    if (document.getElementById("hl-s")) {
+      $("#hl-s").innerHTML = `❤️ <b style="font-size:1.4em">${h.score}</b><span class="dim"> / 100 · ${esc(h.word)}</span>`;
+      $("#hl-i").innerHTML = h.items.map((x) => `<div>${{ bad: "❌", warn: "⚠️", info: "ℹ️" }[x.level] || "•"} ${esc(x.title)} <span class="dim">(−${x.minus})</span></div>`).join("");
+      $("#hl-b").textContent = d.bios ? d.bios.text : "";
+    }
+    mk("c-pcquiet", "<h2>🤫 Stille nå</h2><div class='dim small'>Rolige vifter og lavere effekt i noen timer.</div><div class='row wrap'><button class='soft' data-q='1'>1 time</button><button class='soft' data-q='2'>2 timer</button><button class='soft' data-q='4'>4 timer</button><button class='soft' data-q='0'>Av</button></div><div id='q-s' class='dim small'></div>");
+    $("#q-s").textContent = d.quiet ? `På – ${Math.floor(d.quiet / 60)} t ${d.quiet % 60} min igjen` : "Av";
+    const b = d.budget;
+    mk("c-budget", "<h2>💡 Strømbudsjett</h2><div class='row'><span style='flex:1'>Kr per måned (0 = av)</span><input id='bg-kr' type='number' min='0' step='25' style='width:90px'></div><div id='bg-t' class='dim small'></div>");
+    if (document.activeElement !== $("#bg-kr")) $("#bg-kr").value = b ? b.budget : 0;
+    $("#bg-t").textContent = b ? b.text : "";
+    const s = d.stress;
+    mk("c-stress", "<h2>🔥 Stresstest</h2><div class='dim small'>Prosessor og minne på full guffe – sjekker stabilitet og temperatur.</div><div class='row wrap'><select id='ss-m'><option value='2'>2 min</option><option value='5' selected>5 min</option><option value='15'>15 min</option></select><button class='primary' id='ss-go'>Start</button><button class='soft' id='ss-stop'>Stopp</button></div><div id='ss-t'></div>");
+    $("#ss-t").textContent = s.running ? `Kjører … ${Math.floor(s.t / 60)}:${String(s.t % 60).padStart(2, "0")} · CPU ${s.temp || "?"} °C` :
+      s.result ? `${s.result.verdict} · maks ${s.result.max_temp || "?"} °C · ${s.result.errors} regnefeil` : "";
+    clearTimeout(st); if (s.running) st = setTimeout(load, 3000);
+  }
+  window.pcplusLoad = load;
+  document.addEventListener("click", async (e) => {
+    const q = e.target.closest("[data-q]"); if (q) { await act({ a: "pcquiet", hours: +q.dataset.q }); return load(); }
+    if (e.target.id === "ss-go") { if (await confirmDlg("Starte stresstesten? PC-en blir varm og viftene går opp i noen minutter.")) { await act({ a: "pcstress", minutes: +$("#ss-m").value }); setTimeout(load, 1500); } }
+    if (e.target.id === "ss-stop") { await act({ a: "pcstress", stop: true }); setTimeout(load, 1500); }
+  });
+  document.addEventListener("change", (e) => { if (e.target.id === "bg-kr") act({ a: "pcbudget", kr: +e.target.value }).then(load); });
+  setTimeout(load, 3000);
 })();

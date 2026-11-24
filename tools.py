@@ -293,7 +293,7 @@ def disk_health():
             continue
         name = f"{drv.get('Vendor', '')} {drv.get('Model', '')}".strip() or path.rsplit("/", 1)[-1]
         size = drv.get("Size", 0)
-        info = {"name": name, "size": size, "kind": "?", "ok": None, "rows": []}
+        info = {"name": name, "size": size, "kind": "?", "ok": None, "rows": [], "serial": drv.get("Serial") or name}
         nvme = ifaces.get("org.freedesktop.UDisks2.NVMe.Controller")
         ata = ifaces.get("org.freedesktop.UDisks2.Drive.Ata")
         try:
@@ -306,6 +306,7 @@ def disk_health():
                 used, spare = a.get("percent_used", 0), a.get("avail_spare", 100)
                 errs = a.get("media_errors", 0)
                 info["ok"] = not warn and errs == 0 and spare > a.get("spare_thresh", 10) and used < 90
+                info["used_pct"], info["hours"] = used, nvme.get("SmartPowerOnHours", 0)
                 t = nvme.get("SmartTemperature", 0)
                 info["rows"] = [
                     ("Helse", "God" if info["ok"] else ("Advarsel: " + ", ".join(warn) if warn else "Bør sjekkes")),
@@ -790,7 +791,16 @@ class _Cards:
             head.append(t)
             self.health_box.append(head)
             g = Gtk.Grid(column_spacing=16, row_spacing=2, margin_start=28)
-            for r, (k, v) in enumerate(dsk["rows"]):
+            rows = list(dsk["rows"])
+            try:                                          # forventet levetid igjen (SSD)
+                import pcplus
+                fc = next((f for f in pcplus.disk_forecast([dsk]) if f.get("years")), None)
+                if fc:
+                    rows.append(("Levetid igjen", f"ca. {fc['years']:.0f} år med dagens bruk" if fc["years"] < 50
+                                 else "mange år"))
+            except Exception:  # noqa: BLE001
+                pass
+            for r, (k, v) in enumerate(rows):
                 a = Gtk.Label(label=k, xalign=0)
                 a.add_css_class("dim-label")
                 g.attach(a, 0, r, 1, 1)
@@ -1976,6 +1986,12 @@ class ToolsPage(TabbedPage, _Cards):
         if win:
             import wintools as W
         self.tab("system", "System")
+        try:                                              # helsepoeng øverst
+            import pcplus_ui
+            self.box.append(pcplus_ui.health_card(card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("pc-helse")
         if win:
             self._try(W._info_card, self, card)
             self._try(W._health_card, self, card)
@@ -1984,6 +2000,14 @@ class ToolsPage(TabbedPage, _Cards):
             self._try(self._health_card)
         self._try(self._boot_card)
         self._try(self._bench_card)
+        try:                                              # stresstest, sammenligning og strømbudsjett
+            import pcplus_ui
+            self.box.append(pcplus_ui.StressCard(card))
+            self.box.append(pcplus_ui.compare_card(card))
+            self.box.append(pcplus_ui.budget_card(card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("pc-runde4")
         if not win:
             self._try(self._noise_card)
         self.tab("rydd", "Rydd opp")

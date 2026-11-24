@@ -1713,6 +1713,9 @@ class MonitorWindow(Adw.ApplicationWindow):
             try:                                                  # batteri i hodesett, mus, tastatur og kontroller
                 import batteries
                 ic = {"headset": "🎧", "mouse": "🖱️", "keyboard": "⌨️", "gamepad": "🎮", "controller": "🎮"}
+                hp = __import__("pcplus").LAST["health"] if "pcplus" in sys.modules else None
+                if hp:
+                    parts.append(f"❤️ {hp['score']}")
                 bl = [f"{ic.get(d.get('kind'), '🔋')} {d['pct']:.0f} %" + (" ⚠" if d["pct"] <= 15 else "")
                       for d in batteries.cached() if d.get("pct") is not None][:4]
                 if bl:

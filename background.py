@@ -683,6 +683,11 @@ class Background:
             self._af_t = time.time()
             import threading as _th
             _th.Thread(target=lambda: __import__("audiofollow").tick(), daemon=True).start()
+        if time.time() - getattr(self, "_pcp_t", time.time() - 540) > 600:   # støvlogg, strømbudsjett (hvert 10. min)
+            self._pcp_t = time.time()
+            import threading as _th
+            _th.Thread(target=lambda: __import__("pcplus").tick(
+                lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1])), daemon=True).start()
         if sys.platform != "win32" and time.time() - getattr(self, "_lf_t", 0) > 60:  # lydfiltrene (7.1, EQ, støy)
             self._lf_t = time.time()
             import threading as _th

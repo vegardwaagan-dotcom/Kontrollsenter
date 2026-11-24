@@ -97,6 +97,7 @@ def status(win):
     import machine
     return {"name": savegames.pc_name(), "hw": machine.hw_id(), "os": machine.os_name(),
             "model": _model(), "distro": _distro(), "version": applog.RUNNING,
+            "bench": __import__("pcplus").bench_for_status(), "cpu": __import__("sensors").cpu_model(),
             "cpu_t": getattr(win, "_cpu_t", None), "gpu_t": nv.get("temp") if nv else None,
             "cpu_l": round(getattr(win, "_cpu_load", 0) or 0), "watts": round((getattr(win, "_power", {}) or {})
                                                                               .get("total") or 0),

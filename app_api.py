@@ -272,6 +272,30 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+def pcplus(_arg):
+    import pcplus as P
+    h = P.LAST["health"]
+    if h is None and not P.LAST.get("busy"):               # første gang: regn ut i bakgrunnen (tar noen sekunder)
+        import threading
+        P.LAST["busy"] = True
+
+        def run():
+            try:
+                P.LAST["health"] = P.health()
+            finally:
+                P.LAST["busy"] = False
+        threading.Thread(target=run, daemon=True).start()
+    try:
+        b = P.budget()
+    except Exception:  # noqa: BLE001
+        b = None
+    r = P.STRESS["result"]
+    return {"health": h, "budget": b, "quiet": P.quiet_left(), "bios": P.bios(),
+            "stress": {"running": P.STRESS["running"], "t": (P.STRESS["log"][-1][0] if P.STRESS["log"] else 0),
+                       "temp": (P.STRESS["log"][-1][1] if P.STRESS["log"] else None),
+                       "result": {k: r[k] for k in r if k != "log"} if r else None}}
+
+
 def spill3(_arg):
     import spill3 as S
     st = S.storage()
@@ -293,7 +317,7 @@ def lydtest(_arg):
             "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
-X = {"spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -317,6 +341,19 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind in ("pcquiet", "pcbudget", "pcstress"):     # PC runde 4 fra mobilen
+        import pcplus as P
+        if kind == "pcquiet":
+            return True, P.quiet_for(float(a.get("hours") or 0))
+        if kind == "pcbudget":
+            P.set_(budget_kr=max(0, int(a.get("kr") or 0)), budget_warned="")
+            return True, "Budsjett lagret"
+        if a.get("stop"):
+            P.STRESS["stop"] = True
+            return True, "Stopper stresstesten"
+        import threading
+        threading.Thread(target=lambda: P.stress(int(a.get("minutes") or 5)), daemon=True).start()
+        return True, "Stresstesten er startet på PC-en"
     if kind.startswith("spill3") or kind.startswith("turn"):   # spill runde 3 fra mobilen
         import spill3 as S
         if kind == "spill3mark":

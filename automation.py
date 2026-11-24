@@ -191,14 +191,17 @@ class Automation:
     # --- natt ---------------------------------------------------------------
     def check_night(self):
         cfg = load_night()
-        active = cfg["enabled"] and in_night(cfg)
+        quiet = (cfg.get("quiet_until") or 0) > time.time()        # «Stille nå» i X timer
+        active = (cfg["enabled"] and in_night(cfg)) or quiet
         if self.game:                                  # spill har forrang
             return
         if active and self.night_snap is None:
             self.night_snap = snapshot(self.win)
             apply(self.win, cfg["power"], cfg["fans"], cfg["rgb"])
             self.night_snap["rgb"] = cfg["rgb"] not in ("keep", None)
-            self.notify("night", "Stille om natten", f"Til {cfg['end']}: rolige vifter og lavere strømforbruk.")
+            until = time.strftime("%H:%M", time.localtime(cfg["quiet_until"])) if quiet else cfg["end"]
+            self.notify("night", "Stille-modus" if quiet else "Stille om natten",
+                        f"Til {until}: rolige vifter og lavere strømforbruk.")
         elif not active and self.night_snap is not None:
             restore(self.win, self.night_snap, self.night_snap.get("rgb"))
             self.night_snap = None
@@ -322,6 +325,12 @@ class AutomationPage(Gtk.ScrolledWindow):
         note.add_css_class("caption")
         note.add_css_class("dim-label")
         i.append(note)
+        try:                                               # «Stille nå» i X timer
+            import pcplus_ui
+            i.append(Gtk.Separator())
+            i.append(pcplus_ui.quiet_row())
+        except Exception:  # noqa: BLE001
+            pass
         self.box.append(c)
 
 

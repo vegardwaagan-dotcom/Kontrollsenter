@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.34", "PC-ens helse, stresstest og strømbudsjett", [
+            "❤️ PC-ens helse (Vedlikehold › System og på Oversikt): ett tall 0–100 ut fra temperaturer, diskene, "
+            "ledig plass, krasj, oppdateringer, støv og sikkerhetskopi – med «Fiks →» på hvert punkt",
+            "🔥 Stresstest: prosessor og minne på full guffe i 2–15 min med temperaturgraf – regnefeil avslører en "
+            "ustabil PC, og struping vises",
+            "📊 Sammenlign ytelsestesten med de andre PC-ene i huset",
+            "💡 Strømbudsjett: kr per måned, varsel ved 80 % og når det ser ut til å gå over",
+            "Diskhelse viser forventet levetid igjen for SSD-en, og BIOS-alderen vises med lenke til produsenten",
+            "🤫 «Stille nå» i 1, 2 eller 4 timer (Innstillinger › Automatikk) – rolige vifter og lavere effekt",
+            "Mobilappen og TV-en: helsepoengene i Helse-flisen på Hjem, og PC-en › 🤫 Stille, strøm og stresstest",
+        ]),
     ("0.99.33", "Spillkveld, spillår og nettet i spillet", [
             "🏆 LAN-turnering (Spill › Spillene): lag, poengtavle med +1, «Spillmodus på alle» PC-ene og vinner i "
             "chatten – deles med alle PC-er og mobiler hjemme",
