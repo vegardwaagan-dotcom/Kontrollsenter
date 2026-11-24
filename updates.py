@@ -193,6 +193,29 @@ def system_check():
             n = len([ln for ln in out.splitlines() if re.match(r"^\S+\.\S+\s+\S+\s+\S+", ln)])
             return n, f"{n} systempakker kan oppdateres"
         return (0, "Oppdatert") if code == 0 else (-1, "Kunne ikke sjekke systemet")
+    if shutil.which("pacman"):                         # Arch, CachyOS, EndeavourOS, Manjaro …
+        if shutil.which("checkupdates"):               # pacman-contrib: sjekker uten root og uten å røre databasen
+            code, out = _run(["checkupdates"], 240)
+            if code == 2:
+                return 0, "Oppdatert"
+        else:
+            code, out = _run(["pacman", "-Qu"], 60)
+            if code == 1 and not out.strip():
+                return 0, "Oppdatert"
+        n = len([ln for ln in out.splitlines() if ln.strip() and "->" in ln])
+        if code == 0:
+            return (n, f"{n} systempakker kan oppdateres (kjerne, drivere, Mesa …)") if n else (0, "Oppdatert")
+        return -1, "Kunne ikke sjekke systemet"
+    if shutil.which("apt-get"):                        # Debian, Ubuntu, Mint, Pop!_OS …
+        code, out = _run(["apt-get", "-s", "-o", "Debug::NoLocking=1", "upgrade"], 240)
+        n = len([ln for ln in out.splitlines() if ln.startswith("Inst ")])
+        return (n, f"{n} systempakker kan oppdateres") if code == 0 and n else (0, "Oppdatert") if code == 0 else \
+            (-1, "Kunne ikke sjekke systemet")
+    if shutil.which("zypper"):                         # openSUSE
+        code, out = _run(["zypper", "-q", "-n", "list-updates"], 240)
+        n = len([ln for ln in out.splitlines() if ln.startswith("v ")])
+        return (n, f"{n} systempakker kan oppdateres") if code == 0 and n else (0, "Oppdatert") if code == 0 else \
+            (-1, "Kunne ikke sjekke systemet")
     return -1, "Ikke støttet på denne Linux-varianten"
 
 
@@ -213,7 +236,20 @@ def system_apply(t):
     if shutil.which("dnf"):
         code, out = P.run_cmd(["pkexec", "dnf", "upgrade", "-y", "--refresh"], t, 3600)
         return code == 0, "Oppdatert" if code == 0 else "Feilet eller avbrutt"
-    return False, "Ikke støttet"
+    cmd = None
+    if shutil.which("pacman"):                         # nøkkelringen først, så hele systemet (anbefalt på Arch)
+        kr = " ".join(k for k in ("archlinux-keyring", "cachyos-keyring", "endeavouros-keyring", "manjaro-keyring")
+                      if _run(["pacman", "-Q", k], 10)[0] == 0) or "archlinux-keyring"
+        cmd = ["sh", "-c", f"pacman -Sy --noconfirm --needed {kr} && pacman -Su --noconfirm"]
+    elif shutil.which("apt-get"):
+        cmd = ["sh", "-c", "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"]
+    elif shutil.which("zypper"):
+        cmd = ["zypper", "-n", "update"]
+    if cmd:
+        code, out = P.run_cmd(["pkexec", *cmd], t, 3600)
+        return code == 0, ("Oppdatert – start PC-en på nytt hvis kjernen eller driverne ble oppdatert" if code == 0
+                           else (out.strip().splitlines() or ["Feilet eller avbrutt"])[-1][:120])
+    return False, "Ikke støttet på denne Linux-varianten"
 
 
 def firmware_check():

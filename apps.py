@@ -300,13 +300,54 @@ def missing(feature):
     return out
 
 
+# systempakker (Linux): navnet per pakkehåndterer – None = finnes ikke der
+SYS_PKGS = {"ffmpeg": {"pacman": "ffmpeg", "dnf": "ffmpeg", "apt": "ffmpeg", "zypper": "ffmpeg"},
+            "wireguard": {"pacman": "wireguard-tools", "dnf": "wireguard-tools", "apt": "wireguard-tools",
+                          "zypper": "wireguard-tools"},
+            "tailscale": {"pacman": "tailscale", "dnf": "tailscale", "zypper": "tailscale"}}
+
+
+def _pm():
+    """«pacman», «dnf», «apt», «zypper», «ostree» (Bazzite/Silverblue) eller None."""
+    try:
+        import komponenter
+        return komponenter._pm()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _native(pkgs, pt=None, timeout=1800):
+    """Installer systempakker med pakkehåndtereren (spør etter passord via pkexec)."""
+    import progress as P
+    pm = _pm()
+    if pm in (None, "ostree"):
+        raise RuntimeError("systempakker kan ikke installeres herfra på denne Linux-varianten")
+    if not shutil.which("pkexec"):
+        raise RuntimeError("pkexec mangler – installer polkit")
+    cmd = {"pacman": ["pacman", "-S", "--needed", "--noconfirm", *pkgs],
+           "dnf": ["dnf", "install", "-y", *pkgs],
+           "apt": ["sh", "-c", "apt-get update && apt-get install -y " + " ".join(pkgs)],
+           "zypper": ["zypper", "-n", "install", *pkgs]}[pm]
+    code, out = P.run_cmd(["pkexec", *cmd], pt, timeout) if pt else (
+        lambda r: (r.returncode, (r.stdout or "") + (r.stderr or "")))(
+        subprocess.run(["pkexec", *cmd], capture_output=True, text=True, timeout=timeout))
+    if code != 0:
+        raise RuntimeError("Installasjonen feilet: " + (out.strip()[-240:] or f"feilkode {code}"))
+
+
 def can_install(key):
     a = APPS[key]
     if a.get("builtin"):
         return False
     if IS_WIN:
         return bool(a.get("winget")) and bool(shutil.which("winget"))
-    return bool(a.get("flatpak")) and bool(shutil.which("flatpak"))
+    pm = _pm()
+    native_ok = pm not in (None, "ostree") and bool(shutil.which("pkexec"))
+    if a.get("flatpak"):                                 # mangler Flatpak, installeres den først (Arch, Debian …)
+        return bool(shutil.which("flatpak")) or native_ok
+    if a.get("linux_system"):
+        return native_ok and bool(SYS_PKGS.get(key, {}).get(pm))
+    return False
 
 
 def manual_hint(key):
@@ -318,7 +359,13 @@ def manual_hint(key):
     if a.get("url"):
         return f"Last ned {a['name']} fra nettsiden."
     if not IS_WIN and a.get("linux_system"):
-        return f"{a['name']} installeres som systempakke – på Bazzite følger det med. Ellers: sudo dnf install {key}"
+        pm = _pm()
+        name = SYS_PKGS.get(key, {}).get(pm) or key
+        cmd = {"pacman": f"sudo pacman -S {name}", "dnf": f"sudo dnf install {name}", "apt": f"sudo apt install {name}",
+               "zypper": f"sudo zypper install {name}"}.get(pm)
+        if pm == "ostree":
+            return f"{a['name']} følger med Bazzite / Fedora Atomic."
+        return f"{a['name']} installeres som systempakke: {cmd}" if cmd else f"Installer {a['name']} med pakkehåndtereren."
     return f"Installer {a['name']} fra produsentens nettside."
 
 
@@ -338,7 +385,18 @@ def install(key, progress=None):
             cmd = ["winget", "install", "-e", "--id", a["winget"], "--silent", "--accept-package-agreements",
                    "--accept-source-agreements", "--disable-interactivity"]
             kw = {"creationflags": 0x08000000}
+        elif not a.get("flatpak"):                       # systempakke (ffmpeg, WireGuard, Tailscale …)
+            pt.step(0, 1, "Skriv passordet ditt når Linux spør …")
+            _native([SYS_PKGS[key][_pm()]], pt)
+            if key == "tailscale":
+                subprocess.run(["pkexec", "systemctl", "enable", "--now", "tailscaled"], capture_output=True,
+                               timeout=120)
+            _CACHE.pop(key, None)
+            return f"{a['name']} er installert ✓"
         else:
+            if not shutil.which("flatpak"):                # Arch/CachyOS, Debian …: Flatpak følger ikke med
+                pt.step(0, 2, "Installerer Flatpak først – skriv passordet ditt når Linux spør …")
+                _native(["flatpak"], pt)
             subprocess.run(["flatpak", "remote-add", "--user", "--if-not-exists", "flathub",
                             "https://dl.flathub.org/repo/flathub.flatpakrepo"], capture_output=True, timeout=60)
             cmd = ["flatpak", "install", "--user", "-y", "--noninteractive", "flathub", a["flatpak"]]

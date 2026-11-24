@@ -105,6 +105,8 @@ def active_user():
 
 
 def installed_games():
+    if STEAM is None:                                   # Steam er ikke installert
+        return []
     libs = [STEAM / "steamapps"]
     try:
         lf = vdf.load(STEAM / "steamapps/libraryfolders.vdf")

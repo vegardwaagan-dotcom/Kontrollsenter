@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.51", "Arch, CachyOS, Debian og openSUSE", [
+            "Installere programmer virker nå på Arch/CachyOS og andre Linux-varianter uten Flatpak: Flatpak "
+            "installeres først (du skriver passordet), så programmet fra Flathub",
+            "Systempakker (FFmpeg, WireGuard, Tailscale) installeres med pacman, dnf, apt eller zypper – og hjelpeteksten "
+            "viser riktig kommando for din Linux (ikke «sudo dnf» på Arch)",
+            "Systemoppdateringer – kjerne, drivere, Mesa, NVIDIA – virker nå også på Arch/CachyOS (pacman, nøkkelringen "
+            "først), Debian/Ubuntu (apt) og openSUSE (zypper). Før sto det «Ikke støttet»",
+            "Rettet: Spill-siden krasjet på PC-er uten Steam",
+        ]),
     ("0.99.50", "Oppdaterer seg selv ved oppstart", [
             "Ny bryter i Innstillinger › Oppdatering: «Oppdater automatisk når Kontrollsenter starter». Når PC-en har "
             "vært av eller du har lukket programmet helt, ser det etter ny versjon (hjemmenettet først, så GitHub), "
