@@ -56,7 +56,7 @@ class FilterBox(Gtk.Box):
         self.sw = {}
         for kind, title, sub in (                       # (7.1 i hodesettet har eget kort øverst på Lyd-siden)
                 ("noise", "Støyfilter på mikrofonen", "Fjerner vifter, tastatur og sus (WebRTC). Lager «Mikrofon med "
-                                                      "støyfilter» og gjør den til standard.")):
+                                                      "støyfilter» og gjør den til standard."),):
             sw = Gtk.Switch(active=st[kind])
             sw.connect("notify::active", lambda s, _p, k=kind: self._toggle(k, s.get_active()))
             self.sw[kind] = sw
