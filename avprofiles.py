@@ -247,6 +247,75 @@ def _set_display(o):
             raise RuntimeError(out.strip().splitlines()[-1] if out.strip() else "kunne ikke endre skjermen")
 
 
+# ---- velg oppløsning og Hz direkte – med angring som i Windows (går tilbake etter 15 s uten «Behold») ----
+_PENDING = {"timer": None, "old": None, "until": 0, "text": ""}
+
+
+def set_mode(out_id, w=None, h=None, hz=None, hdr=None, vrr=None, revert=15):
+    """Endrer én skjerm. Med revert > 0 settes forrige modus tilbake etter så mange sekunder, med mindre keep_mode()
+    kalles – slik at en modus skjermen ikke klarer aldri blir stående med svart skjerm."""
+    import threading
+    import time
+    cur = next((o for o in displays() if o["id"] == out_id), None)
+    if not cur:
+        raise ValueError("fant ikke skjermen")
+    if w and (int(w), int(h), int(hz)) not in {tuple(m) for m in cur["modes"]}:
+        raise ValueError(f"skjermen støtter ikke {w}×{h} @ {hz} Hz")
+    cancel_revert()
+    old = {"id": out_id, "w": cur["w"], "h": cur["h"], "hz": cur["hz"], "hdr": cur.get("hdr") if hdr is not None
+           else None, "vrr": cur.get("vrr") if vrr is not None else None}
+    new = {"id": out_id, "w": int(w) if w else None, "h": int(h) if h else None, "hz": int(hz) if hz else None,
+           "hdr": hdr, "vrr": vrr}
+    _set_display(new)
+    txt = (f"{new['w']}×{new['h']} @ {new['hz']} Hz" if new["w"] else "") + \
+          (f"{' · ' if new['w'] else ''}HDR {'på' if hdr else 'av'}" if hdr is not None else "")
+    if revert:
+        t = threading.Timer(revert, _revert)
+        t.daemon = True
+        _PENDING.update(timer=t, old=old, until=time.time() + revert, text=txt)
+        t.start()
+    return f"Skjerm: {txt or 'endret'} ✓"
+
+
+def _revert():
+    old = _PENDING.get("old")
+    _PENDING.update(timer=None, old=None, until=0, text="")
+    if old:
+        try:
+            _set_display(old)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("angre skjermmodus")
+
+
+def keep_mode():
+    """«Behold» – modusen blir stående."""
+    cancel_revert()
+    return "Beholdt ✓"
+
+
+def cancel_revert():
+    t = _PENDING.get("timer")
+    if t:
+        t.cancel()
+    _PENDING.update(timer=None, old=None, until=0, text="")
+
+
+def undo_mode():
+    """«Angre» med en gang."""
+    t = _PENDING.get("timer")
+    if t:
+        t.cancel()
+    _revert()
+    return "Satt tilbake"
+
+
+def pending():
+    """Sekunder igjen før skjermen settes tilbake (0 = ingenting venter)."""
+    import time
+    return max(0, round(_PENDING["until"] - time.time())) if _PENDING.get("timer") else 0
+
+
 # ---- Windows: oppløsning og Hz (ChangeDisplaySettingsEx) ----
 def _devmode():
     import ctypes

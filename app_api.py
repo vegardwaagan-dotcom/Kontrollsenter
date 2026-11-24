@@ -272,12 +272,18 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+def skjerm(_arg):
+    import avprofiles as P
+    return {"displays": [{"id": d["id"], "name": d["name"], "w": d["w"], "h": d["h"], "hz": d["hz"],
+                          "modes": [list(m) for m in d["modes"]]} for d in P.displays()], "pending": P.pending()}
+
+
 def lydtest(_arg):
     import lydtest as L
     return L.info()
 
 
-X = {"lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -301,6 +307,24 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind == "skjermmodus":                            # oppløsning og Hz fra mobilen (settes tilbake etter 20 s)
+        import avprofiles as P
+        return True, P.set_mode(str(a.get("id")), a.get("w"), a.get("h"), a.get("hz"), revert=20)
+    if kind == "skjermbehold":
+        import avprofiles as P
+        return True, P.keep_mode()
+    if kind == "skjermangre":
+        import avprofiles as P
+        return True, P.undo_mode()
+    if kind == "skjermtest":                             # skjermtesten i fullskjerm på PC-en
+        from gi.repository import GLib
+
+        def show():
+            import skjerm_ui
+            skjerm_ui.ScreenTest(win).present()
+            return False
+        GLib.idle_add(show)
+        return True, "Skjermtesten er startet på PC-en (Esc avslutter)"
     if kind == "lydtest":                                # test av høyttalerne på PC-en fra mobilen
         import lydtest as L
         if a.get("ch") == "stop":

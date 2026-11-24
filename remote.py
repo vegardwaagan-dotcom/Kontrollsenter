@@ -621,7 +621,8 @@ def _feature_action(win, kind, a):
         import app_api
         return True, app_api.chat_send(win, a, _notify(win))
     if kind in ("chatev", "chatgif", "chatdnd", "chatstatus", "tenorkey", "aiask", "aistop", "aiconfirm", "aiset",
-                "aipin", "aidelete", "kaladd", "kaldel", "kaldone", "lydtest") or kind.startswith("dagbok_"):
+                "aipin", "aidelete", "kaladd", "kaldel", "kaldone", "lydtest", "skjermmodus", "skjermbehold",
+                "skjermangre", "skjermtest") or kind.startswith("dagbok_"):
         import app_api
         return app_api.action(win, kind, a, _notify(win))
     if kind == "chatvote":                               # stemme i en avstemning fra mobilen

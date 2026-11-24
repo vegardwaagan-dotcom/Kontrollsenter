@@ -768,7 +768,7 @@ _LISTENERS = []
 # Sidemenyens seksjoner: fane -> seksjon (rekkefølgen her er rekkefølgen i menyen)
 SECTIONS = [
     ("Overvåking", ["oversikt", "historikk"]),
-    ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi"]),
+    ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi", "tester"]),
     ("Spill", ["spill", "vr", "stromming"]),
     ("Sosialt", ["chat", "discord", "hjemme", "venner", "fjernhjelp"]),
     ("Hjemmet", ["scener", "smarthjem", "familie", "kalender"]),
@@ -803,6 +803,8 @@ PAGE_HELP = {
     "ai": "Spør Claude Code, Codex eller Gemini – de kan lese temperaturene, endre innstillinger, rette feil og vise "
           "hvor ting ligger. Samtalene lagres på NAS-en.",
     "fjernhjelp": "Styr en annen PC eller få hjelp med RustDesk – din ID, PC-ene hjemme med ett trykk, og «Be om hjelp».",
+    "tester": "Test skjermen (døde piksler, fargebånd, bevegelse og faktisk Hz), musa og tastaturet, og "
+              "kontrolleren – knapper, stikker, drift og vibrasjon.",
     "kalender": "Kalender med norske røde dager markert – bla så langt fram i tid du vil, se neste fridager og "
                 "langhelger.",
     "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "

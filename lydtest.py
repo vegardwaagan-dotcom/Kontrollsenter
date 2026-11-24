@@ -351,3 +351,100 @@ def info():
             "sinks": [{"name": s[0], "desc": s[1], "n": len(s[2])} for s in ss],
             "sink": cur[0], "suggest": suggest(cur[2]), "playing": state["playing"],
             "sounds": [{"key": k, "name": n} for k, n in SOUNDS]}
+
+
+# ------------------------------------------------------------------ mikrofontest
+def mic_analyse(levels, peaks):
+    """levels/peaks = dB-verdier hvert 50. ms. → dict med tale, støy, topp og råd."""
+    if not levels:
+        return {"ok": False, "advice": ["Fikk ingen lyd fra mikrofonen – er den dempet eller koblet fra?"]}
+    s = sorted(levels)
+    speech = s[int(len(s) * 0.9)]                          # de høyeste 10 % = når du snakker
+    noise = s[int(len(s) * 0.1)]                           # de laveste 10 % = bakgrunnen
+    peak = max(peaks) if peaks else speech
+    adv = []
+    if speech < -50:
+        adv.append("Mikrofonen hører nesten ingenting – sjekk at det er riktig mikrofon og at den ikke er dempet.")
+    elif speech < -32:
+        adv.append("For lavt: skru opp mikrofonvolumet (prøv 80–100 %) eller snakk nærmere mikrofonen.")
+    elif peak > -1.5:
+        adv.append("For høyt – lyden klipper (skurrer). Skru ned mikrofonvolumet litt.")
+    else:
+        adv.append("Bra nivå ✓")
+    snr = speech - noise
+    if noise > -45:
+        adv.append("Mye bakgrunnsstøy (vifter, tastatur?) – slå på støyfilter i Discord, eller flytt mikrofonen.")
+    if snr < 15 and speech > -50:
+        adv.append("Stemmen er lite høyere enn støyen – du kan være vanskelig å høre.")
+    return {"ok": True, "speech": round(speech, 1), "noise": round(noise, 1), "peak": round(peak, 1),
+            "snr": round(snr, 1), "advice": adv}
+
+
+class MicTest:
+    """Tar opp N sekunder fra standardmikrofonen (GStreamer, likt på Linux og Windows) og spiller det av igjen."""
+
+    def __init__(self):
+        self.pipe = None
+        self.levels, self.peaks = [], []
+        self.path = os.path.join(DIR, "mikrofontest.wav")
+
+    def start(self, secs=5, on_level=None, on_done=None):
+        import gi
+        gi.require_version("Gst", "1.0")
+        from gi.repository import GLib, Gst
+        Gst.init(None)
+        os.makedirs(DIR, exist_ok=True)
+        import chatextra
+        src = chatextra.SRC
+        self.levels, self.peaks = [], []
+        self.pipe = Gst.parse_launch(
+            f"{src} ! audioconvert ! audioresample ! audio/x-raw,channels=1,rate=48000 ! "
+            "level interval=50000000 post-messages=true ! audioconvert ! wavenc ! "
+            f"filesink location=\"{self.path}\"")
+        bus = self.pipe.get_bus()
+        bus.add_signal_watch()
+
+        def msg(_b, m):
+            if m.type == Gst.MessageType.ELEMENT and m.get_structure().get_name() == "level":
+                st = m.get_structure()
+                try:
+                    r, p = max(st.get_value("rms")), max(st.get_value("peak"))
+                except (TypeError, ValueError):
+                    return
+                self.levels.append(r)
+                self.peaks.append(p)
+                on_level and on_level(r)
+        bus.connect("message", msg)
+        if self.pipe.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
+            self.pipe = None
+            raise RuntimeError("fant ingen mikrofon")
+
+        def stop():
+            self.stop()
+            on_done and on_done(mic_analyse(self.levels, self.peaks))
+            return False
+        GLib.timeout_add(int(secs * 1000), stop)
+
+    def stop(self):
+        from gi.repository import Gst
+        p, self.pipe = self.pipe, None
+        if p is None:
+            return
+        p.send_event(Gst.Event.new_eos())
+        p.get_bus().timed_pop_filtered(2 * Gst.SECOND, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+        p.set_state(Gst.State.NULL)
+
+    def play(self):
+        if not os.path.exists(self.path):
+            raise RuntimeError("ta opp først")
+        import gi
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst
+        Gst.init(None)
+        pb = Gst.ElementFactory.make("playbin", None)
+        pb.set_property("uri", "file:///" + self.path.replace("\\", "/").lstrip("/"))
+        pb.set_state(Gst.State.PLAYING)
+        self._pb = pb
+        bus = pb.get_bus()
+        bus.add_signal_watch()
+        bus.connect("message::eos", lambda *_: pb.set_state(Gst.State.NULL))

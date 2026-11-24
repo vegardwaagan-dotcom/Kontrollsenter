@@ -564,6 +564,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("discord", "Discord", "ks-discord-symbolic", "discord_ui", "DiscordPage"),
                 ("familie", "Familie", "ks-family-symbolic", "family_page", "FamilyPage"),
                 ("kalender", "Kalender", "ks-calendar-symbolic", "kalender_ui", "CalendarPage"),
+                ("tester", "Tester", "ks-test-symbolic", "tester_ui", "TesterPage"),
                 ("smarthjem", "Smart Hjem", "ks-smarthome-symbolic", "smarthome_ui", "SmartHomePage"),
                 ("scener", "Scener", "ks-scenes-symbolic", "scenes_ui", "ScenesPage"),
                 ("hjemme", "PC-er hjemme", "ks-home-symbolic", "homepcs", "HomePage"),

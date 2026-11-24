@@ -215,6 +215,10 @@ class AudioPage(Gtk.ScrolledWindow):
                                                        "Trykk på en høyttaler – den sier navnet sitt der den står.")
             i.append(lydtest_ui.SpeakerTest())
             box.append(c)
+            c, i = card("Mikrofontest", "Ta opp 5 sekunder og hør hvordan du høres ut – med nivå, bakgrunnsstøy og "
+                                        "råd om hva du bør justere.")
+            i.append(lydtest_ui.MicTestBox())
+            box.append(c)
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("lydtest")

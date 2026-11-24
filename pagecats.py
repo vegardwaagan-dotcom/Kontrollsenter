@@ -20,14 +20,14 @@ PREF = os.path.expanduser("~/.config/systemmonitor/kategorier.json")
 # gruppe: (nøkkel, tittel i sidemenyen, ikon, [sider – den første er «lederen»])
 GROUPS = [
     ("spill", "Spill", "ks-games-symbolic", ["spill", "vr", "stromming"]),
-    ("utstyr", "Utstyr", "ks-rgb-symbolic", ["rgb", "logitech", "cpuskjerm", "msi"]),
+    ("utstyr", "Utstyr", "ks-rgb-symbolic", ["rgb", "logitech", "cpuskjerm", "msi", "tester"]),
     ("nett", "Nett og tilkobling", "ks-network-symbolic", ["nettverk", "wifi", "bluetooth"]),
     ("hjem", "Scener og Smart Hjem", "ks-smarthome-symbolic", ["scener", "smarthjem"]),
     ("pcer", "PC-er", "ks-home-symbolic", ["hjemme", "venner"]),
 ]
 ICONS = {"spill": "🎮", "vr": "🥽", "stromming": "📡", "rgb": "🌈", "logitech": "🖱️", "cpuskjerm": "🖥️", "msi": "💻",
          "nettverk": "🌐", "wifi": "📶", "bluetooth": "🔵", "scener": "✨", "smarthjem": "🏠", "hjemme": "🏠",
-         "venner": "👥", "chat": "💬", "fjernhjelp": "🛟", "ai": "🤖", "kalender": "📅"}
+         "venner": "👥", "chat": "💬", "fjernhjelp": "🛟", "ai": "🤖", "kalender": "📅", "tester": "🧪"}
 
 # side: [(nøkkel, navn, [titler – «=X» er nøyaktig, ellers starten av tittelen; «G:» = gruppe-overskrift])]
 PAGE_CATS = {
@@ -36,7 +36,7 @@ PAGE_CATS = {
                 ("mal", "⭐ Mål og belønning", ["Mål og belønning", "Belønningsbutikk", "Ukesrapport"])],
     "gpu": [("kort", "🎛️ Skjermkortene", ["NVIDIA", "AMD", "Intel", "Spillinnstillinger", "Ved oppstart",
                                           "Gi Kontrollsenter", "Fant ingen"]),
-            ("skjerm", "🖥️ Skjerm og lys", ["Hovedskjermkort", "Skjermprofiler", "Nattlys"])],
+            ("skjerm", "🖥️ Skjerm og lys", ["Oppløsning og Hz", "Hovedskjermkort", "Skjermprofiler", "Nattlys"])],
     "discord": [("samtale", "📞 Samtalen", ["=G:", "G:Samtalen"]),
                 ("lyd", "🎙️ Lyd, mikrofon og overlay", ["G:Lyd", "G:Mikrofon", "G:Overlay"]),
                 ("chat", "💬 Servere og chat", ["G:Servere"]),

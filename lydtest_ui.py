@@ -161,3 +161,56 @@ class SpeakerTest(Gtk.Box):
             GLib.idle_add(lambda: (self.status.get_label().startswith("Spiller:") or self.status.set_label(msg),
                                    False)[1])
         threading.Thread(target=work, daemon=True).start()
+
+
+class MicTestBox(Gtk.Box):
+    """Mikrofontest: ta opp 5 sekunder, se nivået mens du snakker, spill av og få råd."""
+
+    def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.mt = L.MicTest()
+        row = Gtk.Box(spacing=8)
+        self.rec = Gtk.Button(label=i18n.tr("🎙️ Ta opp 5 sekunder"))
+        self.rec.add_css_class("suggested-action")
+        self.rec.connect("clicked", self._start)
+        row.append(self.rec)
+        self.pl = Gtk.Button(label=i18n.tr("▶ Spill av"), sensitive=False)
+        self.pl.connect("clicked", lambda *_: self._play())
+        row.append(self.pl)
+        self.append(row)
+        self.bar = Gtk.LevelBar(min_value=0, max_value=1)
+        self.bar.add_offset_value("low", 0.55)
+        self.bar.add_offset_value("high", 0.85)
+        self.bar.add_offset_value("full", 1.0)
+        self.append(self.bar)
+        self.out = Gtk.Label(xalign=0, wrap=True)
+        self.append(self.out)
+
+    def _start(self, *_):
+        self.rec.set_sensitive(False)
+        self.out.set_label(i18n.tr("Snakk som vanlig i 5 sekunder – f.eks. tell til ti …"))
+
+        def lvl(db):
+            GLib.idle_add(lambda: (self.bar.set_value(max(0.0, min(1.0, (db + 60) / 60))), False)[1])
+        try:
+            self.mt.start(5, on_level=lvl, on_done=self._done)
+        except Exception as e:  # noqa: BLE001
+            self.rec.set_sensitive(True)
+            self.out.set_label(f"✗ {e}")
+
+    def _done(self, r):
+        self.rec.set_sensitive(True)
+        self.rec.set_label(i18n.tr("🎙️ Ta opp på nytt"))
+        self.pl.set_sensitive(r.get("ok", False))
+        self.bar.set_value(0)
+        txt = ""
+        if r.get("ok"):
+            txt = i18n.tr(f"Stemme {r['speech']:.0f} dB · bakgrunn {r['noise']:.0f} dB · topp {r['peak']:.0f} dB "
+                          f"· {r['snr']:.0f} dB over støyen\n")
+        self.out.set_label(txt + "\n".join("• " + i18n.tr(a) for a in r["advice"]))
+
+    def _play(self):
+        try:
+            self.mt.play()
+        except Exception as e:  # noqa: BLE001
+            self.out.set_label(f"✗ {e}")

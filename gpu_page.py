@@ -128,6 +128,8 @@ class GpuPage(Gtk.ScrolledWindow):
         try:                                                 # skjermprofiler, nattlys og lysstyrke
             import avprofiles_ui
             cf = lambda t, d=None: _card(t, d)[:2]  # noqa: E731
+            import skjerm_ui
+            self.box.append(skjerm_ui.ModeCard(cf))              # velg oppløsning og Hz direkte
             self.box.append(avprofiles_ui.ProfileCard("display", cf))
             self.box.append(avprofiles_ui.NightCard(cf))
         except Exception:  # noqa: BLE001

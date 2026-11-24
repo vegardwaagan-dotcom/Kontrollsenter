@@ -86,6 +86,16 @@
         <div id="media-now" class="dim small"></div>
         <div class="row center"><button data-media="Previous" class="soft">⏮</button><button data-media="PlayPause" class="primary">⏯</button><button data-media="Next" class="soft">⏭</button></div>
         <details><summary>Volum per program</summary><div id="app-vols"></div></details></div>
+      <div class="card" id="c-disp" hidden><h2>Oppløsning og Hz</h2>
+        <div class="dim small">Skjermen på PC-en. Går tilbake av seg selv etter 20 sekunder hvis du ikke trykker «Behold».</div>
+        <div id="disp-outw" hidden><select id="disp-out" data-title="Skjerm"></select></div>
+        <div class="row wrap"><select id="disp-res" data-title="Oppløsning"></select><select id="disp-hz" data-title="Hz"></select><button class="primary" id="disp-go">Bruk</button></div>
+        <div id="disp-now" class="dim small"></div>
+        <div class="row wrap" id="disp-keep" hidden><button class="primary" id="disp-yes">✓ Behold</button><button class="soft" id="disp-no">↩ Angre</button><span id="disp-left" class="dim small"></span></div></div>
+      <div class="card" id="c-tests"><h2>🧪 Tester</h2>
+        <div class="dim small">Test skjermen og kontrolleren her på telefonen eller TV-en – eller start skjermtesten på PC-en.</div>
+        <div class="row wrap"><button class="soft" id="t-screen">🖥️ Test denne skjermen</button><button class="soft" id="t-pcscreen">🖥️ Skjermtest på PC-en</button><button class="soft" id="t-pad">🎮 Kontrollertest</button></div>
+        <div id="t-padview" hidden></div></div>
       <div class="card" id="c-spk"><h2>Test hodesett og høyttalere</h2>
         <div class="dim small">Trykk på en høyttaler – den sier navnet sitt på PC-en, der den står i rommet.</div>
         <div class="row wrap"><select id="spk-sink" data-title="Utgang"></select><select id="spk-lay" data-title="Oppsett"></select><select id="spk-snd" data-title="Lyd"></select></div>

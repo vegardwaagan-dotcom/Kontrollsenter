@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.31", "Oppløsning og Hz, og tester for skjerm, mikrofon, mus og kontroller", [
+            "GPU-innstillinger › Skjerm og lys › «Oppløsning og Hz»: velg oppløsning og oppdateringsfrekvens for hver "
+            "skjerm, og HDR og VRR. Går tilbake av seg selv etter 15 sekunder hvis du ikke trykker «Behold»",
+            "Ny side «Tester» under Utstyr: skjermtest i fullskjerm (døde piksler, fargebånd, svart- og hvitnivå, "
+            "skarphet, bevegelse og hvor mange Hz skjermen faktisk viser)",
+            "Mus og tastatur: klikk, rullehjul, polling rate, dobbeltklikk-feil, hvor mange taster samtidig",
+            "Kontroller: alle knapper, stikker og avtrekkere live, «Mål drift» med anbefalt dødsone, og vibrasjon",
+            "Lyd › «Mikrofontest»: ta opp 5 sekunder, hør det igjen og få nivå, bakgrunnsstøy og råd",
+            "Mobilappen og TV-en: oppløsning og Hz på PC-en med «Behold/Angre», og PC-en › 🧪 Tester: skjermtest og "
+            "kontrollertest for telefonen/TV-en selv, og start skjermtesten på PC-en",
+        ]),
     ("0.99.30", "Test hodesett og høyttalere", [
             "Lyd › «Test hodesett og høyttalere»: alle oppsett fra mono, stereo og 2.1 til 5.1, 7.1, 9.1 og Atmos "
             "(5.1.2, 5.1.4, 7.1.2) – 18 i alt",

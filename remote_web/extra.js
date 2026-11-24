@@ -643,7 +643,7 @@ const baseSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   baseSetTab(t);
   if (t === "kontroll") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
-  if (t === "kontroll") { loadMedia(); try { spkLoad(); } catch (e) {} }
+  if (t === "kontroll") { loadMedia(); try { spkLoad(); dispLoad(); } catch (e) {} }
   if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); }
   if (t === "mer") loadGoals();
   if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length); }).catch(() => {});
@@ -715,4 +715,146 @@ if (tab === "oversikt") loadHealth(false);
   }
   window.spkLoad = load;
   setTimeout(load, 1500);
+})();
+
+// ---- oppløsning og Hz på PC-en (med «Behold» / «Angre») ----
+(() => {
+  let d = null, keepT = 0;
+  const cur = () => d && d.displays.find((x) => x.id === $("#disp-out").value) || (d && d.displays[0]);
+  function fillHz() {
+    const o = cur(); if (!o) return;
+    const [w, h] = $("#disp-res").value.split("x").map(Number);
+    const hz = [...new Set(o.modes.filter((m) => m[0] === w && m[1] === h).map((m) => m[2]))].sort((a, b) => b - a);
+    $("#disp-hz").innerHTML = hz.map((x, i) => `<option value="${x}">${x} Hz${i ? "" : " ★"}</option>`).join("");
+    $("#disp-hz").value = (w === o.w && h === o.h && hz.includes(o.hz)) ? o.hz : hz[0];
+  }
+  function fill() {
+    const o = cur(); if (!o) return;
+    const res = []; o.modes.forEach((m) => { const k = m[0] + "x" + m[1]; if (!res.includes(k)) res.push(k); });
+    res.sort((a, b) => { const [aw, ah] = a.split("x"), [bw, bh] = b.split("x"); return bw * bh - aw * ah; });
+    $("#disp-res").innerHTML = res.map((k, i) => `<option value="${k}">${k.replace("x", " × ")}${i ? "" : " ★"}</option>`).join("");
+    $("#disp-res").value = o.w + "x" + o.h;
+    fillHz();
+    $("#disp-now").textContent = `Nå: ${o.w} × ${o.h} @ ${o.hz} Hz`;
+  }
+  async function load() {
+    if (!$("#c-disp")) return;
+    try { d = await api("/api/x/skjerm"); } catch (e) { return; }
+    if (!d.displays.length) return;
+    $("#c-disp").hidden = false;
+    const s = $("#disp-out"), keep = s.value;
+    s.innerHTML = d.displays.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("");
+    s.value = keep || d.displays[0].id; $("#disp-outw").hidden = d.displays.length < 2;
+    fill(); showKeep(d.pending);
+  }
+  function showKeep(left) {
+    clearTimeout(keepT);
+    $("#disp-keep").hidden = !left;
+    if (left) { $("#disp-left").textContent = `Går tilbake om ${left} s`; keepT = setTimeout(async () => {
+      try { const j = await api("/api/x/skjerm"); d = j; showKeep(j.pending); if (!j.pending) fill(); } catch (e) {} }, 1000); }
+  }
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "disp-out") fill();
+    if (e.target.id === "disp-res") fillHz();
+  });
+  document.addEventListener("click", async (e) => {
+    const id = e.target.id;
+    if (id === "disp-go") {
+      const o = cur(); const [w, h] = $("#disp-res").value.split("x").map(Number);
+      const r = await act({ a: "skjermmodus", id: o.id, w, h, hz: Number($("#disp-hz").value) });
+      if (r && r.ok) showKeep(20);
+    } else if (id === "disp-yes") { await act({ a: "skjermbehold" }); showKeep(0); load(); }
+    else if (id === "disp-no") { await act({ a: "skjermangre" }); showKeep(0); setTimeout(load, 900); }
+    else if (id === "t-pcscreen") act({ a: "skjermtest" });
+    else if (id === "t-screen") screenTest();
+    else if (id === "t-pad") padTest();
+  });
+  window.dispLoad = load;
+  setTimeout(load, 1800);
+
+  // ---- skjermtest for telefonen / TV-en selv ----
+  const TESTS = [["#f00", "Rødt – se etter prikker som ikke er røde"], ["#0f0", "Grønt"], ["#00f", "Blått"],
+    ["#fff", "Hvitt – svarte prikker er døde piksler"], ["#000", "Svart – lyse prikker er fastlåste piksler"],
+    ["grad", "Fargebånd: overgangene skal være jevne"], ["black", "Svartnivå: du skal så vidt se rute 2–3"],
+    ["ufo", "Bevegelse: følg romskipet – skarpt = rask skjerm"], ["hz", "Faktisk Hz"]];
+  function screenTest() {
+    const ov = document.createElement("div");
+    ov.style.cssText = "position:fixed;inset:0;z-index:9999;background:#000;touch-action:none";
+    ov.tabIndex = 0;
+    const cv = document.createElement("canvas"); cv.style.cssText = "width:100%;height:100%;display:block";
+    const tip = document.createElement("div");
+    tip.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:10px 14px;background:rgba(0,0,0,.6);color:#fff;font:14px sans-serif";
+    ov.append(cv, tip); document.body.append(ov);
+    try { ov.requestFullscreen && ov.requestFullscreen(); } catch (e) {}
+    try { KS.landscape && KS.landscape(true); } catch (e) {}
+    let i = 0, raf = 0, frames = [], t0 = performance.now();
+    const ctx = cv.getContext("2d");
+    function frame(t) {
+      const W = cv.width = ov.clientWidth * devicePixelRatio, H = cv.height = ov.clientHeight * devicePixelRatio;
+      const [k, txt] = TESTS[i];
+      if (k[0] === "#") { ctx.fillStyle = k; ctx.fillRect(0, 0, W, H); }
+      else if (k === "grad") { ["255,255,255", "255,0,0", "0,255,0", "0,0,255"].forEach((c, n) => {
+        const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, "#000"); g.addColorStop(1, `rgb(${c})`);
+        ctx.fillStyle = g; ctx.fillRect(0, n * H / 4, W, H / 4 + 1); }); }
+      else if (k === "black") { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H); for (let s = 1; s <= 10; s++) {
+        const v = s * 3; ctx.fillStyle = `rgb(${v},${v},${v})`; ctx.fillRect(W / 12 * s, H * .35, W / 13, H * .3);
+        ctx.fillStyle = "#777"; ctx.font = `${16 * devicePixelRatio}px sans-serif`; ctx.fillText(s, W / 12 * s + 6, H * .72); } }
+      else if (k === "ufo") { ctx.fillStyle = "#141a29"; ctx.fillRect(0, 0, W, H); const el = (t - t0) / 1000;
+        [960, 480].forEach((sp, n) => { const x = (el * sp * devicePixelRatio) % (W + 100) - 50, y = H * (.35 + n * .3);
+          ctx.fillStyle = "#4de680"; ctx.beginPath(); ctx.arc(x, y, 26 * devicePixelRatio, Math.PI, 0); ctx.fill();
+          ctx.fillStyle = "#c0c0d8"; ctx.fillRect(x - 46 * devicePixelRatio, y, 92 * devicePixelRatio, 14 * devicePixelRatio); }); }
+      else if (k === "hz") { frames.push(t); frames = frames.slice(-120);
+        const dd = frames.slice(1).map((v, n) => v - frames[n]).sort((a, b) => a - b), med = dd[dd.length >> 1];
+        ctx.fillStyle = "#0d0f19"; ctx.fillRect(0, 0, W, H); ctx.fillStyle = "#fff"; ctx.font = `bold ${H / 7}px sans-serif`;
+        ctx.textAlign = "center"; ctx.fillText(med ? Math.round(1000 / med) + " Hz" : "måler …", W / 2, H * .5); ctx.textAlign = "start";
+        const c = frames.length % 60; for (let n = 0; n < 60; n++) { ctx.fillStyle = n === c ? "#40ccff" : "#262b3f"; ctx.fillRect(n * W / 60 + 1, H * .62, W / 60 - 2, H * .05); } }
+      tip.textContent = `${i + 1}/${TESTS.length} · ${txt} · Trykk = neste · Tilbake/Esc = avslutt`;
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+    const next = () => { i++; frames = []; t0 = performance.now(); if (i >= TESTS.length) close(); };
+    function close() { cancelAnimationFrame(raf); ov.remove(); try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {}
+      try { KS.landscape && KS.landscape(false); } catch (e) {} document.removeEventListener("keydown", key, true); }
+    function key(e) { e.preventDefault(); e.stopPropagation(); if (e.key === "Escape" || e.key === "Backspace" || e.keyCode === 4) close(); else next(); }
+    ov.addEventListener("click", next); document.addEventListener("keydown", key, true); ov.focus();
+  }
+
+  // ---- kontrollertest (kontroller koblet til telefonen eller TV-en) ----
+  const NAMES = ["A ✕", "B ○", "X □", "Y △", "LB", "RB", "LT", "RT", "View", "Menu", "L3", "R3", "▲", "▼", "◀", "▶", "Guide"];
+  let padRaf = 0;
+  function padTest() {
+    const v = $("#t-padview");
+    if (!v.hidden) { v.hidden = true; cancelAnimationFrame(padRaf); return; }
+    v.hidden = false;
+    const seen = new Set();
+    v.innerHTML = `<div class="dim small" id="pad-name">Trykk på en knapp på kontrolleren …</div>
+      <div class="pad-sticks"><canvas id="pad-l" width="120" height="120"></canvas><canvas id="pad-r" width="120" height="120"></canvas></div>
+      <div class="pad-btns">${NAMES.map((n, i) => `<span data-b="${i}">${n}</span>`).join("")}</div>
+      <div class="row wrap"><button class="soft" id="pad-vib">📳 Vibrer</button><button class="soft" id="pad-drift">Mål drift</button></div>
+      <div id="pad-msg" class="dim small"></div>`;
+    const stick = (c, x, y) => { const g = c.getContext("2d"); g.clearRect(0, 0, 120, 120); g.fillStyle = "rgba(128,128,150,.2)";
+      g.beginPath(); g.arc(60, 60, 55, 0, 7); g.fill(); g.fillStyle = Math.hypot(x, y) < .1 ? "#33d17a" : "#5b8cff";
+      g.beginPath(); g.arc(60 + x * 50, 60 + y * 50, 8, 0, 7); g.fill(); };
+    let drift = null;
+    function loop() {
+      const p = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find((g) => g);
+      if (p) {
+        $("#pad-name").textContent = p.id;
+        p.buttons.forEach((b, i) => { const el = v.querySelector(`[data-b="${i}"]`); if (!el) return;
+          el.classList.toggle("on", b.pressed || b.value > .5); if (b.pressed) seen.add(i); el.classList.toggle("seen", seen.has(i)); });
+        const a = p.axes; stick($("#pad-l"), a[0] || 0, a[1] || 0); stick($("#pad-r"), a[2] || 0, a[3] || 0);
+        if (drift) { drift.push(a.slice(0, 4)); if (drift.length > 90) {
+          const m = (i) => Math.max(...drift.map((s) => Math.hypot(s[i], s[i + 1])));
+          const l = m(0), r = m(2), txt = (x) => x < .06 ? "✓ ingen drift" : x < .12 ? "⚠ litt drift" : "❌ tydelig drift";
+          $("#pad-msg").textContent = `Venstre: ${txt(l)} (${l.toFixed(2)}) · Høyre: ${txt(r)} (${r.toFixed(2)}) · Dødsone: ${Math.round(Math.min(.3, Math.max(l, r) + .03) * 100)} %`;
+          drift = null; } }
+      }
+      if (!v.hidden) padRaf = requestAnimationFrame(loop);
+    }
+    padRaf = requestAnimationFrame(loop);
+    $("#pad-vib").onclick = () => { const p = [...navigator.getGamepads()].find((g) => g);
+      const a = p && p.vibrationActuator; if (a && a.playEffect) a.playEffect("dual-rumble", { duration: 700, strongMagnitude: 1, weakMagnitude: 1 });
+      else $("#pad-msg").textContent = "Denne kontrolleren (eller nettleseren) støtter ikke vibrasjon her."; };
+    $("#pad-drift").onclick = () => { drift = []; $("#pad-msg").textContent = "Slipp stikkene og ikke rør kontrolleren … (3 s)"; };
+  }
 })();
