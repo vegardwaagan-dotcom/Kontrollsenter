@@ -227,15 +227,6 @@ def clip_link(path):
         return None
 
 
-def recent_media(n=12):
-    """Siste klipp og skjermbilder (til «📎 Legg ved»)."""
-    try:
-        import clipx
-        return [x for x in clipx.files()][:n]
-    except Exception:  # noqa: BLE001
-        return []
-
-
 # --------------------------------------------------------------------------
 # 10 / 37 – talemeldinger og walkie-talkie
 # --------------------------------------------------------------------------

@@ -15,6 +15,7 @@ mkdir -p "$KEYDIR" dist
 # temaene og glasset til appen lages fra PC-koden, så alt som finnes på PC-en også finnes på telefonen
 python3 -c "import theme; theme.write_web_themes()"
 cp remote_web/aero.js android/app/src/main/assets/aero.js
+cp remote_web/tv.js android/app/src/main/assets/tv.js
 
 if ! podman image exists "$IMAGE"; then
     echo "Lager byggebilde med Android SDK (én gang, ca. 1 GB) …"

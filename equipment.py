@@ -146,20 +146,6 @@ def set_charge_limit(pct):
 # --------------------------------------------------------------------------
 # 34 – forrige systemversjon (med drivere)
 # --------------------------------------------------------------------------
-def can_rollback():
-    return not IS_WIN and os.path.exists("/run/ostree-booted")
-
-
-def system_rollback():
-    if not can_rollback():
-        raise RuntimeError("bare på Bazzite / Silverblue (rpm-ostree)" if not IS_WIN else
-                           "på Windows: Enhetsbehandling → Skjermkort → Egenskaper → Driver → «Rull tilbake driver»")
-    r = subprocess.run(["rpm-ostree", "rollback"], capture_output=True, text=True, timeout=300)
-    if r.returncode != 0:
-        raise RuntimeError((r.stderr or r.stdout).strip()[-160:] or "feilet")
-    return "Forrige systemversjon (med de gamle driverne) brukes fra neste omstart"
-
-
 # --------------------------------------------------------------------------
 # 60 – Wi-Fi-signal
 # --------------------------------------------------------------------------

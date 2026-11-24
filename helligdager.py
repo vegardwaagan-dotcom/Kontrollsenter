@@ -90,13 +90,3 @@ def long_weekends(year):
     return [(d, nm) for d, nm in red_days(year).items() if d.weekday() in (0, 4)]
 
 
-def month_json(year, month):
-    """For mobilappen: alle dager i måneden med rød/merkedag."""
-    import calendar
-    days = []
-    for d in calendar.Calendar(firstweekday=0).itermonthdates(year, month):
-        days.append({"d": d.isoformat(), "day": d.day, "in": d.month == month, "red": is_red(d),
-                     "name": name(d), "today": d == dt.date.today(), "week": d.isocalendar()[1]})
-    return {"year": year, "month": month, "days": days,
-            "upcoming": [{"d": d.isoformat(), "name": nm, "in": n} for d, nm, n in upcoming(8)],
-            "year_list": [{"d": d.isoformat(), "name": nm} for d, nm in red_days(year).items()]}

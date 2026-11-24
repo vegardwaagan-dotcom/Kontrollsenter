@@ -1813,6 +1813,10 @@ class _Cards:
         gh.add_css_class("pill")
         gh.connect("clicked", self._update_github)
         row.append(gh)
+        web = update_source().removesuffix(".git")
+        ghl = Gtk.LinkButton(uri=web, label="🌐 GitHub-siden", valign=Gtk.Align.CENTER,
+                             tooltip_text=web)
+        row.append(ghl)
         adr = Gtk.Button(icon_name="emblem-system-symbolic", tooltip_text="GitHub-adresse …", valign=Gtk.Align.CENTER)
         adr.add_css_class("flat")
         adr.add_css_class("circular")

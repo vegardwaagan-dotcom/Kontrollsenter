@@ -195,8 +195,6 @@ function glow(e) {
   setTimeout(() => e.classList.remove("dglow"), 900);
 }
 
-function dashOrder() { const C = dashBox().ksC; if (C) C.apply(); }
-
 // app.js → renderOverview → hit med flisene (k, html)
 function dashTiles(list) {
   const box = dashBox();

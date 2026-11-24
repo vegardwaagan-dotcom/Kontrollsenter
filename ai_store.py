@@ -7,7 +7,6 @@ Lokalt: ~/.local/share/systemmonitor/ai/.
 """
 import json
 import os
-import shutil
 import subprocess
 import sys
 import threading
@@ -287,5 +286,3 @@ def history_text(c, limit=7000):
     return "\n\n".join(reversed(lines))
 
 
-def clear_local_mirror():
-    shutil.rmtree(MIRROR, ignore_errors=True)

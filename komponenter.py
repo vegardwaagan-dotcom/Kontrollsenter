@@ -84,12 +84,6 @@ def asked(cid):
     return cid in _state().get("asked", [])
 
 
-def mark_asked(cids):
-    d = _state()
-    d["asked"] = sorted(set(d.get("asked", [])) | set(cids))
-    _save_state(d)
-
-
 def unmark_asked(cids):
     d = _state()
     d["asked"] = sorted(set(d.get("asked", [])) - set(cids))
@@ -168,16 +162,6 @@ def _applies(c):
         if IS_WIN and not a.get("winget") or not IS_WIN and not a.get("flatpak"):
             return False                              # f.eks. Tailscale på Linux er en systemtjeneste
     return True
-
-
-def removable(c):
-    """Kan dette fjernes trygt hvis det var der før Kontrollsenter? (Ikke systempakker fra Linux selv.)"""
-    if c[5] in ("app", "winget", "fake"):
-        return True
-    if c[5] == "trcc":
-        b = _trcc_bin() or ""
-        return b.startswith(DEST_TRCC)
-    return False
 
 
 def plan(enabled):

@@ -40,8 +40,10 @@ FEATURES = [
     ("scener", "Scener", "Én knapp som gjør mange ting, også på tid", ["scener"], False),
     ("smarthjem", "Smart Hjem", "Lys, stikkontakter og Hue", ["smarthjem"], False),
     ("familie", "Familie", "Ukeplan, skjermtid og leggetid", ["familie"], False),
-    ("kalender", "Kalender", "Norske røde dager langt fram i tid", ["kalender"], False),
-    ("ai", "AI: Claude Code, Codex og Gemini", "Kodeassistenter i terminalen og «Spør» i appen", ["ai"], False),
+    ("kalender", "Kalender og dagbok", "Røde dager, hendelser for hele huset og egen dagbok med kode", ["kalender"],
+     False),
+    ("ai", "AI: Claude, Codex, Gemini og lokal AI", "Spør og styr PC-en med AI – også uten nett (Ollama)", ["ai"],
+     False),
     ("nettverk", "Nett og tilkobling", "Nettverk, Wi-Fi og Bluetooth", ["nettverk", "wifi", "bluetooth"], False),
     ("programmer", "Programmer", "Installer og oppdater programmer", ["programmer"], False),
     ("verktoy", "Vedlikehold", "Opprydding, oppstart, sikkerhetskopi og verktøy", ["verktoy"], False),
@@ -193,6 +195,13 @@ def _stop_disabled(newly_off=()):
             if chatvc.current():
                 chatvc.leave()
             chatvc.ov_sync()
+        except Exception:  # noqa: BLE001
+            pass
+    if "ai" in newly_off:                                   # tale til tekst er installert av Kontrollsenter: fjern
+        try:
+            import aitale
+            if aitale.stt_ready():
+                aitale.uninstall_stt()
         except Exception:  # noqa: BLE001
             pass
     if sys.platform == "win32":

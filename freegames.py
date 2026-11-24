@@ -66,14 +66,6 @@ def _seen():
         return {"on": True, "seen": []}
 
 
-def set_on(on):
-    c = _seen()
-    c["on"] = bool(on)
-    os.makedirs(os.path.dirname(CFG), exist_ok=True)
-    with open(CFG, "w") as f:
-        json.dump(c, f)
-
-
 def tick():
     """Hver 6. time: si fra om nye gratisspill (varsel + chat-kanalen «gratis» om valgt)."""
     c = _seen()

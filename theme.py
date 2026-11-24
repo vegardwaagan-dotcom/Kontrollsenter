@@ -462,11 +462,6 @@ def blend(x, y, f):
     return out
 
 
-def _lum(h):
-    r, g, b = (v / 255 for v in _rgb(h))
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
 def _shade(h, f):
     """Mørkere (f<0) eller lysere (f>0) variant av en farge."""
     r = _rgb(h)

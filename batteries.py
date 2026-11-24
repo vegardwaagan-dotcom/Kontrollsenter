@@ -139,24 +139,6 @@ def _usb_products():
     return names
 
 
-def _wired():
-    """[(navn, siste nivå, status)] for Logitech-enheter som står i kabel (koblet direkte med USB)."""
-    if IS_WIN:
-        return []
-    prods = _usb_products()
-    out = []
-    for p in glob.glob("/sys/class/power_supply/hidpp_battery_*"):
-        ue = _uevent(p)
-        model = ue.get("POWER_SUPPLY_MODEL_NAME")
-        if model and model in prods:
-            try:
-                cap = int(ue.get("POWER_SUPPLY_CAPACITY"))
-            except (TypeError, ValueError):
-                cap = None
-            out.append((model, cap, ue.get("POWER_SUPPLY_STATUS", "")))
-    return out
-
-
 def _solaar_installed():
     return any(os.path.isdir(os.path.join(b, "app", "io.github.pwr_solaar.solaar"))
                for b in ("/var/lib/flatpak", os.path.expanduser("~/.local/share/flatpak")))

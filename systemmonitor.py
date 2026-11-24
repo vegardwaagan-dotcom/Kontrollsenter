@@ -415,23 +415,29 @@ class MonitorWindow(Adw.ApplicationWindow):
                         "flis-cal": "Neste avtale", "flis-today": "Dagen i dag", "batterier": "Batterier", "strommodus": "Strømmodus (kort)",
                         "vifter": "Vifter", "cpu": "CPU-graf", "mem": "Minne", "gpu": "GPU-graf", "disk": "Disk",
                         "net": "Nettverk", "space": "Diskplass", "temps": "Temperaturer", "bat": "Batteri"}
-        hero = Gtk.Box(spacing=16)
+        # hilsenen og knappene brytes til to linjer i smale vinduer (før krevde raden over 1000 px)
+        hero = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, min_children_per_line=1, max_children_per_line=2,
+                           column_spacing=16, row_spacing=6, homogeneous=False)
         hero.set_margin_top(6)
         hero.set_margin_bottom(4)
         hcol = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        self.hello = Gtk.Label(xalign=0)
+        self.hello = Gtk.Label(xalign=0, ellipsize=3)
         self.hello.add_css_class("ks-hello")
         hcol.append(self.hello)
         self.hello_sub = Gtk.Label(xalign=0, wrap=True)
         self.hello_sub.add_css_class("ks-hello-sub")
         hcol.append(self.hello_sub)
         hero.append(hcol)
+        hero_r = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, min_children_per_line=1, max_children_per_line=8,
+                             column_spacing=8, row_spacing=6, homogeneous=False, halign=Gtk.Align.END,
+                             valign=Gtk.Align.CENTER)
+        hero.append(hero_r)
         self.hello_chip = Gtk.Label(valign=Gtk.Align.CENTER)
         self.hello_chip.add_css_class("ks-chip")
-        hero.append(self.hello_chip)
+        hero_r.append(self.hello_chip)
         try:
             import assistant_ui
-            hero.append(assistant_ui.quick_button(self))
+            hero_r.append(assistant_ui.quick_button(self))
         except Exception:  # noqa: BLE001
             applog.log.exception("assistent-knapp")
         import dashboard as _db
@@ -443,12 +449,12 @@ class MonitorWindow(Adw.ApplicationWindow):
         cur_p = _db._load().get("_preset:oversikt", "standard")
         self.preset_dd.set_selected(self.presets.index(cur_p) if cur_p in self.presets else 0)
         self.preset_dd.connect("notify::selected", lambda d, _p: self.dash.set_preset(self.presets[d.get_selected()]))
-        hero.append(self.preset_dd)
+        hero_r.append(self.preset_dd)
         self.edit_btn = Gtk.ToggleButton(icon_name="view-grid-symbolic", valign=Gtk.Align.CENTER)
         self.edit_btn.set_tooltip_text(i18n.tr("Tilpass oversikten: dra flisene til nye plasser og velg størrelse"))
         self.edit_btn.add_css_class("circular")
         self.edit_btn.connect("toggled", self._on_edit_dash)
-        hero.append(self.edit_btn)
+        hero_r.append(self.edit_btn)
         self.edit_bar = Gtk.Revealer(transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN)
         eb = Gtk.Box(spacing=10)
         eb.add_css_class("card")
@@ -502,7 +508,7 @@ class MonitorWindow(Adw.ApplicationWindow):
             b.connect("toggled", self._on_range, secs)
             seg.append(b)
         rng.append(seg)
-        hero.insert_child_after(rng, self.hello_chip)
+        hero_r.insert(rng, 1)                                   # 1 min / 10 min / 1 time etter statusen
         for key, c in cards:
             flow.add(key, c, 2, on_click=lambda k=key: self.open_details("gpu" if k.startswith("amd") else k))
         page.append(flow)

@@ -6,7 +6,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib, Gtk  # noqa: E402
+from gi.repository import GLib, Gtk  # noqa: E402
 
 import equipment as EQ  # noqa: E402
 import i18n  # noqa: E402
@@ -104,17 +104,6 @@ class EquipmentBox(Gtk.Box):
     def _done(self, r):
         self.msg.set_label(("✗ " if isinstance(r, Exception) else "✓ ") + str(r))
         self.refresh()
-
-    def _rollback(self, b):
-        dlg = Adw.AlertDialog(heading=i18n.tr("Gå tilbake til forrige systemversjon?"),
-                              body=i18n.tr("Forrige versjon av systemet (med de gamle driverne) brukes fra neste "
-                                           "omstart. Du kan gå fremover igjen med «Oppdater alt»."))
-        dlg.add_response("nei", i18n.tr("Avbryt"))
-        dlg.add_response("ja", i18n.tr("Gå tilbake"))
-        dlg.set_response_appearance("ja", Adw.ResponseAppearance.DESTRUCTIVE)
-        dlg.connect("response", lambda _d, r: r == "ja" and _bg(EQ.system_rollback, self._done))
-        dlg.present(self.get_root())
-
 
 class CalibrateWindow(Gtk.Window):
     """66: testmønstre i fullskjerm – svartnivå, hvitnivå og gamma – med lysstyrke."""

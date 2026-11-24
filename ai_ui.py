@@ -243,16 +243,17 @@ class AiPage(Gtk.Box):
                                                      ai.set_(panel=w.get_active()),
                                                      w.get_active() and self._panel_tick()))
         top.append(self.panel_btn)
-        self.ctl = Gtk.ToggleButton(label=i18n.tr("🛠️ Styrer appen"), active=c.get("control", True),
+        self.ctl = Gtk.ToggleButton(label="🛠️", active=c.get("control", True),
                                     valign=Gtk.Align.CENTER,
-                                    tooltip_text=i18n.tr("På: assistenten kan lese temperaturer, endre innstillinger, "
-                                                         "rette feil og vise hvor ting ligger i Kontrollsenter."))
+                                    tooltip_text=i18n.tr("Styrer appen – på: assistenten kan lese temperaturer, endre "
+                                                         "innstillinger, rette feil og vise hvor ting ligger i "
+                                                         "Kontrollsenter."))
         self.ctl.add_css_class("flat")
         self.ctl.connect("toggled", lambda w: ai.set_(control=w.get_active()))
         top.append(self.ctl)
-        self.edit = Gtk.ToggleButton(label=i18n.tr("✏️ Endre filer"), active=c["allow_edit"], valign=Gtk.Align.CENTER,
-                                     tooltip_text=i18n.tr("På: assistenten kan også skrive og endre filer i "
-                                                          "arbeidsmappa."))
+        self.edit = Gtk.ToggleButton(label="✏️", active=c["allow_edit"], valign=Gtk.Align.CENTER,
+                                     tooltip_text=i18n.tr("Endre filer – på: assistenten kan også skrive og endre "
+                                                          "filer i arbeidsmappa."))
         self.edit.add_css_class("flat")
         self.edit.connect("toggled", lambda w: ai.set_(allow_edit=w.get_active()))
         top.append(self.edit)

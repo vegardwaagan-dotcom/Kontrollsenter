@@ -13,6 +13,25 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.28", "Opprydding, rettelser og Google TV", [
+        ("Google TV", [
+            "Android-appen kan nå installeres på Google TV / Android TV og vises i TV-ens appliste med eget banner",
+            "Styres med fjernkontrollen: tydelig fokusramme, piltaster og OK virker på alt, større tekst",
+        ]),
+        ("Rettet", [
+            "Oppstartsveiviseren: alle 23 funksjonene vises (de nederste ble kuttet av før) – med oppdaterte beskrivelser",
+            "Oversikt, Kalender og AI kunne tvinge vinduet bredere enn en 1280-skjerm – nå brytes knappene til ny linje",
+            "Mobilappen: chat-toppen (rom + knapper) var for bred på smale telefoner",
+        ]),
+        ("Ryddet", [
+            "Gammel kode som ikke var i bruk er fjernet (ca. 200 linjer)",
+            "«Tale til tekst» avinstalleres når AI slås av under Funksjoner (den installeres av Kontrollsenter)",
+            "Dagboken: «Slett dagboken» (krever koden)",
+        ]),
+        ("GitHub", [
+            "Lenke til GitHub-siden under Innstillinger › Oppdatering, i mobilappen (Appen) og på appens startside",
+        ]),
+    ]),
     ("0.99.27", "Kalenderen: velg hva som vises", [
         ("Kalender", [
             "«👁 Vis» øverst: velg hva som vises hver dag – egne hendelser, bursdager, ukeplan, merkedager, flaggdager, "

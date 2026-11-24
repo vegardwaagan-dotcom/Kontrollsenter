@@ -7,7 +7,7 @@ const chatSec = h(`<section id="chattab" class="page" hidden>
     <button id="ct-ts" class="primary">Installer Tailscale på PC-en</button>
     <button id="ct-ts-check" class="soft">Sjekk igjen</button><p id="ct-ts-msg" class="dim small"></p></div></div>
   <div class="card chat-card" id="ct-card">
-    <div class="row between"><select id="ct-room" class="search"></select><button id="ct-cam" class="soft small" title="Bruk mobilen som webkamera for PC-en">📷</button><button id="ct-more" class="soft small" title="Visning, Ikke forstyrr, status">⋯</button><button id="ct-ref" class="soft small">↻</button></div>
+    <div class="row ct-head"><select id="ct-room" class="search"></select><button id="ct-cam" class="soft small" title="Bruk mobilen som webkamera for PC-en">📷</button><button id="ct-more" class="soft small" title="Visning, Ikke forstyrr, status">⋯</button><button id="ct-ref" class="soft small">↻</button></div>
     <div id="ct-dnd" class="ct-dnd" hidden></div>
     <button id="ct-pin" class="ct-pinbar" hidden></button>
     <div id="ct-play" class="ct-playing" hidden></div>
@@ -32,11 +32,6 @@ const chatSec = h(`<section id="chattab" class="page" hidden>
 const QUICK = ["Kommer! 🏃", "5 min til ⏳", "Lagrer nå 💾", "👍", "😂", "🎉"];
 $("#ct-quick").innerHTML = '<option value="">⚡</option>' + QUICK.map((q) => `<option value="${esc(q)}">${esc(q)}</option>`).join("");
 let ctRoom = pref("ct_room", "alle"), ctMe = { id: "", name: "" }, ctTimer = null;
-function ctTime(t) {
-  const d = new Date(t * 1000), two = (n) => String(n).padStart(2, "0");
-  const today = new Date().toDateString() === d.toDateString();
-  return (today ? "" : two(d.getDate()) + "." + two(d.getMonth() + 1) + " ") + two(d.getHours()) + ":" + two(d.getMinutes());
-}
 function ctGate(ts) {                                   // uten Tailscale: bare «Installer Tailscale først»
   $("#ct-gate").hidden = !!ts.running; $("#ct-card").hidden = !ts.running;
   if (!ts.running) $("#ct-ts-msg").textContent = ts.installed ? "Tailscale er installert på PC-en, men ikke pålogget – åpne Tailscale og logg inn." : "";

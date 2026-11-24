@@ -190,7 +190,8 @@ class CalendarPage(Gtk.Box):
         self.week_lab = Gtk.Label(halign=Gtk.Align.CENTER)
         self.week_lab.add_css_class("ks-cal-weekbig")
         mi.append(self.week_lab)
-        jump = Gtk.Box(spacing=6)
+        jump = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, min_children_per_line=1, max_children_per_line=4,
+                           column_spacing=6, row_spacing=6, homogeneous=False)
         tb = Gtk.Button(label=i18n.tr("I dag"))
         tb.connect("clicked", lambda *_: self._goto(dt.date.today()))
         jump.append(tb)
@@ -226,8 +227,8 @@ class CalendarPage(Gtk.Box):
         side.append(vc)
         vp = Gtk.Viewport(child=side, scroll_to_focus=False)   # ikke hopp ned til knappen som har fokus
         sc = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True, child=vp)
-        sc.set_size_request(440, -1)                        # bare denne kolonnen ruller – kalenderen står fast
-        side.set_size_request(420, -1)
+        sc.set_size_request(360, -1)                        # bare denne kolonnen ruller – kalenderen står fast
+        side.set_size_request(340, -1)
         outer.append(sc)
         return outer
 
@@ -321,14 +322,6 @@ class CalendarPage(Gtk.Box):
                 self._load()
                 return
             self._render_year()
-
-    def _dots(self, d):
-        cols = []
-        for x in self._items.get(d, []):
-            if x.get("kind") in ("red", "moon", "school"):
-                continue
-            cols.append(x.get("color") or "#888")
-        return "".join(f'<span foreground="{c}">●</span>' for c in cols[:4])
 
     def _render_month(self):
         y, m = self.year, self.month

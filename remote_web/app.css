@@ -1064,3 +1064,7 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .cal-wkbig { text-align: center; font-size: 15px; margin: 2px 0 6px; }
 
 .cal-show { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .cal-chk { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+
+.ct-head { flex-wrap: nowrap; gap: 6px; align-items: center; }
+.ct-head > :not(#ct-cam):not(#ct-more):not(#ct-ref) { flex: 1 1 0; min-width: 0; width: auto; max-width: none; }
+.ct-head > #ct-cam, .ct-head > #ct-more, .ct-head > #ct-ref { flex: 0 0 40px; width: 40px; height: 40px; padding: 0; }

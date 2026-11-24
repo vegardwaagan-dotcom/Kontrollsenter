@@ -26,11 +26,6 @@ class Finding:
     def __init__(self, title, level, detail, fix=None, key=None):
         self.title, self.level, self.detail, self.fix, self.key = title, level, detail, fix, key or title
 
-    def as_dict(self):
-        return {"title": self.title, "level": self.level, "detail": self.detail, "fix": self.fix[0] if self.fix else None,
-                "key": self.key}
-
-
 # --------------------------------------------------------------------------
 # Lagret læring (temperatur per lastnivå, ukerapport) – respekterer «Lagring på disk»
 # --------------------------------------------------------------------------

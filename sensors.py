@@ -19,7 +19,6 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402,F401
 import sys
 
 IS_WIN = sys.platform == "win32"     # Windows-versjonen bruker sensors_win.py for maskinvaredata
-HISTORY = 60          # antall punkter i grafene (sekunder)
 INTERVAL_MS = 1000    # oppdateringsintervall
 
 

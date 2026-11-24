@@ -14,7 +14,6 @@ import sys
 import tempfile
 import threading
 import time
-import urllib.request
 
 IS_WIN = sys.platform == "win32"
 CFG = os.path.expanduser("~/.config/systemmonitor/chat-kobling.json")
@@ -22,7 +21,6 @@ DEF = {"share_highlights": "", "weekly_room": "", "announce_games": "", "blocked
        "quiet": True, "filter": None, "quick": ["Kommer! 🏃", "5 min til ⏳", "Lagrer nå 💾", "Kan ikke nå 🙅"]}
 _PRES = {}           # medlem-ID -> {"game", "status", "t", "name", "avatar", "color"}
 _RING = {"on": False}
-_TITLES = {}
 
 
 def cfg():
@@ -495,28 +493,6 @@ def share_screen(room, notify=None):
 def friend_qr_text():
     import friends
     return friends.invite()
-
-
-def link_title(url):
-    """Tittelen på en nettside (mellomlagret). Ikke for adresser på hjemmenettet."""
-    if url in _TITLES:
-        return _TITLES[url]
-    if re.match(r"https?://(127\.|192\.168\.|10\.|100\.|localhost)", url):
-        return None
-    title = None
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 Kontrollsenter"})
-        with urllib.request.urlopen(req, timeout=6) as r:
-            html = r.read(60000).decode("utf-8", "replace")
-        m = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)', html, re.I) or \
-            re.search(r"<title[^>]*>([^<]+)</title>", html, re.I)
-        if m:
-            import html as H
-            title = H.unescape(m.group(1)).strip()[:120]
-    except Exception:  # noqa: BLE001
-        title = None
-    _TITLES[url] = title
-    return title
 
 
 def parent_report():

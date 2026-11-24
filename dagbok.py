@@ -234,10 +234,6 @@ def lock(tok):
     _SESS.pop(tok or "", None)
 
 
-def lock_all():
-    _SESS.clear()
-
-
 def entries(tok):
     s = _sess(tok)
     d = _read(s["pid"])

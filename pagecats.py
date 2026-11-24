@@ -58,10 +58,6 @@ def _save(**kw):
     json.dump(d, open(PREF, "w"))
 
 
-def group_of(name):
-    return next((g for g in GROUPS if name in g[3]), None)
-
-
 # --------------------------------------------------------------------------
 # Kategorilinjen: ‹ [rullehjul] ›
 # --------------------------------------------------------------------------

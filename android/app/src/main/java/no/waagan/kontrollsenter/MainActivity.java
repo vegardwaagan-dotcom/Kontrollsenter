@@ -147,7 +147,14 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl();
                 String sc = u.getScheme();
-                // bare egne sider: startsiden i appen og Kontrollsenter på PC-er i hjemmenettet
+                // bare egne sider: startsiden i appen og Kontrollsenter på PC-er i hjemmenettet.
+                // GitHub-siden til Kontrollsenter åpnes i nettleseren.
+                if ("https".equals(sc) && "github.com".equals(u.getHost())) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, u).addCategory(Intent.CATEGORY_BROWSABLE));
+                    } catch (Exception ignored) { }
+                    return true;
+                }
                 return !("file".equals(sc) || ("http".equals(sc) && isLocal(u.getHost())));
             }
         });
@@ -546,6 +553,13 @@ public class MainActivity extends Activity {
                     startListen();
                 }
             });
+        }
+
+        /** Kjører appen på en TV (Google TV / Android TV)? Da får sidene større tekst og tydelig fokus for fjernkontrollen. */
+        @JavascriptInterface
+        public boolean isTv() {
+            android.app.UiModeManager um = (android.app.UiModeManager) getSystemService(UI_MODE_SERVICE);
+            return um != null && um.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
         }
 
         /** Liggende visning av/på (fullskjerm-video når nettsiden ikke klarer å låse retningen selv). */

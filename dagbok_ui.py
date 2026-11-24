@@ -184,6 +184,11 @@ class DiaryView(Gtk.ScrolledWindow):
         t = Gtk.Label(label=f"📔 {data['name']}", xalign=0, hexpand=True)
         t.add_css_class("title-2")
         top.append(t)
+        dl = Gtk.Button(label=i18n.tr("Slett dagboken"))
+        dl.add_css_class("flat")
+        dl.add_css_class("error")
+        dl.connect("clicked", lambda *_: self._delete_diary())
+        top.append(dl)
         cp = Gtk.Button(label=i18n.tr("Bytt kode"))
         cp.add_css_class("flat")
         cp.connect("clicked", lambda *_: self._change_pin())
@@ -255,6 +260,27 @@ class DiaryView(Gtk.ScrolledWindow):
         dlg.set_response_appearance("yes", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.connect("response", lambda _d, r: r == "yes" and _bg(lambda: D.delete_entry(self.tok, eid),
                                                                   lambda _r: self._show_diary()))
+        dlg.present(self.get_root())
+
+    def _delete_diary(self):
+        dlg = Adw.AlertDialog(heading=i18n.tr("Slette hele dagboken?"),
+                              body=i18n.tr("Alle innleggene forsvinner for godt – også fra NAS-en. Skriv koden for å "
+                                           "bekrefte."))
+        e = self._pin_entry(i18n.tr("Koden din"))
+        dlg.set_extra_child(e)
+        dlg.add_response("cancel", i18n.tr("Avbryt"))
+        dlg.add_response("del", i18n.tr("Slett for godt"))
+        dlg.set_response_appearance("del", Adw.ResponseAppearance.DESTRUCTIVE)
+        pid = self.person["id"]
+
+        def resp(_d, r):
+            if r != "del":
+                return
+            pin = e.get_text()
+            _bg(lambda: D.delete_diary(pid, pin), lambda res: (
+                self._toast(f"✗ {res}") if isinstance(res, Exception) else
+                (self._toast(str(res)), setattr(self, "tok", None), self._show_people())))
+        dlg.connect("response", resp)
         dlg.present(self.get_root())
 
     def _change_pin(self):

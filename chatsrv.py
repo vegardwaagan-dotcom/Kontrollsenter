@@ -265,21 +265,6 @@ def delete_channel(sid, chid):
     return _bump_and_send(srv)
 
 
-def move_channel(sid, chid, to_cid):
-    srv = get(sid)
-    _need_manage(srv)
-    ch = None
-    for c in srv["categories"]:
-        for x in c["channels"]:
-            if x["id"] == chid:
-                ch = x
-        c["channels"] = [x for x in c["channels"] if x["id"] != chid]
-    for c in srv["categories"]:
-        if c["id"] == to_cid and ch:
-            c["channels"].append(ch)
-    return _bump_and_send(srv)
-
-
 def set_role(sid, mid, role):
     srv = get(sid)
     if my_role(srv) != "owner":

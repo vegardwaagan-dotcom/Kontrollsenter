@@ -85,10 +85,13 @@ class WelcomeDialog(Adw.Dialog):
         import funksjoner_ui
         self.features = funksjoner_ui.FeaturePicker()
         self.features.set_size_request(480, -1)
+        self.features.sc.set_min_content_height(180)       # lista ruller selv – kortere, så alt får plass
+        self.features.sc.set_max_content_height(230)
+        fsc = self.features
         self.car.append(_page("ks-overview-symbolic", "Hvilke funksjoner vil du ha?",
                               "Kryss av for det du vil bruke – programmene det trenger installeres når du trykker «Kom "
                               "i gang». Resten er av, og kan velges og installeres senere under ☰ → Funksjoner.",
-                              self.features, pixel=0))
+                              fsc, pixel=0))
         # 4. Oppstart
         import sys
         self.win32 = sys.platform == "win32"

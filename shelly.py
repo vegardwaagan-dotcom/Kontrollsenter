@@ -59,9 +59,3 @@ def watts():
     return None
 
 
-def status_text():
-    if not ip():
-        return "Ikke satt opp"
-    if _STATE["err"]:
-        return _STATE["err"]
-    return f"Måler {_STATE['w']:.0f} W" if _STATE["w"] is not None else "Kobler til …"

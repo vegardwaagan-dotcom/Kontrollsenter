@@ -16,7 +16,6 @@ import i18n  # noqa: E402
 
 DB = os.path.expanduser("~/.local/share/systemmonitor/historikk.db")
 KEEP_DAYS = 8
-COLS = ("cpu_t", "gpu_t", "cpu_l", "gpu_l", "watts")
 
 
 _MEMDB = []                 # historikk i minnet når lagring på disk er av
