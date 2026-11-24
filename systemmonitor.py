@@ -3,14 +3,14 @@
 
 Hovedvinduet og fanene. Maskinvaredata ligger i sensors.py, kortene i Oversikt i cards.py.
 """
-import glob
 import os
+import json
 import shutil
 import subprocess
 import sys
+import time as _time_mod
 import threading
 import time
-from collections import deque
 
 try:                                    # «Mindre minnebruk» / «Eldre PC»: tegn uten skjermkortdriveren (sparer ~110 MB)
     import json as _j
@@ -165,8 +165,44 @@ def accent_rgb():
         return BLUE
 
 
+_VISITS = os.path.expanduser("~/.config/systemmonitor/sidebesok.json")
+
+
+def _visits_load():
+    try:
+        return json.load(open(_VISITS))
+    except (OSError, ValueError):
+        return {}
+
+
+def _visits_add(name):
+    """Tell hvilke sider du bruker (lagres sjelden), så de mest brukte kan bygges på forhånd."""
+    if not name:
+        return
+    v = _VC.setdefault("v", None) or _visits_load()
+    v[name] = v.get(name, 0) + 1
+    _VC["v"] = v
+    _VC["n"] = _VC.get("n", 0) + 1
+    if _VC["n"] % 10 == 0:
+        try:
+            os.makedirs(os.path.dirname(_VISITS), exist_ok=True)
+            with open(_VISITS + ".tmp", "w") as f:
+                json.dump(v, f)
+            os.replace(_VISITS + ".tmp", _VISITS)
+        except OSError:
+            pass
+
+
+_VC = {}
+
+
 class MonitorWindow(Adw.ApplicationWindow):
     def __init__(self, app):
+        try:                                             # rydd etter forrige utgave (zombier, gamle overlay) + diskvakt
+            import housekeeping
+            housekeeping.start()
+        except Exception:  # noqa: BLE001
+            pass
         super().__init__(application=app, title="Kontrollsenter")
         geo = _monitor_geometry()
         if geo and geo.height >= 900:
@@ -197,6 +233,12 @@ class MonitorWindow(Adw.ApplicationWindow):
             effects.apply(self)
             import scrollguard                                 # musehjulet over glidere ruller siden
             scrollguard.install(self)
+            self._last_input = _time_mod.monotonic()          # brukes til å oppdatere sjeldnere når du ikke er her
+            for ctl in (Gtk.EventControllerMotion(), Gtk.EventControllerKey()):
+                ctl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+                ctl.connect("motion" if isinstance(ctl, Gtk.EventControllerMotion) else "key-pressed",
+                            lambda *_a: setattr(self, "_last_input", _time_mod.monotonic()) and False)
+                self.add_controller(ctl)
             import perf
             if perf.lowend():                            # «Eldre PC»: animasjoner av fra start
                 perf.apply_graphics(self)
@@ -590,6 +632,11 @@ class MonitorWindow(Adw.ApplicationWindow):
             self.msi_holder = Gtk.Box()
             stack.add_titled_with_icon(self.msi_holder, "msi", "MSI", "ks-laptop-symbolic")
         self.stack = stack
+        try:                                                     # overgang ved sidebytte (Utseende › Overganger)
+            import effects
+            effects.apply(self)
+        except Exception:  # noqa: BLE001
+            pass
         stack.connect("notify::visible-child-name", self._on_tab)
         stack.connect("notify::visible-child-name", self._sync_sidebar)
 
@@ -600,6 +647,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             except Exception:  # noqa: BLE001
                 pass
         stack.connect("notify::visible-child-name", _fx)
+        stack.connect("notify::visible-child-name", lambda st, _p: _visits_add(st.get_visible_child_name()))
+        GLib.timeout_add_seconds(20, self._prebuild)               # bygg de mest brukte sidene på forhånd
         import progress_ui
         self.toast_overlay = Adw.ToastOverlay(child=progress_ui.attach(stack))
         self.page_help = Gtk.Label(xalign=0, wrap=True)
@@ -968,6 +1017,39 @@ class MonitorWindow(Adw.ApplicationWindow):
         self._group_bar.select(name)
         self.group_clamp.set_visible(True)
         pagecats._save(**{"group:" + row.group_key: name})
+
+    PREBUILD_DEFAULT = ["spill", "lyd", "innstillinger", "verktoy", "chat", "ai", "gpu", "familie", "kalender"]
+
+    def _prebuild(self):
+        """Mens du ikke bruker vinduet: bygg én side om gangen av de du bruker mest (opptil 6), så de åpnes med en
+        gang. Ikke med «Minimal prosessbruk», og ikke når vinduet er skjult eller du spiller."""
+        try:
+            import perf
+            if perf.eco():                                       # «Minimal prosessbruk»: spar minnet
+                return False
+        except Exception:  # noqa: BLE001
+            pass
+        built = getattr(self, "_prebuilt", 0)
+        if built >= 6:
+            return False
+        idle = _time_mod.monotonic() - getattr(self, "_last_input", 0) > 4
+        playing = getattr(getattr(self, "bg", None), "game_name", None)
+        if not (self.get_mapped() and idle and not playing):
+            return True                                          # prøv igjen om litt
+        v = _visits_load()
+        order = sorted(self._lazy, key=lambda n: (-v.get(n, 0), self.PREBUILD_DEFAULT.index(n)
+                                                  if n in self.PREBUILD_DEFAULT else 99))
+        nxt = next((n for n in order if self._lazy[n][3] is None and n != "venner"), None)
+        if nxt is None:
+            return False
+        try:
+            self.ensure_lazy(nxt)
+            self._prebuilt = built + 1
+        except Exception:  # noqa: BLE001
+            applog.log.exception("forhåndsbygging %s", nxt)
+            self._prebuilt = built + 1
+        GLib.timeout_add(2500, self._prebuild)                    # neste side om litt
+        return False
 
     def ensure_lazy(self, name):
         """Bygg en side som ikke er åpnet ennå – uten å vise den (brukes av søket)."""
@@ -1418,7 +1500,9 @@ class MonitorWindow(Adw.ApplicationWindow):
         f = perf.interval_factor()
         if not self.get_mapped() and f > 1 and self._tick_n % 2:
             return True                                  # minimal + skjult: data hvert 2. sekund er nok
-        if not self.get_mapped() or (not self.is_active() and self._tick_n % 2) or (f > 1 and self._tick_n % f):
+        idle = _time_mod.monotonic() - getattr(self, "_last_input", 0) > 20      # ingen mus/taster på 20 s
+        if not self.get_mapped() or ((not self.is_active() or idle) and self._tick_n % 2) or \
+                (f > 1 and self._tick_n % f):
             try:
                 self._update_quiet()
             except Exception:  # noqa: BLE001

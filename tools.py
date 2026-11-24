@@ -1378,9 +1378,9 @@ class _Cards:
 
     def _fx_card(self):
         import effects
-        c, i = card("Effekter", "Levende bakgrunn som sakte driver, kort som glir inn, myke overganger og knapper "
-                                "som gir etter når du trykker. Bakgrunnen står stille når vinduet ikke er i fokus – "
-                                "så den ikke tar ytelse fra spill.")
+        c, i = card("Effekter og overganger", "Effekter: levende bakgrunn og knapper som gir etter. Overganger: hvordan "
+                                              "sidene kommer inn når du bytter. Alt står stille når vinduet ikke er i "
+                                              "fokus.")
         row = Gtk.Box(spacing=0, homogeneous=True)
         row.add_css_class("linked")
         first = None
@@ -1393,6 +1393,22 @@ class _Cards:
                 b.set_group(first)
             b.set_active(key == cur)
             b.connect("toggled", lambda w, k=key: w.get_active() and effects.set_level(k))
+            row.append(b)
+        i.append(row)
+        h = Gtk.Label(label="Overganger når du bytter side", xalign=0)
+        h.add_css_class("heading")
+        i.append(h)
+        row = Gtk.Box(spacing=0, homogeneous=True)
+        row.add_css_class("linked")
+        first, cur = None, effects.transition()
+        for key, label in effects.TRANSITIONS:
+            b = Gtk.ToggleButton(label=label.split(" – ")[0], tooltip_text=label)
+            if first is None:
+                first = b
+            else:
+                b.set_group(first)
+            b.set_active(key == cur)
+            b.connect("toggled", lambda w, k=key: w.get_active() and effects.set_transition(k, self.get_root()))
             row.append(b)
         i.append(row)
         self.box.append(c)

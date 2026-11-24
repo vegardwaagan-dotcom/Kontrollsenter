@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.44", "Raskere, lettere og med overganger", [
+            "Rettet minnelekkasje: gamle kopier av webkamera-overlayet ble liggende etter hver oppdatering "
+            "(8 kopier = 432 MB). Nå ryddes de og avsluttede hjelpeprosesser bort ved oppstart",
+            "Sidene du bruker mest bygges på forhånd mens du ikke gjør noe – de åpnes med en gang",
+            "Spill, AI og Innstillinger åpnes 30–45 % raskere (WoW-søket og klipp-sjekken huskes i stedet for å "
+            "gjøres på nytt hver gang)",
+            "Vinduet oppdateres annethvert sekund når du ikke har rørt mus eller tastatur på 20 sekunder – sparer "
+            "CPU, og går tilbake til hvert sekund med en gang du er der",
+            "Nytt valg: Utseende › Effekter og overganger › Overganger: Glid, Fade eller Av – også i mobilappen",
+            "Diskvakt: skriver Kontrollsenter uvanlig mye til disken, logges det hvilke programmer som kjører",
+        ]),
     ("0.99.43", "Skrolling endrer ikke lenger glidere", [
             "PC-en (Linux og Windows): musehjulet over en glider (volum, lysstyrke, vifter …) eller et tallfelt ruller "
             "siden i stedet for å endre verdien. Gliderne justeres ved å dra, klikke eller med piltastene",

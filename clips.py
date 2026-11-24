@@ -121,9 +121,20 @@ def clip_path(name):
     return p if os.path.isfile(p) else None
 
 
+_INST = {"t": 0.0, "v": None}
+
+
 def installed():
+    """Er GPU Screen Recorder installert? (husket i 10 min – flatpak info tar tid)"""
     if IS_WIN:
         return True
+    if _INST["v"] is not None and time.monotonic() - _INST["t"] < 600:
+        return _INST["v"]
+    _INST.update(v=_installed(), t=time.monotonic())
+    return _INST["v"]
+
+
+def _installed():
     try:
         r = subprocess.run(["flatpak", "info", GSR_APP], capture_output=True, timeout=10)
         return r.returncode == 0
@@ -134,7 +145,9 @@ def installed():
 def install():
     """Installer GPU Screen Recorder fra Flathub (bare når du trykker på knappen)."""
     import apps
+    _INST["v"] = None
     apps.install("gsr")
+    _INST["v"] = None
 
 
 # --------------------------------------------------------------------------

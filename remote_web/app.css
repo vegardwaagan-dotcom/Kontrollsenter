@@ -817,9 +817,12 @@ body.eco #tiles > [data-k]::before { display: none; }
 
 /* ---- effekter (fx) ---- */
 @keyframes fx-rise { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
-body.fx .page.fx-enter > .grid > *, body.fx .page.fx-enter > .card, body.fx .page.fx-enter > .tiles > *,
-body.fx .page.fx-enter > .quick > * {
-  animation: fx-rise .48s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+.page.fx-enter > .grid > *, .page.fx-enter > .card, .page.fx-enter > .tiles > *, .page.fx-enter > .quick > * {
+  animation: fx-rise .38s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i, 0) * 35ms); }
+@keyframes fx-fadein { from { opacity: 0; } to { opacity: 1; } }
+.page.fx-fade > .grid > *, .page.fx-fade > .card, .page.fx-fade > .tiles > *, .page.fx-fade > .quick > * {
+  animation: fx-fadein .28s ease-out both; animation-delay: calc(var(--i, 0) * 20ms); }
+@media (prefers-reduced-motion: reduce) { .page.fx-enter *, .page.fx-fade * { animation: none !important; } }
 body.fx button, body.fx .card { transition: transform .14s ease, box-shadow .25s ease, background-color .25s ease; }
 body.fx button:active { transform: scale(.955); }
 body.fx .tiles > [data-k]:active, body.fx .quick > button:active { transform: scale(.97); }

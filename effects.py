@@ -17,6 +17,8 @@ LOOK = os.path.expanduser("~/.config/systemmonitor/utseende.json")
 LEVELS = [("full", "Full – levende bakgrunn og animasjoner"), ("rolig", "Rolig – animasjoner, rolig bakgrunn"),
           ("av", "Av – ingen effekter")]
 
+TRANSITIONS = [("glid", "Glid – kortene glir inn"), ("fade", "Fade – myk inntoning"), ("av", "Av – ingen overganger")]
+
 FX_CSS = """
 /* Eldre PC: ingen animasjoner, overganger, skygger eller glød – det tyngste å tegne */
 window.ks-lowend, window.ks-lowend * { transition: none; animation: none; box-shadow: none; text-shadow: none;
@@ -41,14 +43,15 @@ window.ks-fx-bg:backdrop .ks-content { animation-play-state: paused; }
 window.ks-fx-bg .ks-brand-logo { animation: ks-breathe 3.2s steps(6) infinite alternate; }
 window.ks-fx-bg:backdrop .ks-brand-logo { animation-play-state: paused; }
 
-/* kortene glir inn når du bytter side */
-window.ks-fx .ks-enter > * { animation: ks-rise 480ms cubic-bezier(.2, .8, .2, 1) both; }
-window.ks-fx .ks-enter > :nth-child(2) { animation-delay: 45ms; }
-window.ks-fx .ks-enter > :nth-child(3) { animation-delay: 90ms; }
-window.ks-fx .ks-enter > :nth-child(4) { animation-delay: 135ms; }
-window.ks-fx .ks-enter > :nth-child(5) { animation-delay: 180ms; }
-window.ks-fx .ks-enter > :nth-child(6) { animation-delay: 220ms; }
-window.ks-fx .ks-enter > :nth-child(n+7) { animation-delay: 260ms; }
+/* overganger når du bytter side: glid (kortene glir opp etter tur) eller fade (myk inntoning) */
+window .ks-enter > * { animation: ks-rise 380ms cubic-bezier(.2, .8, .2, 1) both; }
+window .ks-enter > :nth-child(2) { animation-delay: 35ms; }
+window .ks-enter > :nth-child(3) { animation-delay: 70ms; }
+window .ks-enter > :nth-child(4) { animation-delay: 105ms; }
+window .ks-enter > :nth-child(5) { animation-delay: 140ms; }
+window .ks-enter > :nth-child(n+6) { animation-delay: 170ms; }
+window .ks-enter-fade > * { animation: ks-fade 260ms ease-out both; }
+window.ks-lowend .ks-enter > *, window.ks-lowend .ks-enter-fade > * { animation: none; }
 
 /* knapper: lett trykk */
 window.ks-fx button { transition: transform 130ms ease, box-shadow 220ms ease, background-color 220ms ease; }
@@ -102,6 +105,30 @@ def set_level(v, window=None):
             apply(w)
 
 
+def transition():
+    """«glid», «fade» eller «av» (Innstillinger › Utseende › Overganger)."""
+    try:
+        v = json.load(open(LOOK)).get("transition", "glid")
+    except (OSError, ValueError):
+        v = "glid"
+    return v if v in ("glid", "fade", "av") else "glid"
+
+
+def set_transition(v, window=None):
+    try:
+        d = json.load(open(LOOK))
+    except (OSError, ValueError):
+        d = {}
+    d["transition"] = v
+    os.makedirs(os.path.dirname(LOOK), exist_ok=True)
+    with open(LOOK + ".tmp", "w") as f:
+        json.dump(d, f)
+    os.replace(LOOK + ".tmp", LOOK)
+    for w in ([window] if window else Gtk.Window.list_toplevels()):
+        if w is not None:
+            apply(w)
+
+
 def apply(window):
     """Sett effekt-klassene på et vindu (og last stilarket første gang)."""
     if not _DONE:
@@ -117,6 +144,18 @@ def apply(window):
         pass
     for c, on in (("ks-fx", lv in ("full", "rolig")), ("ks-fx-bg", lv == "full")):
         (window.add_css_class if on else window.remove_css_class)(c)
+    st = getattr(window, "stack", None)                  # sidebytte: kort krysstoning (eller ingenting)
+    if st is not None:
+        tr = transition()
+        try:
+            if hasattr(st, "set_enable_transitions"):         # Adw.ViewStack: innebygd krysstoning
+                st.set_enable_transitions(tr != "av")
+            else:
+                st.set_transition_type(Gtk.StackTransitionType.NONE if tr == "av" else
+                                       Gtk.StackTransitionType.CROSSFADE)
+            st.set_transition_duration(140)
+        except (AttributeError, TypeError):
+            pass
 
 
 def _content_box(w):
@@ -141,16 +180,19 @@ def _content_box(w):
 
 
 def page_enter(page):
-    """La kortene på siden gli inn (kalles når du bytter side eller fane)."""
-    if level() == "av" or page is None:
+    """La kortene på siden gli eller tone inn (kalles når du bytter side eller fane)."""
+    tr = transition()
+    if tr == "av" or page is None:
         return
     box = _content_box(page)
     if box is None:
         return
+    cls = "ks-enter" if tr == "glid" else "ks-enter-fade"
     box.remove_css_class("ks-enter")
+    box.remove_css_class("ks-enter-fade")
 
     def on():
-        box.add_css_class("ks-enter")
-        GLib.timeout_add(900, lambda: (box.remove_css_class("ks-enter"), False)[1])
+        box.add_css_class(cls)
+        GLib.timeout_add(700, lambda: (box.remove_css_class(cls), False)[1])
         return False
     GLib.idle_add(on)

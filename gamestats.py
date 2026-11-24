@@ -518,8 +518,19 @@ def _interface(version):
         return None
 
 
+_WF = {"t": 0.0, "v": None}
+
+
 def wow_flavors():
-    """[(root, flavor_dir, navn, interface)] for alle WoW-utgaver som er installert."""
+    """[(root, flavor_dir, navn, interface)] for alle WoW-utgaver som er installert (husket i 5 min)."""
+    import time as _t
+    if _WF["v"] is not None and _t.monotonic() - _WF["t"] < 300:
+        return list(_WF["v"])
+    _WF.update(v=_wow_flavors(), t=_t.monotonic())
+    return list(_WF["v"])
+
+
+def _wow_flavors():
     out = []
     for root in wow_roots():
         vers = _build_versions(root)

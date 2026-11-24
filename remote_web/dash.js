@@ -935,12 +935,18 @@ pushCard.innerHTML = '<h2>Pushvarsler med ntfy</h2><p class="dim small">Varsler 
 { const g = $("#system .grid"); if (g) g.appendChild(pushCard); }
 const fxCard = document.createElement("div");
 fxCard.className = "card"; fxCard.id = "c-fx";
-fxCard.innerHTML = '<h2>Effekter</h2><p class="dim small">Kort som glir inn, knapper som gir etter og levende bakgrunn.</p>'
-  + '<div class="seg" id="fx-seg"><button data-fx="full">Full</button><button data-fx="rolig">Rolig</button><button data-fx="av">Av</button></div>';
+fxCard.innerHTML = '<h2>Effekter og overganger</h2><p class="dim small">Effekter: levende bakgrunn og knapper som gir etter.</p>'
+  + '<div class="seg" id="fx-seg"><button data-fx="full">Full</button><button data-fx="rolig">Rolig</button><button data-fx="av">Av</button></div>'
+  + '<p class="dim small" style="margin-top:10px">Overganger når du bytter fane:</p>'
+  + '<div class="seg" id="tr-seg"><button data-tr="glid">Glid</button><button data-tr="fade">Fade</button><button data-tr="av">Av</button></div>';
 { const g = $("#system .grid"); if (g) g.insertBefore(fxCard, g.children[1] || null); }
 $$("#fx-seg button").forEach((b) => {
   b.classList.toggle("on", b.dataset.fx === pref("fx", "full"));
   b.onclick = () => { setPref("fx", b.dataset.fx); applyFx(); $$("#fx-seg button").forEach((x) => x.classList.toggle("on", x === b)); fxEnter("system"); };
+});
+$$("#tr-seg button").forEach((b) => {
+  b.classList.toggle("on", b.dataset.tr === pref("tr", "glid"));
+  b.onclick = () => { setPref("tr", b.dataset.tr); $$("#tr-seg button").forEach((x) => x.classList.toggle("on", x === b)); fxEnter("system"); };
 });
 async function loadPush() {
   if (document.body.classList.contains("limited")) return;
@@ -1137,11 +1143,13 @@ function applyFx() {
 }
 applyFx();
 function fxEnter(t) {
-  if (pref("fx", "full") === "av") return;
+  const tr = pref("tr", "glid");                       // overganger: glid / fade / av (uavhengig av effektene)
+  if (tr === "av") return;
   const sec = $("#" + t); if (!sec) return;
+  const cls = tr === "fade" ? "fx-fade" : "fx-enter";
   sec.querySelectorAll(":scope > .grid > *, :scope > .card, :scope > .tiles > *, :scope > .quick > *").forEach((el, i) => el.style.setProperty("--i", Math.min(i, 10)));
-  sec.classList.remove("fx-enter"); void sec.offsetWidth; sec.classList.add("fx-enter");
-  setTimeout(() => sec.classList.remove("fx-enter"), 1100);
+  sec.classList.remove("fx-enter", "fx-fade"); void sec.offsetWidth; sec.classList.add(cls);
+  setTimeout(() => sec.classList.remove(cls), 900);
 }
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   if (t !== "oversikt") dashEdit(false);
