@@ -159,7 +159,13 @@ def ai_state(arg):
 def _suggestions():
     try:
         import ai_ui
-        return [{"emoji": e, "text": t} for e, t in ai_ui.SUGGESTIONS]
+        out = []
+        for e, t in ai_ui.SUGGESTIONS:
+            if t.startswith("Spør om spillet"):              # fylles inn (spillet + maskinvaren) – du skriver resten
+                out.append({"emoji": e, "text": t, "fill": __import__("ai6").game_context()})
+            else:
+                out.append({"emoji": e, "text": t})
+        return out
     except Exception:  # noqa: BLE001
         return []
 
@@ -272,6 +278,13 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+_MISSED = {}
+
+
+def aimissed(arg):
+    return _MISSED.get(arg("id", ""), {"done": False})
+
+
 def hjem5(_arg):
     import hjem5 as H
     import os
@@ -325,7 +338,7 @@ def lydtest(_arg):
             "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
-X = {"hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"aimissed": aimissed, "hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -349,6 +362,22 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind == "aimissed":                               # «Hva har jeg gått glipp av?» (AI, i bakgrunnen)
+        import secrets
+        jid = secrets.token_hex(6)
+        room = str(a.get("room") or "alle")
+        _MISSED[jid] = {"done": False}
+
+        def run():
+            try:
+                _MISSED[jid] = {"done": True, "text": __import__("ai6").summarize(room, a.get("_dev"))}
+            except Exception as e:  # noqa: BLE001
+                _MISSED[jid] = {"done": True, "text": f"✗ {e}"}
+        threading.Thread(target=run, daemon=True).start()
+        return True, jid
+    if kind == "pcinput":                                # telefonen/TV-en som mus og tastatur
+        import remote_input
+        return True, remote_input.action(a)
     if kind.startswith("h5"):                            # hjemmet runde 5 fra mobilen
         import hjem5 as H
         if kind == "h5meal":

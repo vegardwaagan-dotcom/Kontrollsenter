@@ -288,6 +288,43 @@ def run(win, cmd, args):
             _need_ok(win, f"Slette den automatiske oppgaven {rid}")
             return "✓ Slettet" if ai_rules.remove(rid) else "Fant ikke regelen – se «ks regler»"
         raise ValueError("bruk: ks regel ny … / ks regel slett <id>")
+    if cmd == "scener":                                   # AI lager og kjører scener
+        import scenes
+        return [{"id": s["id"], "navn": s["name"], "gjør": scenes.summary(s)} for s in scenes.load()["scenes"]]
+    if cmd == "scene":
+        import scenes
+        sub = (args or [""])[0].lower()
+        if sub in ("kjør", "kjor", "run", "start"):
+            sid = (args[1:] or [""])[0]
+            if not scenes.get(sid):
+                raise ValueError("fant ikke scenen – se «ks scener»")
+            _need_ok(win, f"Kjøre scenen «{scenes.get(sid)['name']}»")
+            _main(lambda: scenes.run(win, sid, "AI"))
+            return f"✓ Kjører {scenes.get(sid)['name']}"
+        if sub in ("ny", "new", "lag"):
+            p = {}
+            for kv in args[1:]:
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    p[k.lower()] = v.strip("\"'")
+            name = (p.get("navn") or p.get("name") or "Ny scene")[:30]
+            yes = ("ja", "på", "on", "1", "true")
+            sc = {"id": scenes.new_id(name), "name": name, "icon": p.get("ikon", "✨")[:4], "color": "#5b8cff",
+                  "power": p.get("power") if p.get("power") in ("performance", "balanced", "power-saver") else None,
+                  "fans": int(p["vifter"]) if p.get("vifter", "").isdigit() else None,
+                  "rgb": "off" if p.get("rgb") == "av" else (p.get("rgb") if re.fullmatch(r"#[0-9a-fA-F]{6}",
+                                                                                         p.get("rgb", "")) else None),
+                  "hue": ({"on": p["hue"] in yes, "bri": int(p.get("hue_lys", 70)), "color": p.get("hue_farge")}
+                          if p.get("hue") else None),
+                  "tv": None, "volume": int(p["volum"]) if p.get("volum", "").isdigit() else None,
+                  "mute": (p["demp"] in yes) if p.get("demp") else None,
+                  "night": (p["nattlys"] in yes) if p.get("nattlys") else None,
+                  "brightness": int(p["lysstyrke"]) if p.get("lysstyrke", "").isdigit() else None,
+                  "trigger": {"type": "manual", "auto": False, "at": p.get("tid", "20:00")}}
+            _need_ok(win, f"Lage scenen «{name}»: {scenes.summary(sc)}")
+            scenes.put(sc)
+            return f"✓ Scenen «{name}» er laget ({sc['id']}). Den ligger under Scener – «ks scene kjør {sc['id']}» kjører den."
+        raise ValueError("bruk: ks scener / ks scene ny navn=… / ks scene kjør <id>")
     if cmd in ("status", "temp", "temperatur"):
         st = _main(lambda: remote.build_status(win))
         return _short(st)

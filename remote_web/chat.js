@@ -272,12 +272,21 @@ $("#ct-more").onclick = () => {
     `<div class="row"><span>Kompakt visning</span><label class="switch"><input type="checkbox" id="ct-cmp"${pref("ct_compact", false) ? " checked" : ""}><i></i></label></div>` +
     `<div class="label">Ikke forstyrr</div><div class="ct-dndb">` + [["1", "1 t"], ["2", "2 t"], ["8", "8 t"], ["-1", "Til i morgen"], ["0", "Av"]].map(([v, l]) => `<button class="soft small" data-dnd="${v}">${l}</button>`).join("") + "</div>" +
     `<div class="label">Status</div><div class="row"><input id="ct-st" class="search" placeholder="F.eks. «På skolen til 15»"><button class="soft small" id="ct-st-ok">Lagre</button></div>` +
-    `<button class="soft full" id="ct-gifb">🎞️ GIF …</button><button class="soft full" id="ct-help">❓ Kommandoer (/hjelp)</button>`, (bg, close) => {
+    `<button class="soft full" id="ct-missed">✨ Hva har jeg gått glipp av?</button><button class="soft full" id="ct-gifb">🎞️ GIF …</button><button class="soft full" id="ct-help">❓ Kommandoer (/hjelp)</button>`, (bg, close) => {
       bg.querySelectorAll("[data-bg]").forEach((b) => (b.onclick = () => { const o = pref("ct_bg", {}) || {}; o[ctRoom] = b.dataset.bg; setPref("ct_bg", o); close(); ctLoad(); }));
       bg.querySelector("#ct-cmp").onchange = (e) => { setPref("ct_compact", e.target.checked); ctLoad(); };
       bg.querySelectorAll("[data-dnd]").forEach((b) => (b.onclick = async () => { close(); const r = await api("/api/action", { a: "chatdnd", hours: +b.dataset.dnd }); toast(r.msg); ctLoad(); }));
       bg.querySelector("#ct-st-ok").onclick = async () => { await act({ a: "chatstatus", text: bg.querySelector("#ct-st").value }, true); close(); toast("Status lagret"); };
       bg.querySelector("#ct-gifb").onclick = () => { close(); ctGif(""); };
+      bg.querySelector("#ct-missed").onclick = async () => {
+        close(); toast("✨ AI-en leser samtalen …");
+        const r = await api("/api/action", { a: "aimissed", room: ctRoom }).catch((e) => ({ ok: false, msg: e.message }));
+        if (!r.ok) return toast("Feil: " + r.msg);
+        for (let i = 0; i < 60; i++) { await new Promise((res) => setTimeout(res, 2000));
+          const j = await api("/api/x/aimissed?id=" + r.msg).catch(() => ({}));
+          if (j.done) { ctSheet("Hva har jeg gått glipp av?", `<div style="white-space:pre-line">${esc(j.text)}</div>`, () => {}); return; } }
+        toast("AI-en brukte for lang tid");
+      };
       bg.querySelector("#ct-help").onclick = () => { close(); ctSend("/hjelp"); };
     });
 };

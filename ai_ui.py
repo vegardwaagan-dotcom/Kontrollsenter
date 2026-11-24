@@ -53,7 +53,8 @@ CSS = """
 SUGGESTIONS = [("🐢", "Hvorfor er PC-en treg?"), ("🌡️", "Sjekk temperaturene og si om noe er for varmt"),
                ("🧹", "Rydd disken – hva kan jeg trygt slette?"), ("🎮", "Gjør PC-en klar for spilling"),
                ("🔍", "Hvor slår jeg av varsler?"), ("📜", "Se etter feil i loggene og forklar dem"),
-               ("🤖", "Si fra hvis GPU-en går over 85 °C mens jeg spiller"), ("🖥️", "Hvordan har de andre PC-ene det?")]
+               ("🤖", "Si fra hvis GPU-en går over 85 °C mens jeg spiller"), ("🖥️", "Hvordan har de andre PC-ene det?"),
+               ("🎯", "Spør om spillet jeg spiller")]
 
 _KW = {"python": r"\b(def|class|return|if|elif|else|for|while|in|import|from|as|with|try|except|finally|raise|"
                   r"lambda|None|True|False|and|or|not|is|pass|break|continue|yield|async|await|global)\b",
@@ -628,7 +629,11 @@ class AiPage(Gtk.Box):
                                    ellipsize=Pango.EllipsizeMode.END))
                 b.set_child(v)
                 b.set_size_request(170, 90)
-                b.connect("clicked", lambda _b, qq=q: (self.prompt.get_buffer().set_text(i18n.tr(qq)), self._send()))
+                if q.startswith("Spør om spillet"):            # fyll inn spillet og maskinvaren – du skriver spørsmålet
+                    b.connect("clicked", lambda _b: (self.prompt.get_buffer().set_text(
+                        __import__("ai6").game_context()), self.prompt.grab_focus()))
+                else:
+                    b.connect("clicked", lambda _b, qq=q: (self.prompt.get_buffer().set_text(i18n.tr(qq)), self._send()))
                 flow.append(b)
             outer.append(flow)
             self.msgs.append(outer)

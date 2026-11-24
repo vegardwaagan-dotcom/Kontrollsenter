@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.36", "Styreflate, AI-scener og PC-legen", [
+            "🖱️ Styreflate (PC-en › Fjernstyring): telefonen eller TV-fjernkontrollen som mus og tastatur for PC-en – "
+            "dra, trykk, to fingre for høyreklikk/rulling, piltaster og OK på TV-en, og skriv tekst",
+            "🤖 AI-en kan lage og kjøre scener: «Lag en filmkveld-scene med dempet lys» (du godtar først)",
+            "✨ «Hva har jeg gått glipp av?» i chatten (⋯-menyen, også på mobilen): AI-en oppsummerer",
+            "🎯 «Spør om spillet jeg spiller» på AI-siden: spillet og maskinvaren fylles inn, du skriver spørsmålet",
+            "🤖 AI-hjelp etter krasj (Vedlikehold › Feilsøking) – og varsel som tilbyr det når PC-en har krasjet",
+            "🩺 PC-legen: hver søndag lager AI-en ukas helserapport med de 3 viktigste tingene å fikse",
+        ]),
     ("0.99.35", "Middagsplan, pakker, beskjed til alle og søvnrapport", [
             "🍽️ Middagsplan (Familie › Hverdagen): ukas middager med ingredienser som huskes – «Ukas ingredienser "
             "til handlelista» og 🎲 forslag. Vises i kalenderen hos alle",

@@ -214,6 +214,8 @@ Mer du kan:
   ks kalender [dager]             det som skjer (røde dager, hendelser, bursdager, ukeplan) – standard 14 dager
   ks kalender ny tittel="Tannlege" dato=2026-12-01 tid=14:00 [gjenta=uke|måned|år] [type=trash|dinner|routine|…]
   ks kalender slett <id> / ks kalender fri [år]     slett hendelse / ferieplanlegger (lange fri rundt røde dager)
+  ks scener / ks scene kjør <id> / ks scene ny navn=Filmkveld power=power-saver vifter=35 rgb=av hue=på
+      hue_lys=30 hue_farge=#ff8800 volum=40 demp=nei nattlys=på lysstyrke=60   lag scener (lys, lyd, strøm)
   ks regler / ks regel ny … / ks regel slett <id>   automatiske oppgaver, f.eks.
       ks regel ny hvis=gpu_temp over=85 spill=ja gjør=varsel tekst="GPU-en er varm"
       ks regel ny når="søn 12:00" gjør=handling handling=clean

@@ -1612,6 +1612,19 @@ class ChatPage(Gtk.Box):
         _bg(lambda: CP.send_file(self.room, path), lambda r: (self.status.set_label(
             ("✗ " if isinstance(r, Exception) else "") + str(r)), self._load()))
 
+    def _missed(self):
+        """AI-en oppsummerer det du har gått glipp av i denne samtalen."""
+        room = self.room
+        self.status.set_label(i18n.tr("✨ AI-en leser samtalen …"))
+
+        def done(r):
+            self.status.set_label("")
+            d = Adw.AlertDialog(heading=i18n.tr("Hva har jeg gått glipp av?"),
+                                body=("✗ " + str(r)) if isinstance(r, Exception) else str(r))
+            d.add_response("ok", "OK")
+            d.present(self.get_root())
+        _bg(lambda: __import__("ai6").summarize(room), done)
+
     def _more_pop(self):
         pop = Gtk.Popover()
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6, margin_start=6,
@@ -1626,7 +1639,7 @@ class ChatPage(Gtk.Box):
                      ("📺 Vis skjermen min", lambda: self._call_room(lambda: CL.share_screen(self.room))),
                      ("🔔 Ring", lambda: self._call_room(lambda: CL.send_ring(self.room))),
                      ("🆘 Be om hjelp", lambda: self._call_any(lambda: __import__("homeplus").ask_help())))),
-            ("Verktøy", (("🎛️ Lyd og video", self._av_settings), ("📱 Mobilkamera", self._phonecam), ("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
+            ("Verktøy", (("✨ Hva har jeg gått glipp av?", self._missed), ("🎛️ Lyd og video", self._av_settings), ("📱 Mobilkamera", self._phonecam), ("⏰ Påminnelse", self._remind), ("🕒 Send senere", self._schedule),
                          ("📝 Notater", self._notes), ("🛒 Handleliste", self._shop),
                          ("🌐 Oversett siste melding", self._translate),
                          ("🏠 Hvor er alle?", lambda: self.status.set_label(CL.where_is_everyone())),

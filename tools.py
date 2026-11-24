@@ -2041,9 +2041,49 @@ class ToolsPage(TabbedPage, _Cards):
         self._try(self._slow_card)
         self._syscheck_card()
         self._try(self._diag_card)
+        self._try(self._ai_help_card)
         self._try(self._house_errors_card)
         self._try(self._log_card)
         self.finish()
+
+    def _ai_help_card(self):
+        """AI-hjelp: siste krasj og ukas PC-lege (krever AI-funksjonen)."""
+        import funksjoner
+        if not funksjoner.on("ai"):
+            return
+        c, i = card("🤖 AI-hjelp", "La AI-en se på siste krasj eller frys, eller lag ukas rapport fra PC-legen nå. "
+                                  "AI-en endrer ingenting før du sier ja.")
+        row = Gtk.Box(spacing=8)
+        b1 = Gtk.Button(label="Spør AI om siste krasj")
+        b1.add_css_class("suggested-action")
+
+        def crash(*_):
+            import ai6
+            p = ai6.crash_prompt()
+            if not p:
+                self.get_root().toast("Ingen krasj registrert – fint! 🎉") if hasattr(self.get_root(), "toast") else None
+                return
+            __import__("aiextra").quick_window(self.get_root(), p)
+        b1.connect("clicked", crash)
+        row.append(b1)
+        b2 = Gtk.Button(label="🩺 PC-legen nå")
+        msg = dim("")
+
+        def doctor(*_):
+            b2.set_sensitive(False)
+            msg.set_label("PC-legen undersøker … (ca. ett minutt)")
+            win = self.get_root()
+
+            def done(r):
+                b2.set_sensitive(True)
+                msg.set_label(str(r))
+            self._bg(lambda: __import__("ai6").weekly_doctor(win, getattr(getattr(win, "bg", None), "notify", None),
+                                                               force=True), done)
+        b2.connect("clicked", doctor)
+        row.append(b2)
+        i.append(row)
+        i.append(msg)
+        self.box.append(c)
 
     def _slow_card(self):
         c, i = card("Hvorfor er PC-en treg?", "Én knapp: Kontrollsenter ser på prosessoren, minnet, disken, "

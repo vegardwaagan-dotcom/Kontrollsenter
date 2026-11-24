@@ -1070,3 +1070,54 @@ if (tab === "oversikt") loadHealth(false);
   setTimeout(load, 3500);
   setInterval(() => !document.hidden && (tab === "mer" || (KS && KS.isTv && KS.isTv())) && load(), 20000);
 })();
+
+// ---- styreflate: telefonen / TV-fjernkontrollen som mus og tastatur for PC-en ----
+(() => {
+  const host = () => { const s = $("#kontroll"); return s && (s.querySelector(":scope > .grid") || s); };
+  function build() {
+    if (document.getElementById("c-touchpad") || !host()) return;
+    const c = document.createElement("div"); c.className = "card"; c.id = "c-touchpad";
+    c.innerHTML = `<h2>🖱️ Styreflate</h2><div class="dim small">Dra = flytt musa · trykk = klikk · to fingre = høyreklikk / rull. På TV-en: piltastene flytter, OK klikker, Tilbake avslutter.</div>
+      <div id="tp-area" tabindex="0" style="height:220px;border-radius:16px;margin:8px 0;background:rgba(128,128,150,.14);touch-action:none;display:grid;place-items:center;color:var(--dim,#999)">Styreflate</div>
+      <div class="row wrap"><button class="soft" data-tp="left">Venstreklikk</button><button class="soft" data-tp="right">Høyreklikk</button><button class="soft" data-tp="double">Dobbeltklikk</button></div>
+      <div class="row wrap">${[["esc", "Esc"], ["tab", "Tab"], ["enter", "Enter"], ["backspace", "⌫"], ["up", "↑"], ["down", "↓"], ["left", "←"], ["right", "→"], ["alt-tab", "Alt+Tab"], ["playpause", "⏯"], ["voldown", "🔉"], ["volup", "🔊"], ["f11", "F11"]].map(([k, l]) => `<button class="soft" data-tk="${k}">${l}</button>`).join("")}</div>
+      <div class="row"><input id="tp-text" placeholder="Skriv tekst på PC-en …" style="flex:1"><button class="primary" id="tp-send">Skriv</button></div>`;
+    host().appendChild(c);
+    const area = c.querySelector("#tp-area");
+    let acc = [0, 0], timer = 0, last = null, fingers = 0, moved = false, t0 = 0, sc = 0;
+    const send = (b) => api("/api/action", { a: "pcinput", ...b }).catch(() => {});
+    const flush = () => { timer = 0; if (acc[0] || acc[1]) { const [dx, dy] = acc; acc = [0, 0]; send({ do: "move", dx, dy }); } };
+    const queue = (dx, dy) => { acc[0] += dx; acc[1] += dy; if (!timer) timer = setTimeout(flush, 35); };
+    area.addEventListener("touchstart", (e) => { fingers = e.touches.length; moved = false; t0 = Date.now(); last = [e.touches[0].clientX, e.touches[0].clientY]; e.preventDefault(); }, { passive: false });
+    area.addEventListener("touchmove", (e) => {
+      const p = [e.touches[0].clientX, e.touches[0].clientY], dx = p[0] - last[0], dy = p[1] - last[1]; last = p;
+      if (Math.abs(dx) + Math.abs(dy) > 1) moved = true;
+      if (e.touches.length >= 2) { sc += dy; if (Math.abs(sc) > 18) { send({ do: "scroll", dy: sc > 0 ? -1 : 1 }); sc = 0; } }
+      else { const f = 1.6 + Math.min(2.5, Math.hypot(dx, dy) / 12); queue(dx * f, dy * f); }
+      e.preventDefault();
+    }, { passive: false });
+    area.addEventListener("touchend", (e) => { if (!moved && Date.now() - t0 < 300) send({ do: "click", button: fingers >= 2 ? "right" : "left" }); e.preventDefault(); }, { passive: false });
+    // mus (nettbrett/PC-nettleser) og TV-fjernkontrollens piltaster
+    let down = null;
+    area.addEventListener("mousedown", (e) => { down = [e.clientX, e.clientY]; moved = false; });
+    area.addEventListener("mousemove", (e) => { if (!down) return; const dx = e.clientX - down[0], dy = e.clientY - down[1]; down = [e.clientX, e.clientY]; if (dx || dy) { moved = true; queue(dx * 1.5, dy * 1.5); } });
+    area.addEventListener("mouseup", () => { if (!moved) send({ do: "click" }); down = null; });
+    let speed = 8, held = 0;
+    area.addEventListener("keydown", (e) => {
+      const k = e.key, now = Date.now();
+      speed = now - held < 150 ? Math.min(60, speed * 1.25) : 8; held = now;
+      const m = { ArrowLeft: [-speed, 0], ArrowRight: [speed, 0], ArrowUp: [0, -speed], ArrowDown: [0, speed] }[k];
+      if (m) { queue(m[0], m[1]); e.preventDefault(); e.stopPropagation(); }
+      else if (k === "Enter" || e.keyCode === 23) { send({ do: "click" }); e.preventDefault(); e.stopPropagation(); }
+      else if (k === "Escape" || k === "Backspace" || e.keyCode === 4) { area.blur(); e.preventDefault(); }
+    });
+    area.addEventListener("focus", () => (area.textContent = "Piltastene flytter musa – OK klikker"));
+    area.addEventListener("blur", () => (area.textContent = "Styreflate"));
+    c.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-tp]"); if (b) send(b.dataset.tp === "double" ? { do: "click", double: true } : { do: "click", button: b.dataset.tp });
+      const k = e.target.closest("[data-tk]"); if (k) send({ do: "key", key: k.dataset.tk });
+      if (e.target.id === "tp-send") { send({ do: "text", text: $("#tp-text").value }); $("#tp-text").value = ""; }
+    });
+  }
+  setTimeout(build, 1200);
+})();

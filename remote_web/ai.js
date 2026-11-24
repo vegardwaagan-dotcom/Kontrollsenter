@@ -45,7 +45,9 @@ function aiWire(box) {
     const t = b.closest(".ai-row").querySelector(".ai-b").innerText;
     if (KS && KS.speak) KS.speak(t); else if (window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = "nb-NO"; speechSynthesis.speak(u); }
   }));
-  box.querySelectorAll("[data-sugg]").forEach((b) => (b.onclick = () => { $("#ai-text").value = b.dataset.sugg; aiSend(); }));
+  box.querySelectorAll("[data-sugg]").forEach((b) => (b.onclick = () => {
+    if (b.dataset.fill) { $("#ai-text").value = b.dataset.fill; $("#ai-text").focus(); return; }   // «Spør om spillet»
+    $("#ai-text").value = b.dataset.sugg; aiSend(); }));
 }
 async function aiLoadState() {
   try { aiSt = await X("ai"); } catch (e) { $("#ai-status").textContent = "AI: " + e.message; return; }
@@ -60,7 +62,7 @@ async function aiLoadConv() {
   const box = $("#ai-msgs");
   if (!aiCid) {
     box.innerHTML = '<h3 class="ai-hi">Hva kan jeg hjelpe med?</h3><div class="ai-sugg">' + ((aiSt && aiSt.suggestions) || []).map((s) =>
-      `<button class="soft" data-sugg="${esc(s.text)}"><span>${s.emoji}</span>${esc(s.text)}</button>`).join("") + "</div>";
+      `<button class="soft" data-sugg="${esc(s.text)}"${s.fill ? ` data-fill="${esc(s.fill)}"` : ""}><span>${s.emoji}</span>${esc(s.text)}</button>`).join("") + "</div>";
     aiWire(box); return;
   }
   try { const c = await X("aiconv", "id=" + encodeURIComponent(aiCid)); box.innerHTML = (c.messages || []).map(aiBubble).join(""); aiWire(box); box.scrollTop = 1e9; }

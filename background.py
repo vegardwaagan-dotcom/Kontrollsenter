@@ -48,6 +48,8 @@ KINDS = [
     ("vr", "VR", "Når VR-vakten har startet ALVR, SteamVR eller kabel-tilkoblingen igjen.", ["vr"]),
     ("plan", "Ukeplan", "Påminnelser om avtaler i familiens ukeplan (trening, middag, lekser …).", ["plan"]),
     ("weekly", "Ukesrapport", "Søndag kveld: spilletid per person, mest spilte spill og strøm denne uka.", ["weekly"]),
+    ("pcplus", "PC-lege, strømbudsjett og krasjhjelp", "Ukas rapport fra AI-PC-legen, strømbudsjettet og tilbud om "
+     "AI-hjelp etter et krasj.", ["ai_doctor", "crash_ai", "budget"]),
     ("cleanup", "Månedlig opprydding", "Rapport når Kontrollsenter har ryddet trygge ting (cache, miniatyrbilder).",
      ["cleanup"]),
     ("bg", "«Kjører i bakgrunnen»", "Beskjed første gang vinduet lukkes og programmet fortsetter i bakgrunnen.",
@@ -697,8 +699,12 @@ class Background:
         if time.time() - getattr(self, "_pcp_t", time.time() - 540) > 600:   # støvlogg, strømbudsjett (hvert 10. min)
             self._pcp_t = time.time()
             import threading as _th
-            _th.Thread(target=lambda: __import__("pcplus").tick(
-                lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1])), daemon=True).start()
+            _nf = lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1])  # noqa: E731
+            _th.Thread(target=lambda: __import__("pcplus").tick(_nf), daemon=True).start()
+            _th.Thread(target=lambda: __import__("ai6").tick(getattr(self, "win", None), _nf), daemon=True).start()
+            if not getattr(self, "_crash_ai_done", False):        # krasj siden sist: tilby AI-hjelp (én gang)
+                self._crash_ai_done = True
+                _th.Thread(target=lambda: __import__("ai6").crash_check(_nf), daemon=True).start()
         if sys.platform != "win32" and time.time() - getattr(self, "_lf_t", 0) > 60:  # lydfiltrene (7.1, EQ, støy)
             self._lf_t = time.time()
             import threading as _th
