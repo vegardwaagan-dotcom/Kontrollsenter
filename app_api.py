@@ -522,6 +522,18 @@ def action(win, kind, a, notify):
                 L.CAL.update(running=False, step="", result={"error": str(e)})
         threading.Thread(target=run, daemon=True).start()
         return True, "Kalibrerer – vær stille og hold telefonen der du sitter"
+    if kind == "lydpan":                                 # lydsirkelen fra mobilen/TV-en
+        import lydtest as L
+        if a.get("on") is False:
+            L.PAN.stop()
+            return True, "Stoppet"
+        if "angle" in a:
+            L.PAN.set_angle(float(a["angle"]))
+        if "spin" in a:
+            L.PAN.spin = 72.0 if a.get("spin") else 0.0
+        if not L.PAN.running():
+            L.PAN.start(str(a.get("layout") or "2.0"), a.get("sink"))
+        return True, f"{round(L.PAN.angle)}°"
     if kind == "lydtest":                                # test av høyttalerne på PC-en fra mobilen
         import lydtest as L
         if a.get("ch") == "stop":

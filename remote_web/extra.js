@@ -1228,3 +1228,72 @@ if (tab === "oversikt") loadHealth(false);
   });
   setTimeout(buttons, 1500);
 })();
+
+// ---- lydsirkelen (mobil og TV): dra knappen rundt – lyden flytter seg dit på PC-en ----
+(() => {
+  const ANG = { FL: -30, FR: 30, FC: 0, RL: -145, RR: 145, FLW: -60, FRW: 60, RC: 180, SL: -100, SR: 100, MONO: 0 };
+  let angle = 0, on = false, spin = false, sendT = 0, pend = null, spinT = 0;
+  const cv = () => document.getElementById("pan-c");
+  const lay = () => (document.getElementById("spk-lay") || {}).value || "2.0";
+  const sink = () => (document.getElementById("spk-sink") || {}).value || null;
+  function chans() {
+    const sel = document.getElementById("spk-lay"); const t = sel && sel.options[sel.selectedIndex];
+    const m = { "1.0": ["MONO"], "2.0": ["FL", "FR"], "2.1": ["FL", "FR"], "3.0": ["FL", "FR", "FC"], "3.1": ["FL", "FR", "FC"], "4.0": ["FL", "FR", "RL", "RR"], "4.1": ["FL", "FR", "RL", "RR"],
+      "5.0": ["FL", "FR", "FC", "RL", "RR"], "5.1": ["FL", "FR", "FC", "RL", "RR"], "6.0": ["FL", "FR", "FC", "RC", "SL", "SR"], "6.1": ["FL", "FR", "FC", "RC", "SL", "SR"],
+      "7.0": ["FL", "FR", "FC", "RL", "RR", "SL", "SR"], "7.1": ["FL", "FR", "FC", "RL", "RR", "SL", "SR"], "5.1.2": ["FL", "FR", "FC", "RL", "RR"], "5.1.4": ["FL", "FR", "FC", "RL", "RR"],
+      "7.1.2": ["FL", "FR", "FC", "RL", "RR", "SL", "SR"], "9.0": ["FL", "FR", "FC", "RL", "RR", "FLW", "FRW", "SL", "SR"], "9.1": ["FL", "FR", "FC", "RL", "RR", "FLW", "FRW", "SL", "SR"] };
+    return m[t ? t.value : "2.0"] || ["FL", "FR"];
+  }
+  function draw() {
+    const c = cv(); if (!c) return;
+    const g = c.getContext("2d"), w = c.width, h = c.height, cx = w / 2, cy = h / 2, r = w / 2 - 44;
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = "rgba(128,128,150,.12)"; g.beginPath(); g.arc(cx, cy, r + 18, 0, 7); g.fill();
+    g.strokeStyle = "rgba(160,160,180,.5)"; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke();
+    g.font = "11px sans-serif"; g.textAlign = "center"; g.fillStyle = getComputedStyle(document.body).color;
+    chans().forEach((k) => { const a = ANG[k] * Math.PI / 180;
+      g.beginPath(); g.arc(cx + Math.sin(a) * r, cy - Math.cos(a) * r, 5, 0, 7); g.fill();
+      g.fillText(k === "MONO" ? "Mono" : k, cx + Math.sin(a) * (r + 18), cy - Math.cos(a) * (r + 18) + 4); });
+    g.font = "24px sans-serif"; g.fillText("🧑", cx, cy + 8);
+    const a = angle * Math.PI / 180, kx = cx + Math.sin(a) * r, ky = cy - Math.cos(a) * r;
+    const acc = getComputedStyle(document.documentElement).getPropertyValue("--acc").trim() || "#5b8cff";
+    g.globalAlpha = on ? .3 : .15; g.fillStyle = acc; g.beginPath(); g.arc(kx, ky, 24, 0, 7); g.fill();
+    g.globalAlpha = 1; g.fillStyle = on ? acc : "#8a90a6"; g.beginPath(); g.arc(kx, ky, 15, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(kx, ky, 5, 0, 7); g.fill();
+    const l = document.getElementById("pan-l"); if (l) l.textContent = on ? `${Math.round(angle)}°` : "";
+  }
+  function send(extra) {
+    pend = { a: "lydpan", layout: lay(), sink: sink(), angle, ...(extra || {}) };
+    if (sendT) return;
+    sendT = setTimeout(() => { sendT = 0; const p = pend; pend = null; api("/api/action", p).catch(() => {}); }, 80);
+  }
+  function at(x, y) {
+    const c = cv(), rc = c.getBoundingClientRect(), sx = c.width / rc.width;
+    const dx = (x - rc.left) * sx - c.width / 2, dy = (y - rc.top) * sx - c.height / 2;
+    if (dx * dx + dy * dy < 100) return;
+    angle = Math.atan2(dx, -dy) * 180 / Math.PI; stopSpin(); on = true; send(); draw();
+  }
+  function stopSpin() { spin = false; clearInterval(spinT); const b = document.getElementById("pan-spin"); if (b) b.classList.remove("on"); }
+  function bind() {
+    const c = cv(); if (!c || c._b) return; c._b = true;
+    c.addEventListener("pointerdown", (e) => { c.setPointerCapture(e.pointerId); c._down = true; at(e.clientX, e.clientY); e.preventDefault(); });
+    c.addEventListener("pointermove", (e) => { if (c._down) { at(e.clientX, e.clientY); e.preventDefault(); } });
+    c.addEventListener("pointerup", () => (c._down = false));
+    c.addEventListener("keydown", (e) => {                       // TV: piltastene drar knappen rundt
+      const d = { ArrowRight: 15, ArrowUp: 15, ArrowLeft: -15, ArrowDown: -15 }[e.key];
+      if (d) { angle = ((angle + d + 540) % 360) - 180; stopSpin(); on = true; send(); draw(); e.preventDefault(); e.stopPropagation(); }
+      else if (e.key === "Enter" || e.keyCode === 23) { document.getElementById(on ? "pan-stop" : "pan-go").click(); e.preventDefault(); }
+    });
+    document.getElementById("pan-go").onclick = () => { on = true; send(); draw(); };
+    document.getElementById("pan-stop").onclick = () => { on = false; stopSpin(); clearTimeout(sendT); sendT = 0; api("/api/action", { a: "lydpan", on: false }).catch(() => {}); draw(); };
+    document.getElementById("pan-spin").onclick = (e) => {
+      if (spin) { stopSpin(); send({ spin: false }); return; }
+      spin = true; on = true; e.target.classList.add("on"); send({ spin: true });
+      spinT = setInterval(() => { angle = ((angle + 72 * 0.1 + 540) % 360) - 180; draw(); }, 100);   // samme fart som på PC-en
+    };
+    const sel = document.getElementById("spk-lay"); if (sel) sel.addEventListener("change", draw);
+    draw();
+  }
+  setTimeout(bind, 2500);
+  document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest('[data-spk="stop"]')) { on = false; stopSpin(); draw(); } });
+})();

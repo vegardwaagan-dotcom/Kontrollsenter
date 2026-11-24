@@ -622,7 +622,7 @@ def _feature_action(win, kind, a):
         return True, app_api.chat_send(win, a, _notify(win))
     if kind in ("chatev", "chatgif", "chatdnd", "chatstatus", "tenorkey", "aiask", "aistop", "aiconfirm", "aiset",
                 "aipin", "aidelete", "kaladd", "kaldel", "kaldone", "lydtest", "skjermmodus", "skjermbehold",
-                "skjermangre", "skjermtest", "lydfilter", "lydkal", "pcquiet", "pcbudget", "pcstress", "pcinput", "aimissed", "voice", "watchtest") or kind.startswith("h5") or kind.startswith(("spill3", "turn")) or kind.startswith("dagbok_"):
+                "skjermangre", "skjermtest", "lydfilter", "lydkal", "lydpan", "pcquiet", "pcbudget", "pcstress", "pcinput", "aimissed", "voice", "watchtest") or kind.startswith("h5") or kind.startswith(("spill3", "turn")) or kind.startswith("dagbok_"):
         import app_api
         return app_api.action(win, kind, a, _notify(win))
     if kind == "chatvote":                               # stemme i en avstemning fra mobilen

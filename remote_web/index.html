@@ -102,6 +102,10 @@
         <div id="spk-room" class="spk-room"></div>
         <div class="row wrap"><button class="soft" data-spk="seq">▶ Én og én</button><button class="soft" data-spk="all">🔊 Alle</button><button class="soft" data-spk="bass">〰 Bass</button><button class="soft" data-spk="hp-phase">🎧 Motfase</button><button class="soft" id="spk-cal">🎯 Kalibrer</button><button class="danger" data-spk="stop">■ Stopp</button></div>
         <div id="spk-calres" class="dim small"></div>
+        <div class="label">🎯 Lydsirkel – dra knappen rundt, lyden flytter seg dit</div>
+        <canvas id="pan-c" width="260" height="260" tabindex="0" style="display:block;margin:6px auto;touch-action:none;max-width:100%"></canvas>
+        <div class="row wrap center"><button class="primary" id="pan-go">▶ Start</button><button class="soft" id="pan-spin">🔄 Snurr rundt</button><button class="danger" id="pan-stop">■ Stopp</button></div>
+        <div id="pan-l" class="dim small" style="text-align:center"></div>
         <div id="spk-filters" hidden><h3>Lydfiltre</h3>
           <div class="row"><span style="flex:1">Virtuell 7.1 i hodesettet</span><label class="switch"><input type="checkbox" data-lf="surround"><i></i></label></div>
           <div class="row"><span style="flex:1">Støyfilter på mikrofonen</span><label class="switch"><input type="checkbox" data-lf="noise"><i></i></label></div>

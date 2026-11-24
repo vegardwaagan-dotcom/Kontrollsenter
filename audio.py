@@ -414,11 +414,28 @@ class AudioPage(Gtk.ScrolledWindow):
         self._set("set-default-source", name)
         self.status.set_label(f"Mikrofon: {self.sources[dd.get_selected()]['description']}")
 
-    def _test(self, *_):
+    def _test(self, btn=None):
+        p = getattr(self, "_test_proc", None)
+        if p is not None and p.poll() is None:              # trykk igjen = stopp
+            p.terminate()
+            self._test_proc = None
+            if btn:
+                btn.set_label("Test lyd")
+            self.status.set_label("Stoppet")
+            return
         snd = next((p for p in TEST_SOUNDS if os.path.exists(p)), None)
         player = "pw-play" if subprocess.run(["which", "pw-play"], capture_output=True).returncode == 0 else "paplay"
         if snd:
-            subprocess.Popen([player, snd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self._test_proc = subprocess.Popen([player, snd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.status.set_label("Spiller testlyd …")
+            if btn:
+                btn.set_label("■ Stopp")
+
+                def back():
+                    if self._test_proc is None or self._test_proc.poll() is not None:
+                        btn.set_label("Test lyd")
+                        return False
+                    return True
+                GLib.timeout_add(300, back)
         else:
             self.status.set_label("Fant ingen testlyd på systemet")

@@ -267,6 +267,8 @@ def suggest(chmap):
 def stop():
     global _proc
     _stop.set()
+    if "PAN" in globals() and PAN.running():              # stopper også lydsirkelen
+        PAN.stop()
     with _lock:
         p, _proc = _proc, None
     if IS_WIN:
@@ -449,6 +451,13 @@ class MicTest:
         bus.add_signal_watch()
         bus.connect("message::eos", lambda *_: pb.set_state(Gst.State.NULL))
 
+    def stop_play(self):
+        pb = getattr(self, "_pb", None)
+        if pb is not None:
+            from gi.repository import Gst
+            pb.set_state(Gst.State.NULL)
+            self._pb = None
+
 
 # ------------------------------------------------------------------ nivåkalibrering med mikrofonen
 CAL = {"running": False, "step": "", "result": None}
@@ -570,3 +579,142 @@ def apply_levels(adjust, sink=None, layout=None):
     subprocess.run(["pactl", "set-sink-volume", sk, *new], capture_output=True, timeout=5)
     return "Nivåene er justert – alle høyttalerne er like høye der du sitter" if adjust else \
         "Alle kanaler er like igjen"
+
+
+# ------------------------------------------------------------------ lydsirkel: dra lyden rundt i rommet
+# vinkel for hver høyttaler (0 = rett fram, positiv = mot høyre, ±180 = rett bak)
+ANGLE = {"FL": -30, "FR": 30, "FC": 0, "RL": -145, "RR": 145, "FLW": -60, "FRW": 60, "RC": 180, "SL": -100,
+         "SR": 100, "TFL": -45, "TFR": 45, "TRL": -135, "TRR": 135, "MONO": 0}
+_GST_POS = {"FL": 0, "FR": 1, "FC": 2, "LFE": 3, "RL": 4, "RR": 5, "FLW": 6, "FRW": 7, "RC": 8, "SL": 10, "SR": 11,
+            "TFL": 12, "TFR": 13, "TRL": 16, "TRR": 17}
+
+
+def pan_gains(chans, deg):
+    """Konstant-effekt-panorering mellom de to nærmeste høyttalerne rundt sirkelen. Subwooferen får ingenting."""
+    ring = sorted(((ANGLE[c], i) for i, c in enumerate(chans) if c in ANGLE and c != "LFE" and
+                   not c.startswith("T")), key=lambda x: x[0])
+    g = [0.0] * len(chans)
+    if not ring:
+        return g
+    if len(ring) == 1:
+        g[ring[0][1]] = 1.0
+        return g
+    d = ((deg + 180) % 360) - 180
+    for k in range(len(ring)):
+        a1, i1 = ring[k]
+        a2, i2 = ring[(k + 1) % len(ring)]
+        span = (a2 - a1) % 360 or 360
+        off = (d - a1) % 360
+        if off <= span:
+            t = off / span
+            g[i1] = math.cos(t * math.pi / 2)
+            g[i2] = math.sin(t * math.pi / 2)
+            break
+    return g
+
+
+class Panner:
+    """Rosa støy som flyttes rundt i rommet etter vinkelen du drar knappen til (eller som snurrer av seg selv)."""
+
+    def __init__(self):
+        self.pipe = None
+        self.angle = 0.0
+        self.spin = 0.0                                    # grader per sekund (0 = står stille)
+        self.chans = []
+        self._stop = threading.Event()
+
+    def running(self):
+        return self.pipe is not None
+
+    def start(self, layout, sink=None, level=0.3):
+        import gi
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst
+        Gst.init(None)
+        self.stop()
+        stop()                                             # ikke to testlyder samtidig
+        self.chans = list(LAYOUT[layout][1])
+        n = len(self.chans)
+        mask = 0
+        for c in self.chans:
+            if c in _GST_POS:
+                mask |= 1 << _GST_POS[c]
+        caps = f"audio/x-raw,format=F32LE,rate={RATE},channels={n},layout=interleaved" + \
+            (f",channel-mask=(bitmask)0x{mask:x}" if n > 1 else "")
+        sk = sink if sink is not None else default_sink()
+        if IS_WIN:
+            out = "autoaudiosink"
+        else:
+            out = f'pulsesink device="{sk}"' if sk else "autoaudiosink"
+        self.pipe = Gst.parse_launch(f"appsrc name=src is-live=true block=true format=time caps=\"{caps}\" "
+                                     f"max-bytes={n * 4 * 960 * 4} ! audioconvert ! audioresample ! {out}")
+        src = self.pipe.get_by_name("src")
+        self.pipe.set_state(Gst.State.PLAYING)
+        self._stop.clear()
+        noise = [v * level for v in _noise(4.0, 11)]
+        threading.Thread(target=self._run, args=(src, noise, n), daemon=True).start()
+
+    def _run(self, src, noise, n):
+        from gi.repository import Gst
+        try:
+            import numpy as np
+        except ImportError:
+            np = None
+        chunk = 960                                          # 20 ms
+        pos, t_ns = 0, 0
+        cur = pan_gains(self.chans, self.angle)
+        nz = np.asarray(noise, dtype=np.float32) if np else noise
+        while not self._stop.is_set():
+            if self.spin:
+                self.angle = (self.angle + self.spin * chunk / RATE + 180) % 360 - 180
+            want = pan_gains(self.chans, self.angle)
+            if pos + chunk > len(noise):
+                pos = 0
+            if np:
+                seg = nz[pos:pos + chunk]
+                ramp = np.linspace(0, 1, chunk, dtype=np.float32)
+                out = np.empty((chunk, n), dtype=np.float32)
+                for j in range(n):                           # glatt overgang fra forrige til ny vinkel (ingen knepp)
+                    out[:, j] = seg * (cur[j] + (want[j] - cur[j]) * ramp)
+                data = out.tobytes()
+            else:
+                a = array.array("f", bytes(4 * chunk * n))
+                for i in range(chunk):
+                    f = i / chunk
+                    s = noise[pos + i]
+                    for j in range(n):
+                        a[i * n + j] = s * (cur[j] + (want[j] - cur[j]) * f)
+                if sys.byteorder == "big":
+                    a.byteswap()
+                data = a.tobytes()
+            cur = want
+            pos += chunk
+            buf = Gst.Buffer.new_wrapped(data)
+            buf.pts, buf.duration = t_ns, int(chunk * 1e9 / RATE)
+            t_ns += buf.duration
+            if src.emit("push-buffer", buf) != Gst.FlowReturn.OK:
+                break
+
+    def set_angle(self, deg):
+        self.angle = ((float(deg) + 180) % 360) - 180
+
+    def stop(self):
+        self._stop.set()
+        p, self.pipe = self.pipe, None
+        if p is not None:
+            from gi.repository import Gst
+            p.set_state(Gst.State.NULL)
+
+    def state(self):
+        return {"on": self.running(), "angle": round(self.angle), "spin": self.spin,
+                "near": nearest(self.chans, self.angle) if self.chans else ""}
+
+
+def nearest(chans, deg):
+    """Navnet på høyttaleren nærmest vinkelen (for teksten under sirkelen)."""
+    best = min((c for c in chans if c in ANGLE and c != "LFE" and not c.startswith("T")),
+               key=lambda c: abs(((deg - ANGLE[c]) + 180) % 360 - 180), default=None)
+    return CH[best][0] if best else ""
+
+
+PAN = Panner()

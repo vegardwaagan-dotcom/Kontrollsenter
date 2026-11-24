@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.39", "Lydsirkel og stopp-knapper", [
+            "🎯 Lydsirkel i høyttalertesten: dra den runde knappen rundt sirkelen, så flytter lyden seg dit i rommet – "
+            "glatt mellom høyttalerne. «Snurr rundt» tar én runde på 5 sekunder. Høyttalerne i oppsettet vises rundt "
+            "sirkelen",
+            "Også i mobilappen (dra med fingeren) og på TV-en (piltastene drar knappen, OK starter/stopper)",
+            "■ Stopp på «Test lyd» (trykk igjen), i mikrofontesten og i lydsirkelen – og høyttalertestens Stopp stopper "
+            "alt. Lyden stopper også når du går fra Lyd-siden",
+        ]),
     ("0.99.38", "Temaer fra år 3000", [
             "Tre nye temaer under Innstillinger › Utseende: «År 3000 – Holografisk» (mørkt glass med holografiske "
             "kanter i cyan, fiolett og rosa), «År 3000 – Krom» (perlegrått og sølv med is-blå detaljer) og "
