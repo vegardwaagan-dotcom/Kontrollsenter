@@ -278,6 +278,40 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+_TVD = {"t": 0, "pcs": []}
+
+
+def tvdash(_arg):
+    """TV-dashbord / infoskjerm: klokke, vær, strømpris, dagens kalender og middag, og alle PC-ene i huset."""
+    import datetime as dt
+    import time as _time
+    out = {"t": _time.time()}
+    try:
+        import infotiles as I
+        out["weather"], out["price"] = I.weather(), I.price()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import kalender as K
+        today = dt.date.today()
+        keep = {"egen", "familie", "ukeplan", "merkedag", "flagg", "ferie", "middag", "rød"}
+        out["today"] = [{"title": x.get("title"), "time": x.get("time") or "", "icon": x.get("icon") or ""}
+                        for x in K.items(today, today, extra=False).get(today, []) if x.get("src") in keep][:8]
+    except Exception:  # noqa: BLE001
+        out["today"] = []
+    if _time.time() - _TVD["t"] > 30:                       # NAS-en spørres maks hvert 30. sekund
+        try:
+            import homepcs
+            _TVD["pcs"] = [{"name": p.get("name"), "online": _time.time() - (p.get("time") or 0) < homepcs.STALE
+                            and not p.get("off"), "game": p.get("game"), "cpu_t": p.get("cpu_t"),
+                            "gpu_t": p.get("gpu_t"), "watts": p.get("watts")} for p in homepcs.fetch() or []]
+        except Exception:  # noqa: BLE001
+            pass
+        _TVD["t"] = _time.time()
+    out["pcs"] = sorted(_TVD["pcs"], key=lambda p: (not p["online"], p["name"] or ""))
+    return out
+
+
 _MISSED = {}
 
 
@@ -338,7 +372,7 @@ def lydtest(_arg):
             "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
-X = {"aimissed": aimissed, "hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"tvdash": tvdash, "aimissed": aimissed, "hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -362,6 +396,15 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind == "voice":                                  # talekommando fra TV-fjernkontrollen / telefonen
+        import voicecmd
+        return voicecmd.run(win, str(a.get("text") or ""), a.get("_dev") or "Fjernkontrollen")
+    if kind == "watchtest":                              # testvarsel til telefonen (og klokka)
+        import push
+        if not push.enabled():
+            return False, "Slå på pushvarsler først (Innstillinger › Varsler)"
+        push.publish("watchtest", "⌚ Testvarsel fra Kontrollsenter", "Ser du dette på klokka, virker det!")
+        return True, "Testvarsel sendt"
     if kind == "aimissed":                               # «Hva har jeg gått glipp av?» (AI, i bakgrunnen)
         import secrets
         jid = secrets.token_hex(6)

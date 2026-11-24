@@ -1080,3 +1080,23 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .pad-btns span { padding: 4px 10px; border-radius: 999px; background: rgba(128,128,150,.15); font-size: .85em; }
 .pad-btns span.seen { background: rgba(51,209,122,.35); }
 .pad-btns span.on { background: var(--acc, #5b8cff); color: #fff; }
+/* TV-dashbord og Andreskjerm */
+.tvdash, .andreskjerm { position: fixed; inset: 0; z-index: 9996; background: radial-gradient(circle at 20% 10%, #1c2540, #090b14 70%); color: #fff; padding: 4vh 5vw; display: flex; flex-direction: column; gap: 3vh; }
+.tvdash .td-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.tvdash .td-clock { font-size: 14vh; font-weight: 800; line-height: 1; }
+.tvdash .td-date { font-size: 3.4vh; opacity: .8; text-transform: capitalize; }
+.tvdash .td-right { text-align: right; font-size: 3.4vh; } .tvdash .td-wx b { font-size: 7vh; }
+.tvdash .td-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 3vw; flex: 1; min-height: 0; }
+.tvdash .td-box { background: rgba(255,255,255,.06); border-radius: 24px; padding: 2.5vh 2vw; font-size: 3vh; overflow: hidden; }
+.tvdash .td-box h3 { margin: 0 0 1.5vh; font-size: 3.2vh; opacity: .85; }
+.tvdash .td-pcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22vw), 1fr)); gap: 1.2vh; align-content: start; }
+.tvdash .td-pc { background: rgba(255,255,255,.07); border-radius: 16px; padding: 1.4vh 1.2vw; display: flex; flex-direction: column; gap: .4vh; font-size: 2.6vh; }
+.tvdash .td-pc.off { opacity: .45; } .td-dim { opacity: .55; } .td-hint { text-align: center; font-size: 2vh; }
+.andreskjerm { padding: 16px; gap: 14px; } .andreskjerm .as-head { display: flex; gap: 12px; align-items: center; font-size: 18px; }
+.andreskjerm .as-head .as-game { flex: 1; } .andreskjerm .as-x { background: rgba(255,255,255,.1); color: #fff; border-radius: 12px; width: 44px; height: 44px; }
+.andreskjerm .as-big { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.andreskjerm .as-big div { background: rgba(255,255,255,.06); border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.andreskjerm .as-big small { opacity: .7; font-size: 16px; } .andreskjerm .as-big b { font-size: min(14vw, 18vh); line-height: 1.05; }
+.andreskjerm .as-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.andreskjerm .as-btns button { min-height: 56px; border-radius: 16px; background: rgba(255,255,255,.1); color: #fff; font-size: 15px; }
+@media (orientation: portrait) { .andreskjerm .as-big, .andreskjerm .as-btns { grid-template-columns: repeat(2, 1fr); } }

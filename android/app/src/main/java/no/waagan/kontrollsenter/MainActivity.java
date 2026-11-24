@@ -428,6 +428,20 @@ public class MainActivity extends Activity {
         super.onPause();
     }
 
+    /** Mikrofon-/søkeknappen på TV-fjernkontrollen: talekommando til PC-en («spillmodus på», «middag» …). */
+    @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_SEARCH || keyCode == android.view.KeyEvent.KEYCODE_VOICE_ASSIST
+                || keyCode == android.view.KeyEvent.KEYCODE_ASSIST) {
+            String url = web.getUrl();
+            if (url != null && url.startsWith("http")) {
+                web.evaluateJavascript("window.ksVoiceKey && window.ksVoiceKey()", null);
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {

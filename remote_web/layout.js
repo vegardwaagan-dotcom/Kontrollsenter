@@ -14,7 +14,7 @@
         "t:Sikkerhetssjekk", "t:Selvtest"]],
       ["historikk", "📈 Historikk og strøm", ["t:Historikk", "t:Strømkostnad", "t:Tidslinje"]],
       ["nett", "🌐 Nett og NAS", ["t:Nettverk", "t:Hjemmenett", "t:NAS"]],
-      ["fjern", "🕹️ Fjernstyring", ["c-touchpad", "c-deck", "t:Send til PC", "t:Skjermen live", "t:Skjermbilde", "c-rust"]],
+      ["fjern", "🕹️ Fjernstyring", ["c-touchpad", "c-extra-screens", "c-deck", "t:Send til PC", "t:Skjermen live", "t:Skjermbilde", "c-rust"]],
       ["discord", "💬 Discord", ["c-discord"]],
     ],
     spill: [

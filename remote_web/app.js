@@ -21,15 +21,34 @@ function confirmDlg(text) {
     $("#dlg-yes").onclick = () => done(true); $("#dlg-no").onclick = () => done(false);
   });
 }
+// offline: siste svar for hver side lagres, og vises (med en linje øverst) når PC-en ikke svarer
+function offlineBar(t) {
+  let b = document.getElementById("offline-bar");
+  if (!t) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement("div"); b.id = "offline-bar";
+    b.style.cssText = "position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top) + 4px);z-index:9997;padding:6px 12px;border-radius:12px;background:#c88800;color:#fff;font-size:13px;text-align:center";
+    document.body.append(b); }
+  b.textContent = "📴 PC-en svarer ikke – viser det som var kl. " + new Date(t).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+}
 async function api(path, body) {
   const opt = { headers: { Authorization: "Bearer " + token } };
   if (body !== undefined) { opt.method = "POST"; opt.body = JSON.stringify(body); opt.headers["Content-Type"] = "application/json"; }
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 8000); opt.signal = ctl.signal;
+  const ck = "ks_c:" + (pcName || "") + ":" + path;
+  let r;
   try {
-    const r = await fetch(path, opt);
+    r = await fetch(path, opt);
+  } catch (e) {                                       // nettverksfeil: bruk det vi har lagret (bare lesing)
+    clearTimeout(tm);
+    if (body === undefined) { try { const c = JSON.parse(localStorage.getItem(ck) || "null"); if (c) { offlineBar(c.t); return c.j; } } catch (x) {} }
+    throw e;
+  }
+  try {
     if (r.status === 401) { showPair(); throw new Error("ikke paret"); }
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.statusText);
+    offlineBar(0);
+    if (body === undefined) { try { const txt = JSON.stringify({ t: Date.now(), j }); if (txt.length < 150000) localStorage.setItem(ck, txt); } catch (x) {} }
     return j;
   } finally { clearTimeout(tm); }
 }

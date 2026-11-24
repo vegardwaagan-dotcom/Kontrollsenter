@@ -1121,3 +1121,110 @@ if (tab === "oversikt") loadHealth(false);
   }
   setTimeout(build, 1200);
 })();
+
+// ---- TV-dashbord / infoskjerm, Andreskjerm, talekommandoer og testvarsel til klokka ----
+(() => {
+  const isTv = () => { try { return !!(KS && KS.isTv && KS.isTv()); } catch (e) { return false; } };
+  const full = (o) => { try { o.requestFullscreen && o.requestFullscreen(); } catch (e) {} };
+  const exitFull = () => { try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} };
+  // ---------- TV-dashbord: klokke, vær, strømpris, dagens plan og alle PC-ene ----------
+  let dashEl = null, dashT = 0;
+  async function dashFill() {
+    if (!dashEl) return;
+    let d; try { d = await api("/api/x/tvdash"); } catch (e) { return; }
+    const now = new Date(), w = d.weather || {}, p = d.price || {};
+    dashEl.querySelector(".td-clock").textContent = now.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+    dashEl.querySelector(".td-date").textContent = now.toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long" });
+    dashEl.querySelector(".td-wx").innerHTML = w.temp != null ? `${w.icon || ""} <b>${w.temp}°</b> <span>${esc(w.text || "")}${w.place ? " · " + esc(w.place) : ""}</span>` : "";
+    dashEl.querySelector(".td-price").textContent = p && p.now != null ? `⚡ ${p.now} kr/kWh nå` : "";
+    dashEl.querySelector(".td-today").innerHTML = (d.today || []).length ? d.today.map((x) => `<div>${x.icon || "•"} ${x.time ? x.time + " " : ""}${esc(x.title)}</div>`).join("") : "<div class='td-dim'>Ingenting i kalenderen i dag</div>";
+    dashEl.querySelector(".td-pcs").innerHTML = (d.pcs || []).map((x) => `<div class="td-pc${x.online ? "" : " off"}"><b>${esc(x.name)}</b>
+      <span>${x.online ? (x.game ? "🎮 " + esc(x.game) : "🟢 På") : "⚫ Av"}</span>${x.online ? `<span>CPU ${Math.round(x.cpu_t || 0)}°${x.gpu_t ? " · GPU " + Math.round(x.gpu_t) + "°" : ""}${x.watts ? " · " + Math.round(x.watts) + " W" : ""}</span>` : ""}</div>`).join("");
+  }
+  window.ksTvDash = () => {
+    if (dashEl) return;
+    dashEl = document.createElement("div"); dashEl.className = "tvdash"; dashEl.tabIndex = 0;
+    dashEl.innerHTML = `<div class="td-top"><div><div class="td-clock"></div><div class="td-date"></div></div><div class="td-right"><div class="td-wx"></div><div class="td-price"></div></div></div>
+      <div class="td-grid"><div class="td-box"><h3>📅 I dag</h3><div class="td-today"></div></div><div class="td-box"><h3>🖥️ PC-ene</h3><div class="td-pcs"></div></div></div>
+      <div class="td-dim td-hint">Trykk en knapp for å gå tilbake</div>`;
+    document.body.append(dashEl); full(dashEl); dashEl.focus();
+    const close = () => { if (!dashEl) return; clearInterval(dashT); dashEl.remove(); dashEl = null; exitFull(); idleReset(); };
+    dashEl.onclick = close; dashEl.onkeydown = (e) => { e.preventDefault(); close(); };
+    dashFill(); dashT = setInterval(dashFill, 15000);
+  };
+  // på TV-en: dashbordet kommer av seg selv etter 5 minutter uten bruk
+  let idleT = 0;
+  const idleReset = () => { clearTimeout(idleT); if (isTv()) idleT = setTimeout(() => { if (!document.hidden) window.ksTvDash(); }, 5 * 60000); };
+  ["keydown", "click", "touchstart"].forEach((ev) => document.addEventListener(ev, () => { if (!dashEl) idleReset(); }, true));
+  idleReset();
+  // ---------- Andreskjerm: telefonen ved siden av tastaturet mens du spiller ----------
+  let sEl = null, sT = 0;
+  async function sFill() {
+    if (!sEl) return;
+    let st; try { st = await api("/api/status"); } catch (e) { return; }
+    const g = (id) => sEl.querySelector(id);
+    g(".as-game").textContent = st.game ? "🎮 " + st.game : "Ingen spill akkurat nå";
+    g(".as-fps").textContent = st.fps ? Math.round(st.fps) : "–";
+    g(".as-cpu").textContent = st.cpu_t != null ? Math.round(st.cpu_t) + "°" : "–";
+    g(".as-gpu").textContent = st.gpu && st.gpu.temp != null ? Math.round(st.gpu.temp) + "°" : (st.gpu_t != null ? Math.round(st.gpu_t) + "°" : "–");
+    g(".as-w").textContent = st.watts ? Math.round(st.watts) + " W" : "–";
+    g(".as-time").textContent = new Date().toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  }
+  window.ksSecondScreen = () => {
+    if (sEl) return;
+    sEl = document.createElement("div"); sEl.className = "andreskjerm"; sEl.tabIndex = 0;
+    sEl.innerHTML = `<div class="as-head"><span class="as-game"></span><span class="as-time"></span><button class="as-x">✕</button></div>
+      <div class="as-big"><div><small>FPS</small><b class="as-fps">–</b></div><div><small>CPU</small><b class="as-cpu">–</b></div><div><small>GPU</small><b class="as-gpu">–</b></div><div><small>Strøm</small><b class="as-w">–</b></div></div>
+      <div class="as-btns"><button data-as="mute">🎙️ Mikrofon av/på</button><button data-as="deaf">🎧 Lyd av/på</button><button data-as="clip">🎬 Lagre klipp</button><button data-as="overlay">📊 Overlay</button></div>`;
+    document.body.append(sEl); full(sEl);
+    try { KS && KS.landscape && KS.landscape(true); } catch (e) {}
+    try { navigator.wakeLock && navigator.wakeLock.request("screen").then((l) => (sEl._lock = l)); } catch (e) {}
+    const close = () => { clearInterval(sT); try { sEl._lock && sEl._lock.release(); } catch (e) {} sEl.remove(); sEl = null; exitFull(); try { KS && KS.landscape && KS.landscape(false); } catch (e) {} };
+    sEl.querySelector(".as-x").onclick = close;
+    sEl.addEventListener("click", (e) => { const b = e.target.closest("[data-as]"); if (!b) return;
+      const k = b.dataset.as;
+      if (k === "mute" || k === "deaf") { sEl["_" + k] = !sEl["_" + k]; b.classList.toggle("on", sEl["_" + k]);
+        b.style.background = sEl["_" + k] ? "#e01b24" : ""; act({ a: "discord", do: k, on: sEl["_" + k] }); }
+      else if (k === "clip") act({ a: "clip" });
+      else if (k === "overlay") act({ a: "overlay", on: true }); });
+    sFill(); sT = setInterval(sFill, 2000);
+  };
+  // ---------- talekommandoer (mikrofonknappen på TV-fjernkontrollen, eller knappen) ----------
+  window.ksVoiceKey = () => {
+    if (!(KS && KS.listen)) { toast("Talegjenkjenning finnes bare i appen"); return; }
+    const prev = window.ksHeard;
+    window.ksHeard = async (text, err) => {
+      window.ksHeard = prev;
+      if (err || !text) { toast(err || "Hørte ingenting"); return; }
+      toast("🎙️ «" + text + "»");
+      const r = await api("/api/action", { a: "voice", text }).catch((e) => ({ ok: false, msg: e.message }));
+      toast((r.ok ? "✓ " : "") + r.msg);
+      try { KS.speak && r.msg && KS.speak(r.msg.replace(/[«»✓]/g, "")); } catch (e) {}
+    };
+    toast("🎙️ Si en kommando …"); KS.listen("nb-NO");
+  };
+  // ---------- knappene ----------
+  function buttons() {
+    const host = (() => { const s = $("#kontroll"); return s && (s.querySelector(":scope > .grid") || s); })();
+    if (host && !document.getElementById("c-extra-screens")) {
+      const c = document.createElement("div"); c.className = "card"; c.id = "c-extra-screens";
+      c.innerHTML = `<h2>📺 Skjermer og tale</h2><div class="dim small">Andreskjerm: telefonen ved siden av tastaturet mens du spiller. TV-dashbord: klokke, vær, dagens plan og alle PC-ene (kommer av seg selv på TV-en etter 5 min).</div>
+        <div class="row wrap"><button class="soft" id="x-second">🎮 Andreskjerm</button><button class="soft" id="x-tvdash">📺 TV-dashbord</button><button class="soft" id="x-voice">🎙️ Talekommando</button></div>`;
+      host.appendChild(c);
+    }
+    const nf = $("#nf-phone-card");
+    if (nf && !document.getElementById("x-watch")) {
+      const d = document.createElement("div");
+      d.innerHTML = `<div class="label">⌚ Klokka</div><div class="dim small">Varslene fra Kontrollsenter kommer på smartklokka (Wear OS, Galaxy Watch) av seg selv når telefonen viser dem – slå på varsler for ntfy/Kontrollsenter i klokke-appen på telefonen.</div><button class="soft" id="x-watch">Send testvarsel</button>`;
+      nf.appendChild(d);
+    }
+  }
+  document.addEventListener("click", (e) => {
+    const id = e.target.id;
+    if (id === "x-second") window.ksSecondScreen();
+    else if (id === "x-tvdash") window.ksTvDash();
+    else if (id === "x-voice") window.ksVoiceKey();
+    else if (id === "x-watch") act({ a: "watchtest" });
+  });
+  setTimeout(buttons, 1500);
+})();

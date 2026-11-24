@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.37", "TV-dashbord, Andreskjerm, talekommandoer og offline", [
+            "📺 TV-dashbord: klokke, vær, strømpris, dagens plan og alle PC-ene i stort – kommer av seg selv på TV-en "
+            "etter 5 minutter uten bruk, eller fra PC-en › Fjernstyring",
+            "🎮 Andreskjerm: telefonen ved siden av tastaturet mens du spiller – store tall for FPS, CPU, GPU og "
+            "strøm, og knapper for Discord-mikrofon, lyd, klipp og overlay. Skjermen holdes våken",
+            "🎙️ Talekommandoer: mikrofon-/søkeknappen på TV-fjernkontrollen (eller knappen i appen) – «spillmodus på», "
+            "«demp», «volum 30», «stille i to timer», «middag», «beskjed kom ned», «lagre klipp» eller navnet på en scene",
+            "⌚ Klokka: varslene kommer på smartklokka via telefonen – «Send testvarsel» under Innstillinger › Varsler",
+            "📴 Offline: når PC-en ikke svarer, viser appen det den sist visste, med en linje som sier fra",
+        ]),
     ("0.99.36", "Styreflate, AI-scener og PC-legen", [
             "🖱️ Styreflate (PC-en › Fjernstyring): telefonen eller TV-fjernkontrollen som mus og tastatur for PC-en – "
             "dra, trykk, to fingre for høyreklikk/rulling, piltaster og OK på TV-en, og skriv tekst",
