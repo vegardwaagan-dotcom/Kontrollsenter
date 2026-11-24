@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.40", "Drivere", [
+            "Ny fane Vedlikehold › Drivere: «🌐 Åpne driversiden» går rett til ASUS-siden for ROG STRIX X870E-E "
+            "GAMING WIFI (⚙ for å endre adressen), med hovedkortet og BIOS-versjonen du har nå",
+            "Skjermkortdriveren (NVIDIA 620.70.06) med lenker til NVIDIA og AMD, og «Kjør driversjekk» for kjerne, "
+            "Mesa og fastvare (Linux) / Windows Update › Valgfrie oppdateringer (Windows)",
+            "Mobilappen: 🧩 Drivere under PC-en › PC-verktøy",
+            "Rettet: lenker til andre nettsider (driversiden, pakkesporing …) åpnes nå i telefonens nettleser – før "
+            "skjedde det ingenting",
+        ]),
     ("0.99.39", "Lydsirkel og stopp-knapper", [
             "🎯 Lydsirkel i høyttalertesten: dra den runde knappen rundt sirkelen, så flytter lyden seg dit i rommet – "
             "glatt mellom høyttalerne. «Snurr rundt» tar én runde på 5 sekunder. Høyttalerne i oppsettet vises rundt "

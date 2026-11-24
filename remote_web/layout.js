@@ -10,7 +10,7 @@
       ["helse", "🤫 Stille, strøm og stresstest", ["c-pcquiet", "c-budget", "c-stress"]],
       ["lyd", "🔊 Lyd og skjerm", ["c-audio", "c-disp", "c-spk", "c-avprof"]],
       ["tester", "🧪 Tester", ["c-tests"]],
-      ["verktoy", "🔧 PC-verktøy", ["pn:pctools", "pn:apps", "pn:gpu", "t:Programmer", "t:Oppstartsprogrammer",
+      ["verktoy", "🔧 PC-verktøy", ["c-drivers", "pn:pctools", "pn:apps", "pn:gpu", "t:Programmer", "t:Oppstartsprogrammer",
         "t:Sikkerhetssjekk", "t:Selvtest"]],
       ["historikk", "📈 Historikk og strøm", ["t:Historikk", "t:Strømkostnad", "t:Tidslinje"]],
       ["nett", "🌐 Nett og NAS", ["t:Nettverk", "t:Hjemmenett", "t:NAS"]],

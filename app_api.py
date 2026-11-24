@@ -278,6 +278,17 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+def drivers(_arg):
+    import features
+    import pcplus
+    b = pcplus.bios() or {}
+    try:
+        g = features.driver_info()
+    except Exception:  # noqa: BLE001
+        g = {}
+    return {"url": pcplus.driver_url(), "board": b.get("board"), "bios": b.get("text"), "gpu": g}
+
+
 _TVD = {"t": 0, "pcs": []}
 
 
@@ -372,7 +383,7 @@ def lydtest(_arg):
             "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
-X = {"tvdash": tvdash, "aimissed": aimissed, "hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"drivers": drivers, "tvdash": tvdash, "aimissed": aimissed, "hjem5": hjem5, "pcplus": pcplus, "spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):

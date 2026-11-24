@@ -16,7 +16,24 @@ DATA = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.loc
                     "Kontrollsenter" if IS_WIN else "systemmonitor")
 CFG = os.path.expanduser("~/.config/systemmonitor/pcplus.json")
 DISKLOG = os.path.join(DATA, "diskslitasje.json")
-DEF = {"budget_kr": 0, "budget_warned": ""}
+DEF = {"budget_kr": 0, "budget_warned": "", "driver_url": ""}
+# kjente driversider per hovedkort (resten: produsentens søk)
+BOARD_URLS = {"ROG STRIX X870E-E GAMING WIFI": "https://rog.asus.com/motherboards/rog-strix/rog-strix-x870e-e-gaming-wifi/"
+                                               "helpdesk_download/?model2name=rog%20strix%20x870e-e%20gaming%20wifi"}
+
+
+def driver_url():
+    """Driversiden for hovedkortet: adressen du har lagt inn, ellers produsentens søk (fra bios())."""
+    u = (cfg().get("driver_url") or "").strip()
+    if u:
+        return u
+    b = bios()
+    return b["url"] if b else "https://www.asus.com/support/"
+
+
+def _board_url(board):
+    up = (board or "").upper()
+    return next((u for k, u in BOARD_URLS.items() if k in up), None)
 
 
 def cfg():
@@ -130,6 +147,7 @@ def bios():
     if age is not None and age >= 12:
         txt += " – det finnes sannsynligvis en nyere. Sjekk produsentens side (oppdater bare hvis noe er galt, " \
                "eller nyere CPU/minne krever det)."
+    url = (cfg().get("driver_url") or "").strip() or _board_url(board) or url    # din adresse / kjent side
     return {"version": ver, "date": date, "age_months": age, "board": f"{vendor} {board}".strip(), "url": url,
             "text": txt}
 

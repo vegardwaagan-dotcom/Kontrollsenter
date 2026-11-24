@@ -2017,6 +2017,8 @@ class ToolsPage(TabbedPage, _Cards):
         self.tab("gjenoppretting", "Gjenoppretting")
         self._try(W._restore_card, self, card) if win else self._try(self._restore_card)
         self._try(self._nasbackup_card)
+        self.tab("drivere", "Drivere")
+        self._try(self._drivers_tab)
         self.tab("utstyr", "Batteri og skjerm")
         try:                                              # batterihelse og skjermkalibrering
             import equipment_ui
@@ -2045,6 +2047,98 @@ class ToolsPage(TabbedPage, _Cards):
         self._try(self._house_errors_card)
         self._try(self._log_card)
         self.finish()
+
+    # --- drivere: hovedkortets driverside, skjermkortet og systemets drivere ---------------------
+    def _drivers_tab(self):
+        import pcplus
+
+        def open_url(u):
+            if sys.platform == "win32":
+                __import__("winsupport").open_uri(u)
+            else:
+                Gio.AppInfo.launch_default_for_uri(u, None)
+        # hovedkortet
+        c, i = card("Hovedkort", "Drivere, BIOS og verktøy for hovedkortet – rett fra produsentens side.")
+        info = dim("Leser hovedkortet …")
+        i.append(info)
+        row = Gtk.Box(spacing=8)
+        go = Gtk.Button(label="🌐 Åpne driversiden")
+        go.add_css_class("suggested-action")
+        go.connect("clicked", lambda *_: open_url(pcplus.driver_url()))
+        row.append(go)
+        gear = Gtk.Button(icon_name="emblem-system-symbolic", tooltip_text="Endre adressen til driversiden")
+        row.append(gear)
+        i.append(row)
+        addr = dim("")
+        addr.set_selectable(True)
+        i.append(addr)
+
+        def show_board(b):
+            if isinstance(b, Exception) or not b:
+                info.set_label("Fant ikke informasjon om hovedkortet.")
+            else:
+                info.set_label(f"{b['board']}\n{b['text']}")
+            addr.set_label(pcplus.driver_url())
+        self._bg(pcplus.bios, show_board)
+
+        def edit(*_):
+            dlg = Adw.AlertDialog(heading="Adressen til driversiden",
+                                  body="Lim inn adressen til driversiden for hovedkortet ditt. Tom = standard.")
+            e = Gtk.Entry(text=pcplus.cfg().get("driver_url") or pcplus.driver_url(), hexpand=True,
+                          activates_default=True)
+            e.set_size_request(460, -1)
+            dlg.set_extra_child(e)
+            dlg.add_response("cancel", "Avbryt")
+            dlg.add_response("std", "Standard")
+            dlg.add_response("ok", "Lagre")
+            dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+            dlg.set_default_response("ok")
+
+            def resp(_d, r):
+                if r == "ok":
+                    u = e.get_text().strip()
+                    if u and not u.startswith(("http://", "https://")):
+                        u = "https://" + u
+                    pcplus.set_(driver_url=u)
+                elif r == "std":
+                    pcplus.set_(driver_url="")
+                addr.set_label(pcplus.driver_url())
+            dlg.connect("response", resp)
+            dlg.present(self.get_root())
+        gear.connect("clicked", edit)
+        self.box.append(c)
+        # skjermkortet
+        c, i = card("Skjermkort", "Driveren til skjermkortet.")
+        gl = dim("Leser …")
+        i.append(gl)
+        gr = Gtk.Box(spacing=8)
+        nv = Gtk.Button(label="🌐 NVIDIA-drivere")
+        nv.connect("clicked", lambda *_: open_url("https://www.nvidia.com/no-no/drivers/"))
+        gr.append(nv)
+        amd = Gtk.Button(label="🌐 AMD-drivere")
+        amd.connect("clicked", lambda *_: open_url("https://www.amd.com/en/support/download/drivers.html"))
+        gr.append(amd)
+        i.append(gr)
+
+        def show_gpu(d):
+            if isinstance(d, Exception) or not d:
+                gl.set_label("Fant ikke skjermkortdriveren (AMD/Intel: Mesa følger med systemet).")
+                return
+            gl.set_label(f"{d.get('gpu', '')} · driver {d.get('driver', '?')}\n{d.get('where', '')}")
+        self._bg(lambda: __import__("features").driver_info(), show_gpu)
+        self.box.append(c)
+        # systemets drivere
+        if sys.platform == "win32":
+            c, i = card("Windows-drivere", "Valgfrie driveroppdateringer fra Windows Update.")
+            b = Gtk.Button(label="Åpne Windows Update › Valgfrie oppdateringer", halign=Gtk.Align.START)
+            b.connect("clicked", lambda *_: open_url("ms-settings:windowsupdate-optionalupdates"))
+        else:
+            c, i = card("Systemets drivere", "Kjerne, Mesa, NVIDIA, fastvare og CPU-mikrokode – sjekkes og oppdateres "
+                                             "av Systemsjekk.")
+            b = Gtk.Button(label="Kjør driversjekk", halign=Gtk.Align.START)
+            b.connect("clicked", lambda *_: getattr(self.get_root(), "_open_syscheck", lambda _x: None)(None))
+        i.append(b)
+        self.box.append(c)
 
     def _ai_help_card(self):
         """AI-hjelp: siste krasj og ukas PC-lege (krever AI-funksjonen)."""

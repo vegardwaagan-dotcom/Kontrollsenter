@@ -148,8 +148,8 @@ public class MainActivity extends Activity {
                 Uri u = req.getUrl();
                 String sc = u.getScheme();
                 // bare egne sider: startsiden i appen og Kontrollsenter på PC-er i hjemmenettet.
-                // GitHub-siden til Kontrollsenter åpnes i nettleseren.
-                if ("https".equals(sc) && "github.com".equals(u.getHost())) {
+                // Andre nettsider (GitHub, driversiden, pakkesporing …) åpnes i telefonens nettleser.
+                if ("https".equals(sc) && !isLocal(u.getHost())) {
                     try {
                         startActivity(new Intent(Intent.ACTION_VIEW, u).addCategory(Intent.CATEGORY_BROWSABLE));
                     } catch (Exception ignored) { }

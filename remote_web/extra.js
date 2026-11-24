@@ -1297,3 +1297,18 @@ if (tab === "oversikt") loadHealth(false);
   setTimeout(bind, 2500);
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest('[data-spk="stop"]')) { on = false; stopSpin(); draw(); } });
 })();
+
+// ---- Drivere: hovedkortets driverside (åpnes i nettleseren) og skjermkortdriveren ----
+(() => {
+  async function load() {
+    const s = $("#kontroll"), host = s && (s.querySelector(":scope > .grid") || s); if (!host) return;
+    let d; try { d = await api("/api/x/drivers"); } catch (e) { return; }
+    let c = document.getElementById("c-drivers");
+    if (!c) { c = document.createElement("div"); c.className = "card"; c.id = "c-drivers"; host.appendChild(c); }
+    const g = d.gpu || {};
+    c.innerHTML = `<h2>🧩 Drivere</h2><div class="small">${esc(d.board || "Hovedkort")}</div><div class="dim small">${esc(d.bios || "")}</div>
+      <a class="btn primary" href="${esc(d.url)}" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0">🌐 Åpne driversiden</a>
+      ${g.gpu ? `<div class="dim small">${esc(g.gpu)} · driver ${esc(g.driver || "?")} – ${esc(g.where || "")}</div>` : ""}`;
+  }
+  setTimeout(load, 3000);
+})();
