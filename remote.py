@@ -622,7 +622,7 @@ def _feature_action(win, kind, a):
         return True, app_api.chat_send(win, a, _notify(win))
     if kind in ("chatev", "chatgif", "chatdnd", "chatstatus", "tenorkey", "aiask", "aistop", "aiconfirm", "aiset",
                 "aipin", "aidelete", "kaladd", "kaldel", "kaldone", "lydtest", "skjermmodus", "skjermbehold",
-                "skjermangre", "skjermtest", "lydfilter", "lydkal") or kind.startswith("dagbok_"):
+                "skjermangre", "skjermtest", "lydfilter", "lydkal") or kind.startswith(("spill3", "turn")) or kind.startswith("dagbok_"):
         import app_api
         return app_api.action(win, kind, a, _notify(win))
     if kind == "chatvote":                               # stemme i en avstemning fra mobilen
@@ -1196,7 +1196,7 @@ def _handler(remote):
                     with open(cp, "rb") as f:
                         return self._send(200, f.read(), "image/jpeg", {"Cache-Control": "max-age=86400"})
                 if p in ("/api/house/status", "/api/house/update", "/api/house/updates", "/api/house/updateall",
-                         "/api/house/auto", "/api/house/system", "/api/house/family"):            # PC-ene hjemme (felles husnøkkel)
+                         "/api/house/auto", "/api/house/system", "/api/house/family", "/api/house/gamemode"):            # PC-ene hjemme (felles husnøkkel)
                     import watch as W
                     q = parse_qs(u.query)
                     if not W.check_house_key((q.get("fk") or [""])[0]):
@@ -1212,6 +1212,9 @@ def _handler(remote):
                             return self._send(200, {"ok": True, "msg": msg})
                         except ValueError as e:
                             return self._send(400, {"error": str(e)})
+                    if p == "/api/house/gamemode":         # LAN-turnering: spillmodus på alle PC-ene samtidig
+                        ok, msg = do_action(remote.win, {"a": "gamemode", "on": (q.get("on") or ["1"])[0] == "1"})
+                        return self._send(200, {"ok": ok, "msg": msg})
                     if p == "/api/house/system":           # dvale / slå av / omstart (sovemodus, glemte PC-er)
                         what = (q.get("do") or [""])[0]
                         if what not in ("sleep", "shutdown", "restart", "lock"):

@@ -139,6 +139,11 @@ def _ping(host):
 
 def ping_tick(win, game):
     """Hvert 30. sekund mens et spill kjører: 3 målinger mot ruteren og internett."""
+    try:                                                  # nettet i spillet: også selve spillserveren (spill3)
+        import spill3
+        spill3.net_tick((None, game) if game else None)
+    except Exception:  # noqa: BLE001
+        pass
     if not game or not cfg()["ping_watch"]:
         _STATE["ping"] = {}
         return

@@ -272,6 +272,14 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
+def spill3(_arg):
+    import spill3 as S
+    st = S.storage()
+    return {"wrapped": S.wrapped(), "compare": S.compare(), "net": {"hist": S.NET["hist"][-30:],
+            "game": S.NET["game"], "verdict": S.net_verdict()}, "storage": {k: st[k] for k in ("old", "old_gb",
+            "total_gb")}, "tourney": S.t_load(), "night": S.cfg()["night_updates"], "win": S.IS_WIN}
+
+
 def skjerm(_arg):
     import avprofiles as P
     return {"displays": [{"id": d["id"], "name": d["name"], "w": d["w"], "h": d["h"], "hz": d["hz"],
@@ -285,7 +293,7 @@ def lydtest(_arg):
             "filter": F.state() if not F.IS_WIN else {"available": False}}
 
 
-X = {"skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+X = {"spill3": spill3, "skjerm": skjerm, "lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -309,6 +317,36 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind.startswith("spill3") or kind.startswith("turn"):   # spill runde 3 fra mobilen
+        import spill3 as S
+        if kind == "spill3mark":
+            return True, S.mark(str(a.get("label") or ""))
+        if kind == "spill3uninst":
+            return True, S.uninstall(str(a.get("appid")))
+        if kind == "spill3night":
+            return True, S.night_updates(bool(a.get("on")))
+        if kind == "spill3share":
+            import chat
+            chat.send("alle", S.wrapped()["text"])
+            return True, "Delt i chatten"
+        if kind == "turnnew":
+            S.t_new(str(a.get("name") or ""), str(a.get("game") or ""),
+                    [{"name": x.strip()} for x in str(a.get("teams") or "").split(",") if x.strip()])
+            return True, "Turneringen er i gang"
+        if kind == "turnscore":
+            S.t_score(int(a.get("team", -1)), int(a.get("d", 1)))
+            return True, "Poeng"
+        if kind == "turnend":
+            msg = S.t_end()
+            try:
+                import chat
+                chat.send("hjemme", msg)
+            except Exception:  # noqa: BLE001
+                pass
+            return True, msg
+        if kind == "turngm":
+            return True, S.t_gamemode_all(win)
+        raise ValueError("ukjent")
     if kind == "skjermmodus":                            # oppløsning og Hz fra mobilen (settes tilbake etter 20 s)
         import avprofiles as P
         return True, P.set_mode(str(a.get("id")), a.get("w"), a.get("h"), a.get("hz"), revert=20)

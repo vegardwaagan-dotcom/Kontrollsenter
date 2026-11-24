@@ -644,7 +644,7 @@ setTab = function (t) {                              // eslint-disable-line no-g
   baseSetTab(t);
   if (t === "kontroll") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
   if (t === "kontroll") { loadMedia(); try { spkLoad(); dispLoad(); } catch (e) {} }
-  if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); }
+  if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); try { spill3Load(); } catch (e) {} }
   if (t === "mer") loadGoals();
   if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length); }).catch(() => {});
   if (t === "oversikt") loadHealth(false);
@@ -885,4 +885,71 @@ if (tab === "oversikt") loadHealth(false);
       else $("#pad-msg").textContent = "Denne kontrolleren (eller nettleseren) støtter ikke vibrasjon her."; };
     $("#pad-drift").onclick = () => { drift = []; $("#pad-msg").textContent = "Slipp stikkene og ikke rør kontrolleren … (3 s)"; };
   }
+})();
+
+// ---- spill runde 3: spillkveld og nett, spillår, før/etter og plass ----
+(() => {
+  const host = () => { const s = $("#spill"); return s && (s.querySelector(":scope > .grid") || s); };
+  const mk = (id, html) => { let c = document.getElementById(id); if (!c && host()) { c = document.createElement("div");
+    c.className = "card"; c.id = id; c.innerHTML = html; host().appendChild(c); } return c; };
+  let d = null;
+  function render() {
+    if (!d) return;
+    // spillkveld: turnering
+    const t = d.tourney || {}, tc = mk("c-tourney", "<h2>🏆 LAN-turnering</h2><div id='tn-body'></div>");
+    const typing = document.activeElement && document.activeElement.closest && document.activeElement.closest("#c-tourney input");
+    if (typing) { /* ikke tegn på nytt mens du skriver */ }
+    else if (t.teams && t.teams.length) {
+      const best = Math.max(...t.teams.map((x) => x.score));
+      $("#tn-body").innerHTML = `<div><b>${esc(t.name)}</b>${t.game ? " · " + esc(t.game) : ""}</div>` +
+        t.teams.map((x, i) => ({ x, i })).sort((a, b) => b.x.score - a.x.score).map(({ x, i }) =>
+          `<div class="row"><span style="flex:1">${x.score === best && best ? "🥇 " : ""}${esc(x.name)}</span><b style="font-size:1.3em;margin:0 8px">${x.score}</b>
+           <button class="soft" data-tn="${i}" data-d="-1">−</button><button class="primary" data-tn="${i}" data-d="1">+1</button></div>`).join("") +
+        `<div class="row wrap"><button class="soft" id="tn-gm">🎮 Spillmodus på alle</button><button class="danger" id="tn-end">Avslutt og kår vinner</button></div>`;
+    } else if (!typing) {
+      $("#tn-body").innerHTML = (t.last ? `<div class="dim small">Sist: ${esc(t.last.winner)} vant ${esc(t.last.name)} (${t.last.score} poeng)</div>` : "") +
+        `<input id="tn-name" placeholder="Navn, f.eks. Fredagsturnering"><input id="tn-game" placeholder="Spill, f.eks. CS2">
+         <input id="tn-teams" placeholder="Lag eller spillere, med komma: Rød, Blå"><button class="primary" id="tn-new">Start turneringen</button>`;
+    }
+    tc.hidden = false;
+    // nettet i spillet
+    const n = d.net || {}, last = (n.hist || []).slice(-1)[0];
+    const f = (v, l) => v == null ? "–" : Math.round(v) + " ms" + (l ? ` (${l} % tap)` : "");
+    mk("c-net", "<h2>📶 Nettet i spillet</h2><div id='net-v'></div><div id='net-d' class='dim small'></div>");
+    $("#net-v").innerHTML = last ? `<b>${esc(n.verdict)}</b>` : "<span class='dim'>Starter når du spiller på PC-en</span>";
+    $("#net-d").textContent = last ? `${n.game || ""} · Server ${last.server || "?"}: ${f(last.srv, last.srv_loss)} · Internett ${f(last.net, last.net_loss)} · Ruter ${f(last.gw, last.gw_loss)}` : "";
+    // spillår
+    const w = d.wrapped || {};
+    mk("c-wrapped", "<h2>🎁 Ditt spillår</h2><div id='wr-t' style='white-space:pre-line'></div><button class='soft' id='wr-share'>💬 Del i chatten</button>");
+    $("#wr-t").textContent = w.text || ""; $("#wr-share").hidden = !w.total_h;
+    // før og etter
+    const cp = d.compare || {};
+    mk("c-compare", "<h2>⚖️ Før og etter</h2><div class='dim small'>Skal du bytte driver eller innstillinger? Merk det, spill som vanlig, og se om FPS ble bedre.</div><div class='row'><input id='cp-l' placeholder='Hva endrer du?' style='flex:1'><button class='soft' id='cp-m'>Merk</button></div><div id='cp-r'></div>");
+    $("#cp-r").innerHTML = !cp.mark ? "<div class='dim small'>Ingen endring merket ennå.</div>" :
+      `<div class="dim small">Siden «${esc(cp.mark.label)}»:</div>` + (cp.games.length ? cp.games.map((g) =>
+        `<div>${g.pct > 2 ? "🟢 +" : g.pct < -2 ? "🔴 " : "⚪ "}${g.pct} % ${esc(g.game)}: ${g.before} → ${g.after} FPS</div>`).join("") : "<div class='dim small'>Spill noen økter først.</div>");
+    // plass
+    const s = d.storage || {};
+    mk("c-storage", "<h2>💾 Plass per spill</h2><div id='st-h' class='dim small'></div><div id='st-l'></div><div class='row' id='st-nr'><span style='flex:1'>Spilloppdateringer bare om natten (02–06)</span><label class='switch'><input type='checkbox' id='st-night'><i></i></label></div>");
+    $("#st-h").textContent = `Spillene bruker ${Math.round(s.total_gb || 0)} GB. Ikke spilt på 6 måneder: ${(s.old || []).length} spill, ${Math.round(s.old_gb || 0)} GB.`;
+    $("#st-l").innerHTML = (s.old || []).slice(0, 10).map((g) => `<div class="row"><span style="flex:1">${esc(g.name)} · ${g.gb} GB · ${g.days == null ? "aldri spilt" : g.days + " d siden"}</span><button class="soft" data-uninst="${g.appid}">Avinstaller</button></div>`).join("");
+    $("#st-night").checked = !!d.night; $("#st-nr").hidden = !!d.win;
+  }
+  async function load() { try { d = await api("/api/x/spill3"); render(); } catch (e) {} }
+  window.spill3Load = load;
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-tn]");
+    if (b) { await act({ a: "turnscore", team: +b.dataset.tn, d: +b.dataset.d }, true); return load(); }
+    const u = e.target.closest("[data-uninst]");
+    if (u) { await act({ a: "spill3uninst", appid: u.dataset.uninst }); return; }
+    const id = e.target.id;
+    if (id === "tn-new") { await act({ a: "turnnew", name: $("#tn-name").value, game: $("#tn-game").value, teams: $("#tn-teams").value }); load(); }
+    else if (id === "tn-end") { if (await confirmDlg("Avslutte turneringen og kåre vinneren?")) { await act({ a: "turnend" }); load(); } }
+    else if (id === "tn-gm") act({ a: "turngm" });
+    else if (id === "wr-share") act({ a: "spill3share" });
+    else if (id === "cp-m") { await act({ a: "spill3mark", label: $("#cp-l").value }); $("#cp-l").value = ""; load(); }
+  });
+  document.addEventListener("change", (e) => { if (e.target.id === "st-night") act({ a: "spill3night", on: e.target.checked }); });
+  setTimeout(load, 2500);
+  setInterval(() => tab === "spill" && !document.hidden && load(), 20000);
 })();

@@ -12,7 +12,6 @@ import json
 import os
 import re
 import shutil
-import struct
 import subprocess
 import sys
 import tarfile
@@ -316,65 +315,6 @@ def controllers():
     return res, bats
 
 
-class JoyTester(Gtk.Window):
-    """Viser knapper og styrespaker live (leser /dev/input/jsN)."""
-
-    def __init__(self, parent, dev, name):
-        super().__init__(title=f"Knappetest – {name}", transient_for=parent, modal=True,
-                         default_width=560, default_height=420)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        for side in ("top", "bottom", "start", "end"):
-            getattr(box, f"set_margin_{side}")(16)
-        self.set_child(box)
-        box.append(Gtk.Label(label="Trykk på knappene og beveg styrespakene.", xalign=0))
-        self.btns = Gtk.FlowBox(max_children_per_line=10, selection_mode=Gtk.SelectionMode.NONE)
-        box.append(self.btns)
-        self.axes = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        box.append(self.axes)
-        self.b, self.a = {}, {}
-        try:
-            self.fd = os.open(dev, os.O_RDONLY | os.O_NONBLOCK)
-        except OSError as e:
-            box.append(Gtk.Label(label=f"Kunne ikke åpne {dev}: {e}"))
-            self.fd = None
-            return
-        self.src = GLib.unix_fd_add_full(GLib.PRIORITY_DEFAULT, self.fd, GLib.IOCondition.IN, self._read)
-        self.connect("close-request", self._close)
-
-    def _read(self, fd, _cond):
-        try:
-            data = os.read(fd, 8 * 64)
-        except BlockingIOError:
-            return True
-        except OSError:
-            return False
-        for i in range(0, len(data) - 7, 8):
-            _t, val, typ, num = struct.unpack("IhBB", data[i:i + 8])
-            typ &= ~0x80
-            if typ == 1:
-                if num not in self.b:
-                    lab = Gtk.Label(label=f" {num} ", margin_start=4, margin_end=4)
-                    lab.add_css_class("card")
-                    self.btns.append(lab)
-                    self.b[num] = lab
-                (self.b[num].add_css_class if val else self.b[num].remove_css_class)("accent")
-                self.b[num].set_label(f" {'●' if val else ''}{num} ")
-            elif typ == 2:
-                if num not in self.a:
-                    row = Gtk.Box(spacing=8)
-                    row.append(Gtk.Label(label=f"Akse {num}", width_chars=7, xalign=0))
-                    bar = Gtk.LevelBar(min_value=0, max_value=65535, hexpand=True)
-                    row.append(bar)
-                    self.axes.append(row)
-                    self.a[num] = bar
-                self.a[num].set_value(val + 32768)
-        return True
-
-    def _close(self, *_):
-        if self.fd is not None:
-            GLib.source_remove(self.src)
-            os.close(self.fd)
-        return False
 
 
 # --------------------------------------------------------------------------
@@ -417,6 +357,13 @@ class GamesPage(TabbedPage):
         except Exception:  # noqa: BLE001
             import applog
             applog.log.exception("spill+")
+        try:                                               # nettet i spillet og LAN-turnering
+            import spill3_ui
+            self.box.append(spill3_ui.NetCard(card))
+            self.box.append(spill3_ui.TourneyCard(card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("spill3 spillene")
         self.tab("prestasjoner", "Prestasjoner")
         try:
             self._achievements()
@@ -435,6 +382,13 @@ class GamesPage(TabbedPage):
             import applog
             applog.log.exception("spillstatistikk")
         self._sessions_card()
+        try:                                               # årsoppsummering og før/etter
+            import spill3_ui
+            self.box.append(spill3_ui.wrapped_card(card))
+            self.box.append(spill3_ui.compare_card(card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("spill3 statistikk")
         self.tab("klipp", "Klipp")
         try:
             import clips_ui
@@ -444,6 +398,12 @@ class GamesPage(TabbedPage):
             applog.log.exception("klipp")
         self.tab("bibliotek", "Bibliotek")
         self._steam_card()
+        try:                                               # plass per spill og oppdateringer om natten
+            import spill3_ui
+            self.box.append(spill3_ui.storage_card(card))
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("spill3 bibliotek")
         if not IS_WIN:                                  # Proton og lagrede spill i Proton-mappene (Linux)
             self._ge_card()
             try:
@@ -970,6 +930,12 @@ class GamesPage(TabbedPage):
         self._fill_ctrl()
         GLib.timeout_add_seconds(5, lambda: (self._fill_ctrl(), True)[1])
 
+    def _open_tester(self):
+        win = self.get_root()
+        if hasattr(win, "ensure_lazy"):
+            win.ensure_lazy("tester")
+        win.stack.set_visible_child_name("tester")
+
     def _fill_ctrl(self):
         ch = self.ctrl_box.get_first_child().get_next_sibling().get_next_sibling()
         while ch:
@@ -985,8 +951,9 @@ class GamesPage(TabbedPage):
             row = Gtk.Box(spacing=8)
             row.append(Gtk.Image.new_from_icon_name("input-gaming-symbolic"))
             row.append(Gtk.Label(label=p["name"], xalign=0, hexpand=True))
-            b = Gtk.Button(label="Test knapper")
-            b.connect("clicked", lambda *_, p=p: JoyTester(self.get_root(), p["dev"], p["name"]).present())
+            b = Gtk.Button(label="Test kontrolleren →", tooltip_text="Knapper, stikker, drift og vibrasjon "
+                                                                     "(Utstyr › Tester)")
+            b.connect("clicked", lambda *_: self._open_tester())
             row.append(b)
             self.ctrl_box.append(row)
         cb = getattr(self, "_ctrl_bats", None)               # batteri i kontrollerne (mus og hodesett: Oversikt)

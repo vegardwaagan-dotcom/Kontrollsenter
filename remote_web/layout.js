@@ -22,6 +22,8 @@
       ["klipp", "🎬 Klipp", ["c-clips"]],
       ["prest", "🏆 Prestasjoner", ["c-ach", "t:Prestasjoner"]],
       ["vr", "🥽 VR og strømming", ["c-vr", "c-stream"]],
+      ["lan", "🏆 Spillkveld og nett", ["c-tourney", "c-net"]],
+      ["aar", "🎁 Spillår og plass", ["c-wrapped", "c-compare", "c-storage"]],
     ],
     mer: [
       ["kalender", "📅 Kalender og dagbok", ["c-cal", "c-diary"]],

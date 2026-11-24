@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.33", "Spillkveld, spillår og nettet i spillet", [
+            "🏆 LAN-turnering (Spill › Spillene): lag, poengtavle med +1, «Spillmodus på alle» PC-ene og vinner i "
+            "chatten – deles med alle PC-er og mobiler hjemme",
+            "📶 Nettet i spillet: ping og pakketap til selve spillserveren (også WoW og andre spill utenfor Steam), "
+            "internett og ruteren – og om laggen kommer fra deg eller serveren",
+            "🎁 Ditt spillår (Statistikk): timer, favorittspill, lengste økt, beste dag, klipp og prestasjoner – del "
+            "i chatten",
+            "⚖️ Før og etter: merk en endring (driver, Proton …) og se om FPS ble bedre per spill",
+            "💾 Plass per spill (Bibliotek): store spill du ikke har spilt på et halvt år, med «Avinstaller», og "
+            "spilloppdateringer bare om natten (02–06)",
+            "Kontrollere: «Test kontrolleren →» åpner den nye, fullere testen under Utstyr › Tester (den gamle er fjernet)",
+            "Alt også i mobilappen og på TV-en: Spill › 🏆 Spillkveld og nett og 🎁 Spillår og plass",
+        ]),
     ("0.99.32", "Lydfiltre, nivåkalibrering og skjermprofil per spill", [
             "Lyd › Lydfiltre: virtuell 7.1 i et vanlig stereohodesett, equalizer (10 bånd, med «Spill», «Film», "
             "«Musikk», «Tale» og «Ekstra bass») og støyfilter på mikrofonen – alt med PipeWire, ingenting installeres",
