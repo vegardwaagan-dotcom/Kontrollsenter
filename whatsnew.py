@@ -13,6 +13,17 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.30", "Test hodesett og høyttalere", [
+            "Lyd › «Test hodesett og høyttalere»: alle oppsett fra mono, stereo og 2.1 til 5.1, 7.1, 9.1 og Atmos "
+            "(5.1.2, 5.1.4, 7.1.2) – 18 i alt",
+            "Høyttalerne står der de står i rommet – trykk på en, så sier den navnet sitt og spiller støy, bare fra "
+            "den høyttaleren",
+            "«Én og én» går rundt hele rommet, «Alle samtidig», «Bass-sveip» (20–120 Hz i subwooferen) og «Motfase» "
+            "som avslører en høyttaler som er koblet feil",
+            "Velg utgang (f.eks. 7.1-lydkortet eller hodesettet) – oppsettet foreslås ut fra hvor mange kanaler den har",
+            "Også i mobilappen og på TV-en (PC-en › Lyd og skjerm) – og «Test hodesettet på telefonen» for venstre/høyre "
+            "på telefonens eget hodesett",
+        ]),
     ("0.99.29", "Ryddigere app og kalender som lagrer", [
             "Mobilappen har nye faner: «PC-en» (styring, verktøy, historikk, nett og fjernstyring), «Spill» (bare "
             "spill, klipp, prestasjoner og VR) og «Hjemmet» (kalender og dagbok, familie, scener og smarthus, venner)",

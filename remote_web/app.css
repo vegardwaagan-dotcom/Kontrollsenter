@@ -1068,3 +1068,9 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .ct-head { flex-wrap: nowrap; gap: 6px; align-items: center; }
 .ct-head > :not(#ct-cam):not(#ct-more):not(#ct-ref) { flex: 1 1 0; min-width: 0; width: auto; max-width: none; }
 .ct-head > #ct-cam, .ct-head > #ct-more, .ct-head > #ct-ref { flex: 0 0 40px; width: 40px; height: 40px; padding: 0; }
+
+/* høyttalertest: rommet med høyttalerne rundt deg */
+.spk-room { display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(5, auto); gap: 4px; margin: 8px 0; }
+.spk-room button { overflow-wrap: normal; word-break: normal; hyphens: none; padding: 6px 2px; font-size: .72em; line-height: 1.15; min-height: 44px; border-radius: 12px; }
+.spk-room button.on { background: var(--acc, #5b8cff); color: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc, #5b8cff) 35%, transparent); }
+.spk-room .me { grid-column: 4; grid-row: 3; text-align: center; font-size: 1.8em; align-self: center; }

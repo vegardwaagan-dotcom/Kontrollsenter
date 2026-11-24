@@ -86,6 +86,14 @@
         <div id="media-now" class="dim small"></div>
         <div class="row center"><button data-media="Previous" class="soft">⏮</button><button data-media="PlayPause" class="primary">⏯</button><button data-media="Next" class="soft">⏭</button></div>
         <details><summary>Volum per program</summary><div id="app-vols"></div></details></div>
+      <div class="card" id="c-spk"><h2>Test hodesett og høyttalere</h2>
+        <div class="dim small">Trykk på en høyttaler – den sier navnet sitt på PC-en, der den står i rommet.</div>
+        <div class="row wrap"><select id="spk-sink" data-title="Utgang"></select><select id="spk-lay" data-title="Oppsett"></select><select id="spk-snd" data-title="Lyd"></select></div>
+        <div id="spk-room" class="spk-room"></div>
+        <div class="row wrap"><button class="soft" data-spk="seq">▶ Én og én</button><button class="soft" data-spk="all">🔊 Alle</button><button class="soft" data-spk="bass">〰 Bass</button><button class="soft" data-spk="hp-phase">🎧 Motfase</button><button class="danger" data-spk="stop">■ Stopp</button></div>
+        <details><summary>🎧 Test hodesettet på telefonen</summary>
+          <div class="dim small">Spilles på telefonen. Venstre skal bare høres i venstre øre.</div>
+          <div class="row wrap"><button class="soft" data-hp="-1">◀ Venstre</button><button class="soft" data-hp="0">● Begge</button><button class="soft" data-hp="1">Høyre ▶</button><button class="soft" data-hp="phase">Motfase</button></div></details></div>
       <div class="card" id="c-fans"><h2>Vifter</h2>
         <div class="seg" id="fan-all"><button data-v="auto">Auto</button><button data-v="curve">Kurve</button><button data-v="50">50 %</button><button data-v="100">Maks</button></div>
         <details><summary>Hver vifte</summary><div id="fans"></div></details></div>

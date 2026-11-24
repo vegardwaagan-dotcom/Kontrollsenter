@@ -7,7 +7,7 @@
   const CATS = {
     kontroll: [
       ["pc", "🖥️ PC-en", ["c-gamemode", "c-power", "c-fans", "c-rgb", "c-msi"]],
-      ["lyd", "🔊 Lyd og skjerm", ["c-audio", "c-avprof"]],
+      ["lyd", "🔊 Lyd og skjerm", ["c-audio", "c-spk", "c-avprof"]],
       ["verktoy", "🔧 PC-verktøy", ["pn:pctools", "pn:apps", "pn:gpu", "t:Programmer", "t:Oppstartsprogrammer",
         "t:Sikkerhetssjekk", "t:Selvtest"]],
       ["historikk", "📈 Historikk og strøm", ["t:Historikk", "t:Strømkostnad", "t:Tidslinje"]],

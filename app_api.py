@@ -272,7 +272,12 @@ def dagbok_people(arg):
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 
-X = {"kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
+def lydtest(_arg):
+    import lydtest as L
+    return L.info()
+
+
+X = {"lydtest": lydtest, "kal": kal, "kalsok": kalsok, "dagbok": dagbok_people, "chatroom2": chatroom, "linkprev": linkprev, "gifs": gifs, "ai": ai_state, "aiconv": ai_conv, "aijob": ai_job}
 
 
 def action(win, kind, a, notify):
@@ -296,6 +301,13 @@ def action(win, kind, a, notify):
     if kind == "aiask":
         import json
         return True, json.dumps(ai_ask(a))
+    if kind == "lydtest":                                # test av høyttalerne på PC-en fra mobilen
+        import lydtest as L
+        if a.get("ch") == "stop":
+            L.stop()
+            return True, "Stoppet"
+        return True, L.play(str(a.get("layout") or "2.0"), str(a.get("ch") or "seq"),
+                            str(a.get("sound") or "voice"), a.get("sink"))
     if kind == "aistop":
         return True, ai_stop(a)
     if kind == "aiconfirm":

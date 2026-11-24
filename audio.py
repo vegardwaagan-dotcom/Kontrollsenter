@@ -209,6 +209,16 @@ class AudioPage(Gtk.ScrolledWindow):
         i.append(self.out_vol)
         box.append(c)
 
+        try:                                                  # test av hodesett og høyttalere, mono → 9.1
+            import lydtest_ui
+            c, i = card("Test hodesett og høyttalere", "Fra mono og stereo til 7.1, 9.1 og Atmos med takhøyttalere. "
+                                                       "Trykk på en høyttaler – den sier navnet sitt der den står.")
+            i.append(lydtest_ui.SpeakerTest())
+            box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("lydtest")
+
         # Inngang
         c, i = card("Inngang", "Mikrofonen som brukes i samtaler, opptak og spill.")
         self.in_dd = Gtk.DropDown.new_from_strings(["…"])

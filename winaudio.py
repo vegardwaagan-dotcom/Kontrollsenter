@@ -3,8 +3,6 @@
 Bruker Windows' Core Audio-API (COM) direkte via ctypes – ingen ekstra programmer.
 """
 import ctypes
-import os
-import sys
 import threading
 from ctypes import POINTER, byref, c_float, c_int, c_uint, c_void_p, wintypes as W
 
@@ -236,6 +234,16 @@ class AudioWinPage(Gtk.ScrolledWindow):
                 i.append(Gtk.Label(label=i18n.tr("Fant ingen enhet: ") + (str(e) or type(e).__name__), xalign=0))
             box.append(c)
 
+        try:                                              # test av hodesett og høyttalere, mono → 9.1
+            import lydtest_ui
+            c, i, _h = automation.card("Test hodesett og høyttalere", "Fra mono og stereo til 7.1, 9.1 og Atmos med "
+                                       "takhøyttalere. Trykk på en høyttaler – den sier navnet sitt der den står.",
+                                       "ks-sound-symbolic")
+            i.append(lydtest_ui.SpeakerTest())
+            box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("lydtest")
         c, i, head = automation.card("Programmer", "Volum for hvert program som spiller lyd nå.", "ks-programs-symbolic")
         self.sess_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         i.append(self.sess_box)

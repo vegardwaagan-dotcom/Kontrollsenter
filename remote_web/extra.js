@@ -643,7 +643,7 @@ const baseSetTab = setTab;
 setTab = function (t) {                              // eslint-disable-line no-global-assign
   baseSetTab(t);
   if (t === "kontroll") { loadEvents(); loadEnergy(); loadNetwork(); loadProcs(); loadNas(); }
-  if (t === "kontroll") loadMedia();
+  if (t === "kontroll") { loadMedia(); try { spkLoad(); } catch (e) {} }
   if (t === "spill") { loadClips(); loadClips2(); loadClipExtras(); loadPlaytime(); loadCs2(); }
   if (t === "mer") loadGoals();
   if (t === "oversikt") X("clips").then((c) => { $("#q-clip").textContent = c.os === "windows" ? (c.engine === "medal" ? "Medal" : "Game Bar") : "Siste " + lenName(c.length); }).catch(() => {});
@@ -659,3 +659,60 @@ poll = async function () {                           // eslint-disable-line no-g
 setInterval(loadEvents, 30000);
 applyLook(); loadMe(); loadEvents();
 if (tab === "oversikt") loadHealth(false);
+
+// ---- test av hodesett og høyttalere (på PC-en, mono → 9.1) + hodesettet på telefonen ----
+(() => {
+  let info = null, pollT = 0;
+  const lay = () => info && info.layouts.find((l) => l.key === $("#spk-lay").value);
+  function room() {
+    const l = lay(), box = $("#spk-room"); if (!l || !box) return;
+    box.innerHTML = l.ch.map((c) => { const d = info.ch[c], [x, y] = d.pos;
+      return `<button class="soft${info.playing === c ? " on" : ""}" data-ch="${c}" title="${esc(d.name)}" style="grid-column:${x + 1};grid-row:${y + 1}">${c === "LFE" ? "🔉" : "🔊"}<br>${esc(d.short || d.name)}</button>`; }).join("") +
+      '<div class="me">🧑</div>';
+  }
+  async function load() {
+    if (!$("#c-spk")) return;
+    try { info = await api("/api/x/lydtest"); } catch (e) { $("#c-spk").hidden = true; return; }
+    $("#c-spk").hidden = false;
+    const s = $("#spk-sink"), keep = s.value;
+    s.innerHTML = info.sinks.map((x) => `<option value="${esc(x.name)}">${esc(x.desc)} (${x.n} kan.)</option>`).join("");
+    s.value = keep || info.sink; s.hidden = info.sinks.length < 2;
+    const l = $("#spk-lay"); if (!l.options.length) {
+      l.innerHTML = info.layouts.map((x) => `<option value="${x.key}">${esc(x.name)}</option>`).join("");
+      l.value = info.suggest;
+      $("#spk-snd").innerHTML = info.sounds.map((x) => `<option value="${x.key}">${esc(x.name)}</option>`).join("");
+    }
+    room();
+  }
+  async function poll() {                       // marker høyttaleren som spiller, så lenge noe spilles
+    clearTimeout(pollT);
+    try { const j = await api("/api/x/lydtest"); info.playing = j.playing; room(); if (j.playing) pollT = setTimeout(poll, 700); } catch (e) {}
+  }
+  async function play(ch) {
+    await act({ a: "lydtest", layout: $("#spk-lay").value, ch, sound: $("#spk-snd").value, sink: $("#spk-sink").value || null });
+    if (ch !== "stop") setTimeout(poll, 500); else { info.playing = null; room(); }
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("#spk-room [data-ch], #c-spk [data-spk]"); if (b) return play(b.dataset.ch || b.dataset.spk);
+    const h = e.target.closest("#c-spk [data-hp]"); if (h) hp(h.dataset.hp);
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "spk-lay") room();
+    if (e.target.id === "spk-sink" && info) { const s = info.sinks.find((x) => x.name === e.target.value); if (s) load(); }
+  });
+  // hodesettet på telefonen: rosa-aktig støy, panorert venstre/høyre, eller i motfase
+  let ctx = null;
+  function hp(v) {
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      const n = ctx.sampleRate * 1.5, buf = ctx.createBuffer(2, n, ctx.sampleRate);
+      let b = 0; const L = buf.getChannelData(0), R = buf.getChannelData(1);
+      for (let i = 0; i < n; i++) { b = 0.97 * b + (Math.random() * 2 - 1) * 0.12; const f = Math.min(1, i / 2000, (n - i) / 2000);
+        const s = b * f; L[i] = v === "1" ? 0 : s; R[i] = v === "-1" ? 0 : (v === "phase" ? -s : s); }
+      const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.start();
+      toast({ "-1": "Venstre øre", "0": "Begge ører", "1": "Høyre øre", phase: "Motfase: skal høres diffust, «inne i hodet»" }[v]);
+    } catch (e) { toast("Telefonen kan ikke spille lyd her: " + e.message); }
+  }
+  window.spkLoad = load;
+  setTimeout(load, 1500);
+})();
