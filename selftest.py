@@ -165,6 +165,7 @@ def _child(out):
             for n in names:
                 steps.append(("page", n, None))
                 steps.append(("tabs", n, None))
+            steps.append(("menu", None, None))
             steps.append(("web", None, None))
             sched = list(steps)
 
@@ -200,6 +201,18 @@ def _child(out):
                             GLib.timeout_add(900, tab_step)
                             return False
                         tab_step()
+                    elif kind == "menu":                 # ☰-menyen: åpne valgene som viser et vindu, og lukk dem
+                        for nm, fn in (("Hva er nytt?", win._open_whatsnew), ("Om Kontrollsenter", win._open_about),
+                                       ("Funksjoner", lambda: __import__("funksjoner_ui").open_dialog(win))):
+                            STATE["where"] = f"menyen → {nm}"
+                            try:
+                                fn()
+                                d = win.get_visible_dialog()
+                                if d is not None:
+                                    d.force_close() if hasattr(d, "force_close") else d.close()
+                            except Exception as e:  # noqa: BLE001
+                                errors.append(f"[{STATE['where']}] {type(e).__name__}: {e}")
+                        GLib.timeout_add(500, nxt)
                     elif kind == "web":
                         STATE["where"] = "mobilappen"
                         _web(self, errors, nxt, seen)

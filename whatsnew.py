@@ -13,6 +13,10 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.47", "«Hva er nytt?» og «Om» virker igjen", [
+            "☰-menyen: «Hva er nytt?» og «Om Kontrollsenter» åpnet seg ikke – nå virker de igjen",
+            "Selvtesten åpner nå menyvalgene før hver ny versjon, så en slik feil ikke slipper ut igjen",
+        ]),
     ("0.99.46", "Riktig anbefaling for «Eldre PC»", [
             "«Eldre PC – lett grafikk» anbefales bare når PC-en faktisk trenger det: 4 kjerner eller færre, under 8 GB "
             "minne, lav klokkefrekvens eller lav score i ytelsestesten – og det står hvorfor",
@@ -2287,6 +2291,10 @@ NEWS = [
         ]),
     ]),
 ]
+
+# Eldre og nyere oppføringer: (versjon, tittel, [(avsnitt, [punkter])]) – noen har punktene rett under versjonen.
+# Gjør alle like, så «Hva er nytt?», «Om» og GitHub-utgivelsene alltid kan lese dem.
+NEWS = [(v, t, g if (g and isinstance(g[0], (tuple, list))) else [("Nytt", list(g))]) for v, t, g in NEWS]
 
 
 def current_version():
