@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.54", "DLSS, Reflex og G-SYNC", [
+            "Velg DLSS-versjon for alle spill: nyeste, DLSS 4.5 (M/L), DLSS 4 (K/J), DLSS 3 og DLSS 2",
+            "DLSS-kvalitet: DLAA, Kvalitet, Balansert, Ytelse eller Ultra ytelse",
+            "Bildegenerering: nyeste modell, 2×–6× multi frame eller dynamisk etter skjermens Hz",
+            "Ray Reconstruction med nyeste modell, NVIDIA Reflex med ekstra hjelp via Vulkan, og G-SYNC/VRR i spill",
+            "Alt finnes også i NVIDIA-panelet i mobilappen",
+        ]),
     ("0.99.53", "Flere NVIDIA-funksjoner", [
             "Overklokking: klokke-offset for GPU og minne – virker også på Wayland",
             "Vifter: automatisk, fast fart eller egen viftekurve etter temperaturen",

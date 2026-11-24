@@ -148,8 +148,12 @@ class GpuPage(Gtk.ScrolledWindow):
 
         vendors = {g["vendor"] for g in self.gpus}
         if not IS_WIN:
+            if "nvidia" in vendors:
+                self._dlss()
             self._games(vendors)
         else:
+            if "nvidia" in vendors:
+                self._dlss()
             self._windows()
         if not IS_WIN:
             c, i, _h = _card("Ved oppstart", "Klokker, OverDrive og ytelsesnivå nullstilles når PC-en starter på nytt.")
@@ -688,6 +692,33 @@ class GpuPage(Gtk.ScrolledWindow):
             sw = Gtk.Switch(active=G.env_on(key) if isinstance(_v, dict) else key in cur)
             sw.connect("notify::active", lambda s, _p, k=key: self._env(k, s.get_active()))
             i.append(_row(name, desc, sw))
+        self.box.append(c)
+
+    def _dlss(self):
+        """DLSS (versjon og kvalitet), bildegenerering, Ray Reconstruction, Reflex og G-SYNC for alle Proton-spill."""
+        c, i, _h = _card("DLSS, Reflex og G-SYNC", "Gjelder alle Windows-spill i Steam/Proton du starter etter neste "
+                         "innlogging. «Spillet bestemmer» = som før.", VENDOR["nvidia"])
+        if IS_WIN:
+            note = Gtk.Label(label=_t("På Windows velges DLSS-versjon, bildegenerering og G-SYNC i NVIDIA-appen "
+                                      "(Grafikk → DLSS-overstyring)."), xalign=0, wrap=True)
+            note.add_css_class("ks-sub")
+            i.append(note)
+            self.box.append(c)
+            return
+        for key, name, desc, opts in G.NV_CHOICES:
+            dd = Gtk.DropDown.new_from_strings([_t(t) for _i, t, _v in opts])
+            dd.set_valign(Gtk.Align.CENTER)
+            ids = [o[0] for o in opts]
+            dd.set_selected(ids.index(G.nv_choice(key)))
+
+            def changed(d, _p, k=key, ids=ids):
+                try:
+                    t = G.nv_choice_set(k, ids[d.get_selected()])
+                    self.msg.set_label(_t("Lagret: ") + t + _t(" – gjelder etter neste innlogging"))
+                except Exception as e:  # noqa: BLE001
+                    self.msg.set_label(str(e))
+            dd.connect("notify::selected", changed)
+            i.append(_row(name, desc, dd))
         self.box.append(c)
 
     def _env(self, key, on):

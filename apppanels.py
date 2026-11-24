@@ -281,10 +281,14 @@ def p_nvidia(win):
     opts = [["auto", "Automatisk"]] + [[f"fast:{p}", f"Fast {p} %"] for p in (40, 60, 80, 100)] + [["kurve", "Egen kurve"]]
     if fan_val not in [o[0] for o in opts]:
         opts.append([fan_val, f"Fast {fc.get('pct')} %"])
-    p = {"id": "nvidia", "icon": "🟩", "title": "NVIDIA – overklokking og vifter", "rows": rows,
+    p = {"id": "nvidia", "icon": "🟩", "title": "NVIDIA – DLSS, Reflex, overklokking", "rows": rows,
          "desc": ("Overklokking gjelder til PC-en startes på nytt. Kurven og finjustering finner du på PC-en under "
                   "Skjermkort." if ready else
                   "⚠️ Trykk «Gi tilgang» under Skjermkort på PC-en én gang før du kan endre dette herfra.")}
+    if not G.IS_WIN:                                    # DLSS, bildegenerering, Reflex, G-SYNC – trenger ikke tilgang
+        p["items"] = [{"title": name, "badge": next(t for i, t, _v in opts if i == G.nv_choice(key)),
+                       "buttons": [_btn(t, {"do": "nvchoice", "key": key, "id": i}) for i, t, _v in opts]}
+                      for key, name, _d, opts in G.NV_CHOICES]
     if ready and not G.IS_WIN:
         p["select"] = {"label": "Vifter", "options": opts, "value": fan_val, "action": {"a": "panel", "do": "nvfan"}}
         p["buttons"] = [_btn("Standard", {"do": "nvoc", "core": 0, "mem": 0}),
@@ -482,6 +486,9 @@ def run(win, a):
             raise ValueError("fant ikke funnet – sjekk på nytt")
         _ASSIST.clear()
         return str(f.fix[1]())
+    if do == "nvchoice":
+        import gpu as G
+        return G.nv_choice_set(str(a.get("key", "")), str(a.get("id", ""))) + " – gjelder etter neste innlogging på PC-en"
     if do in ("nvoc", "nvfan"):
         import gpu as G
         nv = next((g for g in G.detect() if g.get("vendor") == "nvidia"), None)

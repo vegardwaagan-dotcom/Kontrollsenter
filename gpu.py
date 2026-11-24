@@ -395,7 +395,7 @@ def save_cmd(gid, key, cmd):
 ENV_OPTS = [
     # nøkkel, verdi, navn, forklaring, gjelder (None = alle)
     ("PROTON_ENABLE_NVAPI", "1", "DLSS og NVIDIA Reflex i Proton-spill",
-     "Lar Windows-spill i Proton bruke DLSS og Reflex.", "nvidia"),
+     "Lar Windows-spill i Proton bruke DLSS og Reflex (på som standard i Proton 9 og nyere).", "nvidia"),
     ("PROTON_ENABLE_NGX_UPDATER", "1", "Nyeste DLSS automatisk",
      "Proton henter nyeste DLSS-versjon til spill som har eldre.", "nvidia"),
     ("__GL_SHADER_DISK_CACHE_SIZE", "12000000000", "Stor shader-cache (12 GB)",
@@ -404,11 +404,6 @@ ENV_OPTS = [
      "Færre bilder i kø – raskere respons, litt lavere FPS.", "nvidia"),
     ("NVPRESENT_ENABLE_SMOOTH_MOTION", "1", "NVIDIA Smooth Motion",
      "Dobler bildefrekvensen i spill som ikke har egen bildegenerering (RTX 40/50, driver 570+).", "nvidia"),
-    ("DXVK_NVAPI_DRS_NGX_DLSS_SR_OVERRIDE",
-     {"DXVK_NVAPI_DRS_NGX_DLSS_SR_OVERRIDE": "on",
-      "DXVK_NVAPI_DRS_NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest"},
-     "Nyeste DLSS-modell (DLSS 4)", "Skarpere bilde: alle spill med DLSS bruker den nyeste modellen. Slå på «Nyeste "
-     "DLSS automatisk» også.", "nvidia"),
     ("DXVK_NVAPI_SET_NGX_DEBUG_OPTIONS", "DLSSIndicator=1024,DLSSGIndicator=2", "Vis DLSS-info i spillet",
      "Viser hvilken DLSS-versjon og modus spillet bruker, nede i hjørnet.", "nvidia"),
     ("__GL_THREADED_OPTIMIZATIONS", "1", "Trådede optimaliseringer (OpenGL)",
@@ -445,6 +440,111 @@ def env_on(key):
     return key in cur
 
 
+_D = "DXVK_NVAPI_DRS_NGX_"
+
+
+def _sr(preset):
+    return {_D + "DLSS_SR_OVERRIDE": "on", _D + "DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION": preset}
+
+
+# nøkkel, navn, forklaring, [(id, navn, {variabel: verdi})] – første valg = spillet bestemmer (ingen variabler)
+NV_CHOICES = [
+    ("dlss", "DLSS-versjon (oppskalering)",
+     "Hvilken DLSS-modell spillene bruker. «Nyeste» følger driveren, så nye versjoner kommer av seg selv. "
+     "DLSS 1 kan ikke byttes – de få spillene som har den, har den bygget inn.",
+     [("spill", "Spillet bestemmer", {}),
+      ("nyeste", "Nyeste (anbefalt av NVIDIA)", _sr("render_preset_latest")),
+      ("m", "DLSS 4.5 – modell M (best i Ytelse)", _sr("render_preset_m")),
+      ("l", "DLSS 4.5 – modell L (best i Ultra ytelse)", _sr("render_preset_l")),
+      ("k", "DLSS 4 – transformer K", _sr("render_preset_k")),
+      ("j", "DLSS 4 – transformer J", _sr("render_preset_j")),
+      ("e", "DLSS 3 – CNN E (raskest)", _sr("render_preset_e")),
+      ("c", "DLSS 2 – CNN C (raske spill)", _sr("render_preset_c")),
+      ("a", "DLSS 2 – CNN A (eldst)", _sr("render_preset_a"))]),
+    ("dlssmode", "DLSS-kvalitet",
+     "Hvor lav oppløsning spillet tegner i før DLSS skalerer opp. DLAA = full oppløsning, skarpest.",
+     [("spill", "Spillet bestemmer", {})] +
+     [(m, t, {_D + "DLSS_SR_OVERRIDE": "on", _D + "DLSS_SR_MODE": m}) for m, t in (
+         ("dlaa", "DLAA (full oppløsning)"), ("quality", "Kvalitet"), ("balanced", "Balansert"),
+         ("performance", "Ytelse"), ("ultra_performance", "Ultra ytelse"))]),
+    ("fg", "Bildegenerering (Frame Generation)",
+     "Lager ekstra bilder mellom de ekte – mye høyere FPS. Spillet må ha DLSS Frame Generation. 3× og mer krever "
+     "RTX 50; 5× og 6× krever DLSS 4.5.",
+     [("spill", "Spillet bestemmer", {}),
+      ("nyeste", "Nyeste modell, antall som i spillet",
+       {_D + "DLSS_FG_OVERRIDE": "on", _D + "DLSS_FG_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest"})] +
+     [(f"x{n + 1}", f"{n + 1}× (multi frame)", {_D + "DLSS_FG_OVERRIDE": "on",
+                                               _D + "DLSS_FG_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest",
+                                               _D + "DLSSG_MULTI_FRAME_COUNT": str(n)}) for n in range(1, 6)] +
+     [("dyn", "Dynamisk (tilpasses skjermens Hz)",
+       {_D + "DLSS_FG_OVERRIDE": "on", _D + "DLSSG_MODE": "dynamic", _D + "DLSSG_DYNAMIC_TARGET_FRAME_RATE": "auto"})]),
+    ("rr", "Ray Reconstruction",
+     "Ren og skarp strålesporing (DLSS 3.5+). Bare i spill som har det.",
+     [("spill", "Spillet bestemmer", {}),
+      ("nyeste", "Nyeste modell", {_D + "DLSS_RR_OVERRIDE": "on",
+                                   _D + "DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest"})]),
+    ("reflex", "NVIDIA Reflex",
+     "Lavere forsinkelse mellom mus og skjerm – slå på Reflex i spillets meny. Virker det ikke, prøv «Ekstra "
+     "hjelp», som legger Reflex inn via Vulkan.",
+     [("spill", "Som spillet sier", {}),
+      ("lag", "Ekstra hjelp (Vulkan-lag)", {"DXVK_NVAPI_VKREFLEX": "1"})]),
+    ("gsync", "G-SYNC / VRR i spill",
+     "Fjerner riving og hakking. Skjermen må også stå på VRR «Alltid» eller «Automatisk» under Skjerm og lys.",
+     [("spill", "På (standard)", {}),
+      ("av", "Av i alle spill", {"__GL_GSYNC_ALLOWED": "0", "__GL_VRR_ALLOWED": "0"})]),
+]
+
+
+def nv_choice(key):
+    """Hvilket valg som er aktivt nå (id)."""
+    cur = env_get()
+    opts = next(o for k, _n, _d, o in NV_CHOICES if k == key)
+    for oid, _t, vars_ in reversed(opts):
+        if vars_ and all(cur.get(k) == v for k, v in vars_.items()):
+            return oid
+    return opts[0][0]
+
+
+def nv_choice_set(key, oid):
+    opts = next((o for k, _n, _d, o in NV_CHOICES if k == key), None)
+    if opts is None or oid not in [o[0] for o in opts]:
+        raise ValueError("ukjent valg")
+    cur = env_get()
+    old = {k for _i, _t, v in opts for k in v}
+    keep_sr = any(cur.get(_D + "DLSS_SR_OVERRIDE") and nv_choice(o) != "spill" for o in ("dlss", "dlssmode")
+                  if o != key)
+    for k in old:
+        if k == _D + "DLSS_SR_OVERRIDE" and keep_sr:
+            continue
+        cur.pop(k, None)
+    new = dict(next(v for i, _t, v in opts if i == oid))
+    cur.update(new)
+    _env_write(cur)
+    if any(k.startswith(_D) for k in new) and "PROTON_ENABLE_NGX_UPDATER" not in cur:
+        env_set("PROTON_ENABLE_NGX_UPDATER", True)         # nyeste modeller lastes ned av driveren
+    return next(t for i, t, _v in opts if i == oid)
+
+
+def _ngx_conf(on):
+    """NGX-oppdatereren må også tillates i NVIDIA sin egen fil."""
+    p = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "nvidia-ngx-conf.json")
+    try:
+        c = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
+    except (OSError, ValueError):
+        c = {}
+    c["allow_ngx_updater"] = bool(on)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(c, f, indent=1)
+
+
+def _env_write(cur):
+    os.makedirs(os.path.dirname(ENV_FILE), exist_ok=True)
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        f.write("# Satt av Kontrollsenter (GPU-innstillinger → Spillinnstillinger). Gjelder etter ny innlogging.\n")
+        for k, v in cur.items():
+            f.write(f"{k}={v}\n")
+
+
 def env_set(key, on):
     allowed = {k: v for k, v, *_ in ENV_OPTS}
     if key not in allowed:
@@ -456,11 +556,9 @@ def env_set(key, on):
             cur[k] = v
         else:
             cur.pop(k, None)
-    os.makedirs(os.path.dirname(ENV_FILE), exist_ok=True)
-    with open(ENV_FILE, "w", encoding="utf-8") as f:
-        f.write("# Satt av Kontrollsenter (GPU-innstillinger → Spillinnstillinger). Gjelder etter ny innlogging.\n")
-        for k, v in cur.items():
-            f.write(f"{k}={v}\n")
+    _env_write(cur)
+    if key == "PROTON_ENABLE_NGX_UPDATER" and not IS_WIN:
+        _ngx_conf(on)
 
 
 # --------------------------------------------------------------------------
