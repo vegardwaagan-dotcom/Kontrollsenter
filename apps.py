@@ -310,8 +310,8 @@ SYS_PKGS = {"ffmpeg": {"pacman": "ffmpeg", "dnf": "ffmpeg", "apt": "ffmpeg", "zy
 def _pm():
     """«pacman», «dnf», «apt», «zypper», «ostree» (Bazzite/Silverblue) eller None."""
     try:
-        import komponenter
-        return komponenter._pm()
+        import sysdeps
+        return sysdeps.pm()
     except Exception:  # noqa: BLE001
         return None
 
@@ -327,7 +327,9 @@ def _native(pkgs, pt=None, timeout=1800):
     cmd = {"pacman": ["pacman", "-S", "--needed", "--noconfirm", *pkgs],
            "dnf": ["dnf", "install", "-y", *pkgs],
            "apt": ["sh", "-c", "apt-get update && apt-get install -y " + " ".join(pkgs)],
-           "zypper": ["zypper", "-n", "install", *pkgs]}[pm]
+           "zypper": ["zypper", "-n", "install", *pkgs],
+           "xbps": ["xbps-install", "-Sy", *pkgs],
+           "eopkg": ["eopkg", "install", "-y", *pkgs]}[pm]
     code, out = P.run_cmd(["pkexec", *cmd], pt, timeout) if pt else (
         lambda r: (r.returncode, (r.stdout or "") + (r.stderr or "")))(
         subprocess.run(["pkexec", *cmd], capture_output=True, text=True, timeout=timeout))

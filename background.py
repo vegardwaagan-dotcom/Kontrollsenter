@@ -135,6 +135,18 @@ def flatpak_updates():
         return 0
 
 
+
+def _tray_host():
+    """Finnes det et statusfelt for ikoner (KDE, GNOME med AppIndicator, XFCE, Cinnamon …)?"""
+    try:
+        from gi.repository import Gio, GLib
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        return bool(bus.call_sync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+                                  "NameHasOwner", GLib.Variant("(s)", ("org.kde.StatusNotifierWatcher",)),
+                                  None, 0, 2000, None).unpack()[0])
+    except Exception:  # noqa: BLE001
+        return True
+
 class Background:
     """Kobles til hovedvinduet. win må ha: cpu_temp_now(), gpu_temp_now(), power (PowerCard)."""
 
@@ -325,9 +337,12 @@ class Background:
             self.win.set_visible(False)
             if not self.sent.get("_bg_info"):
                 self.sent["_bg_info"] = time.time()
+                tray = _tray_host()
                 self.notify("bg", "Kontrollsenter kjører i bakgrunnen",
-                            "Overlay, vifter og varsler fortsetter. Åpne igjen fra ikonet i statusfeltet, "
-                            "eller velg Avslutt der.", force=True)
+                            "Overlay, vifter og varsler fortsetter. " +
+                            ("Åpne igjen fra ikonet i statusfeltet, eller velg Avslutt der." if tray else
+                             "Åpne igjen ved å starte Kontrollsenter fra menyen (dette skrivebordet har ikke "
+                             "statusfelt-ikoner – på GNOME: installer utvidelsen «AppIndicator»)."), force=True)
             return True
         return False
 

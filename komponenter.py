@@ -97,7 +97,8 @@ def ours(cid):
 def _pm():
     if os.path.exists("/run/ostree-booted"):
         return "ostree"
-    for pm, exe in (("pacman", "pacman"), ("dnf", "dnf"), ("apt", "apt-get"), ("zypper", "zypper")):
+    for pm, exe in (("pacman", "pacman"), ("dnf", "dnf"), ("apt", "apt-get"), ("zypper", "zypper"),
+                    ("xbps", "xbps-install"), ("eopkg", "eopkg")):
         if shutil.which(exe):
             return pm
     return None
@@ -338,7 +339,9 @@ class Runner:
                                   ["pacman", "-R", "--noconfirm", pkg]),
                        "dnf": ["dnf", "install" if inst else "remove", "-y", pkg],
                        "apt": (["apt-get", "install", "-y", pkg] if inst else ["apt-get", "remove", "-y", pkg]),
-                       "zypper": ["zypper", "-n", "install" if inst else "remove", pkg]}[pm]
+                       "zypper": ["zypper", "-n", "install" if inst else "remove", pkg],
+                       "xbps": (["xbps-install", "-Sy", pkg] if inst else ["xbps-remove", "-y", pkg]),
+                       "eopkg": ["eopkg", "install" if inst else "remove", "-y", pkg]}[pm]
                 self.state["step"] = name + " – skriv passordet ditt når Linux spør"
                 self._emit()
                 code, out = self._run_cmd(i, cmd, mb if inst else 0, root=True)

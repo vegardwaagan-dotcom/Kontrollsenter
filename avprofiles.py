@@ -209,10 +209,30 @@ def apply_audio(pid):
 # ==========================================================================
 # SKJERM
 # ==========================================================================
+def _display_tool():
+    """Hvilket verktøy som styrer skjermene her: «kde», «wlr» (Sway, Hyprland …), «x11» eller None."""
+    import shutil
+    wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
+    if shutil.which("kscreen-doctor") and "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "KDE").upper():
+        return "kde"
+    if wayland and shutil.which("wlr-randr"):
+        return "wlr"
+    if not wayland and shutil.which("xrandr") and os.environ.get("DISPLAY"):
+        return "x11"
+    return None
+
+
 def displays():
     """[{id, name, w, h, hz, hdr, vrr, modes: [(w,h,hz)]}] – skjermene som er koblet til."""
     if IS_WIN:
         return _win_displays()
+    tool = _display_tool()
+    if tool == "x11":
+        return _xrandr_displays()
+    if tool == "wlr":
+        return _wlr_displays()
+    if tool is None:
+        return []
     code, out = _run(["kscreen-doctor", "-j"], 10)
     try:
         d = json.loads(out)
@@ -231,9 +251,70 @@ def displays():
     return res
 
 
+def _xrandr_displays():
+    code, out = _run(["xrandr", "--query"], 10)
+    res, cur = [], None
+    for ln in out.splitlines():
+        m = re.match(r"^(\S+) connected", ln)
+        if m:
+            cur = {"id": m.group(1), "name": m.group(1), "w": None, "h": None, "hz": None, "hdr": None, "vrr": None,
+                   "modes": []}
+            res.append(cur)
+            continue
+        if not ln.startswith(" ") or cur is None:
+            if not ln.startswith(" "):
+                cur = None
+            continue
+        mm = re.match(r"^\s+(\d+)x(\d+)\S*\s+(.*)$", ln)
+        if not mm:
+            continue
+        w, h = int(mm.group(1)), int(mm.group(2))
+        for rate in re.finditer(r"([\d.]+)(\*?)(\+?)", mm.group(3)):
+            hz = round(float(rate.group(1)))
+            if (w, h, hz) not in cur["modes"]:
+                cur["modes"].append((w, h, hz))
+            if rate.group(2):
+                cur.update(w=w, h=h, hz=hz)
+    for d in res:
+        d["modes"].sort(reverse=True)
+    return [d for d in res if d["w"]]
+
+
+def _wlr_displays():
+    code, out = _run(["wlr-randr", "--json"], 10)
+    try:
+        data = json.loads(out)
+    except ValueError:
+        return []
+    res = []
+    for o in data:
+        if not o.get("enabled"):
+            continue
+        modes = sorted({(m["width"], m["height"], round(m["refresh"])) for m in o.get("modes", [])}, reverse=True)
+        cur = next((m for m in o.get("modes", []) if m.get("current")), None)
+        res.append({"id": o["name"], "name": o.get("description") or o["name"], "w": cur["width"] if cur else None,
+                    "h": cur["height"] if cur else None, "hz": round(cur["refresh"]) if cur else None,
+                    "hdr": None, "vrr": None, "modes": modes})
+    return res
+
+
 def _set_display(o):
     if IS_WIN:
         return _win_set_display(o)
+    tool = _display_tool()
+    if tool in ("x11", "wlr"):
+        if not o.get("w"):
+            return
+        if not re.fullmatch(r"[\w.-]+", str(o["id"])):
+            raise ValueError("ugyldig skjermnavn")
+        cmd = (["xrandr", "--output", o["id"], "--mode", f"{o['w']}x{o['h']}", "--rate", str(o["hz"])]
+               if tool == "x11" else ["wlr-randr", "--output", o["id"], "--mode", f"{o['w']}x{o['h']}@{o['hz']}"])
+        code, out = _run(cmd, 20)
+        if code != 0:
+            raise RuntimeError(out.strip().splitlines()[-1] if out.strip() else "kunne ikke endre skjermen")
+        return
+    if tool is None:
+        raise RuntimeError("på dette skrivebordet endres oppløsningen i systemets egne skjerminnstillinger")
     args = []
     if o.get("w") and o.get("hz"):
         args.append(f"output.{o['id']}.mode.{o['w']}x{o['h']}@{o['hz']}")
@@ -423,9 +504,21 @@ def delete(kind, pid):
 # ==========================================================================
 # NATTLYS OG LYSSTYRKE
 # ==========================================================================
+def _gnome():
+    import shutil
+    return "GNOME" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper() and bool(shutil.which("gsettings"))
+
+
+_GCOL = "org.gnome.settings-daemon.plugins.color"
+
+
 def night_state():
     if IS_WIN:
         return None
+    if _gnome():
+        on = _run(["gsettings", "get", _GCOL, "night-light-enabled"], 5)[1].strip() == "true"
+        t = _run(["gsettings", "get", _GCOL, "night-light-temperature"], 5)[1].strip().split()[-1:]
+        return {"on": on, "temp": int(t[0]) if t and t[0].isdigit() else 4000, "running": on}
     try:
         from gi.repository import Gio, GLib
         bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
@@ -444,6 +537,19 @@ def set_night(on, temp=None):
     if IS_WIN:
         os.startfile("ms-settings:nightlight")  # noqa: S606
         return "Nattlys-innstillingene i Windows er åpnet"
+    if _gnome():                                       # GNOME: alltid på (fra 0 til 24) med valgt temperatur
+        _run(["gsettings", "set", _GCOL, "night-light-enabled", "true" if on else "false"], 5)
+        if on:
+            _run(["gsettings", "set", _GCOL, "night-light-schedule-automatic", "false"], 5)
+            _run(["gsettings", "set", _GCOL, "night-light-schedule-from", "0.0"], 5)
+            _run(["gsettings", "set", _GCOL, "night-light-schedule-to", "23.99"], 5)
+            if temp:
+                _run(["gsettings", "set", _GCOL, "night-light-temperature",
+                      f"uint32 {max(1700, min(4700, int(temp)))}"], 5)
+        return "Nattlys på ✓" if on else "Nattlys av"
+    import shutil
+    if not shutil.which("kwriteconfig6"):
+        raise RuntimeError("nattlys styres herfra på KDE Plasma og GNOME – bruk skrivebordets egne innstillinger")
     args = [["kwriteconfig6", "--file", "kwinrc", "--group", "NightColor", "--key", "Active", "true" if on else "false"]]
     if on:
         args.append(["kwriteconfig6", "--file", "kwinrc", "--group", "NightColor", "--key", "Mode", "Constant"])
@@ -471,6 +577,20 @@ def _bright_displays():
         return []
 
 
+def _backlight():
+    """(navn, nå, maks) for den innebygde skjermen (bærbare) – eller None."""
+    import glob
+    for d in sorted(glob.glob("/sys/class/backlight/*")):
+        try:
+            mx = int(open(d + "/max_brightness").read())
+            cur = int(open(d + "/brightness").read())
+            if mx > 0:
+                return os.path.basename(d), cur, mx
+        except (OSError, ValueError):
+            continue
+    return None
+
+
 def brightness():
     """Lysstyrke i % (første skjerm), eller None."""
     if IS_WIN:
@@ -493,8 +613,9 @@ def brightness():
             mx = prop("MaxBrightness")
             return round(100 * prop("Brightness") / mx) if mx else None
     except Exception:  # noqa: BLE001
-        return None
-    return None
+        pass
+    bl = _backlight()                                  # andre skrivebord: bærbar-skjermen
+    return round(100 * bl[1] / bl[2]) if bl else None
 
 
 def set_brightness(pct):
@@ -511,6 +632,14 @@ def set_brightness(pct):
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     ds = _bright_displays()
     if not ds:
+        bl = _backlight()
+        if bl:                                         # logind lar brukeren sette lysstyrken selv (alle distroer)
+            sysbus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            sysbus.call_sync("org.freedesktop.login1", "/org/freedesktop/login1/session/auto",
+                             "org.freedesktop.login1.Session", "SetBrightness",
+                             GLib.Variant("(ssu)", ("backlight", bl[0], max(1, round(bl[2] * pct / 100)))),
+                             None, 0, 5000, None)
+            return f"Lysstyrke {pct} %"
         raise RuntimeError("skjermen støtter ikke lysstyrke herfra (DDC/CI av i skjermmenyen?)")
     for d in ds:
         path = f"/org/kde/ScreenBrightness/{d}"

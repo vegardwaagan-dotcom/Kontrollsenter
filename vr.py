@@ -417,41 +417,14 @@ def wivrn_wired():
 PORTS = ["9943-9944/tcp", "9943-9944/udp"]
 
 
-def _zones():
-    """Aktive soner – bare navnet («FedoraWorkstation (default)» → «FedoraWorkstation»)."""
-    _c, out = _run(["firewall-cmd", "--get-active-zones"], 10)
-    return [ln.split()[0] for ln in out.splitlines() if ln.strip() and not ln.startswith((" ", "\t"))]
-
-
-def _covers(spec, port, proto):
-    """«1025-65535/tcp» eller «9943/udp» dekker port/proto?"""
-    m = re.fullmatch(r"(\d+)(?:-(\d+))?/(\w+)", spec.strip())
-    if not m or m.group(3) != proto:
-        return False
-    lo, hi = int(m.group(1)), int(m.group(2) or m.group(1))
-    return lo <= port <= hi
-
-
-def _zone_open(z, ports=None):
-    _c, ports_now = _run(["firewall-cmd", "--zone", z, "--list-ports"], 10)
-    _c, svcs = _run(["firewall-cmd", "--zone", z, "--list-services"], 10)
-    _c, target = _run(["firewall-cmd", "--zone", z, "--get-target"], 10)
-    if "alvr" in svcs.split() or target.strip().upper() == "ACCEPT":
-        return True
-    specs = ports_now.split()
-    want = [(int(p.split("/")[0].split("-")[0]), p.split("/")[1]) for p in (ports or PORTS)]
-    want += [(int(p.split("/")[0].split("-")[1]), p.split("/")[1]) for p in (ports or PORTS) if "-" in p.split("/")[0]]
-    return all(any(_covers(sp, port, proto) for sp in specs) for port, proto in want)
-
 
 def firewall_ok(ports=None):
     if IS_WIN:
         _c, out = _run(["powershell", "-NoProfile", "-Command",
                         "(Get-NetFirewallRule -DisplayName 'Kontrollsenter ALVR*' -ErrorAction SilentlyContinue).Count"], 20)
         return out.strip() not in ("", "0")
-    if not shutil.which("firewall-cmd") or _run(["firewall-cmd", "--state"], 10)[0] != 0:
-        return True                                   # ingen aktiv brannmur
-    return all(_zone_open(z, ports) for z in _zones())
+    import firewall                               # firewalld eller ufw (felles for hele Kontrollsenter)
+    return firewall.ports_open(ports or PORTS, services=("alvr",))
 
 
 def fix_firewall(ports=None):
@@ -467,26 +440,8 @@ def fix_firewall(ports=None):
         if code != 0:
             raise RuntimeError("Windows ga ikke administratortilgang")
         return "Brannmuren slipper gjennom VR-strømmen ✓"
-    if firewall_ok(ports):
-        return "Brannmuren slipper allerede gjennom VR-strømmen ✓"
-    zones = [z for z in _zones() if not _zone_open(z, ports)]
-    if not zones:
-        return "Brannmuren slipper gjennom VR-strømmen ✓"
-    if not all(re.fullmatch(r"[\w.-]+", z) for z in zones):
-        raise RuntimeError("uventet navn på brannmursone")
-    cmds = []
-    for z in zones:
-        for p in ports:
-            cmds.append(f"firewall-cmd --zone={z} --add-port={p} --permanent")
-    cmds.append("firewall-cmd --reload")
-    code, out = _run(["pkexec", "sh", "-c", " && ".join(cmds)], 180)
-    if code in (126, 127):
-        raise RuntimeError("Passordet ble ikke gitt (avbrutt) – prøv igjen")
-    if code != 0:
-        raise RuntimeError("firewall-cmd feilet: " + (out.strip().splitlines() or ["ukjent feil"])[-1][:160])
-    if not firewall_ok(ports):
-        raise RuntimeError("Portene ble lagt til, men brannmuren melder fortsatt at de er stengt")
-    return "Brannmuren slipper gjennom VR-strømmen ✓"
+    import firewall
+    return firewall.open_ports(ports, "VR-strømmen")
 
 
 def _launcher_bin():

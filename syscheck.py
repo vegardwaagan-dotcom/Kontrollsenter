@@ -380,6 +380,8 @@ def run_all(progress=None, show=True):
         checks.append(("OpenRGB", lambda: check_openrgb(pids)))
     if hw["logitech"]:
         checks.append(("Solaar", lambda: check_solaar(pids)))
+    checks += [("Systembiblioteker", lambda: __import__("sysdeps").check()),
+               ("Brannmur", lambda: __import__("firewall").check())]
     checks += [("Vifter", check_fans), ("Spill-overlay", check_overlay),
                ("Pakkebehandler og oppdateringer", _pkg), ("Drivere og fastvare", _drivers)]
     out = []

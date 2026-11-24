@@ -13,6 +13,18 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.52", "Virker på flere Linux-varianter", [
+            "Systemsjekk finner og installerer bibliotekene funksjonene trenger (grafer, lyd, NAS, dagbok, kontroller) "
+            "med riktige pakkenavn for Arch, Fedora, Debian/Ubuntu, openSUSE, Void og Solus – ett trykk",
+            "Brannmur: Systemsjekk ser om firewalld eller ufw stenger ute mobilappen, TV-en og chatten, og åpner port "
+            "27100 og 27160–27189 bare for hjemmenettet. VR-oppsettet bruker det samme og virker nå også med ufw",
+            "Oppløsning og Hz virker også på X11 (xrandr) og Sway/Hyprland (wlr-randr). På GNOME åpner knappen "
+            "skjerminnstillingene",
+            "Nattlys styres også på GNOME, og lysstyrken på bærbare virker på alle skrivebord",
+            "Systemoppdateringer og programinstallasjon også på Void og Solus",
+            "Installasjonsskriptet legger inn tilleggene med en gang, og støtter Void og Solus",
+            "Uten statusfelt (GNOME uten AppIndicator) forklarer Kontrollsenter hvordan du åpner det igjen",
+        ]),
     ("0.99.51", "Arch, CachyOS, Debian og openSUSE", [
             "Installere programmer virker nå på Arch/CachyOS og andre Linux-varianter uten Flatpak: Flatpak "
             "installeres først (du skriver passordet), så programmet fra Flathub",

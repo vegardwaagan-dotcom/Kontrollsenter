@@ -211,6 +211,16 @@ def system_check():
         n = len([ln for ln in out.splitlines() if ln.startswith("Inst ")])
         return (n, f"{n} systempakker kan oppdateres") if code == 0 and n else (0, "Oppdatert") if code == 0 else \
             (-1, "Kunne ikke sjekke systemet")
+    if shutil.which("xbps-install"):                   # Void
+        code, out = _run(["xbps-install", "-Mun"], 240)
+        n = len([ln for ln in out.splitlines() if ln.strip()])
+        return (n, f"{n} systempakker kan oppdateres") if code == 0 and n else (0, "Oppdatert") if code == 0 else \
+            (-1, "Kunne ikke sjekke systemet")
+    if shutil.which("eopkg"):                          # Solus
+        code, out = _run(["eopkg", "list-upgrades"], 240)
+        n = len([ln for ln in out.splitlines() if ln.strip() and "No packages" not in ln])
+        return (n, f"{n} systempakker kan oppdateres") if code == 0 and n else (0, "Oppdatert") if code == 0 else \
+            (-1, "Kunne ikke sjekke systemet")
     if shutil.which("zypper"):                         # openSUSE
         code, out = _run(["zypper", "-q", "-n", "list-updates"], 240)
         n = len([ln for ln in out.splitlines() if ln.startswith("v ")])
@@ -245,6 +255,10 @@ def system_apply(t):
         cmd = ["sh", "-c", "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"]
     elif shutil.which("zypper"):
         cmd = ["zypper", "-n", "update"]
+    elif shutil.which("xbps-install"):
+        cmd = ["sh", "-c", "xbps-install -Syu xbps && xbps-install -Syu"]
+    elif shutil.which("eopkg"):
+        cmd = ["eopkg", "upgrade", "-y"]
     if cmd:
         code, out = P.run_cmd(["pkexec", *cmd], t, 3600)
         return code == 0, ("Oppdatert – start PC-en på nytt hvis kjernen eller driverne ble oppdatert" if code == 0

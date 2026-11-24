@@ -38,6 +38,8 @@ elif har pacman;         then PM=pacman
 elif har dnf;            then PM=dnf
 elif har apt-get;        then PM=apt
 elif har zypper;         then PM=zypper
+elif har xbps-install;   then PM=xbps
+elif har eopkg;          then PM=eopkg
 else PM=ukjent; fi
 [ -n "${SM_TEST_PM:-}" ] && { PM=$SM_TEST_PM; OSTREE=0; }   # kun for testing
 
@@ -46,6 +48,8 @@ case $PM in
   dnf|ostree) P_GTK="python3-gobject gtk4 libadwaita"; P_RATBAG=libratbag-ratbagd; P_PIPX=pipx; P_EXTRA=""; P_SMB=samba-client ;;
   apt)    P_GTK="python3-gi gir1.2-gtk-4.0 gir1.2-adw-1"; P_RATBAG=ratbagd; P_PIPX="pipx python3-venv"; P_EXTRA=""; P_SMB=smbclient ;;
   zypper) P_GTK="python3-gobject typelib-1_0-Gtk-4_0 typelib-1_0-Adw-1"; P_RATBAG=libratbag-tools; P_PIPX=python3-pipx; P_EXTRA=""; P_SMB=samba-client ;;
+  xbps)   P_GTK="python3-gobject gtk4 libadwaita"; P_RATBAG=libratbag; P_PIPX=python3-pipx; P_EXTRA=""; P_SMB=samba ;;
+  eopkg)  P_GTK="python-gobject libgtk-4 libadwaita"; P_RATBAG=libratbag; P_PIPX=""; P_EXTRA=""; P_SMB=samba ;;
   *)      P_GTK=""; P_RATBAG=""; P_PIPX=""; P_EXTRA=""; P_SMB="" ;;
 esac
 . /etc/os-release 2>/dev/null || true
@@ -65,6 +69,8 @@ elif [ -n "$P_GTK" ] && spør "Installere $P_GTK (krever sudo-passordet ditt)?";
       dnf)    sudo dnf install -y $P_GTK ;;
       apt)    sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y $P_GTK ;;
       zypper) sudo zypper -n install $P_GTK ;;
+      xbps)   sudo xbps-install -Sy $P_GTK ;;
+      eopkg)  sudo eopkg install -y $P_GTK ;;
       ostree) sudo rpm-ostree install --idempotent --allow-inactive $P_GTK
               gul "Bazzite/Silverblue: start PC-en på nytt, og kjør installer.sh igjen." ;;
     esac
@@ -111,6 +117,21 @@ if [ -d "$DESKTOP_DIR" ]; then
     gio set "$DESKTOP_DIR/Kontrollsenter.desktop" metadata::trusted true 2>/dev/null || true
 fi
 grønn "✓ Kontrollsenter er installert i $DEST, med snarvei i menyen og på skrivebordet"
+
+# --------------------------------------------------------------------------
+# Tillegg: bibliotekene enkeltfunksjonene bruker (grafer, lyd, NAS, dagbok …) – riktige pakkenavn per distro
+# --------------------------------------------------------------------------
+if [ "$PM" != "ostree" ] && [ "$PM" != "ukjent" ]; then
+    MANGLER=$(python3 "$DEST/sysdeps.py" --list 2>/dev/null)
+    if [ -n "$MANGLER" ]; then
+        blå "Tillegg"
+        echo "$MANGLER" | sed 's/^/  • /'
+        CMD=$(python3 "$DEST/sysdeps.py" 2>/dev/null)
+        if [ -n "$CMD" ] && spør "Installere dette (anbefalt – ellers virker ikke alle funksjonene)?"; then
+            sudo sh -c "$CMD" && grønn "✓ Tilleggene er installert" || gul "Noe ble ikke installert – se Systemsjekk i Kontrollsenter"
+        fi
+    fi
+fi
 
 # --------------------------------------------------------------------------
 blå "Ferdig"

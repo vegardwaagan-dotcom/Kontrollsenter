@@ -715,11 +715,12 @@ def security():
     except Exception as e:  # noqa: BLE001
         items.append({"title": "Åpne porter", "level": "warn", "detail": str(e)})
     if not IS_WIN:
-        try:
-            r = subprocess.run(["firewall-cmd", "--state"], capture_output=True, text=True, timeout=10)
-            items.append({"title": "Brannmur", "level": "ok" if "running" in r.stdout else "warn",
-                          "detail": r.stdout.strip() or r.stderr.strip()})
-        except (OSError, subprocess.SubprocessError):
+        try:                                              # firewalld eller ufw
+            import firewall
+            b = firewall.backend()
+            items.append({"title": "Brannmur", "level": "ok" if b else "warn",
+                          "detail": f"{b} er på" if b else "ingen aktiv brannmur"})
+        except Exception:  # noqa: BLE001
             pass
     unknown = [d for d in lan_devices() if not d["name"]]
     items.append({"title": "Enheter på hjemmenettet uten navn", "level": "ok" if len(unknown) < 15 else "warn",

@@ -70,6 +70,19 @@ class ModeCard(Gtk.Box):
         while (ch := self.rows.get_first_child()) is not None:
             self.rows.remove(ch)
         if isinstance(ds, Exception) or not ds:
+            import shutil
+            import sys
+            if sys.platform != "win32" and P._display_tool() is None:     # f.eks. GNOME på Wayland
+                self.rows.append(Gtk.Label(label=_t("På dette skrivebordet endres oppløsning og Hz i systemets egne "
+                                                    "skjerminnstillinger."), xalign=0, wrap=True))
+                app = next((c for c in (["gnome-control-center", "display"], ["cinnamon-settings", "display"],
+                                        ["xfce4-display-settings"], ["systemsettings", "kcm_kscreen"])
+                            if shutil.which(c[0])), None)
+                if app:
+                    b = Gtk.Button(label=_t("Åpne skjerminnstillingene"), halign=Gtk.Align.START)
+                    b.connect("clicked", lambda *_: __import__("subprocess").Popen(app))
+                    self.rows.append(b)
+                return
             self.rows.append(Gtk.Label(label=_t("Fant ingen skjermer å endre her."), xalign=0))
             return
         for d in ds:
