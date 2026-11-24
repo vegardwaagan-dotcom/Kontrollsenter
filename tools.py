@@ -2091,6 +2091,32 @@ class ToolsPage(TabbedPage, _Cards):
             addr.set_label(pcplus.driver_url())
         self._bg(pcplus.bios, show_board)
 
+        def edit_url(key, what, current, after=None):
+            """⚙: endre en adresse (lagres), «Standard» setter den tilbake."""
+            dlg = Adw.AlertDialog(heading=f"Adressen til {what}",
+                                  body="Lim inn den nye adressen hvis siden har flyttet. «Standard» setter den tilbake.")
+            e = Gtk.Entry(text=current(), hexpand=True, activates_default=True)
+            e.set_size_request(460, -1)
+            dlg.set_extra_child(e)
+            dlg.add_response("cancel", "Avbryt")
+            dlg.add_response("std", "Standard")
+            dlg.add_response("ok", "Lagre")
+            dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+            dlg.set_default_response("ok")
+
+            def resp(_d, r):
+                if r == "ok":
+                    u = e.get_text().strip()
+                    if u and not u.startswith(("http://", "https://")):
+                        u = "https://" + u
+                    pcplus.set_(**{key: u})
+                elif r == "std":
+                    pcplus.set_(**{key: ""})
+                if after:
+                    after()
+            dlg.connect("response", resp)
+            dlg.present(self.get_root())
+
         def edit(*_):
             dlg = Adw.AlertDialog(heading="Adressen til driversiden",
                                   body="Lim inn adressen til driversiden for hovedkortet ditt. Tom = standard.")
@@ -2122,12 +2148,14 @@ class ToolsPage(TabbedPage, _Cards):
         gl = dim("Leser …")
         i.append(gl)
         gr = Gtk.Box(spacing=8)
-        nv = Gtk.Button(label="🌐 NVIDIA-drivere")
-        nv.connect("clicked", lambda *_: open_url("https://www.nvidia.com/en-eu/drivers/"))
-        gr.append(nv)
-        amd = Gtk.Button(label="🌐 AMD-drivere")
-        amd.connect("clicked", lambda *_: open_url("https://www.amd.com/en/support/download/drivers.html"))
-        gr.append(amd)
+        for key, lab, what in (("nvidia_url", "🌐 NVIDIA-drivere", "NVIDIA-driversiden"),
+                               ("amd_url", "🌐 AMD-drivere", "AMD-driversiden")):
+            b = Gtk.Button(label=lab)
+            b.connect("clicked", lambda *_, k=key: open_url(pcplus.gpu_url(k)))
+            gr.append(b)
+            g = Gtk.Button(icon_name="emblem-system-symbolic", tooltip_text=f"Endre adressen til {what}")
+            g.connect("clicked", lambda *_, k=key, w=what: edit_url(k, w, lambda kk=k: pcplus.gpu_url(kk)))
+            gr.append(g)
         i.append(gr)
 
         def show_gpu(d):

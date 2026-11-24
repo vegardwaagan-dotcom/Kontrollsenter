@@ -13,6 +13,10 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.49", "Endre driveradressene selv", [
+            "Vedlikehold › Drivere: ⚙ ved «NVIDIA-drivere» og «AMD-drivere» – lim inn ny adresse hvis siden flytter, "
+            "eller trykk «Standard» for å gå tilbake",
+        ]),
     ("0.99.48", "Riktig NVIDIA-lenke", [
             "Vedlikehold › Drivere: «NVIDIA-drivere» åpner nå nvidia.com/en-eu/drivers (den gamle norske adressen "
             "ga «Not Found»)",

@@ -16,7 +16,14 @@ DATA = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~/.loc
                     "Kontrollsenter" if IS_WIN else "systemmonitor")
 CFG = os.path.expanduser("~/.config/systemmonitor/pcplus.json")
 DISKLOG = os.path.join(DATA, "diskslitasje.json")
-DEF = {"budget_kr": 0, "budget_warned": "", "driver_url": ""}
+DEF = {"budget_kr": 0, "budget_warned": "", "driver_url": "", "nvidia_url": "", "amd_url": ""}
+GPU_URLS = {"nvidia_url": "https://www.nvidia.com/en-eu/drivers/",
+            "amd_url": "https://www.amd.com/en/support/download/drivers.html"}
+
+
+def gpu_url(key):
+    """Driversiden for NVIDIA/AMD: adressen du har lagt inn, ellers standard."""
+    return (cfg().get(key) or "").strip() or GPU_URLS[key]
 # kjente driversider per hovedkort (resten: produsentens søk)
 BOARD_URLS = {"ROG STRIX X870E-E GAMING WIFI": "https://rog.asus.com/motherboards/rog-strix/rog-strix-x870e-e-gaming-wifi/"
                                                "helpdesk_download/?model2name=rog%20strix%20x870e-e%20gaming%20wifi"}
