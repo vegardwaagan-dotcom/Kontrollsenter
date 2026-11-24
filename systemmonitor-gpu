@@ -5,6 +5,9 @@
 #   nv-lgc IDX MIN MAX      lås GPU-klokke (MHz)        nv-rgc IDX   frigi
 #   nv-lmc IDX MIN MAX      lås minneklokke (MHz)       nv-rmc IDX   frigi
 #   nv-pm IDX 0|1           persistence mode
+#   nv-oc IDX KJERNE MINNE  klokke-offset i MHz (innenfor kortets egne grenser, via NVML)
+#   nv-fan IDX PROSENT|auto viftene (via NVML)
+#   version                 hvilken utgave av hjelperen dette er
 #   amd-level CARD NIVÅ     auto|low|high|manual|profile_standard|profile_min_sclk|profile_min_mclk|profile_peak
 #   amd-profile CARD N      strømprofil (pp_power_profile_mode)
 #   amd-od CARD s|m IDX MHZ OverDrive-klokke   amd-od CARD vo MV   spenningsavvik   amd-od CARD c|r   bruk / nullstill
@@ -17,8 +20,53 @@ int() { [[ "$1" =~ ^-?[0-9]+$ ]] || die "ugyldig tall: $1"; }
 card() { [[ "$1" =~ ^card[0-9]+$ ]] || die "ugyldig kort"; D="/sys/class/drm/$1/device"; [ -d "$D" ] || die "finnes ikke"; }
 drv() { basename "$(readlink -f "$D/driver")"; }
 
+# NVML (NVIDIA sitt eget grensesnitt) – overklokking og vifter, også på Wayland (driver 470+ / 520+)
+NVML_PY='
+import ctypes, sys
+nv = ctypes.CDLL("libnvidia-ml.so.1")
+if nv.nvmlInit_v2():
+    sys.exit("NVIDIA-driveren svarer ikke")
+err = nv.nvmlErrorString
+err.restype = ctypes.c_char_p
+def chk(rc, what):
+    if rc:
+        sys.exit(what + ": " + err(rc).decode())
+h = ctypes.c_void_p()
+chk(nv.nvmlDeviceGetHandleByIndex_v2(int(sys.argv[2]), ctypes.byref(h)), "kortet")
+op = sys.argv[1]
+if op == "oc":
+    core, mem = int(sys.argv[3]), int(sys.argv[4])
+    a, b = ctypes.c_int(), ctypes.c_int()
+    chk(nv.nvmlDeviceGetGpcClkMinMaxVfOffset(h, ctypes.byref(a), ctypes.byref(b)), "grenser")
+    if not a.value <= core <= b.value:
+        sys.exit("GPU-offset utenfor %d til %d MHz" % (a.value, b.value))
+    chk(nv.nvmlDeviceGetMemClkMinMaxVfOffset(h, ctypes.byref(a), ctypes.byref(b)), "grenser")
+    if not a.value <= mem <= b.value:
+        sys.exit("minne-offset utenfor %d til %d MHz" % (a.value, b.value))
+    chk(nv.nvmlDeviceSetGpcClkVfOffset(h, core), "GPU-offset")
+    chk(nv.nvmlDeviceSetMemClkVfOffset(h, mem), "minne-offset")
+elif op == "fan":
+    n = ctypes.c_uint()
+    chk(nv.nvmlDeviceGetNumFans(h, ctypes.byref(n)), "vifter")
+    if sys.argv[3] == "auto":
+        for f in range(n.value):
+            chk(nv.nvmlDeviceSetDefaultFanSpeed_v2(h, f), "vifte auto")
+    else:
+        mi, ma = ctypes.c_uint(), ctypes.c_uint()
+        nv.nvmlDeviceGetMinMaxFanSpeed(h, ctypes.byref(mi), ctypes.byref(ma))
+        p = max(mi.value or 0, min(ma.value or 100, int(sys.argv[3])))
+        for f in range(n.value):
+            chk(nv.nvmlDeviceSetFanSpeed_v2(h, f, p), "vifte")
+'
+
 cmd="${1:-}"; shift || true
 case "$cmd" in
+  version) echo 3; exit 0 ;;
+  nv-oc) int "$1"; int "$2"; int "$3"; (( $2 >= -2000 && $2 <= 2000 && $3 >= -4000 && $3 <= 8000 )) || die "ugyldig offset"
+         python3 -c "$NVML_PY" oc "$1" "$2" "$3" ;;
+  nv-fan) int "$1"
+          if [ "${2:-}" = auto ]; then python3 -c "$NVML_PY" fan "$1" auto
+          else int "$2"; (( $2 >= 0 && $2 <= 100 )) || die "0–100 %"; python3 -c "$NVML_PY" fan "$1" "$2"; fi ;;
   nv-pl)
     int "$1"; [[ "$2" =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "ugyldig watt"
     read -r lo hi < <(nvidia-smi -i "$1" --query-gpu=power.min_limit,power.max_limit --format=csv,noheader,nounits | tr -d ',')

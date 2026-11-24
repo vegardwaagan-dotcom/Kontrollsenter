@@ -260,6 +260,42 @@ def p_gpu(win):
                        "confirm": "Bytte hovedskjermkort? Sitter kabelen i feil kort, blir skjermen svart."}}
 
 
+def p_nvidia(win):
+    """NVIDIA – overklokking og vifter"""
+    import gpu as G
+    nv = next((g for g in G.detect() if g.get("vendor") == "nvidia"), None)
+    if not nv:
+        return None
+    e = G.nv_extra(nv["idx"])
+    if not e:
+        return None
+    fc = G.fan_cfg(nv["id"])
+    rs = e.get("reasons") or []
+    rows = [["Temperatur", f"{e.get('temp', '–')} °C"],
+            ["Vifter", " / ".join(f"{f} %" for f in e.get("fans", [])) or "–"],
+            ["Begrenses av", ", ".join(rs) if rs else "ingenting"],
+            ["Klokke-offset", f"GPU {e.get('core', 0):+d} · minne {e.get('mem', 0):+d} MHz"],
+            ["Videokoder (NVENC)", f"{e.get('nvenc', 0)} %"]]
+    ready = G.helper_ready()
+    fan_val = fc["mode"] if fc["mode"] != "fast" else f"fast:{fc.get('pct', 60)}"
+    opts = [["auto", "Automatisk"]] + [[f"fast:{p}", f"Fast {p} %"] for p in (40, 60, 80, 100)] + [["kurve", "Egen kurve"]]
+    if fan_val not in [o[0] for o in opts]:
+        opts.append([fan_val, f"Fast {fc.get('pct')} %"])
+    p = {"id": "nvidia", "icon": "🟩", "title": "NVIDIA – overklokking og vifter", "rows": rows,
+         "desc": ("Overklokking gjelder til PC-en startes på nytt. Kurven og finjustering finner du på PC-en under "
+                  "Skjermkort." if ready else
+                  "⚠️ Trykk «Gi tilgang» under Skjermkort på PC-en én gang før du kan endre dette herfra.")}
+    if ready and not G.IS_WIN:
+        p["select"] = {"label": "Vifter", "options": opts, "value": fan_val, "action": {"a": "panel", "do": "nvfan"}}
+        p["buttons"] = [_btn("Standard", {"do": "nvoc", "core": 0, "mem": 0}),
+                        _btn("Stille (−100)", {"do": "nvoc", "core": -100, "mem": 0}),
+                        _btn("Mild OC (+100/+500)", {"do": "nvoc", "core": 100, "mem": 500},
+                             "Overklokke skjermkortet litt? Krasjer et spill, trykk «Standard»."),
+                        _btn("Sterk OC (+175/+1000)", {"do": "nvoc", "core": 175, "mem": 1000},
+                             "Sterk overklokking kan gi krasj i noen spill. Fortsette?")]
+    return p
+
+
 # --------------------------------------------------------------------------
 # Smart Hjem: nettradio og hjemme/borte
 # --------------------------------------------------------------------------
@@ -380,11 +416,11 @@ def p_family(win):
                              {"do": "fam_free", "on": "0" if free else "1"})]}
 
 
-PANELS = [p_commands, p_family, p_assistant, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_radio, p_presence, p_version]
+PANELS = [p_commands, p_family, p_assistant, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_nvidia, p_radio, p_presence, p_version]
 
 
 _CACHE = {}
-TTL = {"assistant": 60, "pctools": 120, "apps": 60, "games": 120, "radio": 300, "gpu": 60}
+TTL = {"assistant": 60, "pctools": 120, "apps": 60, "games": 120, "radio": 300, "gpu": 60, "nvidia": 5}
 
 
 def all_panels(win, only=None):
@@ -446,6 +482,22 @@ def run(win, a):
             raise ValueError("fant ikke funnet – sjekk på nytt")
         _ASSIST.clear()
         return str(f.fix[1]())
+    if do in ("nvoc", "nvfan"):
+        import gpu as G
+        nv = next((g for g in G.detect() if g.get("vendor") == "nvidia"), None)
+        if not nv:
+            raise ValueError("fant ikke NVIDIA-kortet")
+        if do == "nvoc":
+            core, mem = int(a.get("core", 0)), int(a.get("mem", 0))
+            if not (-300 <= core <= 300 and 0 <= mem <= 1500):
+                raise ValueError("ugyldig verdi")
+            G.run("nv-oc", nv["idx"], core, mem)
+            G.save_cmd(nv["id"], "oc", None if core == mem == 0 else ["nv-oc", nv["idx"], core, mem])
+            return "Tilbake til standard ✓" if core == mem == 0 else f"Satt: GPU {core:+d}, minne {mem:+d} MHz ✓"
+        v = str(a.get("value", "auto"))
+        if v.startswith("fast:"):
+            return G.set_fan(nv["id"], nv["idx"], "fast", pct=int(v[5:]))
+        return G.set_fan(nv["id"], nv["idx"], "kurve" if v == "kurve" else "auto")
     if do == "updateall":
         import updates
         return "Oppdater alt er startet – følg fremdriften øverst" if updates.update_all(win) else "Pågår allerede"

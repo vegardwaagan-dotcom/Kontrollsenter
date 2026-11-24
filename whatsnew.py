@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.53", "Flere NVIDIA-funksjoner", [
+            "Overklokking: klokke-offset for GPU og minne – virker også på Wayland",
+            "Vifter: automatisk, fast fart eller egen viftekurve etter temperaturen",
+            "«Hva begrenser ytelsen» viser om strømgrensen, varme eller noe annet bremser kortet",
+            "Spillvalg: NVIDIA Smooth Motion, nyeste DLSS-modell (DLSS 4), DLSS-info i spillet og trådede "
+            "OpenGL-optimaliseringer",
+            "Mobilappen: nytt NVIDIA-panel med vifter og ferdige overklokkingsvalg",
+            "Trykk «Gi tilgang» én gang til under GPU-innstillinger for de nye funksjonene",
+        ]),
     ("0.99.52", "Virker på flere Linux-varianter", [
             "Systemsjekk finner og installerer bibliotekene funksjonene trenger (grafer, lyd, NAS, dagbok, kontroller) "
             "med riktige pakkenavn for Arch, Fedora, Debian/Ubuntu, openSUSE, Void og Solus – ett trykk",

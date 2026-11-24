@@ -549,6 +549,15 @@ class Background:
             pass
         self._watch_extra()
         self._smart_check()
+        if (__import__("gpu").cfg().get("nvfan") or {}) and not getattr(self, "_fan_busy", False):
+            self._fan_busy = True                      # NVIDIA-viftekurve (bare når den er valgt)
+
+            def fan():
+                try:
+                    __import__("gpu").fan_tick()
+                finally:
+                    self._fan_busy = False
+            __import__("threading").Thread(target=fan, daemon=True).start()
         if time.time() - getattr(self, "_errup_t", 0) > 1800:        # nye feil → NAS-en (Diagnose)
             self._errup_t = time.time()
             import threading as _th

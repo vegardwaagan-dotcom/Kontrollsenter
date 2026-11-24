@@ -300,8 +300,16 @@ class NeedSetup(Exception):
     pass
 
 
+HELPER_VERSION = "3"
+
+
 def helper_ready():
-    return IS_WIN or (os.path.exists(HELPER) and _run(["sudo", "-n", "-l", HELPER], 10)[0] == 0)
+    """Er root-hjelperen installert – og ny nok? (Er den gammel, vises «Gi tilgang» igjen og oppdaterer den.)"""
+    if IS_WIN:
+        return True
+    if not os.path.exists(HELPER) or _run(["sudo", "-n", "-l", HELPER], 10)[0] != 0:
+        return False
+    return _run(["sudo", "-n", HELPER, "version"], 10)[1].strip() == HELPER_VERSION
 
 
 def setup_helper():
@@ -324,6 +332,8 @@ def run(*args):
     if code != 0:
         if "password" in out.lower() or "passord" in out.lower():
             raise NeedSetup("Kontrollsenter trenger tilgang én gang – trykk «Gi tilgang» øverst")
+        if "ukjent kommando" in out:
+            raise NeedSetup("GPU-tilgangen må oppdateres for de nye funksjonene – trykk «Gi tilgang» øverst")
         raise RuntimeError(out.strip().splitlines()[-1] if out.strip() else "feilet")
     return out.strip()
 
@@ -392,6 +402,17 @@ ENV_OPTS = [
      "Færre hakk første gang et spill tegner noe nytt.", "nvidia"),
     ("__GL_MaxFramesAllowed", "1", "Lavere forsinkelse (OpenGL/Vulkan)",
      "Færre bilder i kø – raskere respons, litt lavere FPS.", "nvidia"),
+    ("NVPRESENT_ENABLE_SMOOTH_MOTION", "1", "NVIDIA Smooth Motion",
+     "Dobler bildefrekvensen i spill som ikke har egen bildegenerering (RTX 40/50, driver 570+).", "nvidia"),
+    ("DXVK_NVAPI_DRS_NGX_DLSS_SR_OVERRIDE",
+     {"DXVK_NVAPI_DRS_NGX_DLSS_SR_OVERRIDE": "on",
+      "DXVK_NVAPI_DRS_NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest"},
+     "Nyeste DLSS-modell (DLSS 4)", "Skarpere bilde: alle spill med DLSS bruker den nyeste modellen. Slå på «Nyeste "
+     "DLSS automatisk» også.", "nvidia"),
+    ("DXVK_NVAPI_SET_NGX_DEBUG_OPTIONS", "DLSSIndicator=1024,DLSSGIndicator=2", "Vis DLSS-info i spillet",
+     "Viser hvilken DLSS-versjon og modus spillet bruker, nede i hjørnet.", "nvidia"),
+    ("__GL_THREADED_OPTIMIZATIONS", "1", "Trådede optimaliseringer (OpenGL)",
+     "Kan gi høyere FPS i eldre OpenGL-spill som bruker mye prosessor.", "nvidia"),
     ("VKD3D_CONFIG", "dxr", "Raytracing i DX12-spill (AMD)",
      "Slår på raytracing via VKD3D for AMD-kort.", "amd"),
     ("RADV_PERFTEST", "gpl", "Raskere shader-bygging (AMD)",
@@ -415,15 +436,26 @@ def env_get():
     return out
 
 
+def env_on(key):
+    """Er valget på? (alle variablene det setter må være der)"""
+    val = next((v for k, v, *_ in ENV_OPTS if k == key), None)
+    cur = env_get()
+    if isinstance(val, dict):
+        return all(cur.get(k) == v for k, v in val.items())
+    return key in cur
+
+
 def env_set(key, on):
     allowed = {k: v for k, v, *_ in ENV_OPTS}
     if key not in allowed:
         raise ValueError("ukjent innstilling")
     cur = env_get()
-    if on:
-        cur[key] = allowed[key]
-    else:
-        cur.pop(key, None)
+    pairs = allowed[key] if isinstance(allowed[key], dict) else {key: allowed[key]}
+    for k, v in pairs.items():
+        if on:
+            cur[k] = v
+        else:
+            cur.pop(k, None)
     os.makedirs(os.path.dirname(ENV_FILE), exist_ok=True)
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.write("# Satt av Kontrollsenter (GPU-innstillinger → Spillinnstillinger). Gjelder etter ny innlogging.\n")
@@ -477,3 +509,122 @@ def win_hags(on):
     code, _out = _run(["powershell", "-NoProfile", "-Command", ps], 120)
     if code != 0:
         raise RuntimeError("Windows ga ikke administratortilgang")
+
+
+# --------------------------------------------------------------------------
+# NVIDIA via NVML: klokke-offset, vifter, hva som bremser kortet, videokoderen
+# --------------------------------------------------------------------------
+_NV = {"lib": None}
+REASONS = [(0x1, "tomgang"), (0x2, "låst klokke"), (0x4, "strømgrensen"), (0x8, "maskinvare-brems"),
+           (0x20, "for varmt (driveren)"), (0x40, "for varmt (kortet)"), (0x80, "strømtilførselen"),
+           (0x100, "skjerminnstilling")]
+
+
+def _nvml():
+    import ctypes
+    if _NV["lib"] is None:
+        try:
+            lib = ctypes.CDLL("nvml.dll" if IS_WIN else "libnvidia-ml.so.1")
+            _NV["lib"] = lib if lib.nvmlInit_v2() == 0 else False
+        except OSError:
+            _NV["lib"] = False
+    return _NV["lib"] or None
+
+
+def nv_extra(idx):
+    """{offsets, grenser, vifter, hva som bremser, videokoder} – eller {} hvis NVML ikke finnes."""
+    import ctypes
+    nv = _nvml()
+    if nv is None:
+        return {}
+    h = ctypes.c_void_p()
+    if nv.nvmlDeviceGetHandleByIndex_v2(int(idx), ctypes.byref(h)):
+        return {}
+    out = {}
+    a, b, o = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
+    if not nv.nvmlDeviceGetGpcClkMinMaxVfOffset(h, ctypes.byref(a), ctypes.byref(b)):
+        out["core_range"] = (a.value, b.value)
+    if not nv.nvmlDeviceGetMemClkMinMaxVfOffset(h, ctypes.byref(a), ctypes.byref(b)):
+        out["mem_range"] = (a.value, b.value)
+    if not nv.nvmlDeviceGetGpcClkVfOffset(h, ctypes.byref(o)):
+        out["core"] = o.value
+    if not nv.nvmlDeviceGetMemClkVfOffset(h, ctypes.byref(o)):
+        out["mem"] = o.value
+    n, sp = ctypes.c_uint(), ctypes.c_uint()
+    if not nv.nvmlDeviceGetNumFans(h, ctypes.byref(n)):
+        out["fans"] = [sp.value for f in range(n.value) if not nv.nvmlDeviceGetFanSpeed_v2(h, f, ctypes.byref(sp))]
+        mi, ma = ctypes.c_uint(), ctypes.c_uint()
+        if not nv.nvmlDeviceGetMinMaxFanSpeed(h, ctypes.byref(mi), ctypes.byref(ma)):
+            out["fan_range"] = (mi.value, ma.value)
+    rs = ctypes.c_ulonglong()
+    if not nv.nvmlDeviceGetCurrentClocksEventReasons(h, ctypes.byref(rs)):
+        out["reasons"] = [t for bit, t in REASONS if rs.value & bit]
+    u, p = ctypes.c_uint(), ctypes.c_uint()
+    if not nv.nvmlDeviceGetEncoderUtilization(h, ctypes.byref(u), ctypes.byref(p)):
+        out["nvenc"] = u.value
+    t = ctypes.c_uint()
+    if not nv.nvmlDeviceGetTemperature(h, 0, ctypes.byref(t)):
+        out["temp"] = t.value
+    return out
+
+
+FAN_DEF = {"mode": "auto", "pct": 60, "curve": [[40, 30], [60, 45], [75, 70], [85, 100]]}
+_FAN = {"last": None}
+
+
+def fan_cfg(gid):
+    return {**FAN_DEF, **(cfg().get("nvfan", {}).get(gid) or {})}
+
+
+def set_fan(gid, idx, mode, pct=None, curve=None):
+    """mode = auto | fast | kurve"""
+    c = cfg()
+    f = {**FAN_DEF, **(c.get("nvfan", {}).get(gid) or {}), "mode": mode, "idx": int(idx)}
+    if pct is not None:
+        f["pct"] = max(0, min(100, int(pct)))
+    if curve:
+        f["curve"] = sorted([[int(a), max(0, min(100, int(b)))] for a, b in curve])[:6]
+    c.setdefault("nvfan", {})[gid] = f
+    save_cfg(c)
+    _FAN["last"] = None
+    if mode == "auto":
+        run("nv-fan", idx, "auto")
+        save_cmd(gid, "fan", None)
+        return "Viftene styres av kortet selv igjen"
+    if mode == "fast":
+        run("nv-fan", idx, f["pct"])
+        save_cmd(gid, "fan", ["nv-fan", idx, f["pct"]])
+        return f"Viftene går fast på {f['pct']} %"
+    save_cmd(gid, "fan", None)
+    fan_tick()
+    return "Viftene følger kurven"
+
+
+def _curve_pct(curve, t):
+    pts = sorted(curve)
+    if t <= pts[0][0]:
+        return pts[0][1]
+    for (t1, p1), (t2, p2) in zip(pts, pts[1:]):
+        if t <= t2:
+            return round(p1 + (p2 - p1) * (t - t1) / max(1, t2 - t1))
+    return pts[-1][1]
+
+
+def fan_tick():
+    """Hvert 5. sekund (bakgrunnen): viftekurve for NVIDIA-kort som er satt til «kurve»."""
+    if IS_WIN:
+        return
+    for gid, f in (cfg().get("nvfan") or {}).items():
+        if f.get("mode") != "kurve":
+            continue
+        e = nv_extra(f.get("idx", 0))
+        if "temp" not in e:
+            continue
+        pct = _curve_pct(f.get("curve") or FAN_DEF["curve"], e["temp"])
+        last = _FAN["last"]
+        if last is None or abs(pct - last) >= 3:            # ikke mas på kortet for små endringer
+            try:
+                run("nv-fan", f.get("idx", 0), pct)
+                _FAN["last"] = pct
+            except Exception:  # noqa: BLE001
+                pass

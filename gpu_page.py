@@ -431,9 +431,84 @@ class GpuPage(Gtk.ScrolledWindow):
         pm.connect("notify::active", lambda s, _p: self._cmd(gid, "pm", "nv-pm", idx, 1 if s.get_active() else 0))
         i.append(_row("Hold driveren klar (persistence mode)", "Raskere oppstart av spill og færre små hakk – bruker "
                       "litt mer strøm når PC-en står stille.", pm))
-        note = Gtk.Label(label=_t("Klokke-offset (overklokking) og G-SYNC styres i NVIDIA-innstillingene på X11 – "
-                                  "NVIDIA tillater det ikke herfra under Wayland." if not IS_WIN else
-                                  "G-SYNC, bildeskarphet og overklokking ligger i NVIDIA-appen."), xalign=0, wrap=True)
+        self.box.append(c)
+        self._nv_more(g)
+
+    def _nv_more(self, g):
+        """Overklokking, vifter og «hva bremser kortet» – via NVML (virker også på Wayland)."""
+        idx, gid = g["idx"], g["id"]
+        e = G.nv_extra(idx)
+        if not e:
+            return
+        c, i, _h = _card("Overklokking og vifter", "Gjelder til PC-en startes på nytt – slå på «Bruk ved oppstart» "
+                         "øverst for å beholde dem.", VENDOR["nvidia"])
+        why = Gtk.Label(xalign=0, wrap=True)
+
+        def upd(v):
+            if v is None:
+                return G.nv_extra(idx)
+            rs = v.get("reasons") or []
+            fans = v.get("fans") or []
+            why.set_label(_t("Bremses nå av: ") + ", ".join(rs) if rs and rs != ["tomgang"] else
+                          _t("Kortet går fritt – ingenting bremser det") if not rs else _t("Kortet hviler"))
+            why.set_tooltip_text(f"Vifter: {' / '.join(str(f) + ' %' for f in fans)} · "
+                                 f"Videokoder (NVENC): {v.get('nvenc', 0)} %")
+        self.updaters.append(upd)
+        upd(e)
+        i.append(_row("Hva begrenser ytelsen", "Viser om strømgrensen, varme eller noe annet holder kortet tilbake.",
+                      why))
+        if IS_WIN:
+            note = Gtk.Label(label=_t("Overklokking og vifter på Windows: bruk NVIDIA-appen eller MSI Afterburner."),
+                             xalign=0, wrap=True)
+            note.add_css_class("ks-sub")
+            i.append(note)
+            self.box.append(c)
+            return
+
+        clo, chi = e.get("core_range", (-500, 500))
+        mlo, mhi = e.get("mem_range", (-1000, 2000))
+        core = _spin(max(clo, -500), min(chi, 500), e.get("core", 0), 15)
+        mem = _spin(max(mlo, -1000), min(mhi, 3000), e.get("mem", 0), 50)
+        ok_b = Gtk.Button(label=_t("Bruk"))
+        ok_b.add_css_class("suggested-action")
+        ok_b.connect("clicked", lambda *_: self._cmd(gid, "oc", "nv-oc", idx, int(core.get_value()),
+                                                     int(mem.get_value()), ok=_t("Overklokkingen er satt ✓")))
+        zero = Gtk.Button(label=_t("Nullstill"))
+        zero.connect("clicked", lambda *_: (core.set_value(0), mem.set_value(0),
+                                            self._do(lambda: G.run("nv-oc", idx, 0, 0), _t("Tilbake til standard ✓")),
+                                            G.save_cmd(gid, "oc", None)))
+        i.append(_row("Klokke-offset (MHz): GPU og minne",
+                      "Start forsiktig (+100 GPU, +500 minne) og test i et spill. Krasjer det, gå ned igjen. "
+                      "Minus = kjøligere og stillere (undervolt-effekt).", core, mem, ok_b, zero))
+
+        fc = G.fan_cfg(gid)
+        fmin, fmax = e.get("fan_range", (30, 100))
+        mode = Gtk.DropDown.new_from_strings([_t("Automatisk"), _t("Fast fart"), _t("Egen kurve")])
+        modes = ["auto", "fast", "kurve"]
+        mode.set_selected(modes.index(fc.get("mode", "auto")) if fc.get("mode") in modes else 0)
+        pct = _spin(fmin, fmax, max(fmin, fc.get("pct", 60)), 5)
+        fb = Gtk.Button(label=_t("Bruk"))
+        fb.connect("clicked", lambda *_: self._do(lambda: G.set_fan(gid, idx, modes[mode.get_selected()],
+                                                                    pct=int(pct.get_value()))))
+        i.append(_row("Vifter", f"Automatisk = kortet bestemmer. Fast fart: {fmin}–{fmax} %. Egen kurve: farten "
+                      "følger temperaturen (under).", mode, pct, fb))
+        curve = fc.get("curve") or G.FAN_DEF["curve"]
+        spins = []
+        box = Gtk.Box(spacing=6)
+        for t, p in curve:
+            ts, ps = _spin(20, 100, t, 1), _spin(fmin, 100, max(fmin, p), 5)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            col.append(ts)
+            col.append(ps)
+            box.append(col)
+            spins.append((ts, ps))
+        cb = Gtk.Button(label=_t("Bruk kurven"), valign=Gtk.Align.CENTER)
+        cb.connect("clicked", lambda *_: (mode.set_selected(2), self._do(lambda: G.set_fan(
+            gid, idx, "kurve", curve=[[int(a.get_value()), int(b.get_value())] for a, b in spins]))))
+        i.append(_row("Viftekurve", "Øverst: temperatur (°C). Under: viftefart (%). Kontrollsenter må kjøre (også i "
+                      "bakgrunnen) for at kurven skal virke.", box, cb))
+        note = Gtk.Label(label=_t("G-SYNC/VRR slås av og på under Skjerm. Bildeskarphet og digital vibrans finnes "
+                                  "bare i NVIDIA-innstillingene på X11."), xalign=0, wrap=True)
         note.add_css_class("ks-sub")
         i.append(note)
         self.box.append(c)
@@ -610,7 +685,7 @@ class GpuPage(Gtk.ScrolledWindow):
         for key, _v, name, desc, who in G.ENV_OPTS:
             if who and who not in vendors:
                 continue
-            sw = Gtk.Switch(active=key in cur)
+            sw = Gtk.Switch(active=G.env_on(key) if isinstance(_v, dict) else key in cur)
             sw.connect("notify::active", lambda s, _p, k=key: self._env(k, s.get_active()))
             i.append(_row(name, desc, sw))
         self.box.append(c)

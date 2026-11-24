@@ -35,7 +35,7 @@ PAGE_CATS = {
                 ("sammen", "💬 Sammen", ["=Familie", "Se på", "Ukeplan", "Beskjed til alle", "Minnevegg"]),
                 ("hverdag", "🍽️ Hverdagen", ["Middagsplan", "Pakker"]),
                 ("mal", "⭐ Mål og belønning", ["Mål og belønning", "Belønningsbutikk", "Ukesrapport", "Familie+"])],
-    "gpu": [("kort", "🎛️ Skjermkortene", ["NVIDIA", "AMD", "Intel", "Spillinnstillinger", "Ved oppstart",
+    "gpu": [("kort", "🎛️ Skjermkortene", ["NVIDIA", "Overklokking", "AMD", "Intel", "Spillinnstillinger", "Ved oppstart",
                                           "Gi Kontrollsenter", "Fant ingen"]),
             ("skjerm", "🖥️ Skjerm og lys", ["Oppløsning og Hz", "Hovedskjermkort", "Skjermprofiler", "Nattlys"])],
     "discord": [("samtale", "📞 Samtalen", ["=G:", "G:Samtalen"]),
