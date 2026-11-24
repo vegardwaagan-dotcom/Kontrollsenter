@@ -269,12 +269,16 @@ def kalsok(arg):
     return {"hits": [{"d": d.isoformat(), "time": t, "title": n} for d, t, n in K.search(arg("q", ""))[:60]]}
 
 
+_DB_SYNC = {"t": 0.0}
+
+
 def dagbok_people(arg):
+    """Svarer med en gang fra den lokale kopien; NAS-en hentes i bakgrunnen (maks én gang i minuttet)."""
+    import time as _t
     import dagbok as D
-    try:
-        D.sync_down()
-    except Exception:  # noqa: BLE001
-        pass
+    if _t.time() - _DB_SYNC["t"] > 60:
+        _DB_SYNC["t"] = _t.time()
+        threading.Thread(target=lambda: _safe(D.sync_down), daemon=True).start()
     return {"people": [{**p, "wait": D.locked_for(p["id"])} for p in D.people()], "moods": D.MOODS}
 
 

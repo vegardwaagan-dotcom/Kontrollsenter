@@ -204,7 +204,6 @@ def backup(appids=None, progress=None):
     if not items:
         return 0, None
     _host, share, folder = L._split()
-    import subprocess
     for part in (folder, f"{folder}/{REMOTE_ROOT}", f"{folder}/{_remote_dir()}"):
         L.smb_mkdir(part)
     tmp = Path(tempfile.mkdtemp())

@@ -924,8 +924,7 @@ class GamesPage(TabbedPage):
 
     # --- kontrollere ------------------------------------------------------------
     def _ctrl_card(self):
-        c, self.ctrl_box = card("Kontrollere", "Xbox-, PlayStation-, 8BitDo- og andre kontrollere. Fastvare for "
-                                               "kontrollere oppdateres via Systemsjekk (fwupd) der det støttes.")
+        c, self.ctrl_box = card("Kontrollere", "Xbox-, PlayStation-, 8BitDo- og andre kontrollere – med batteri og test.")
         self.box.append(c)
         self._fill_ctrl()
         GLib.timeout_add_seconds(5, lambda: (self._fill_ctrl(), True)[1])

@@ -1,5 +1,4 @@
 """Verktøy og Systemsjekk på Windows: systeminfo, rydd opp, diskhelse, gjenopprettingspunkt og systemsjekk."""
-import glob
 import os
 import platform
 import re

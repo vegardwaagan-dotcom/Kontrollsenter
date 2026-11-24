@@ -1,10 +1,8 @@
 """Windows-utgavene av sidene som på Linux bruker Linux-tjenester (Logitech, MSI, Bluetooth, Wi-Fi, Programmer,
 CPU-skjerm). Samme utseende – men styrt med Windows' egne verktøy (PnP, netsh, winget, ms-settings)."""
 import glob
-import json
 import os
 import re
-import subprocess
 import threading
 
 import gi

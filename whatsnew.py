@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.45", "Gjennomgang: testet, ryddet og enklere tekst", [
+            "Alle funksjonene er testet: 79 funksjonstester, 75 app-endepunkter, alle sider og faner på PC-en og alle "
+            "faner og kategorier i mobilappen på telefonbredde",
+            "Dagboken i appen svarer med en gang – NAS-en hentes i bakgrunnen (før kunne den henge)",
+            "Ubrukt kode fjernet, og enklere, kortere forklaringer på flere kort (Diskhelse, Kontrollere, Spill på "
+            "telefonen, Automatisk opprydding, Pushvarsler …)",
+            "Rettet gamle henvisninger til fanene i appen (Familie ligger nå under Hjemmet)",
+        ]),
     ("0.99.44", "Raskere, lettere og med overganger", [
             "Rettet minnelekkasje: gamle kopier av webkamera-overlayet ble liggende etter hver oppdatering "
             "(8 kopier = 432 MB). Nå ryddes de og avsluttede hjelpeprosesser bort ved oppstart",

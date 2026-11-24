@@ -597,9 +597,7 @@ class _Cards:
 
     # --- feilsøkingsrapport ---------------------------------------------------------
     def _diag_card(self):
-        c, i = card("Feilsøkingsrapport", "Samler maskinvare, drivere og hva OpenRGB, ratbagd og Solaar finner – "
-                                         "nyttig når RGB, vifter eller Logitech ikke virker. Sendes automatisk til "
-                                         "NAS-en én gang per dag på hjemmenettet. Ingen personlige filer.")
+        c, i = card("Feilsøkingsrapport", "Samler det som trengs for å finne ut hvorfor RGB, vifter eller Logitech ikke virker. Lagres på NAS-en én gang om dagen. Ingen personlige filer.")
         row = Gtk.Box(spacing=8)
         send = Gtk.Button(label="Send til NAS-en nå")
         send.add_css_class("suggested-action")
@@ -770,7 +768,7 @@ class _Cards:
 
     # --- diskhelse ------------------------------------------------------------
     def _health_card(self):
-        c, self.health_box = card("Diskhelse", "SMART-data fra diskene dine – fanger opp en disk som er i ferd med å dø.")
+        c, self.health_box = card("Diskhelse", "Helsen til diskene dine – sier fra før en disk svikter.")
         self.health_box.append(dim("Leser SMART-data …"))
         self.box.append(c)
         self._bg(disk_health, self._show_health)
@@ -993,8 +991,7 @@ class _Cards:
     def _perf_card(self):
         import perf
         c, i = card("Ytelse – hva Kontrollsenter bruker",
-                    "Prosessor, minne og disk for Kontrollsenter selv. «Eget minne» er det programmet faktisk bruker – "
-                    "«med delte bibl.» tar også med skjermkortdriveren og GTK, som deles med andre programmer.")
+                    "Hvor mye prosessor, minne og disk Kontrollsenter selv bruker. «Eget minne» er det som faktisk er programmets eget.")
         grid = Gtk.Grid(column_spacing=24, row_spacing=6)
         labs = {}
         for n, (k, name) in enumerate((("cpu", "Prosessor"), ("uss", "Eget minne"), ("rss", "Med delte bibl."),
@@ -1152,8 +1149,7 @@ class _Cards:
         import push
         import socket
         c, i = card("Pushvarsler til mobilen (ntfy)",
-                    "Varsler på telefonen med en gang – uten at appen er åpen og uten skytjenester. Installer "
-                    "ntfy, og trykk «Legg til i ntfy» i Kontrollsenter-appen.")
+                    "Varsler på telefonen med en gang, også når appen er lukket. Installer ntfy-appen og trykk «Legg til i ntfy» i Kontrollsenter-appen.")
         st = dim("")
 
         def show():
@@ -1250,10 +1246,7 @@ class _Cards:
 
     def _apps_card(self):
         import apps_ui
-        c, i = card("Programmer – topp 5 per funksjon", "De fem beste programmene for hver funksjon, rangert fra 1 "
-                                                        "til 5 for denne PC-en. «Styres fra Kontrollsenter» betyr at "
-                                                        "Kontrollsenter kan styre det direkte; de andre er gode "
-                                                        "frittstående valg.")
+        c, i = card("Programmer – topp 5 per funksjon", "De fem beste programmene for hver oppgave på denne PC-en. «Styres fra Kontrollsenter» betyr at du kan bruke dem rett herfra.")
         i.append(apps_ui.all_card())
         self.box.append(c)
 
@@ -2313,9 +2306,7 @@ class ToolsPage(TabbedPage, _Cards):
 
     def _noise_card(self):
         import pctools
-        c, i = card("Støymåler for viftene", "Mikrofonen lytter mens viftene går på 30, 50, 70 og 100 % (ca. 30 "
-                                             "sekunder, viftene settes tilbake til auto etterpå). Du får vite hvor "
-                                             "raskt viftene kan gå før de begynner å bråke. Lyden lagres ikke.")
+        c, i = card("Støymåler for viftene", "Mikrofonen lytter mens viftene går fortere og fortere (ca. 30 sekunder). Du får vite hvor fort de kan gå før de bråker. Lyden lagres ikke.")
         st = dim((pctools.cfg().get("noise") or {}).get("text", ""))
         b = Gtk.Button(label="Mål viftestøy", halign=Gtk.Align.START)
 
@@ -2378,9 +2369,7 @@ class ToolsPage(TabbedPage, _Cards):
 
     def _autoclean_card(self):
         import upkeep
-        c, i = card("Automatisk opprydding", "Én gang i måneden ryddes det som er helt trygt: miniatyrbilder, "
-                                             "shader-cache for avinstallerte spill og midlertidige filer. Aldri "
-                                             "filene dine eller papirkurven.")
+        c, i = card("Automatisk opprydding", "Én gang i måneden ryddes det som er helt trygt: miniatyrbilder, gamle spillfiler og midlertidige filer. Aldri filene dine.")
         cf = upkeep.cfg()
         import updates_ui                                     # én felles bryter (samme som under Oppdatering)
         i.append(updates_ui.auto_row())

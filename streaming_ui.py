@@ -7,7 +7,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, GLib, Gtk  # noqa: E402
 
 import i18n  # noqa: E402
 import streaming as S  # noqa: E402
@@ -75,8 +75,7 @@ class StreamingPage(Gtk.ScrolledWindow):
 
         # ---- spill på telefonen ----
         c, i = card("Spill på telefonen",
-                    "Se og spill det som skjer på PC-en, på telefonen eller nettbrettet – også spillet du spiller nå. "
-                    "Sunshine sender bildet fra PC-en, og Moonlight-appen viser det på telefonen med lav forsinkelse.")
+                    "Se og spill PC-skjermen på telefonen eller nettbrettet – med lav forsinkelse (Sunshine på PC-en, Moonlight på telefonen).")
         box.append(c)
         import apps_ui
         i.append(apps_ui.need("stream", on_done=lambda: self.refresh() if hasattr(self, "refresh") else None))

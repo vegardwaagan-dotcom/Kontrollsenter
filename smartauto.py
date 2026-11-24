@@ -9,7 +9,6 @@ Valgene lagres i smarthjem.json (game_hue, tv_off_sleep, sync_rgb_hue).
 """
 import sys
 import threading
-import time
 
 from gi.repository import Gio, GLib
 

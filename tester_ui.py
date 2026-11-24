@@ -56,9 +56,7 @@ class TesterPage(Gtk.ScrolledWindow):
 
     # ------------------------------------------------------------------ mus og tastatur
     def _mouse(self):
-        c, i = card("🖱️ Mus og tastatur", "Klikk, rull og beveg musa i feltet. Trykk mange taster samtidig for å teste "
-                                          "tastaturet. Dobbeltklikk-feil (musa klikker to ganger av seg selv) og "
-                                          "polling rate vises.")
+        c, i = card("🖱️ Mus og tastatur", "Klikk, rull og beveg musa i feltet. Trykk mange taster samtidig. Du ser om musa dobbeltklikker av seg selv, og hvor raskt den svarer.")
         area = Gtk.DrawingArea(content_height=230, hexpand=True, focusable=True, can_focus=True)
         area.set_cursor(Gdk.Cursor.new_from_name("crosshair"))
         st = {"clicks": {}, "chatter": {}, "last": {}, "scroll": 0, "rates": [], "rate": 0, "win_t": time.monotonic(),

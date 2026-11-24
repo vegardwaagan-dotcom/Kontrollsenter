@@ -43,7 +43,7 @@ class FamilyPage(Gtk.ScrolledWindow):
         # ---- familiekontroll ----
         c, i = _card("Familiekontroll",
                      "En kode for å lukke Kontrollsenter og endre familieinnstillingene. Lukkes vinduet, går "
-                     "programmet videre i bakgrunnen. Glemt koden? Slå den av fra telefonen (Spill → Familie).")
+                     "programmet videre i bakgrunnen. Glemt koden? Slå den av fra telefonen (Hjemmet › Familie).")
         box.append(c)
         r = Gtk.Box(spacing=16)
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3, hexpand=True)
@@ -67,8 +67,7 @@ class FamilyPage(Gtk.ScrolledWindow):
 
         # ---- se på ----
         c, i = _card("Se på skjermen til de andre PC-ene",
-                     "Som å caste fra Meta Quest: se live hva som skjer på en annen PC i huset. Bare visning – ingen "
-                     "kan styre PC-en, og den som blir sett på får beskjed. Fra telefonen: «📺 Se på» på Hjem.")
+                     "Se live hva som skjer på en annen PC i huset. Bare visning – ingen kan styre den, og den som blir sett på får beskjed.")
         box.append(c)
         self.watch_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         i.append(self.watch_list)

@@ -441,9 +441,6 @@ def set_use(feature, key):
 _LISTENERS = []
 
 
-def on_use_changed(fn):
-    _LISTENERS.append(fn)
-
 
 def launch(key, *args):
     """Start programmet (med f.eks. en fil som argument)."""
