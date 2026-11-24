@@ -345,6 +345,15 @@ LOOK = os.path.expanduser("~/.config/systemmonitor/utseende.json")
 THEMES = {
     "standard":   {"name": "Kontrollsenter", "desc": "Blått og lilla – som før", "dark": None,
                    "a": "#5b8cff", "b": "#8a5cff", "c": "#00c8b4"},
+    "aar3000":    {"name": "År 3000 – Holografisk", "desc": "Mørkt glass med holografiske kanter som skifter farge",
+                   "dark": True, "fx": "holo", "a": "#3ff0ff", "b": "#a36bff", "c": "#ff5fd2",
+                   "bg": "#05070d", "side": "#070a12", "card": "#0b0f1a", "fg": "#eaf6ff", "dim": "#8b9bb3"},
+    "krom":       {"name": "År 3000 – Krom", "desc": "Perlegrått og sølv med is-blå detaljer – minimalt og rent",
+                   "dark": False, "fx": "krom", "a": "#2f9bff", "b": "#8fa0b6", "c": "#b9c7d8",
+                   "bg": "#eceff3", "side": "#e3e7ed", "card": "#f8fafc", "fg": "#121720", "dim": "#667180"},
+    "kosmos":     {"name": "År 3000 – Kosmos", "desc": "Stjernehimmel, stjernetåke og nordlysgrønt",
+                   "dark": True, "fx": "kosmos", "a": "#3dffb4", "b": "#9b5cff", "c": "#4d7cff",
+                   "bg": "#04030b", "side": "#070514", "card": "#0d0a1e", "fg": "#f1eeff", "dim": "#9a93b8"},
     "nordlys":    {"name": "Nordlys", "desc": "Grønt og fiolett lys over en polarnatt", "dark": True,
                    "a": "#2ef2b3", "b": "#7c5cff", "c": "#22d3ee",
                    "bg": "#06111a", "side": "#091822", "card": "#0e1f2b", "fg": "#e8fbf6", "dim": "#8fb3ad"},
@@ -520,7 +529,7 @@ def theme_css(name=None):
     t = _t(name)
     if t.get("liquid") and _lq:
         return _lq.css(t)
-    base = _theme_css_solid(t)
+    base = _theme_css_solid(t) + (_fx_css(t) if t.get("fx") else "")
     try:
         if _lq and _lq.wanted(t):
             if "bg" not in t:                              # «Standard» følger systemet: lyst eller mørkt glass
@@ -564,6 +573,113 @@ window.sysmon, window.background {{ background-color: {t['bg']}; color: {t['fg']
 """
 
 
+# ---- År 3000: effekt-lag oppå fargene (animasjonene går bare med Effekter = Full, og stopper uten fokus) ----
+_STARS = ", ".join(f"radial-gradient(circle {sz}px at {x}% {y}%, alpha(white, {o}), transparent)"
+                   for x, y, sz, o in ((7, 12, 1.4, .9), (23, 68, 1.0, .7), (38, 22, 1.8, .95), (51, 84, 1.1, .6),
+                                       (64, 9, 1.3, .8), (77, 47, 1.0, .65), (88, 76, 1.6, .9), (94, 18, 1.0, .7),
+                                       (14, 92, 1.2, .55), (46, 51, 0.9, .5), (70, 30, 1.0, .6), (30, 40, 0.9, .45)))
+
+
+def _fx_css(t):
+    fx, a, b, c = t.get("fx"), t["a"], t["b"], t["c"]
+    thin = """
+.title-1, .title-2, .ks-hello, .ks-big, .ks-tile-value { font-weight: 300; letter-spacing: 1px; }
+.title-3, .title-4, .heading { letter-spacing: 0.4px; }
+"""
+    if fx == "holo":
+        return thin + f"""
+.card, .tile {{ background-color: alpha({t['card']}, 0.78); border-radius: 22px;
+  box-shadow: inset 0 0 0 1px alpha({a}, 0.22), 0 12px 40px alpha(black, 0.45); }}
+.card:hover, .tile:hover {{ box-shadow: inset 0 0 0 1px alpha({a}, 0.55), 0 0 28px alpha({a}, 0.16),
+  0 14px 44px alpha(black, 0.5); }}
+headerbar {{ background-color: alpha({t['side']}, 0.75); box-shadow: inset 0 -1px alpha({a}, 0.18); }}
+.navigation-sidebar > row:selected {{ background-image: linear-gradient(90deg, alpha({a}, 0.22), alpha({b}, 0.06));
+  box-shadow: inset 2px 0 0 {a}; }}
+button.suggested-action {{ background-image: linear-gradient(120deg, {a}, {b} 60%, {c}); color: #061018;
+  box-shadow: 0 0 18px alpha({a}, 0.32); }}
+levelbar block.filled, progressbar progress, scale highlight {{
+  background-image: linear-gradient(90deg, {a}, {b}, {c}); box-shadow: 0 0 10px alpha({a}, 0.45); }}
+switch:checked {{ background-image: linear-gradient(90deg, {a}, {b}); }}
+@keyframes ks-holo {{
+  0%   {{ box-shadow: inset 0 0 0 1px alpha({a}, 0.32), 0 12px 40px alpha(black, 0.45); }}
+  33%  {{ box-shadow: inset 0 0 0 1px alpha({b}, 0.36), 0 12px 40px alpha(black, 0.45); }}
+  66%  {{ box-shadow: inset 0 0 0 1px alpha({c}, 0.32), 0 12px 40px alpha(black, 0.45); }}
+  100% {{ box-shadow: inset 0 0 0 1px alpha({a}, 0.32), 0 12px 40px alpha(black, 0.45); }}
+}}
+window.ks-fx-bg .card {{ animation: ks-holo 18s steps(36) infinite; }}
+window.ks-fx-bg:backdrop .card, window.ks-eco .card, window.ks-lowend .card {{ animation: none; }}
+"""
+    if fx == "krom":
+        return thin + f"""
+.card, .tile {{ background-image: linear-gradient(180deg, #fdfdfe, #edf0f4); border-radius: 20px;
+  border: 1px solid alpha(#8a96a8, 0.22);
+  box-shadow: inset 0 1px 0 white, 0 1px 0 alpha(black, 0.03), 0 10px 30px alpha(#2a3445, 0.10); }}
+headerbar, .ks-side {{ background-image: linear-gradient(180deg, #f3f5f8, #e2e6ec); }}
+button:not(.flat):not(.suggested-action):not(.destructive-action) {{
+  background-image: linear-gradient(180deg, #ffffff, #e8ecf1);
+  box-shadow: inset 0 1px 0 white, 0 1px 2px alpha(black, 0.08); }}
+button.suggested-action {{ background-image: linear-gradient(180deg, #63b6ff, {a}); color: white;
+  box-shadow: inset 0 1px 0 alpha(white, 0.45), 0 4px 14px alpha({a}, 0.28); }}
+levelbar block.filled, progressbar progress, scale highlight {{ background-image: linear-gradient(90deg, #a9dcff, {a}); }}
+.navigation-sidebar > row:selected {{ background-image: linear-gradient(180deg, #ffffff, #e6ebf1);
+  box-shadow: inset 0 1px 0 white, 0 1px 3px alpha(black, 0.08); }}
+"""
+    if fx == "kosmos":
+        return thin + f"""
+.ks-content {{ background-image: {_STARS},
+  radial-gradient(ellipse 55% 40% at 15% 5%, alpha({b}, 0.28), transparent),
+  radial-gradient(ellipse 45% 35% at 95% 15%, alpha({c}, 0.22), transparent),
+  radial-gradient(ellipse 80% 30% at 50% 105%, alpha({a}, 0.16), transparent); }}
+.card, .tile {{ background-color: alpha({t['card']}, 0.72); border-radius: 22px;
+  box-shadow: inset 0 0 0 1px alpha({b}, 0.18), 0 14px 44px alpha(black, 0.5); }}
+.card:hover, .tile:hover {{ box-shadow: inset 0 0 0 1px alpha({a}, 0.45), 0 0 30px alpha({a}, 0.12),
+  0 14px 44px alpha(black, 0.5); }}
+button.suggested-action {{ background-image: linear-gradient(120deg, {a}, {c}); color: #03120c;
+  box-shadow: 0 0 18px alpha({a}, 0.3); }}
+levelbar block.filled, progressbar progress, scale highlight {{ background-image: linear-gradient(90deg, {c}, {a}); }}
+.navigation-sidebar > row:selected {{ background-image: linear-gradient(90deg, alpha({a}, 0.18), transparent);
+  box-shadow: inset 2px 0 0 {a}; }}
+"""
+    return ""
+
+
+def _fx_web(key, t):
+    """Samme effekt-lag i appen (mobil og TV). Animasjon bare med effekter = Full (body.fx-bg)."""
+    fx, a, b, c = t.get("fx"), t["a"], t["b"], t["c"]
+    sel = f':root[data-ks="{key}"]'
+    thin = (f"{sel} h1, {sel} .big, {sel} .num, {sel} .grade, {sel} .td-clock, {sel} .as-big b "
+            "{ font-weight: 300; letter-spacing: .02em; }")
+    if fx == "holo":
+        return thin + f"""
+{sel} .card {{ border: 1px solid transparent; background: linear-gradient(var(--card-solid), var(--card-solid)) padding-box,
+  linear-gradient(120deg, {a}88, {b}66, {c}88, {a}88) border-box; background-size: 100% 100%, 300% 300%;
+  box-shadow: 0 14px 40px rgba(0,0,0,.45); }}
+{sel} body.fx-bg .card {{ animation: ks-holo 16s linear infinite; }}
+{sel} .primary, {sel} button.primary {{ background: linear-gradient(120deg, {a}, {b} 60%, {c}); color: #061018;
+  box-shadow: 0 0 18px {a}55; }}
+@keyframes ks-holo {{ from {{ background-position: 0 0, 0% 50%; }} to {{ background-position: 0 0, 300% 50%; }} }}
+@media (prefers-reduced-motion: reduce) {{ {sel} .card {{ animation: none !important; }} }}"""
+    if fx == "krom":
+        return thin + f"""
+{sel} .card {{ background: linear-gradient(180deg, #fdfdfe, #edf0f4); border: 1px solid rgba(138,150,168,.25);
+  box-shadow: inset 0 1px 0 #fff, 0 10px 30px rgba(42,52,69,.10); }}
+{sel} button.soft, {sel} .soft {{ background: linear-gradient(180deg, #ffffff, #e8ecf1); box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,.08); }}
+{sel} .primary, {sel} button.primary {{ background: linear-gradient(180deg, #63b6ff, {a}); color: #fff; }}"""
+    if fx == "kosmos":
+        stars = ", ".join(f"radial-gradient({sz}px {sz}px at {x}% {y}%, rgba(255,255,255,{o}), transparent)"
+                          for x, y, sz, o in ((7, 12, 2, .9), (23, 68, 1.5, .7), (38, 22, 2.5, .95), (51, 84, 1.5, .6),
+                                              (64, 9, 2, .8), (77, 47, 1.5, .65), (88, 76, 2.2, .9), (94, 18, 1.5, .7),
+                                              (14, 92, 1.8, .55), (46, 51, 1.2, .5), (70, 30, 1.4, .6)))
+        return thin + f"""
+{sel} body {{ background-image: {stars}, var(--aurora); background-attachment: fixed; }}
+{sel} body.fx-bg {{ animation: ks-twinkle 9s ease-in-out infinite alternate; }}
+{sel} .card {{ box-shadow: inset 0 0 0 1px {b}2e, 0 14px 44px rgba(0,0,0,.5); }}
+{sel} .primary, {sel} button.primary {{ background: linear-gradient(120deg, {a}, {c}); color: #03120c; }}
+@keyframes ks-twinkle {{ from {{ background-position: 0 0; }} to {{ background-position: 0 -14px; }} }}
+@media (prefers-reduced-motion: reduce) {{ {sel} body {{ animation: none !important; }} }}"""
+    return ""
+
+
 def web_css():
     """Samme temaer for appen (remote_web/themes.css og startskjermen i APK-en)."""
     out = ["/* Laget av theme.web_css() – ikke rediger for hånd. */",
@@ -587,6 +703,8 @@ def web_css():
             f'radial-gradient(50% 40% at 100% 0%, rgba({rb[0]},{rb[1]},{rb[2]},{.30 if dark else .18}), transparent 70%), '
             f'radial-gradient(70% 50% at 50% 115%, rgba({rc[0]},{rc[1]},{rc[2]},.16), transparent 70%); '
             f'color-scheme: {"dark" if dark else "light"}; }}')
+        if t.get("fx"):
+            out.append(_fx_web(key, t))
     return "\n".join(out) + "\n"
 
 

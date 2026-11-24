@@ -13,6 +13,15 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.38", "Temaer fra år 3000", [
+            "Tre nye temaer under Innstillinger › Utseende: «År 3000 – Holografisk» (mørkt glass med holografiske "
+            "kanter i cyan, fiolett og rosa), «År 3000 – Krom» (perlegrått og sølv med is-blå detaljer) og "
+            "«År 3000 – Kosmos» (stjernehimmel, stjernetåke og nordlysgrønt)",
+            "Tynnere, luftigere skrift på store tall og overskrifter, glødende knapper og målere med fargeoverganger",
+            "Med Effekter = Full skifter de holografiske kantene sakte farge og bakgrunnen driver – står stille når "
+            "vinduet ikke er i fokus, i spill, med «Minimal prosessbruk» og på eldre PC-er",
+            "Samme temaer i mobilappen og på TV-en",
+        ]),
     ("0.99.37", "TV-dashbord, Andreskjerm, talekommandoer og offline", [
             "📺 TV-dashbord: klokke, vær, strømpris, dagens plan og alle PC-ene i stort – kommer av seg selv på TV-en "
             "etter 5 minutter uten bruk, eller fra PC-en › Fjernstyring",
