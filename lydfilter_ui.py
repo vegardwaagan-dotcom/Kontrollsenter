@@ -54,9 +54,7 @@ class FilterBox(Gtk.Box):
         st = F.state()
         self._busy = True
         self.sw = {}
-        for kind, title, sub in (
-                ("surround", "Virtuell 7.1 i hodesettet", "Spill og filmer sender 7.1, og du hører lyden rundt deg i "
-                                                         "et vanlig stereohodesett. Test den med høyttalertesten."),
+        for kind, title, sub in (                       # (7.1 i hodesettet har eget kort øverst på Lyd-siden)
                 ("noise", "Støyfilter på mikrofonen", "Fjerner vifter, tastatur og sus (WebRTC). Lager «Mikrofon med "
                                                       "støyfilter» og gjør den til standard.")):
             sw = Gtk.Switch(active=st[kind])
@@ -135,3 +133,66 @@ class FilterBox(Gtk.Box):
             self._busy = False
             return False
         self._tid = GLib.timeout_add(500, go)
+
+
+class Headset71(Gtk.Box):
+    """«🎧 7.1 i hodesettet»: én knapp – spill og filmer får en 7.1-utgang, og du hører lyden rundt deg."""
+
+    def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        if F.IS_WIN:
+            self.append(Gtk.Label(label=_t("På Windows heter dette «Romlyd» (Windows Sonic for hodetelefoner). Velg "
+                                           "hodesettet ditt og slå på Romlyd."), xalign=0, wrap=True))
+            b = Gtk.Button(label=_t("🎧 Åpne Romlyd for hodesettet"), halign=Gtk.Align.START)
+            b.add_css_class("suggested-action")
+            b.connect("clicked", lambda *_: __import__("winsupport").open_uri("ms-settings:sound"))
+            self.append(b)
+            return
+        if not F.available():
+            self.append(Gtk.Label(label=_t("Krever PipeWire."), xalign=0))
+            return
+        self.hs = F.headsets()
+        row = Gtk.Box(spacing=10)
+        self.dd = Gtk.DropDown.new_from_strings([d for _n, d in self.hs] or [_t("Fant ingen hodesett")])
+        self.dd.set_hexpand(True)
+        tgt = F.cfg().get("surround_target")
+        idx = next((i for i, (n, _d) in enumerate(self.hs) if n == tgt), 0)
+        self.dd.set_selected(idx)
+        row.append(self.dd)
+        self.btn = Gtk.Button()
+        self.btn.set_size_request(200, -1)
+        self.btn.connect("clicked", self._toggle)
+        row.append(self.btn)
+        self.append(row)
+        self.msg = Gtk.Label(xalign=0, wrap=True)
+        self.msg.add_css_class("dim-label")
+        self.append(self.msg)
+        self._show(bool(F.running(F.SURROUND_NAME)))
+
+    def _show(self, on):
+        self.btn.set_label(_t("■ Slå av 7.1") if on else _t("🎧 Slå på 7.1"))
+        for c in ("suggested-action", "destructive-action"):
+            self.btn.remove_css_class(c)
+        self.btn.add_css_class("destructive-action" if on else "suggested-action")
+        self.dd.set_sensitive(not on)
+        self.msg.set_label(_t("På – spill og filmer sender 7.1, og du hører lyden rundt deg. Test med lydsirkelen "
+                              "under (velg oppsett 7.1).") if on else
+                           _t("Av. Trykk for å få 7.1-lyd i et vanlig stereohodesett (virtuell surround)."))
+
+    def _toggle(self, *_):
+        on = not F.running(F.SURROUND_NAME)
+        if on and not self.hs:
+            self.msg.set_label(_t("Koble til hodesettet først."))
+            return
+        sink = self.hs[self.dd.get_selected()][0] if self.hs else ""
+        self.btn.set_sensitive(False)
+        self.msg.set_label(_t("Et øyeblikk …"))
+
+        def done(r):
+            self.btn.set_sensitive(True)
+            if isinstance(r, Exception):
+                self.msg.set_label(f"✗ {r}")
+                self._show(bool(F.running(F.SURROUND_NAME)))
+                return
+            self._show(on)
+        _bg(lambda: F.headset_on(sink) if on else F.enable("surround", False), done)

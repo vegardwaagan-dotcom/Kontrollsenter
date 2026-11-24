@@ -248,6 +248,15 @@ class AudioWinPage(Gtk.ScrolledWindow):
                 i.append(Gtk.Label(label=i18n.tr("Fant ingen enhet: ") + (str(e) or type(e).__name__), xalign=0))
             box.append(c)
 
+        try:                                              # 🎧 7.1 i hodesettet (Windows: Romlyd)
+            import lydfilter_ui
+            c, i, _h = automation.card("🎧 7.1 i hodesettet", "Virtuell surround i et vanlig hodesett.",
+                                       "ks-sound-symbolic")
+            i.append(lydfilter_ui.Headset71())
+            box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("7.1 hodesett")
         try:                                              # test av hodesett og høyttalere, mono → 9.1
             import lydtest_ui
             c, i, _h = automation.card("Test hodesett og høyttalere", "Fra mono og stereo til 7.1, 9.1 og Atmos med "

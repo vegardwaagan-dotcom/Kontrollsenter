@@ -515,6 +515,10 @@ def action(win, kind, a, notify):
         if a.get("preset"):
             F.set_eq(preset=str(a["preset"]))
             return True, "Equalizer: " + F.PRESETS.get(str(a["preset"]), ("",))[0]
+        if a.get("kind") == "surround" and a.get("on"):      # 7.1 i hodesettet: valgt eller funnet hodesett
+            hs = F.headsets()
+            sink = a.get("sink") or F.cfg().get("surround_target") or (hs[0][0] if hs else "")
+            return True, F.headset_on(sink)
         return True, F.enable(str(a.get("kind")), bool(a.get("on")))
     if kind == "lydkal":                                 # nivåkalibrering med mikrofonen (tar ca. 20 s)
         import threading

@@ -686,6 +686,7 @@ if (tab === "oversikt") loadHealth(false);
     room();
     const f = info.filter || {};                    // lydfiltrene (Linux)
     $("#spk-filters").hidden = !f.available;
+    if ($("#hs71-row")) { $("#hs71-row").hidden = !f.available; $("#hs71-name").textContent = f.headset ? "· " + f.headset.replace(/ Analog Stereo$/, "") : ""; }
     if (f.available) {
       document.querySelectorAll("[data-lf]").forEach((x) => (x.checked = !!f[x.dataset.lf]));
       const e = $("#spk-eq"); if (!e.options.length) e.innerHTML = f.presets.map((p) => `<option value="${p.key}">${esc(p.name)}</option>`).join("");

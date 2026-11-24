@@ -81,6 +81,7 @@
       <div class="card" id="c-power"><h2>Strømmodus</h2><div class="seg" id="power"></div></div>
       <div class="card" id="c-audio"><h2>Lyd</h2>
         <div class="dim small" id="audio-dev"></div>
+        <div class="row" id="hs71-row" hidden><span style="flex:1">🎧 <b>7.1 i hodesettet</b> <span class="dim small" id="hs71-name"></span></span><label class="switch"><input type="checkbox" data-lf="surround"><i></i></label></div>
         <div class="row"><button class="icon" id="mute" title="Demp"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path id="mute-x" d="M16 9l5 6M21 9l-5 6"/></svg></button>
           <input type="range" id="vol" min="0" max="100" step="1"><span id="vol-v" class="num">–</span></div>
         <div id="media-now" class="dim small"></div>
@@ -107,7 +108,6 @@
         <div class="row wrap center"><button class="primary" id="pan-go">▶ Start</button><button class="soft" id="pan-spin">🔄 Snurr rundt</button><button class="danger" id="pan-stop">■ Stopp</button></div>
         <div id="pan-l" class="dim small" style="text-align:center"></div>
         <div id="spk-filters" hidden><h3>Lydfiltre</h3>
-          <div class="row"><span style="flex:1">Virtuell 7.1 i hodesettet</span><label class="switch"><input type="checkbox" data-lf="surround"><i></i></label></div>
           <div class="row"><span style="flex:1">Støyfilter på mikrofonen</span><label class="switch"><input type="checkbox" data-lf="noise"><i></i></label></div>
           <div class="row"><span style="flex:1">Equalizer</span><label class="switch"><input type="checkbox" data-lf="eq"><i></i></label></div>
           <select id="spk-eq" data-title="Equalizer"></select></div>

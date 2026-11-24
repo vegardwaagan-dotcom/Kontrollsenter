@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.42", "7.1 i hodesettet med én knapp", [
+            "Lyd › «🎧 7.1 i hodesettet»: én knapp som gir virtuell 7.1 i hodesettet – PRO X 2 og andre hodesett "
+            "finnes automatisk. Spill og filmer ser en 7.1-utgang, og du hører lyden rundt deg",
+            "Når 7.1 er på, velger høyttalertesten og lydsirkelen 7.1 av seg selv – dra lyden rundt og hør",
+            "Mobilappen og TV-en: bryteren «🎧 7.1 i hodesettet» øverst i Lyd-kortet",
+            "Windows: knappen åpner «Romlyd» (Windows Sonic for hodetelefoner)",
+        ]),
     ("0.99.41", "Jevnere lydsirkel", [
             "Lydsirkelen: når du drar knappen, flyttes ikke lenger hele vinduet",
             "Lyden hakker ikke lenger mens du drar: støyen lages nå av lydsystemet selv, og Kontrollsenter flytter "

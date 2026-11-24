@@ -209,6 +209,15 @@ class AudioPage(Gtk.ScrolledWindow):
         i.append(self.out_vol)
         box.append(c)
 
+        try:                                                  # 🎧 7.1 i hodesettet – én knapp, øverst
+            import lydfilter_ui
+            c, i = card("🎧 7.1 i hodesettet", "Virtuell surround: spill og filmer får en 7.1-utgang, og du hører "
+                                                "lyden rundt deg – i et vanlig hodesett.")
+            i.append(lydfilter_ui.Headset71())
+            box.append(c)
+        except Exception:  # noqa: BLE001
+            import applog
+            applog.log.exception("7.1 hodesett")
         try:                                                  # test av hodesett og høyttalere, mono → 9.1
             import lydtest_ui
             c, i = card("Test hodesett og høyttalere", "Fra mono og stereo til 7.1, 9.1 og Atmos med takhøyttalere. "
@@ -220,7 +229,7 @@ class AudioPage(Gtk.ScrolledWindow):
             i.append(lydtest_ui.MicTestBox())
             box.append(c)
             import lydfilter_ui
-            c, i = card("Lydfiltre", "Virtuell 7.1 i hodesettet, equalizer og støyfilter på mikrofonen.")
+            c, i = card("Lydfiltre", "Equalizer og støyfilter på mikrofonen.")
             i.append(lydfilter_ui.FilterBox())
             box.append(c)
         except Exception:  # noqa: BLE001

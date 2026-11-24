@@ -11,6 +11,7 @@ Windows har ikke noe tilsvarende API – der åpnes Windows' egne innstillinger 
 """
 import array
 import json
+import re
 import math
 import os
 import signal
@@ -370,6 +371,30 @@ def set_eq(gains=None, preset=None, target=None):
     return c
 
 
+def headsets():
+    """Stereo-utgangene som kan få virtuell 7.1 – hodesett først. [(navn, beskrivelse)]"""
+    import lydtest
+    out = [(n, d) for n, d, ch in lydtest.sinks() if len(ch) == 2 and not n.startswith("ks_")]
+    cur = _default_sink()
+    if cur.startswith("ks_"):
+        cur = cfg().get("surround_target") or ""
+
+    def key(x):
+        txt = x[0] + " " + x[1]
+        return (0 if x[0] == cur else 1,
+                0 if re.search(r"headset|pro.?x|arctis|hyperx|cloud|kraken|corsair|logitech|steelseries|astro|"
+                               r"blackshark|bluez", txt, re.I) else 1 if re.search(r"headphone|hodetelefon", txt, re.I)
+                else 2, 1 if re.search(r"hdmi|spdif", txt, re.I) else 0)
+    return sorted(out, key=key)
+
+
+def headset_on(sink):
+    """Virtuell 7.1 i dette hodesettet (spill og filmer ser en 7.1-utgang, du hører det rundt deg)."""
+    if running(SURROUND_NAME) and cfg().get("surround_target") != sink:
+        stop(SURROUND_NAME)
+    return enable("surround", True, surround_target=sink)
+
+
 def tick():
     """Kalles jevnlig: start filtrene som skal være på (f.eks. etter omstart av PC-en)."""
     if not available():
@@ -394,6 +419,8 @@ def uninstall():
 
 def state():
     c = cfg()
-    return {"available": available(), "surround": bool(running(SURROUND_NAME)), "eq": bool(running(EQ_NAME)),
+    hs = headsets() if available() else []
+    return {"headset": (next((d for n, d in hs if n == c.get("surround_target")), None) or (hs[0][1] if hs else "")),
+            "available": available(), "surround": bool(running(SURROUND_NAME)), "eq": bool(running(EQ_NAME)),
             "noise": bool(running(NOISE_NAME)), "eq_gains": c["eq_gains"], "eq_preset": c["eq_preset"],
             "presets": [{"key": k, "name": v[0]} for k, v in PRESETS.items()], "freq": EQ_FREQ}
