@@ -982,9 +982,12 @@ LIMITED_OK = {"game", "volume", "media", "appvolume", "open_url", "clipboard", "
               "goal_req", "shop_req"}   # «begrenset» tilgang
 
 
+win = None                                             # settes når Remote starter (se Remote.__init__)
+
 class Remote:
     def __init__(self, win):
         self.win = win
+        globals()["win"] = win                         # remote.win: hovedvinduet for moduler uten egen tilgang
         self.pair_role = "full"
         import remote_extra as X
         self.timer = X.ShutdownTimer(win)

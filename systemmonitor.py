@@ -923,7 +923,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                                f"Versjon {new} er klar. Klikk for å starte på nytt.", action="app.restart")
         return True
 
-    def _open_syscheck(self, _btn):
+    def _open_syscheck(self, _btn=None):
         if IS_WIN:
             import wintools
             wintools.WinSysCheckDialog().present(self)

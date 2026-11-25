@@ -23,6 +23,7 @@ def ip():
 
 def read_once(addr, timeout=2.5):
     """Watt fra pluggen (kaster feil hvis den ikke svarer)."""
+    last = "ingen watt i svaret"
     for url, pick in ((f"http://{addr}/rpc/Switch.GetStatus?id=0", lambda d: d.get("apower")),
                       (f"http://{addr}/status", lambda d: (d.get("meters") or [{}])[0].get("power"))):
         try:

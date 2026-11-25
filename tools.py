@@ -2434,8 +2434,8 @@ class ToolsPage(TabbedPage, _Cards):
         i.append(res)
 
         def show(r):
-            if r.get("error"):
-                res.append(dim(r["error"]))
+            if r.get("error") or r.get("total") is None:
+                res.append(dim(r.get("error") or "Fikk ikke lest oppstartstiden ennå – prøv igjen litt senere."))
                 return
             nm = {"firmware": "BIOS", "loader": "Oppstartslaster", "kernel": "Kjerne", "initrd": "Initrd",
                   "userspace": "System"}
