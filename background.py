@@ -549,6 +549,20 @@ class Background:
             pass
         self._watch_extra()
         self._smart_check()
+        if time.time() - getattr(self, "_dlss5_t", 0) > 6 * 3600:      # nye spill med DLSS 5 (NVIDIA-lista)
+            self._dlss5_t = time.time()
+            try:
+                __import__("gpu").ensure_ngx()
+            except Exception:  # noqa: BLE001
+                pass
+
+            def dlss5():
+                try:
+                    __import__("dlsslist").check_new(
+                        lambda *a, **k: GLib.idle_add(lambda: (self.notify(*a, **k), False)[1]))
+                except Exception:  # noqa: BLE001
+                    pass
+            __import__("threading").Thread(target=dlss5, daemon=True).start()
         if (__import__("gpu").cfg().get("nvfan") or {}) and not getattr(self, "_fan_busy", False):
             self._fan_busy = True                      # NVIDIA-viftekurve (bare når den er valgt)
 

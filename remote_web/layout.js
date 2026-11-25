@@ -10,7 +10,7 @@
       ["helse", "🤫 Stille, strøm og stresstest", ["c-pcquiet", "c-budget", "c-stress"]],
       ["lyd", "🔊 Lyd og skjerm", ["c-audio", "c-disp", "c-spk", "c-avprof"]],
       ["tester", "🧪 Tester", ["c-tests"]],
-      ["verktoy", "🔧 PC-verktøy", ["c-drivers", "pn:pctools", "pn:apps", "pn:gpu", "pn:nvidia", "t:Programmer", "t:Oppstartsprogrammer",
+      ["verktoy", "🔧 PC-verktøy", ["c-drivers", "pn:pctools", "pn:apps", "pn:gpu", "pn:nvidia", "pn:dlss5", "t:Programmer", "t:Oppstartsprogrammer",
         "t:Sikkerhetssjekk", "t:Selvtest"]],
       ["historikk", "📈 Historikk og strøm", ["t:Historikk", "t:Strømkostnad", "t:Tidslinje"]],
       ["nett", "🌐 Nett og NAS", ["t:Nettverk", "t:Hjemmenett", "t:NAS"]],
@@ -42,7 +42,7 @@
   };
   // panel → fane (hurtigkommandoene ligger på Hjem, rett under hurtigknappene)
   const PANEL_TAB = { commands: "oversikt", family: "mer", updates: "oversikt", assistant: "oversikt", games: "spill", homepcs: "mer", radio: "mer", presence: "mer",
-    pctools: "kontroll", apps: "kontroll", gpu: "kontroll", nvidia: "kontroll", version: "system" };
+    pctools: "kontroll", apps: "kontroll", gpu: "kontroll", nvidia: "kontroll", dlss5: "kontroll", version: "system" };
 
   const titleOf = (c) => ((c.querySelector(":scope > h2, :scope > .row h2, h2") || {}).textContent || "").trim();
   function catOf(tab, c) {

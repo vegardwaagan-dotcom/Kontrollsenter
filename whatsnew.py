@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.56", "Liste over spill med DLSS 5", [
+            "Ny liste over alle spill med DLSS 5, rett fra NVIDIA sin offisielle oversikt – oppdateres av seg selv",
+            "Varsel når et nytt spill får DLSS 5 (og om du har det installert)",
+            "Bibliotek viser hva NVIDIA oppgir for hvert spill (DLSS 5, 6× bildegenerering, path tracing …)",
+            "Mobilappen: eget panel «Spill med DLSS 5»",
+            "«Nyeste DLSS automatisk» får nå også NVIDIA sin egen tillatelse, så den faktisk virker",
+        ]),
     ("0.99.55", "DLSS 5, trygg overklokking og spillprofiler", [
             "DLSS 5 (Neural Rendering): nyeste modell i spill som har DLSS 5 innebygd (RTX 50)",
             "Bildegenerering: velg modell – nyeste eller den nye Ytelsesmodusen (Preset C, opptil 35 % raskere)",

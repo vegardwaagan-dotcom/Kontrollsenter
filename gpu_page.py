@@ -150,10 +150,12 @@ class GpuPage(Gtk.ScrolledWindow):
         if not IS_WIN:
             if "nvidia" in vendors:
                 self._dlss()
+                self._dlss5_list()
             self._games(vendors)
         else:
             if "nvidia" in vendors:
                 self._dlss()
+                self._dlss5_list()
             self._windows()
         if not IS_WIN:
             c, i, _h = _card("Ved oppstart", "Klokker, OverDrive og ytelsesnivå nullstilles når PC-en starter på nytt.")
@@ -781,6 +783,53 @@ class GpuPage(Gtk.ScrolledWindow):
                     self.msg.set_label(str(e))
             dd.connect("notify::selected", changed)
             i.append(_row(name, desc, dd))
+        self.box.append(c)
+
+    def _dlss5_list(self):
+        """Spillene som har DLSS 5 – NVIDIA sin offisielle liste, hentes på nytt hver 12. time."""
+        import dlsslist
+        c, i, _h = _card("Spill med DLSS 5", "Fra NVIDIA sin offisielle liste. Oppdateres av seg selv, og du får "
+                         "varsel når et nytt spill får DLSS 5.", VENDOR["nvidia"])
+        lst = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        i.append(lst)
+        when = Gtk.Label(xalign=0)
+        when.add_css_class("ks-sub")
+        i.append(when)
+        btns = Gtk.Box(spacing=8)
+        upd = Gtk.Button(label=_t("Oppdater nå"))
+        web = Gtk.Button(label=_t("Hele lista hos NVIDIA"))
+        web.connect("clicked", lambda *_: self._open(["xdg-open" if not IS_WIN else "explorer", dlsslist.PAGE]))
+        btns.append(upd)
+        btns.append(web)
+        i.append(btns)
+
+        def show(gs):
+            while (ch := lst.get_first_child()):
+                lst.remove(ch)
+            if not gs:
+                lst.append(Gtk.Label(label=_t("Fikk ikke hentet lista ennå (krever nett)."), xalign=0))
+            for g in gs:
+                row = Gtk.Box(spacing=8)
+                row.append(Gtk.Label(label=("✅ " if g["installed"] else "• ") + g["name"], xalign=0, hexpand=True))
+                extra = ", ".join(x for x in (g["mfg"].split(",")[-1].strip().replace("X", "× bildegenerering")
+                                              if g["mfg"] else "", "path tracing" if g["rt"] == "Path Tracing"
+                                              else "strålesporing" if g["rt"] else "") if x)
+                sub = Gtk.Label(label=(_t("installert · ") if g["installed"] else "") + extra, xalign=1)
+                sub.add_css_class("ks-sub")
+                row.append(sub)
+                lst.append(row)
+            when.set_label(_t("Oppdatert ") + (dlsslist.updated() or "–") +
+                           _t(" · ✅ = installert her. Slå på DLSS 5 i spillets grafikkmeny (krever RTX 50)."))
+
+        def load(force=False):
+            def work():
+                dlsslist.refresh(force)
+                gs = dlsslist.dlss5_games()
+                GLib.idle_add(lambda: (show(gs), False)[1])
+            threading.Thread(target=work, daemon=True).start()
+        upd.connect("clicked", lambda *_: load(True))
+        show(dlsslist.dlss5_games())
+        load()
         self.box.append(c)
 
     def _env(self, key, on):

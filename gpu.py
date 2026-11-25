@@ -615,6 +615,19 @@ def _ngx_conf(on):
         json.dump(c, f, indent=1)
 
 
+def ensure_ngx():
+    """«Nyeste DLSS automatisk» er på, men NVIDIA-tillatelsen mangler (slått på i en eldre versjon) – legg den inn."""
+    if IS_WIN or env_get().get("PROTON_ENABLE_NGX_UPDATER") != "1":
+        return
+    p = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "nvidia-ngx-conf.json")
+    try:
+        ok = json.load(open(p, encoding="utf-8")).get("allow_ngx_updater") is True
+    except (OSError, ValueError):
+        ok = False
+    if not ok:
+        _ngx_conf(True)
+
+
 def _env_write(cur):
     os.makedirs(os.path.dirname(ENV_FILE), exist_ok=True)
     with open(ENV_FILE, "w", encoding="utf-8") as f:

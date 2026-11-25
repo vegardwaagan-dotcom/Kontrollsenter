@@ -811,9 +811,12 @@ class GamesPage(TabbedPage):
 
             def work():
                 import dlssinfo
+                import dlsslist
                 v = dlssinfo.game_dlss(folder)
-                GLib.idle_add(lambda: (dver.set_label(("DLSS i spillet: " + v) if v else "Spillet har ikke DLSS"),
-                                       False)[1])
+                nv = dlsslist.features(g["name"])
+                txt = (("DLSS i spillet: " + v) if v else "Spillet har ikke DLSS-filer") + (
+                    ("  ·  NVIDIA oppgir: " + nv) if nv else "")
+                GLib.idle_add(lambda: (dver.set_label(txt), False)[1])
             threading.Thread(target=work, daemon=True).start()
         exp.connect("notify::expanded", find_dlss)
         prev = Gtk.Label(xalign=0, selectable=True, wrap=True)

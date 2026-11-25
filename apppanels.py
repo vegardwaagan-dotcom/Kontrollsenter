@@ -306,6 +306,19 @@ def p_nvidia(win):
     return p
 
 
+def p_dlss5(win):
+    """Spill med DLSS 5"""
+    import dlsslist
+    gs = dlsslist.dlss5_games(refresh_if_old=True)
+    if not gs:
+        return None
+    return {"id": "dlss5", "icon": "✨", "title": f"Spill med DLSS 5 ({len(gs)})",
+            "desc": f"NVIDIA sin offisielle liste, oppdatert {dlsslist.updated()}. Du får varsel når nye spill kommer. "
+                    "✅ = installert på PC-en. Krever RTX 50.",
+            "items": [{"title": ("✅ " if g["installed"] else "") + g["name"],
+                       "sub": dlsslist.features(g["name"])} for g in gs]}
+
+
 # --------------------------------------------------------------------------
 # Smart Hjem: nettradio og hjemme/borte
 # --------------------------------------------------------------------------
@@ -426,11 +439,11 @@ def p_family(win):
                              {"do": "fam_free", "on": "0" if free else "1"})]}
 
 
-PANELS = [p_commands, p_family, p_assistant, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_nvidia, p_radio, p_presence, p_version]
+PANELS = [p_commands, p_family, p_assistant, p_updates, p_games, p_homepcs, p_pctools, p_apps, p_gpu, p_nvidia, p_dlss5, p_radio, p_presence, p_version]
 
 
 _CACHE = {}
-TTL = {"assistant": 60, "pctools": 120, "apps": 60, "games": 120, "radio": 300, "gpu": 60, "nvidia": 5}
+TTL = {"assistant": 60, "pctools": 120, "apps": 60, "games": 120, "radio": 300, "gpu": 60, "nvidia": 5, "dlss5": 600}
 
 
 def all_panels(win, only=None):
