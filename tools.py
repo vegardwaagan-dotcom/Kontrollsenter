@@ -1407,16 +1407,71 @@ class _Cards:
         i.append(row)
         self.box.append(c)
 
+    def _design_card(self):
+        """Bryteren mellom Klassisk og det nye designet (gjelder PC-en; mobilappen har sin egen under Utseende)."""
+        import design
+        c, i = card("Design", "Velg mellom slik Kontrollsenter alltid har sett ut, og det nye, ryddigere designet med "
+                              "7 områder i menyen, faner øverst og roligere utseende. Programmet starter på nytt.")
+        row = Gtk.Box(spacing=10, homogeneous=True)
+        cur = design.saved_mode()
+        first = None
+        for key, title, desc in (("klassisk", "Klassisk", "Sidemenyen med alle sidene, slik som før"),
+                                 ("ny", "Nytt design", "7 områder, faner øverst, søk i menyen og ryddigere kort")):
+            b = Gtk.ToggleButton(active=(key == cur))
+            b.add_css_class("ks-swatch")
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            for side in ("top", "bottom", "start", "end"):
+                getattr(col, f"set_margin_{side}")(6)
+            t = Gtk.Label(label=title, xalign=0)
+            t.add_css_class("heading")
+            col.append(t)
+            d = Gtk.Label(label=desc, xalign=0, wrap=True)
+            d.add_css_class("caption")
+            d.add_css_class("dim-label")
+            col.append(d)
+            b.set_child(col)
+            if first is not None:
+                b.set_group(first)
+            first = first or b
+            b.connect("toggled", lambda w, k=key: w.get_active() and self._pick_design(k))
+            row.append(b)
+        i.append(row)
+        self.box.append(c)
+
+    def _pick_design(self, key):
+        import design
+        if key == design.saved_mode():
+            return
+        design.set_mode(key)
+        root = self.get_root()
+        if hasattr(root, "restart_app"):
+            root.toast("Bytter design – programmet starter på nytt …")
+            root.restart_app()
+
     def _theme_card(self):
         import i18n
         import theme as ks_theme
+        import design
         c, i = card("Tema", "Farger på hele Kontrollsenter. Byttes med en gang – også i widgetene og detaljene. "
                             "Samme temaer finnes i mobilappen.")
         flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=5,
                            min_children_per_line=2, column_spacing=10, row_spacing=10)
         cur = ks_theme.current_theme()
         first = None
-        for key, t in ks_theme.THEMES.items():
+        items = list(ks_theme.THEMES.items())
+        more = None
+        if design.is_new():                # nytt design: 8 utvalgte først, resten under «Flere temaer»
+            top = [(k, ks_theme.THEMES[k]) for k in design.CURATED if k in ks_theme.THEMES]
+            rest = [(k, t) for k, t in items if k not in design.CURATED]
+            if cur not in design.CURATED and cur in ks_theme.THEMES:      # valgt tema vises alltid
+                top.append((cur, ks_theme.THEMES[cur]))
+                rest = [(k, t) for k, t in rest if k != cur]
+            items = top
+            more = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, homogeneous=True, max_children_per_line=5,
+                               min_children_per_line=2, column_spacing=10, row_spacing=10)
+            more_items = rest
+        for n, (key, t) in enumerate(items + (more_items if more is not None else [])):
+            target = flow if n < len(items) else more
             b = Gtk.ToggleButton(active=(key == cur))
             b.add_css_class("flat")
             b.add_css_class("ks-swatch")
@@ -1436,10 +1491,14 @@ class _Cards:
             col.append(ds)
             b.set_child(col)
             b.connect("toggled", lambda w, k=key: w.get_active() and self._pick_theme(k))
-            flow.append(b)
+            target.append(b)
             self._swatches = getattr(self, "_swatches", {})
             self._swatches[key] = b
         i.append(flow)
+        if more is not None and more.get_first_child() is not None:
+            exp = Gtk.Expander(label=i18n.tr("Flere temaer") + f" ({len(more_items)})")
+            exp.set_child(more)
+            i.append(exp)
         self.box.append(c)
         self._try(self._liquid_card)
         self._try(self._custom_card)
@@ -2445,6 +2504,7 @@ class SettingsPage(TabbedPage, _Cards):
     def __init__(self):
         TabbedPage.__init__(self, "innstillinger")
         self.tab("utseende", "Utseende")
+        self._try(self._design_card)
         self._try(self._theme_card)
         self._try(self._fx_card)
         self._try(self._daily_card)

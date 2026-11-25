@@ -80,6 +80,12 @@ class CatBar(Gtk.Box):
             theme.add_css(CSS, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 4)
         self.add_css_class("ks-catbar")
         self.items, self.on_change = items, on_change
+        import design
+        if design.is_new():                     # nytt design: faner i stedet for ‹ rullehjul ›
+            self.add_css_class("ks-catbar-new")
+            self._tabs = design.make_tabbar([(k, i18n.tr(n)) for k, n in items], current, on_change)
+            self.append(self._tabs)
+            return
         prev = Gtk.Button(label="‹", tooltip_text=i18n.tr("Forrige"))
         nxt = Gtk.Button(label="›", tooltip_text=i18n.tr("Neste"))
         for b in (prev, nxt):
@@ -98,10 +104,19 @@ class CatBar(Gtk.Box):
         self.append(nxt)
 
     def step(self, d):
+        keys = [k for k, _n in self.items]
+        if hasattr(self, "_tabs"):
+            cur = next((k for k, b in self._tabs._buttons.items() if b.get_active()), keys[0])
+            self.select(keys[(keys.index(cur) + d) % len(keys)])
+            self.on_change(keys[(keys.index(cur) + d) % len(keys)])
+            return
         n = len(self.items)
         self.dd.set_selected((self.dd.get_selected() + d) % n)
 
     def select(self, key):
+        if hasattr(self, "_tabs"):
+            self._tabs.select(key)
+            return
         keys = [k for k, _n in self.items]
         if key in keys and keys.index(key) != self.dd.get_selected():
             self._quiet = True

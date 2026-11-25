@@ -48,9 +48,9 @@ def code_check():
     return errs
 
 
-def ui_check(timeout=240):
-    """Start en egen Kontrollsenter-prosess som går gjennom alt (se _child)."""
-    env = dict(os.environ, SYSTEMMONITOR_APP_ID="no.waagan.KsSelftest", KS_SELFTEST="1")
+def ui_check(timeout=240, design="klassisk"):
+    """Start en egen Kontrollsenter-prosess som går gjennom alt (se _child) – i valgt design."""
+    env = dict(os.environ, SYSTEMMONITOR_APP_ID="no.waagan.KsSelftest", KS_SELFTEST="1", KS_DESIGN=design)
     out = os.path.expanduser("~/.cache/systemmonitor/selvtest-ui.json")
     try:
         os.remove(out)
@@ -88,9 +88,12 @@ def run(ui=True):
     t = time.time()
     errs = code_check()
     seen = {}
-    if ui:
-        e2, seen = ui_check()
-        errs += e2
+    if ui:                                        # begge designene: Klassisk og Nytt (design.py)
+        for design in ("klassisk", "ny"):
+            e2, sn = ui_check(design=design)
+            errs += [f"[{design}] {e}" for e in e2]
+            for k, v in sn.items():
+                seen[k] = seen.get(k, 0) + v
     res = {"version": version(), "ok": not errs, "errors": errs[:60], "seen": seen, "t": time.time(),
            "secs": round(time.time() - t)}
     os.makedirs(os.path.dirname(RESULT), exist_ok=True)
@@ -240,7 +243,8 @@ def _child(out):
         srv.check = lambda tok: {"name": "Selvtest", "role": "full"} if tok == "selvtest" else real(tok)
         w = Adw.ApplicationWindow(application=app, default_width=412, default_height=900)
         wv = WebKit.WebView()
-        pre = ('localStorage.setItem("ks_token","selvtest");window.__e=[];window.addEventListener("error",function(e)'
+        pre = ('localStorage.setItem("ks_token","selvtest");localStorage.setItem("ks_design",'
+               + json.dumps(os.environ.get("KS_DESIGN", "klassisk")) + ');window.__e=[];window.addEventListener("error",function(e)'
                '{window.__e.push((e.filename||"").split("/").pop()+":"+e.lineno+" "+e.message)});'
                'window.addEventListener("unhandledrejection",function(e){var m=String(e.reason&&e.reason.message||'
                'e.reason);if(!/fetch|network|abort|401|403|404|tidsavbrudd/i.test(m))window.__e.push("promise: "+m)});')

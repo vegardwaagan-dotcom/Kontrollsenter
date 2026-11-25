@@ -726,6 +726,8 @@ def write_web_themes():
                 f.write(css)
             with open(os.path.join(d, "themes.js"), "w", encoding="utf-8") as f:
                 f.write(js)
+    import design                                  # nytt design: samme designverdier på mobilen
+    design.write_web()
     return len(rows)
 
 

@@ -7,7 +7,9 @@
 <title>Kontrollsenter</title>
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="themes.css">
-<script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sakura|arktis)$/.test(k)?"light":"dark");if(k==="eget"){var c=JSON.parse(localStorage.getItem("ks_own")||(window.KS&&KS.getLookColors&&KS.getLookColors())||"{}");if(c.a&&c.b){["--ga","--acc","--c1"].forEach(function(v){r.style.setProperty(v,c.a)});["--gb","--acc2"].forEach(function(v){r.style.setProperty(v,c.b)});r.style.setProperty("--grad","linear-gradient(135deg,"+c.a+","+c.b+")");}}}}catch(e){}</script>
+<link rel="stylesheet" href="design.css">
+<script>try{document.documentElement.setAttribute("data-design",(window.KS&&KS.getDesign&&KS.getDesign())||localStorage.getItem("ks_design")||"klassisk")}catch(e){}</script>
+<script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sand|mint|papir|latte|sakura|arktis|krom)$/.test(k)?"light":"dark");if(k==="eget"){var c=JSON.parse(localStorage.getItem("ks_own")||(window.KS&&KS.getLookColors&&KS.getLookColors())||"{}");if(c.a&&c.b){["--ga","--acc","--c1"].forEach(function(v){r.style.setProperty(v,c.a)});["--gb","--acc2"].forEach(function(v){r.style.setProperty(v,c.b)});r.style.setProperty("--grad","linear-gradient(135deg,"+c.a+","+c.b+")");}}}}catch(e){}</script>
 </head>
 <body>
 <div class="shell">
@@ -259,6 +261,7 @@
         <div class="chips"><button data-timer="30">30 min</button><button data-timer="60">1 time</button>
           <button data-timer="120">2 timer</button><button data-timer="idle">Etter nedlasting</button><button data-timer="off">Avbryt</button></div></div>
       <div class="card"><h2>Utseende</h2>
+        <div class="label">Design</div><div class="design-pick" id="ks-design"></div>
         <div class="label">Tema</div><div class="themes" id="ks-themes"></div>
         <div class="label">Liquid Glass og Aero</div><div id="ks-aero"></div>
         <div class="row"><span>Tema etter tid på døgnet<br><small class="dim">Arktis fra 07, Solnedgang fra 18, Nordlys fra 22:30</small></span><label class="switch"><input type="checkbox" id="look-time"><i></i></label></div>
@@ -302,6 +305,8 @@
 <div id="second" class="second" hidden><button id="second-close" class="icon"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <div id="second-game" class="second-game"></div><div id="second-grid" class="second-grid"></div></div>
 <script src="themes.js"></script>
+<script src="design-data.js"></script>
+<script src="design.js"></script>
 <script src="app.js"></script>
 <script src="extra.js"></script>
 <script src="aero.js"></script>

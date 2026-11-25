@@ -1,0 +1,2 @@
+// Laget av design.py – ikke rediger for hånd.
+window.KS_DESIGN = {"tabs": {"oversikt": "Oversikt", "spill": "Spill", "kontroll": "Enheter", "mer": "Hjemmet", "chat": "Sosialt", "ai": "AI", "system": "System"}, "curated": ["standard", "oled", "papir", "nord", "catppuccin", "nordlys", "krom", "synthwave"], "keep": ["chat", "familie"], "advanced": ["Avansert", "Ekspert", "For eksperter", "Feilsøking", "Feillogg", "Utvikler"]};

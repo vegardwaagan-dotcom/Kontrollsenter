@@ -197,7 +197,9 @@ button:not(:disabled):active svg { stroke:#fff; }
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gb) 0%, transparent), 0 0 0 0 color-mix(in srgb, var(--ga) 0%, transparent); } }
 </style>
 <link rel="stylesheet" href="themes.css">
-<script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sand|mint|papir|latte|sakura|arktis)$/.test(k)?"light":"dark");if(k==="eget"){var c=JSON.parse(localStorage.getItem("ks_own")||(window.KS&&KS.getLookColors&&KS.getLookColors())||"{}");if(c.a&&c.b){["--ga","--acc","--c1"].forEach(function(v){r.style.setProperty(v,c.a)});["--gb","--acc2"].forEach(function(v){r.style.setProperty(v,c.b)});r.style.setProperty("--grad","linear-gradient(135deg,"+c.a+","+c.b+")");}}}}catch(e){}</script>
+<link rel="stylesheet" href="design.css">
+<script>try{document.documentElement.setAttribute("data-design",(window.KS&&KS.getDesign&&KS.getDesign())||localStorage.getItem("ks_design")||"klassisk")}catch(e){}</script>
+<script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sand|mint|papir|latte|sakura|arktis|krom)$/.test(k)?"light":"dark");if(k==="eget"){var c=JSON.parse(localStorage.getItem("ks_own")||(window.KS&&KS.getLookColors&&KS.getLookColors())||"{}");if(c.a&&c.b){["--ga","--acc","--c1"].forEach(function(v){r.style.setProperty(v,c.a)});["--gb","--acc2"].forEach(function(v){r.style.setProperty(v,c.b)});r.style.setProperty("--grad","linear-gradient(135deg,"+c.a+","+c.b+")");}}}}catch(e){}</script>
 </head>
 <body>
 <main>

@@ -69,11 +69,17 @@ function setLook(k) {
 function drawLooks() {
   const box = $("#ks-themes"); if (!box || !window.KS_THEMES) return;
   const cur = curLook();
-  box.innerHTML = KS_THEMES.map((t) => `<button type="button" class="theme-sw${t.k === cur ? " on" : ""}" data-k="${esc(t.k)}">
+  const sw = (t) => `<button type="button" class="theme-sw${t.k === cur ? " on" : ""}" data-k="${esc(t.k)}">
     <span class="tp" style="background:radial-gradient(70% 90% at 10% 0%, ${t.a}cc, transparent 70%),radial-gradient(60% 80% at 100% 10%, ${t.b}bb, transparent 70%),radial-gradient(70% 60% at 50% 120%, ${t.c}88, transparent 70%),${t.bg}">
       <i class="tc" style="background:${t.card}"><b style="background:${t.fg}"></b><b style="background:${t.fg}"></b><b style="background:${t.fg}"></b></i>
       <i class="tg" style="background:linear-gradient(90deg, ${t.a}, ${t.b})"></i></span>
-    <span class="tn">${esc(t.name)}</span><span class="td">${esc(t.desc)}</span></button>`).join("");
+    <span class="tn">${esc(t.name)}</span><span class="td">${esc(t.desc)}</span></button>`;
+  if (window.ksDesign && ksDesign.isNew() && window.KS_DESIGN) {     // nytt design: 8 utvalgte først, resten under «Flere temaer»
+    const C = KS_DESIGN.curated, top = KS_THEMES.filter((t) => C.includes(t.k) || t.k === cur);
+    const rest = KS_THEMES.filter((t) => !top.includes(t));
+    box.innerHTML = top.map(sw).join("") + (rest.length ? `<details class="ks-more-themes"><summary>Flere temaer (${rest.length})</summary>
+      <div class="themes">${rest.map(sw).join("")}</div></details>` : "");
+  } else box.innerHTML = KS_THEMES.map(sw).join("");
   box.querySelectorAll(".theme-sw").forEach((b) => (b.onclick = () => { setLook(b.dataset.k); if (KS && KS.vibrate) KS.vibrate(); }));
   const std = cur === "standard";
   $("#theme").hidden = !std; $("#theme-label").hidden = !std;

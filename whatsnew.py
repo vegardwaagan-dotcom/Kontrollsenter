@@ -13,6 +13,25 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.58", "Nytt design – med bryter", [
+            "Ny bryter under Innstillinger › Utseende › Design: velg «Klassisk» (slik som før) eller «Nytt design». "
+            "Gjelder PC (Linux og Windows) og mobilappen",
+            "Nytt design: menyen har 7 områder – Oversikt, Spill, Enheter, Hjemmet, Sosialt, AI og System – med "
+            "faner øverst for sidene i hvert område",
+            "«Finn alt» er et søkefelt øverst i menyen",
+            "Kategoriene på lange sider er faner i stedet for ‹ rullehjul ›, og alle faner ser like ut",
+            "Én ikonstil: emoji er fjernet fra overskrifter, kategorier og faner (beholdt i Familie og Chat)",
+            "Hvert kort har høyst én fremhevet knapp, og kort for feilsøking er lukket til du trykker «Vis»",
+            "Hjelpeteksten øverst på en side vises bare første gang",
+            "8 utvalgte temaer først – resten under «Flere temaer». Glass og overganger slås av når du bytter "
+            "(kan slås på igjen), og kommer tilbake hvis du går tilbake til Klassisk",
+            "Felles designverdier for hjørner, avstander, tekst og statusfarger – samme på PC og mobil. Tall har fast "
+            "bredde, så de ikke hopper",
+            "Windows: Segoe UI Variable, mindre hjørner og vindusknappene på Windows-måten",
+            "Mobilappen: fanene nederst har samme navn og rekkefølge som områdene på PC-en. Valget deles med "
+            "startskjermen og alle PC-ene (krever ny app-versjon – eldre app husker valget per PC)",
+            "Rettet: lyse temaer (Sand, Mint, Papir, Latte, Krom) ble vist som mørke i mobilappen",
+        ]),
     ("0.99.57", "Finn alt", [
             "Ny fane «Finn alt» øverst i menyen: alle sidene, kategoriene og innstillingene på ett sted – trykk for "
             "å gå rett dit",

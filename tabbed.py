@@ -46,6 +46,13 @@ class TabbedPage(Gtk.Box):
                                hhomogeneous=False, vhomogeneous=False)
         bar = Gtk.StackSwitcher(stack=self.stack, halign=Gtk.Align.CENTER)
         bar.add_css_class("ks-tabs")
+        try:                                       # nytt design: fanene er piller med naturlig bredde
+            import design
+            if design.is_new():
+                bar.get_layout_manager().set_homogeneous(False)
+                bar.set_halign(Gtk.Align.START)
+        except Exception:  # noqa: BLE001
+            pass
         for side, v in (("top", 8), ("bottom", 2), ("start", 12), ("end", 12)):
             getattr(bar, f"set_margin_{side}")(v)
         self.tabbar = bar

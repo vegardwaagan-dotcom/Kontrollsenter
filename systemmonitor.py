@@ -217,6 +217,11 @@ class MonitorWindow(Adw.ApplicationWindow):
         ks_theme.load()
         if ks_theme.glass_on():
             self.add_css_class("ks-glass")
+        try:                                             # Klassisk eller nytt design (Innstillinger › Utseende)
+            import design
+            design.apply(self)
+        except Exception:  # noqa: BLE001
+            applog.log.exception("design")
         try:                                             # tid på døgnet, spilltema, levende bakgrunn
             import looks
             GLib.idle_add(lambda: looks.start(self) and False)
@@ -703,7 +708,12 @@ class MonitorWindow(Adw.ApplicationWindow):
             self._rows[pg.get_name()] = row
         self.sidebar.connect("row-activated", self._on_sidebar)
 
+        import design as ks_design
+
         def section_header(row, before):
+            if ks_design.is_new():                     # nytt design: 7 områder, ingen seksjonsoverskrifter
+                row.set_header(None)
+                return
             sec = ks_theme.SECTION_OF.get(row.page_name)
             prev = ks_theme.SECTION_OF.get(before.page_name) if before else None
             if sec and sec != prev:
@@ -745,6 +755,12 @@ class MonitorWindow(Adw.ApplicationWindow):
         sbtn.connect("clicked", self.open_search)
         side_header.pack_end(sbtn)
         side_tv.add_top_bar(side_header)
+        if ks_design.is_new():                         # «Finn alt» er et søkefelt øverst i menyen
+            self.side_search = Gtk.SearchEntry(placeholder_text=i18n.tr("Finn alt …"))
+            self.side_search.add_css_class("ks-side-search")
+            self.side_search.connect("search-changed", self._side_search)
+            self.side_search.connect("activate", lambda e: self._side_search(e, go_first=True))
+            side_tv.add_top_bar(self.side_search)
         side_tv.set_content(Gtk.ScrolledWindow(child=self.sidebar, hscrollbar_policy=Gtk.PolicyType.NEVER,
                                                vexpand=True))
         # livestatus nederst: CPU, GPU og watt
@@ -971,10 +987,17 @@ class MonitorWindow(Adw.ApplicationWindow):
     # --- grupper i sidemenyen (pagecats.GROUPS) ---
     def _setup_groups(self):
         import pagecats
+        import design
+        import funksjoner
         self._leader = {}                       # side -> lederens navn (den som vises i sidemenyen)
-        for key, title, icon, members in pagecats.GROUPS:
+        new = design.is_new()
+        for key, title, icon, members in (design.AREAS if new else pagecats.GROUPS):
             present = [m for m in members if m in self._rows]
-            if len(present) < 2:
+            if new:                             # nytt design: også områder med én side, og lederen må være på
+                present = [m for m in present if funksjoner.page_on(m)] or present
+                if not present:
+                    continue
+            elif len(present) < 2:
                 continue
             lead = present[0]
             for m in present:
@@ -998,6 +1021,10 @@ class MonitorWindow(Adw.ApplicationWindow):
             return False
         if self.simple_mode() and row.page_name not in self.SIMPLE_PAGES:
             return False
+        if row.page_name == "finn":
+            import design
+            if design.is_new():                         # nytt design: søkefeltet øverst i menyen
+                return False
         lead = getattr(self, "_leader", {}).get(row.page_name)
         return lead is None or lead == row.page_name
 
@@ -1009,10 +1036,22 @@ class MonitorWindow(Adw.ApplicationWindow):
             return
         row = self._rows[lead]
         members = row.group_members
+        import design
+        if design.is_new():
+            import funksjoner
+            members = [m for m in members if funksjoner.page_on(m)]
+            if len(members) < 2:                       # område med én side: ingen faner
+                self.group_clamp.set_visible(False)
+                return
         if self._group_bar is None or getattr(self._group_bar, "_lead", None) != lead:
-            items = [(m, pagecats.ICONS.get(m, "") + "  " +
-                      self.stack.get_page(self.stack.get_child_by_name(m)).get_title()) for m in members]
-            self._group_bar = pagecats.CatBar(items, name, lambda m: self.stack.set_visible_child_name(m))
+            if design.is_new():                        # nytt design: faner med ikon
+                items = [(m, self.stack.get_page(self.stack.get_child_by_name(m)).get_title(),
+                          self.stack.get_page(self.stack.get_child_by_name(m)).get_icon_name()) for m in members]
+                self._group_bar = design.make_tabbar(items, name, lambda m: self.stack.set_visible_child_name(m))
+            else:
+                items = [(m, pagecats.ICONS.get(m, "") + "  " +
+                          self.stack.get_page(self.stack.get_child_by_name(m)).get_title()) for m in members]
+                self._group_bar = pagecats.CatBar(items, name, lambda m: self.stack.set_visible_child_name(m))
             self._group_bar._lead = lead
             self.group_clamp.set_child(self._group_bar)
         self._group_bar.select(name)
@@ -1089,6 +1128,23 @@ class MonitorWindow(Adw.ApplicationWindow):
     def open_search(self, *_):
         import search
         search.SearchDialog(self).present(self)
+
+    def _side_search(self, entry, go_first=False):
+        """Nytt design: søkefeltet i menyen fyller «Finn alt»-siden og viser den (Enter = første treff)."""
+        text = entry.get_text().strip()
+        if not text and not go_first:
+            return
+        page = self.ensure_lazy("finn")
+        if page is None:
+            return
+        if self.stack.get_visible_child_name() != "finn":
+            self.stack.set_visible_child_name("finn")
+            self.split.set_show_content(True)
+        if page.entry.get_text() != text:
+            page.entry.set_text(text)
+        if go_first and text:
+            page._first()
+        GLib.idle_add(lambda: (entry.grab_focus_without_selecting() if not go_first else None, False)[1])
 
     # --- enkel modus: bare det viktigste i sidemenyen ---
     SIMPLE_PAGES = {"oversikt", "lyd", "spill", "vr", "discord", "scener", "smarthjem", "familie", "chat", "fjernhjelp",
@@ -1189,6 +1245,11 @@ class MonitorWindow(Adw.ApplicationWindow):
             except Exception:  # noqa: BLE001 – utseende, aldri viktig nok til å stoppe fanen
                 pass
         GLib.timeout_add(400, self.rescan_cards)        # alle kortene på sidene kan dras og få ny størrelse
+        import design
+        if design.is_new():                             # nytt design: rydd siden (noen kort bygges litt etterpå)
+            nm, h = stack.get_visible_child_name(), stack.get_visible_child()
+            for ms in (450, 1600):
+                GLib.timeout_add(ms, lambda h=h, nm=nm: (design.polish(h, nm), False)[1])
 
     def _on_overlay_toggled(self, btn):
         on = btn.get_active()
@@ -1448,6 +1509,10 @@ class MonitorWindow(Adw.ApplicationWindow):
             if hasattr(self, "page_help"):
                 import theme as ks_theme
                 txt = ks_theme.PAGE_HELP.get(name, "") if name != "oversikt" else ""
+                if txt:
+                    import design
+                    if design.is_new() and design.help_seen(name):   # nytt design: bare første gang
+                        txt = ""
                 self.page_help.set_label(i18n.tr(txt))
                 self.page_help_clamp.set_visible(bool(txt))
 
