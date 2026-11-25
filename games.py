@@ -688,7 +688,9 @@ class GamesPage(TabbedPage):
         on, unknown, args = parse_options(cur)
         import gamegpu
         g_gpu, g_fps, unknown = gamegpu.split(unknown)     # skjermkort og FPS-tak velges for seg
-        base = build_options(on, unknown + gamegpu.tokens(g_gpu, g_fps), args)   # slik programmet leser dagens valg
+        g_dlss, unknown = gamegpu.split_dlss(unknown) if not IS_WIN else ({}, unknown)
+        base = build_options(on, unknown + gamegpu.tokens(g_gpu, g_fps) +
+                             (gamegpu.dlss_tokens(g_dlss) if not IS_WIN else []), args)   # slik programmet leser dagens valg
         prot = (vdf.get(self.mapping, aid, "name") or "")
         exp = Gtk.Expander()
         head = Gtk.Box(spacing=12)
@@ -774,11 +776,46 @@ class GamesPage(TabbedPage):
             grow.append(fdd)
         if grow.get_first_child() is not None:
             body.append(grow)
+        # ---- DLSS, bildegenerering og Reflex for dette spillet (NVIDIA) ----
+        ddl = {}
+        if not IS_WIN and gamegpu.has_nvidia():
+            import gpu as G
+            dl = Gtk.Grid(column_spacing=8, row_spacing=4)
+            head_l = Gtk.Label(label="NVIDIA for dette spillet («Som for alle» = GPU-innstillinger)", xalign=0)
+            head_l.add_css_class("caption")
+            dl.attach(head_l, 0, 0, 4, 1)
+            for n, key in enumerate(gamegpu.DLSS_KEYS):
+                _k, name, desc, opts = next(c for c in G.NV_CHOICES if c[0] == key)
+                d = Gtk.DropDown.new_from_strings(["Som for alle spill"] + [t for _i, t, _v in opts[1:]])
+                ids = [o[0] for o in opts]
+                d.set_selected(ids.index(g_dlss.get(key, "spill")))
+                d.set_tooltip_text(desc)
+                lab = Gtk.Label(label=name, xalign=0)
+                dl.attach(lab, (n % 2) * 2, 1 + n // 2, 1, 1)
+                dl.attach(d, (n % 2) * 2 + 1, 1 + n // 2, 1, 1)
+                ddl[key] = (d, ids)
+            body.append(dl)
         arow = Gtk.Box(spacing=8)
         arow.append(Gtk.Label(label="Egne argumenter"))
         entry = Gtk.Entry(text=args, hexpand=True, placeholder_text="f.eks. -dx11 -skipintro")
         arow.append(entry)
         body.append(arow)
+        dver = Gtk.Label(xalign=0)
+        dver.add_css_class("caption")
+        body.append(dver)
+
+        def find_dlss(*_a, folder=g.get("dir")):
+            if getattr(dver, "_done", False) or not exp.get_expanded():
+                return
+            dver._done = True
+
+            def work():
+                import dlssinfo
+                v = dlssinfo.game_dlss(folder)
+                GLib.idle_add(lambda: (dver.set_label(("DLSS i spillet: " + v) if v else "Spillet har ikke DLSS"),
+                                       False)[1])
+            threading.Thread(target=work, daemon=True).start()
+        exp.connect("notify::expanded", find_dlss)
         prev = Gtk.Label(xalign=0, selectable=True, wrap=True)
         prev.add_css_class("caption")
         prev.add_css_class("monospace")
@@ -789,6 +826,8 @@ class GamesPage(TabbedPage):
             new_on = {k for k, cb in checks.items() if cb.get_active()}
             ours = gamegpu.tokens(gkeys[gdd.get_selected()] if gdd else g_gpu,
                                   gamegpu.FPS_CHOICES[fdd.get_selected()] if fdd else g_fps)
+            if ddl:
+                ours += gamegpu.dlss_tokens({k: ids[d.get_selected()] for k, (d, ids) in ddl.items()})
             s = build_options(new_on, unknown + ours, entry.get_text().strip())
             p = keys[dd.get_selected()] if dd.get_selected() < len(keys) else ""
             prev.set_label("Startvalg: " + (s or "(ingen)"))
@@ -807,7 +846,7 @@ class GamesPage(TabbedPage):
             self._update_steam_state()
         for cb in checks.values():
             cb.connect("toggled", recompute)
-        for x in (gdd, fdd):
+        for x in (gdd, fdd, *[d for d, _i in ddl.values()]):
             if x is not None:
                 x.connect("notify::selected", recompute)
         dd.connect("notify::selected", recompute)

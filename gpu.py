@@ -314,10 +314,11 @@ def helper_ready():
 
 def setup_helper():
     """Én gang: installer root-hjelperen (pkexec spør om passord)."""
-    import getpass
-    code, out = _run(["pkexec", "/bin/bash", os.path.join(APP_DIR, "install-gpu.sh"), getpass.getuser()], 300)
-    if code != 0:
-        raise RuntimeError("Tilgangen ble ikke gitt (avbrutt?)")
+    import accesshub                                   # samme passord gir også strøm, vifter og MSI
+    parts = accesshub.needed()
+    if "gpu" not in parts:
+        parts.insert(0, "gpu")
+    accesshub.setup_all(parts)
     return True
 
 
@@ -447,11 +448,15 @@ def _sr(preset):
     return {_D + "DLSS_SR_OVERRIDE": "on", _D + "DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION": preset}
 
 
+def _fg(**extra):
+    return {_D + "DLSS_FG_OVERRIDE": "on", **{_D + k: v for k, v in extra.items()}}
+
+
 # nøkkel, navn, forklaring, [(id, navn, {variabel: verdi})] – første valg = spillet bestemmer (ingen variabler)
 NV_CHOICES = [
     ("dlss", "DLSS-versjon (oppskalering)",
-     "Hvilken DLSS-modell spillene bruker. «Nyeste» følger driveren, så nye versjoner kommer av seg selv. "
-     "DLSS 1 kan ikke byttes – de få spillene som har den, har den bygget inn.",
+     "Hvilken DLSS-modell spillene bruker til oppskalering. «Nyeste» følger driveren, så nye versjoner kommer av seg "
+     "selv. DLSS 1 kan ikke byttes – de få spillene som har den, har den bygget inn.",
      [("spill", "Spillet bestemmer", {}),
       ("nyeste", "Nyeste (anbefalt av NVIDIA)", _sr("render_preset_latest")),
       ("m", "DLSS 4.5 – modell M (best i Ytelse)", _sr("render_preset_m")),
@@ -467,17 +472,24 @@ NV_CHOICES = [
      [(m, t, {_D + "DLSS_SR_OVERRIDE": "on", _D + "DLSS_SR_MODE": m}) for m, t in (
          ("dlaa", "DLAA (full oppløsning)"), ("quality", "Kvalitet"), ("balanced", "Balansert"),
          ("performance", "Ytelse"), ("ultra_performance", "Ultra ytelse"))]),
+    ("dlss5", "DLSS 5 – Neural Rendering",
+     "AI-generert lys og materialer – mer naturtro bilde. Krever RTX 50 og at spillet har DLSS 5 innebygd (f.eks. "
+     "Hogwarts Legacy, NBA 2K27); det kan ikke legges til i andre spill. «Nyeste modell» gir den raskeste og beste "
+     "modellen driveren har.",
+     [("spill", "Spillet bestemmer", {}),
+      ("nyeste", "Nyeste modell", {_D + "DLSS_NR_OVERRIDE": "on", _D + "DLSS_NR_SL_OVERRIDE": "on",
+                                   _D + "DLSS_NR_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest"})]),
     ("fg", "Bildegenerering (Frame Generation)",
      "Lager ekstra bilder mellom de ekte – mye høyere FPS. Spillet må ha DLSS Frame Generation. 3× og mer krever "
      "RTX 50; 5× og 6× krever DLSS 4.5.",
+     [("spill", "Spillet bestemmer", {})] +
+     [(f"x{n + 1}", f"{n + 1}× (multi frame)", _fg(DLSSG_MULTI_FRAME_COUNT=str(n))) for n in range(1, 6)] +
+     [("dyn", "Dynamisk (tilpasses skjermens Hz)", _fg(DLSSG_MODE="dynamic", DLSSG_DYNAMIC_TARGET_FRAME_RATE="auto"))]),
+    ("fgmodel", "Modell for bildegenerering",
+     "«Ytelsesmodus» (Preset C) er opptil 35 % raskere med litt dårligere bilde – fint på svakere kort. RTX 40/50.",
      [("spill", "Spillet bestemmer", {}),
-      ("nyeste", "Nyeste modell, antall som i spillet",
-       {_D + "DLSS_FG_OVERRIDE": "on", _D + "DLSS_FG_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest"})] +
-     [(f"x{n + 1}", f"{n + 1}× (multi frame)", {_D + "DLSS_FG_OVERRIDE": "on",
-                                               _D + "DLSS_FG_OVERRIDE_RENDER_PRESET_SELECTION": "render_preset_latest",
-                                               _D + "DLSSG_MULTI_FRAME_COUNT": str(n)}) for n in range(1, 6)] +
-     [("dyn", "Dynamisk (tilpasses skjermens Hz)",
-       {_D + "DLSS_FG_OVERRIDE": "on", _D + "DLSSG_MODE": "dynamic", _D + "DLSSG_DYNAMIC_TARGET_FRAME_RATE": "auto"})]),
+      ("nyeste", "Nyeste (beste bilde)", _fg(DLSS_FG_OVERRIDE_RENDER_PRESET_SELECTION="render_preset_latest")),
+      ("c", "Ytelsesmodus (Preset C)", _fg(DLSS_FG_OVERRIDE_RENDER_PRESET_SELECTION="render_preset_c"))]),
     ("rr", "Ray Reconstruction",
      "Ren og skarp strålesporing (DLSS 3.5+). Bare i spill som har det.",
      [("spill", "Spillet bestemmer", {}),
@@ -493,36 +505,102 @@ NV_CHOICES = [
      [("spill", "På (standard)", {}),
       ("av", "Av i alle spill", {"__GL_GSYNC_ALLOWED": "0", "__GL_VRR_ALLOWED": "0"})]),
 ]
+WIN_KEYS = ("dlss", "dlssmode", "dlss5", "fg", "fgmodel", "rr")      # det Windows-driveren kan styre herfra
 
 
-def nv_choice(key):
-    """Hvilket valg som er aktivt nå (id)."""
-    cur = env_get()
-    opts = next(o for k, _n, _d, o in NV_CHOICES if k == key)
-    for oid, _t, vars_ in reversed(opts):
+def _opts(key):
+    return next((o for k, _n, _d, o in NV_CHOICES if k == key), None)
+
+
+def nv_choice(key, cur=None):
+    """Hvilket valg som er aktivt (id) – i miljøfilen, eller i cur (f.eks. et spills oppstartsvalg)."""
+    cur = env_get() if cur is None else cur
+    for oid, _t, vars_ in reversed(_opts(key)):
         if vars_ and all(cur.get(k) == v for k, v in vars_.items()):
             return oid
-    return opts[0][0]
+    return _opts(key)[0][0]
+
+
+def nv_apply(cur, key, oid):
+    """Bytt valget for key i variabel-ordboken cur (felles variabler, f.eks. «DLSS på», beholdes for de andre)."""
+    opts = _opts(key)
+    if opts is None or oid not in [o[0] for o in opts]:
+        raise ValueError("ukjent valg")
+    others = {}
+    for k2, _n, _d, o2 in NV_CHOICES:
+        if k2 != key:
+            others.update(next(v for i, _t, v in o2 if i == nv_choice(k2, cur)))
+    for k in {k for _i, _t, v in opts for k in v}:
+        if k not in others:
+            cur.pop(k, None)
+    cur.update(next(v for i, _t, v in opts if i == oid))
+    return cur
 
 
 def nv_choice_set(key, oid):
-    opts = next((o for k, _n, _d, o in NV_CHOICES if k == key), None)
-    if opts is None or oid not in [o[0] for o in opts]:
-        raise ValueError("ukjent valg")
-    cur = env_get()
-    old = {k for _i, _t, v in opts for k in v}
-    keep_sr = any(cur.get(_D + "DLSS_SR_OVERRIDE") and nv_choice(o) != "spill" for o in ("dlss", "dlssmode")
-                  if o != key)
-    for k in old:
-        if k == _D + "DLSS_SR_OVERRIDE" and keep_sr:
-            continue
-        cur.pop(k, None)
-    new = dict(next(v for i, _t, v in opts if i == oid))
-    cur.update(new)
+    cur = nv_apply(env_get(), key, oid)
     _env_write(cur)
-    if any(k.startswith(_D) for k in new) and "PROTON_ENABLE_NGX_UPDATER" not in cur:
+    if any(k.startswith(_D) for k in cur) and "PROTON_ENABLE_NGX_UPDATER" not in cur and not IS_WIN:
         env_set("PROTON_ENABLE_NGX_UPDATER", True)         # nyeste modeller lastes ned av driveren
-    return next(t for i, t, _v in opts if i == oid)
+    if IS_WIN:
+        win_drs_apply(cur)
+    return next(t for i, t, _v in _opts(key) if i == oid)
+
+
+# --------------------------------------------------------------------------
+# Windows: de samme valgene skrives rett i NVIDIA-driverens globale profil (NVAPI DRS, som NVIDIA-appen gjør)
+# ID-er og verdier fra NVIDIA sin NvApiDriverSettings.h
+# --------------------------------------------------------------------------
+DRS_IDS = {"DLSS_SR_OVERRIDE": 0x10E41E01, "DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION": 0x10E41DF3,
+           "DLSS_SR_MODE": 0x10AFB768, "DLSS_RR_OVERRIDE": 0x10E41E02,
+           "DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION": 0x10E41DF7, "DLSS_FG_OVERRIDE": 0x10E41E03,
+           "DLSS_FG_OVERRIDE_RENDER_PRESET_SELECTION": 0x10E41DF1, "DLSSG_MULTI_FRAME_COUNT": 0x104D6667,
+           "DLSSG_MODE": 0x10308298, "DLSSG_DYNAMIC_TARGET_FRAME_RATE": 0x10CF4125,
+           "DLSS_NR_OVERRIDE": 0x10E41E04, "DLSS_NR_OVERRIDE_RENDER_PRESET_SELECTION": 0x10E41DF8,
+           "DLSS_NR_SL_OVERRIDE": 0x10E41E05}
+_MODES = {"performance": 0, "balanced": 1, "quality": 2, "dlaa": 4, "ultra_performance": 5}
+
+
+def drs_value(name, val):
+    """Tekstverdien fra valget → tallet driveren bruker."""
+    v = str(val).lower()
+    if v == "on":
+        return 1
+    if v == "render_preset_latest":
+        return 0x00FFFFFF
+    if v.startswith("render_preset_") and len(v) == 15:
+        return ord(v[-1]) - ord("a") + 1
+    if name.endswith("_MODE") and name.startswith("DLSS_SR"):
+        return _MODES[v]
+    if name == "DLSSG_MODE":
+        return {"off": 1, "on": 2, "auto": 3, "dynamic": 4}[v]
+    if name == "DLSSG_DYNAMIC_TARGET_FRAME_RATE" and v == "auto":
+        return 0x01000000
+    return int(v)
+
+
+def drs_settings(cur):
+    """{setting-id: tall} for alle DLSS-variablene i cur."""
+    return {DRS_IDS[k[len(_D):]]: drs_value(k[len(_D):], v) for k, v in cur.items()
+            if k.startswith(_D) and k[len(_D):] in DRS_IDS}
+
+
+def win_drs_apply(cur):
+    """Skriv valgene til NVIDIA-profilen (spør om administrator hvis driveren krever det)."""
+    import subprocess
+    import sys
+    want = drs_settings(cur)
+    args = [f"{i:#x}={'-' if i not in want else want[i]}" for i in DRS_IDS.values()]
+    code = _run([sys.executable, os.path.join(APP_DIR, "nvdrs.py"), *args], 30)[0]
+    if code == 3:                                          # trenger administrator
+        argl = ",".join("'" + x + "'" for x in [os.path.join(APP_DIR, "nvdrs.py"), *args])
+        ps = (f"$p = Start-Process -FilePath '{sys.executable}' -ArgumentList {argl} -Verb RunAs -Wait "
+              f"-WindowStyle Hidden -PassThru; exit $p.ExitCode")
+        code = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True,
+                              timeout=120).returncode
+    if code != 0:
+        raise RuntimeError("NVIDIA-driveren tok ikke imot innstillingen" + (" (avbrutt?)" if code == 3 else ""))
+
 
 
 def _ngx_conf(on):

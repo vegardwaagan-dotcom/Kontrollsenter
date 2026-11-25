@@ -13,6 +13,20 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.55", "DLSS 5, trygg overklokking og spillprofiler", [
+            "DLSS 5 (Neural Rendering): nyeste modell i spill som har DLSS 5 innebygd (RTX 50)",
+            "Bildegenerering: velg modell – nyeste eller den nye Ytelsesmodusen (Preset C, opptil 35 % raskere)",
+            "DLSS, bildegenerering og Reflex per spill (Spill → Bibliotek, åpne spillet)",
+            "Bibliotek viser hvilken DLSS-versjon hvert spill har med seg",
+            "«DLSS i bruk nå» viser versjonen spillet som kjører faktisk bruker",
+            "Trygg overklokking: går opp litt om gangen, sjekker for regnefeil og ender et trygt stykke under "
+            "grensen. Krasjer PC-en, husker den steget",
+            "Ferdige profiler: Effektiv (samme FPS, mindre strøm), Stille, Mild, Skannet maks og Standard",
+            "Spillprofiler kan velge GPU-profil per spill – settes når spillet starter og tilbake når det lukkes",
+            "Windows: DLSS-valgene skrives rett i NVIDIA-driveren, som DLSS-overstyringen i NVIDIA-appen",
+            "Én felles «Gi tilgang»: ett passord for skjermkort, strøm, vifter og MSI (også i Systemsjekk)",
+            "Mobilappen: DLSS 5, profiler og trygg overklokking i NVIDIA-panelet",
+        ]),
     ("0.99.54", "DLSS, Reflex og G-SYNC", [
             "Velg DLSS-versjon for alle spill: nyeste, DLSS 4.5 (M/L), DLSS 4 (K/J), DLSS 3 og DLSS 2",
             "DLSS-kvalitet: DLAA, Kvalitet, Balansert, Ytelse eller Ultra ytelse",

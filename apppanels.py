@@ -275,7 +275,8 @@ def p_nvidia(win):
             ["Vifter", " / ".join(f"{f} %" for f in e.get("fans", [])) or "–"],
             ["Begrenses av", ", ".join(rs) if rs else "ingenting"],
             ["Klokke-offset", f"GPU {e.get('core', 0):+d} · minne {e.get('mem', 0):+d} MHz"],
-            ["Videokoder (NVENC)", f"{e.get('nvenc', 0)} %"]]
+            ["Videokoder (NVENC)", f"{e.get('nvenc', 0)} %"],
+            ["DLSS i bruk nå", __import__("dlssinfo").summary() or "ingen spill med DLSS kjører"]]
     ready = G.helper_ready()
     fan_val = fc["mode"] if fc["mode"] != "fast" else f"fast:{fc.get('pct', 60)}"
     opts = [["auto", "Automatisk"]] + [[f"fast:{p}", f"Fast {p} %"] for p in (40, 60, 80, 100)] + [["kurve", "Egen kurve"]]
@@ -285,18 +286,23 @@ def p_nvidia(win):
          "desc": ("Overklokking gjelder til PC-en startes på nytt. Kurven og finjustering finner du på PC-en under "
                   "Skjermkort." if ready else
                   "⚠️ Trykk «Gi tilgang» under Skjermkort på PC-en én gang før du kan endre dette herfra.")}
-    if not G.IS_WIN:                                    # DLSS, bildegenerering, Reflex, G-SYNC – trenger ikke tilgang
-        p["items"] = [{"title": name, "badge": next(t for i, t, _v in opts if i == G.nv_choice(key)),
-                       "buttons": [_btn(t, {"do": "nvchoice", "key": key, "id": i}) for i, t, _v in opts]}
-                      for key, name, _d, opts in G.NV_CHOICES]
+    p["items"] = [{"title": name, "badge": next(t for i, t, _v in opts if i == G.nv_choice(key)),   # DLSS m.m.
+                   "buttons": [_btn(t, {"do": "nvchoice", "key": key, "id": i}) for i, t, _v in opts]}
+                  for key, name, _d, opts in G.NV_CHOICES if not G.IS_WIN or key in G.WIN_KEYS]
     if ready and not G.IS_WIN:
         p["select"] = {"label": "Vifter", "options": opts, "value": fan_val, "action": {"a": "panel", "do": "nvfan"}}
-        p["buttons"] = [_btn("Standard", {"do": "nvoc", "core": 0, "mem": 0}),
-                        _btn("Stille (−100)", {"do": "nvoc", "core": -100, "mem": 0}),
-                        _btn("Mild OC (+100/+500)", {"do": "nvoc", "core": 100, "mem": 500},
-                             "Overklokke skjermkortet litt? Krasjer et spill, trykk «Standard»."),
-                        _btn("Sterk OC (+175/+1000)", {"do": "nvoc", "core": 175, "mem": 1000},
-                             "Sterk overklokking kan gi krasj i noen spill. Fortsette?")]
+        import gpuscan
+        p["buttons"] = [_btn(t.split(" (")[0], {"do": "nvprof", "key": k},
+                             "Overklokke skjermkortet? Krasjer et spill, velg «Standard»." if k in ("mild", "skann")
+                             else None) for k, t, *_r in gpuscan.PRESETS if k]
+        if gpuscan.SCAN["running"]:
+            rows.append(["Trygg overklokking", gpuscan.SCAN["step"] or "starter …"])
+            p["buttons"].append(_btn("⏹ Stopp skanningen", {"do": "nvscanstop"}))
+        else:
+            res = gpuscan.last_result()
+            rows.append(["Trygg overklokking", f"GPU +{res['core']} · minne +{res['mem']} MHz" if res else "ikke skannet"])
+            p["buttons"].append(_btn("🔬 Start trygg overklokking", {"do": "nvscan"},
+                                     "Kortet går for fullt i 5–8 minutter. Lukk spill først. Starte?", primary=True))
     return p
 
 
@@ -488,7 +494,26 @@ def run(win, a):
         return str(f.fix[1]())
     if do == "nvchoice":
         import gpu as G
-        return G.nv_choice_set(str(a.get("key", "")), str(a.get("id", ""))) + " – gjelder etter neste innlogging på PC-en"
+        return G.nv_choice_set(str(a.get("key", "")), str(a.get("id", ""))) + (
+            " – start spillet på nytt" if G.IS_WIN else " – gjelder etter neste innlogging på PC-en")
+    if do in ("nvprof", "nvscan", "nvscanstop"):
+        import gpu as G
+        import gpuscan
+        nv = next((g for g in G.detect() if g.get("vendor") == "nvidia"), None)
+        if not nv:
+            raise ValueError("fant ikke NVIDIA-kortet")
+        if do == "nvscanstop":
+            gpuscan.SCAN["stop"] = True
+            return "Stopper etter dette steget"
+        if do == "nvscan":
+            gpuscan.scan_async(nv["id"], nv["idx"])
+            return "Trygg overklokking er startet – følg med her"
+        key = str(a.get("key", ""))
+        if key not in [k for k, *_r in gpuscan.PRESETS if k]:
+            raise ValueError("ukjent profil")
+        gpuscan.apply_preset(key)
+        G.save_cmd(nv["id"], "oc", None)
+        return "Profilen er satt ✓"
     if do in ("nvoc", "nvfan"):
         import gpu as G
         nv = next((g for g in G.detect() if g.get("vendor") == "nvidia"), None)

@@ -348,7 +348,18 @@ def tick(auto):
             auto.game_snap = A.snapshot(win)
             A.apply(win, p["power"], p["fans"], p["rgb"], p.get("color"))
             auto.game_snap["rgb"] = p["rgb"] not in ("keep", None)
-            if p.get("gpu_pl"):                                    # strømgrense på skjermkortet for spillet
+            if p.get("gpu_prof"):                                  # NVIDIA-profil (effektiv, skannet maks …)
+                import threading
+
+                def prof(key=p["gpu_prof"]):
+                    try:
+                        import gpuscan
+                        auto.gpu_prof_back = gpuscan.apply_preset(key)
+                    except Exception as e:  # noqa: BLE001
+                        import applog
+                        applog.log.warning("GPU-profil for spill: %s", e)
+                threading.Thread(target=prof, daemon=True).start()
+            elif p.get("gpu_pl"):                                  # strømgrense på skjermkortet for spillet
                 import threading
 
                 def pl(pct=p["gpu_pl"]):
@@ -372,6 +383,11 @@ def tick(auto):
         if auto.game_snap is not None:
             A.restore(win, auto.game_snap, auto.game_snap.get("rgb"))
             auto.game_snap = None
+        pback = getattr(auto, "gpu_prof_back", None)
+        if pback:
+            auto.gpu_prof_back = None
+            import threading
+            threading.Thread(target=lambda b=pback: __import__("gpuscan").restore_preset(b), daemon=True).start()
         back = getattr(auto, "gpu_pl_back", None)
         if back:
             auto.gpu_pl_back = None
@@ -468,6 +484,8 @@ def build_cards(page):
     except Exception:  # noqa: BLE001
         installed = []
     names = {g["appid"]: g["name"] for g in installed}
+    import gamegpu
+    has_nv = gamegpu.has_nvidia()
 
     def rebuild():
         while (ch := per.get_first_child()):
@@ -486,9 +504,12 @@ def build_cards(page):
             r.append(A.dropdown(A.FAN_CHOICES, p.get("fans", c2["fans"]), lambda v, s=set_g: s("fans", v)))
             r.append(A.dropdown(A.RGB_CHOICES_GAME[:2], p.get("rgb", "keep") if p.get("rgb") != "color" else "keep",
                                 lambda v, s=set_g: s("rgb", v)))
-            import gamegpu
             plc = [(v, i18n.tr("GPU-strøm: standard") if not v else f"GPU-strøm {v} %") for v in gamegpu.PL_CHOICES]
             r.append(A.dropdown(plc, p.get("gpu_pl", 0), lambda v, s=set_g: s("gpu_pl", v)))
+            if has_nv:
+                import gpuscan
+                pc = [(k, i18n.tr("GPU-profil: ingen") if not k else i18n.tr(t)) for k, t, *_r in gpuscan.PRESETS]
+                r.append(A.dropdown(pc, p.get("gpu_prof", ""), lambda v, s=set_g: s("gpu_prof", v)))
             rm = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=i18n.tr("Fjern"))
             rm.add_css_class("flat")
 

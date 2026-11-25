@@ -447,10 +447,16 @@ class GpuPage(Gtk.ScrolledWindow):
         c, i, _h = _card("Overklokking og vifter", "Gjelder til PC-en startes på nytt – slå på «Bruk ved oppstart» "
                          "øverst for å beholde dem.", VENDOR["nvidia"])
         why = Gtk.Label(xalign=0, wrap=True)
+        dlss_l = Gtk.Label(xalign=0, wrap=True, label=_t("Ingen spill med DLSS kjører nå"))
 
         def upd(v):
             if v is None:
-                return G.nv_extra(idx)
+                import dlssinfo
+                d = G.nv_extra(idx)
+                d["dlss_now"] = dlssinfo.summary()
+                return d
+            if "dlss_now" in v:
+                dlss_l.set_label(v["dlss_now"] or _t("Ingen spill med DLSS kjører nå"))
             rs = v.get("reasons") or []
             fans = v.get("fans") or []
             why.set_label(_t("Bremses nå av: ") + ", ".join(rs) if rs and rs != ["tomgang"] else
@@ -461,6 +467,8 @@ class GpuPage(Gtk.ScrolledWindow):
         upd(e)
         i.append(_row("Hva begrenser ytelsen", "Viser om strømgrensen, varme eller noe annet holder kortet tilbake.",
                       why))
+        i.append(_row("DLSS i bruk nå", "Versjonen spillet som kjører faktisk har lastet inn – så du ser at valgene "
+                      "dine virker.", dlss_l))
         if IS_WIN:
             note = Gtk.Label(label=_t("Overklokking og vifter på Windows: bruk NVIDIA-appen eller MSI Afterburner."),
                              xalign=0, wrap=True)
@@ -484,6 +492,61 @@ class GpuPage(Gtk.ScrolledWindow):
         i.append(_row("Klokke-offset (MHz): GPU og minne",
                       "Start forsiktig (+100 GPU, +500 minne) og test i et spill. Krasjer det, gå ned igjen. "
                       "Minus = kjøligere og stillere (undervolt-effekt).", core, mem, ok_b, zero))
+
+        # ---- ferdige profiler og trygg overklokking ----
+        import gpuscan
+        prof = Gtk.DropDown.new_from_strings([_t(t) for k, t, *_r in gpuscan.PRESETS if k])
+        pkeys = [k for k, *_r in gpuscan.PRESETS if k]
+        if not gpuscan.last_result():
+            prof.set_selected(0)
+        pb = Gtk.Button(label=_t("Bruk"))
+        pb.connect("clicked", lambda *_: self._do(lambda: (gpuscan.apply_preset(pkeys[prof.get_selected()]),
+                                                           G.save_cmd(gid, "oc", None))[1] or
+                                                  _t("Profilen er satt ✓ – gjelder til PC-en startes på nytt")))
+        i.append(_row("Ferdige profiler", "Effektiv = omtrent samme FPS med mindre strøm, varme og støy. Stille = "
+                      "lavest mulig. «Skannet maks» bruker resultatet fra trygg overklokking under.", prof, pb))
+        res = gpuscan.last_result()
+        scan_lbl = Gtk.Label(xalign=0, wrap=True, label=_t("Sist funnet: GPU +{c} MHz, minne +{m} MHz").format(
+            c=res["core"], m=res["mem"]) if res else _t("Ikke skannet ennå. Tar 5–8 minutter – kortet går for fullt."))
+        scan_lbl.add_css_class("ks-sub")
+        sb = Gtk.Button(label=_t("Start trygg overklokking"))
+        sb.add_css_class("suggested-action")
+        stop = Gtk.Button(label=_t("Stopp"), sensitive=False)
+
+        def start(*_):
+            if not G.helper_ready():
+                self.msg.set_label(_t("Trykk «Gi tilgang» øverst først"))
+                return
+            sb.set_sensitive(False)
+            stop.set_sensitive(True)
+
+            def prog(n, tot, txt):
+                GLib.idle_add(lambda: (scan_lbl.set_label(f"{n}/{tot} · {txt}"), False)[1])
+
+            def done(r):
+                def ui():
+                    sb.set_sensitive(True)
+                    stop.set_sensitive(False)
+                    scan_lbl.set_label(r.get("error") and _t("Avbrutt: ") + r["error"] or
+                                       _t("Ferdig ✓ GPU +{c} MHz, minne +{m} MHz – satt nå, og brukes ved oppstart "
+                                          "hvis det er slått på").format(c=r["core"], m=r["mem"]))
+                    core.set_value(r.get("core", 0))
+                    mem.set_value(r.get("mem", 0))
+                    return False
+                GLib.idle_add(ui)
+
+            def work():
+                try:
+                    r = gpuscan.scan(gid, idx, progress=prog)
+                except Exception as ex:  # noqa: BLE001
+                    r = {"error": str(ex)}
+                done(r)
+            threading.Thread(target=work, daemon=True).start()
+        sb.connect("clicked", start)
+        stop.connect("clicked", lambda *_: gpuscan.SCAN.update(stop=True))
+        i.append(_row("Trygg overklokking", "Går opp litt om gangen og tester hvert steg for regnefeil. Ender et "
+                      "trygt stykke under grensen. Lukk spill først.", sb, stop))
+        i.append(scan_lbl)
 
         fc = G.fan_cfg(gid)
         fmin, fmax = e.get("fan_range", (30, 100))
@@ -696,16 +759,14 @@ class GpuPage(Gtk.ScrolledWindow):
 
     def _dlss(self):
         """DLSS (versjon og kvalitet), bildegenerering, Ray Reconstruction, Reflex og G-SYNC for alle Proton-spill."""
-        c, i, _h = _card("DLSS, Reflex og G-SYNC", "Gjelder alle Windows-spill i Steam/Proton du starter etter neste "
-                         "innlogging. «Spillet bestemmer» = som før.", VENDOR["nvidia"])
-        if IS_WIN:
-            note = Gtk.Label(label=_t("På Windows velges DLSS-versjon, bildegenerering og G-SYNC i NVIDIA-appen "
-                                      "(Grafikk → DLSS-overstyring)."), xalign=0, wrap=True)
-            note.add_css_class("ks-sub")
-            i.append(note)
-            self.box.append(c)
-            return
+        c, i, _h = _card("DLSS, Reflex og G-SYNC",
+                         "Gjelder alle spill (samme som DLSS-overstyring i NVIDIA-appen). Start spillet på nytt etter "
+                         "endring. Hvert spill kan ha egne valg under Spill → Bibliotek." if IS_WIN else
+                         "Gjelder alle Windows-spill i Steam/Proton du starter etter neste innlogging. Hvert spill kan "
+                         "ha egne valg under Spill → Bibliotek. «Spillet bestemmer» = som før.", VENDOR["nvidia"])
         for key, name, desc, opts in G.NV_CHOICES:
+            if IS_WIN and key not in G.WIN_KEYS:
+                continue
             dd = Gtk.DropDown.new_from_strings([_t(t) for _i, t, _v in opts])
             dd.set_valign(Gtk.Align.CENTER)
             ids = [o[0] for o in opts]
@@ -714,7 +775,8 @@ class GpuPage(Gtk.ScrolledWindow):
             def changed(d, _p, k=key, ids=ids):
                 try:
                     t = G.nv_choice_set(k, ids[d.get_selected()])
-                    self.msg.set_label(_t("Lagret: ") + t + _t(" – gjelder etter neste innlogging"))
+                    self.msg.set_label(_t("Lagret: ") + t + (_t(" – start spillet på nytt") if IS_WIN else
+                                                             _t(" – gjelder etter neste innlogging")))
                 except Exception as e:  # noqa: BLE001
                     self.msg.set_label(str(e))
             dd.connect("notify::selected", changed)

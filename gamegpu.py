@@ -84,6 +84,49 @@ def tokens(gid, fps):
 
 
 # --------------------------------------------------------------------------
+# DLSS, bildegenerering og Reflex per spill (NVIDIA, Linux) – samme valg som GPU-innstillinger, men bare for ett spill
+# --------------------------------------------------------------------------
+DLSS_KEYS = ("dlss", "dlssmode", "dlss5", "fg", "fgmodel", "reflex")
+
+
+def _dlss_vars():
+    import gpu as G
+    return {k for _k, _n, _d, opts in G.NV_CHOICES for _i, _t, v in opts for k in v} | {"PROTON_ENABLE_NGX_UPDATER"}
+
+
+def has_nvidia():
+    try:
+        import gpu as G
+        return any(g["vendor"] == "nvidia" for g in G.detect())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def split_dlss(unknown):
+    """({nøkkel: valg}, resten) – plukker DLSS-variablene ut av oppstartsvalgene."""
+    import gpu as G
+    names = _dlss_vars()
+    cur, rest = {}, []
+    for t in unknown:
+        k, eq, v = t.partition("=")
+        if eq and k in names:
+            cur[k] = v
+        else:
+            rest.append(t)
+    return {k: G.nv_choice(k, cur) for k in DLSS_KEYS}, rest
+
+
+def dlss_tokens(sel):
+    import gpu as G
+    cur = {}
+    for k in DLSS_KEYS:
+        G.nv_apply(cur, k, (sel or {}).get(k, "spill"))
+    if any(k.startswith(G._D) for k in cur):
+        cur["PROTON_ENABLE_NGX_UPDATER"] = "1"
+    return [f"{k}={v}" for k, v in cur.items()]
+
+
+# --------------------------------------------------------------------------
 # Windows: GPU-preferanse per .exe
 # --------------------------------------------------------------------------
 DX_KEY = r"Software\Microsoft\DirectX\UserGpuPreferences"
