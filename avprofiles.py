@@ -700,18 +700,19 @@ def set_night(on, temp=None):
             raise RuntimeError("nattlys på Hyprland krever hyprsunset – installer pakken «hyprsunset»")
         raise RuntimeError("nattlys styres herfra på KDE Plasma, GNOME og Hyprland – bruk skrivebordets egne "
                            "innstillinger")
-    args = [["kwriteconfig6", "--file", "kwinrc", "--group", "NightColor", "--key", "Active", "true" if on else "false"]]
+    # --notify: KWin (Plasma 6) leser nattlys-innstillingene på nytt når den får beskjed om endringen –
+    # «reconfigure» alene tar dem ikke lenger inn (Plasma 6.8). Temperatur og modus først, så av/på.
+    kw = ["kwriteconfig6", "--notify", "--file", "kwinrc", "--group", "NightColor", "--key"]
+    args = []
     if on:
-        args.append(["kwriteconfig6", "--file", "kwinrc", "--group", "NightColor", "--key", "Mode", "Constant"])
+        args.append(kw + ["Mode", "Constant"])
         if temp:
-            t = max(1000, min(6500, int(temp)))
-            args.append(["kwriteconfig6", "--file", "kwinrc", "--group", "NightColor", "--key", "NightTemperature",
-                         str(t)])
+            args.append(kw + ["NightTemperature", str(max(1000, min(6500, int(temp))))])
+    args.append(kw + ["Active", "true" if on else "false"])
     for a in args:
-        _run(a, 5)
-    from gi.repository import Gio
-    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-    bus.call_sync("org.kde.KWin", "/KWin", "org.kde.KWin", "reconfigure", None, None, 0, 5000, None)
+        code, out = _run(a, 5)
+        if code != 0:
+            raise RuntimeError(out.strip() or "kunne ikke endre nattlys")
     return "Nattlys på ✓" if on else "Nattlys av"
 
 

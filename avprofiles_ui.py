@@ -157,7 +157,7 @@ class NightCard(Gtk.Box):
         i.append(self.msg)
         self.sw.connect("notify::active", self._night)
         self._tid = None
-        self.temp.connect("value-changed", lambda *_: self.sw.get_active() and self._debounce(self._night))
+        self.temp.connect("value-changed", self._temp_moved)
         self.bri.connect("value-changed", lambda *_: self._debounce(self._bright))
         _bg(lambda: (P.night_state(), P.brightness()), self._show)
 
@@ -182,6 +182,15 @@ class NightCard(Gtk.Box):
         if self._tid:
             GLib.source_remove(self._tid)
         self._tid = GLib.timeout_add(350, lambda: (setattr(self, "_tid", None), fn(), False)[2])
+
+    def _temp_moved(self, *_):
+        """Dra i glideren: still temperaturen – og slå på nattlys hvis det var av."""
+        if self._busy:
+            return
+        if not self.sw.get_active():
+            self.sw.set_active(True)                  # notify::active slår det på med denne temperaturen
+            return
+        self._debounce(self._night)
 
     def _night(self, *_):
         if self._busy:

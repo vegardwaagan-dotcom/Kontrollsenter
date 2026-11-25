@@ -13,6 +13,11 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.60", "Nattlys virker igjen på KDE", [
+            "Rettet: nattlys-glideren og -bryteren under Skjerm gjorde ingenting på KDE Plasma 6.8 – innstillingen ble "
+            "lagret, men KWin tok den ikke i bruk. Gjelder også nattlys fra mobilappen og i scener",
+            "Drar du i nattlys-glideren mens nattlys er av, slås det på med den temperaturen",
+        ]),
     ("0.99.59", "Tilpasset Hyprland og GNOME", [
             "Hyprland: mini-vinduet, widgetene, webkameraet og andre egne vinduer blir flytende i stedet for å "
             "legges inn i rutenettet. Mini-vinduet og widgetene kan ligge øverst, og widgetene husker plasseringen",
