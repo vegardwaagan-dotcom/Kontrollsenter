@@ -598,6 +598,7 @@ class MonitorWindow(Adw.ApplicationWindow):
         # Faner som lastes først når de åpnes: navn -> (holder, modul, klasse)
         self._lazy = {}
         for name, title, icon, mod, cls in (
+                ("finn", "Finn alt", "system-search-symbolic", "finnalt", "FindAllPage"),
                 ("historikk", "Historikk", "ks-history-symbolic", "history", "HistoryPage"),
                 ("gpu", "GPU-innstillinger", "ks-gpu-symbolic", "gpu_page", "GpuPage"),
                 ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),

@@ -885,7 +885,7 @@ _LISTENERS = []
 
 # Sidemenyens seksjoner: fane -> seksjon (rekkefølgen her er rekkefølgen i menyen)
 SECTIONS = [
-    ("Overvåking", ["oversikt", "historikk"]),
+    ("Overvåking", ["oversikt", "finn", "historikk"]),
     ("Enheter", ["gpu", "rgb", "logitech", "cpuskjerm", "lyd", "bluetooth", "wifi", "msi", "tester"]),
     ("Spill", ["spill", "vr", "stromming"]),
     ("Sosialt", ["chat", "discord", "hjemme", "venner", "fjernhjelp"]),
@@ -900,6 +900,7 @@ SECTION_OF = {n: s for s, names in SECTIONS for n in names}
 # Kort forklaring øverst på hver side (og som verktøytips i sidemenyen)
 PAGE_HELP = {
     "oversikt": "Temperaturer, strømforbruk, vifter og strømmodus – alt det viktigste på ett sted.",
+    "finn": "Hvor du finner alt: alle sidene, kategoriene og innstillingene – søk, og trykk for å gå rett dit.",
     "historikk": "Temperatur, belastning og strømforbruk over tid. Finn ut når PC-en ble varm eller brukte mye strøm.",
     "gpu": "Innstillinger for skjermkortene som finnes i PC-en: NVIDIA (strøm, klokker), AMD (OverDrive, "
            "ytelsesnivå) og Intel – og spillinnstillinger.",

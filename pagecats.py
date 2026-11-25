@@ -202,3 +202,6 @@ def attach(name, page):
     bar = CatBar(present, cur, show)
     box.prepend(bar)
     show(cur)
+    names = dict(present)
+    for w, k in owner.items():                         # søket: hvilken kategori et kort er i, og vis den
+        w._ks_cat = (k, names.get(k, k), lambda k=k: (bar.select(k), show(k)))

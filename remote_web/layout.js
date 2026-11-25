@@ -136,6 +136,40 @@
     Object.keys(CATS).forEach((t) => apply(t));
   };
 
+  // ---- «Finn alt»: alle kortene (fane → kategori → kort), og hopp rett til ett ----
+  const TAB_NAME = { oversikt: "Hjem", kontroll: "PC-en", spill: "Spill", mer: "Hjemmet", system: "Innstillinger" };
+  window.ksFindIndex = () => {
+    relocate();
+    const out = [];
+    ["oversikt", ...Object.keys(CATS)].forEach((tab) => {
+      const s = $("#" + tab); if (!s) return;
+      const cards = CATS[tab] ? cardsIn(tab) : [...s.querySelectorAll(".card")].filter((c) => !c.parentElement.closest(".card"));
+      cards.forEach((c) => {
+        if (c.hidden || c.closest("[hidden]:not(.page)")) return;
+        const title = titleOf(c) || (c.querySelector(".pn-h b") || {}).textContent || "";
+        if (!title.trim()) return;
+        const key = CATS[tab] ? catOf(tab, c) : "";
+        const cat = CATS[tab] ? ((CATS[tab].find(([k]) => k === key) || [key, "📦 Annet"])[1]) : "";
+        const words = [...c.querySelectorAll("h3, b, label, .row > span:first-child, button")].map((x) => x.textContent.trim())
+          .filter((x) => x && x.length < 60).slice(0, 40).join(" · ");
+        out.push({ tab, tabName: TAB_NAME[tab] || tab, cat: key, catName: cat, title: title.trim(), words, el: c });
+      });
+    });
+    return out;
+  };
+  window.ksGoCard = (e) => {
+    setTab(e.tab);
+    if (CATS[e.tab] && e.cat) { setPref("cat_" + e.tab, e.cat); apply(e.tab); }
+    if (e.el.classList.contains("pn") && !e.el.classList.contains("open")) {
+      const h = e.el.querySelector(".pn-h"); if (h) h.click();
+    }
+    setTimeout(() => {
+      const el = e.el.isConnected ? e.el : document.querySelector('.card.pn[data-pn="' + (e.el.dataset.pn || "") + '"]') || e.el;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ks-found"); setTimeout(() => el.classList.remove("ks-found"), 1800);
+    }, 250);
+  };
+
   // ---- hold orden når kort dukker opp senere ----
   Object.keys(CATS).forEach((tab) => {
     const s = $("#" + tab); if (!s) return;

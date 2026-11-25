@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.57", "Finn alt", [
+            "Ny fane «Finn alt» øverst i menyen: alle sidene, kategoriene og innstillingene på ett sted – trykk for "
+            "å gå rett dit",
+            "Søk i alt fra samme fane (eller Ctrl+K). Enter går til første treff",
+            "Søket finner nå også innstillinger i kategorier som ikke vises, og bytter til riktig kategori",
+            "Mobilappen: 🔎 øverst åpner «Finn alt» med oversikt over alle fanene og kortene, og søk",
+        ]),
     ("0.99.56", "Liste over spill med DLSS 5", [
             "Ny liste over alle spill med DLSS 5, rett fra NVIDIA sin offisielle oversikt – oppdateres av seg selv",
             "Varsel når et nytt spill får DLSS 5 (og om du har det installert)",

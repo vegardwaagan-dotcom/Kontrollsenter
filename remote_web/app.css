@@ -1103,3 +1103,17 @@ body.fx-bg::before { background-size: 160% 160%; animation: ks-aurora 26s steps(
 .andreskjerm .as-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .andreskjerm .as-btns button { min-height: 56px; border-radius: 16px; background: rgba(255,255,255,.1); color: #fff; font-size: 15px; }
 @media (orientation: portrait) { .andreskjerm .as-big, .andreskjerm .as-btns { grid-template-columns: repeat(2, 1fr); } }
+
+/* Finn alt */
+#findall { position: fixed; inset: 0; z-index: 60; background: var(--bg); overflow-y: auto; padding: calc(env(safe-area-inset-top) + 12px) 16px 90px; }
+body.fa-open { overflow: hidden; }
+.fa-head { display: flex; gap: 8px; position: sticky; top: 0; background: var(--bg); padding-bottom: 8px; z-index: 1; }
+.fa-head input { flex: 1; font-size: 17px; }
+#fa-sub { margin: 2px 2px 12px; }
+.fa-tab h2 { margin-bottom: 6px; }
+.fa-cat { font-size: 13px; font-weight: 700; color: var(--dim); margin: 10px 0 6px; }
+.fa-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fa-chips button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fa-hits { display: flex; flex-direction: column; gap: 6px; }
+.fa-hit { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: var(--card); border-radius: 14px; padding: 12px 14px; }
+.card.ks-found { outline: 3px solid var(--acc); outline-offset: 2px; transition: outline-color .9s ease-out; }

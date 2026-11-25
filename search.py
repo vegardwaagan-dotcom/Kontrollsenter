@@ -52,7 +52,7 @@ def _card_of(w):
 
 
 def _walk(w, out, depth=0):
-    if depth > 40 or not w.get_visible():
+    if depth > 40 or (not w.get_visible() and not getattr(w, "_ks_cat_hidden", False)):
         return
     t = _text_of(w)
     if t and len(t.strip()) > 1:
@@ -71,7 +71,7 @@ def build_index(win):
     for i in range(pages.get_n_items()):
         pg = pages.get_item(i)
         name, title, child = pg.get_name(), pg.get_title() or pg.get_name(), pg.get_child()
-        if not __import__("funksjoner").page_on(name):     # slått av under Funksjoner
+        if not __import__("funksjoner").page_on(name) or name == "finn":     # slått av / oversikten selv
             continue
         tps = []
 
@@ -103,6 +103,47 @@ def build_index(win):
     return idx
 
 
+def category_of(w):
+    """(nøkkel, navn, vis) for kategorien et treff ligger i på en side med kategorier – eller None."""
+    p = w
+    while p is not None:
+        c = getattr(p, "_ks_cat", None)
+        if c:
+            return c
+        p = p.get_parent()
+    return None
+
+
+def is_title(w):
+    """Er treffet en overskrift/innstilling (ikke en måleverdi eller løpende tekst)?"""
+    return isinstance(w, Adw.PreferencesRow) or isinstance(w, Adw.PreferencesGroup) or (
+        isinstance(w, Gtk.Label) and (w.has_css_class("heading") or w.has_css_class("title-4") or
+                                      w.has_css_class("ks-card-title")))
+
+
+def prepare(win, done):
+    """Bygg sidene som ikke er åpnet ennå (én om gangen, så vinduet ikke fryser) – så done(indeks)."""
+    lazy = [n for n, lz in getattr(win, "_lazy", {}).items() if lz[3] is None and n not in SKIP_PAGES
+            and __import__("funksjoner").page_on(n)]
+
+    def step():
+        if lazy:
+            n = lazy.pop(0)
+            try:
+                win.ensure_lazy(n)
+            except Exception:  # noqa: BLE001
+                pass
+            return True
+        try:
+            if getattr(win, "audio_page", None) is None:
+                win.ensure_audio_page()
+        except Exception:  # noqa: BLE001
+            pass
+        GLib.timeout_add(300, lambda: (done(build_index(win)), False)[1])
+        return False
+    GLib.idle_add(step)
+
+
 def search(idx, q, limit=40):
     nq = _norm(q).split()
     if not nq:
@@ -110,7 +151,8 @@ def search(idx, q, limit=40):
     scored, seen = [], set()
     for row in idx:
         name, title, tab, ttitle, text, w = row
-        hay = _norm(f"{text} {title} {ttitle or ''}")
+        cat = category_of(w)
+        hay = _norm(f"{text} {title} {ttitle or ''} {cat[1] if cat else ''}")
         if not all(x in hay for x in nq):
             continue
         first = text.splitlines()[0]
@@ -152,6 +194,15 @@ def go_to(win, row):
 
 
 def _reveal(w):
+    cat = category_of(w)
+    if cat and not _card_of(w).is_visible():           # kortet ligger i en annen kategori: vis den først
+        cat[2]()
+        GLib.timeout_add(200, lambda: (_reveal2(w), False)[1])
+        return
+    _reveal2(w)
+
+
+def _reveal2(w):
     target = _card_of(w)
     sc = target.get_ancestor(Gtk.ScrolledWindow)
     if sc is not None and sc.get_child() is not None:
@@ -276,30 +327,11 @@ class SearchDialog(Adw.Dialog):
         GLib.idle_add(self._prepare)
 
     def _prepare(self):
-        """Bygg sidene som ikke er åpnet ennå (én om gangen, så vinduet ikke fryser), så indeksen."""
-        lazy = [n for n, lz in getattr(self.win, "_lazy", {}).items() if lz[3] is None and n not in SKIP_PAGES
-                and __import__("funksjoner").page_on(n)]
-
-        def step():
-            if lazy:
-                n = lazy.pop(0)
-                try:
-                    self.win.ensure_lazy(n)
-                except Exception:  # noqa: BLE001
-                    pass
-                return True
-            try:
-                if getattr(self.win, "audio_page", None) is None:
-                    self.win.ensure_audio_page()
-            except Exception:  # noqa: BLE001
-                pass
-            GLib.timeout_add(300, self._index)
-            return False
-        GLib.idle_add(step)
+        prepare(self.win, self._index)
         return False
 
-    def _index(self):
-        self.idx = build_index(self.win)
+    def _index(self, idx):
+        self.idx = idx
         self.status.set_label(i18n.tr("{n} ting å søke i").format(n=len(self.idx)))
         self._update()
         return False
