@@ -342,7 +342,8 @@ class Background:
                             "Overlay, vifter og varsler fortsetter. " +
                             ("Åpne igjen fra ikonet i statusfeltet, eller velg Avslutt der." if tray else
                              "Åpne igjen ved å starte Kontrollsenter fra menyen (dette skrivebordet har ikke "
-                             "statusfelt-ikoner – på GNOME: installer utvidelsen «AppIndicator»)."), force=True)
+                             "statusfelt-ikoner – på GNOME: installer utvidelsen «AppIndicator», på Hyprland: legg til "
+                             "«tray» i Waybar)."), force=True)
             return True
         return False
 

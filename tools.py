@@ -144,6 +144,10 @@ def system_info():
     dmi = lambda n: read(f"/sys/class/dmi/id/{n}")  # noqa: E731
     desktop = os.environ.get("XDG_CURRENT_DESKTOP", "?") + " (" + os.environ.get("XDG_SESSION_TYPE", "?") + ")"
     kde = run(["plasmashell", "--version"], 10)[1].strip() if "KDE" in desktop else ""
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        kde = "Hyprland " + __import__("desktop").hypr_version()
+    elif "GNOME" in desktop.upper():
+        kde = run(["gnome-shell", "--version"], 10)[1].strip()
     disks = []
     code, out = run(["lsblk", "-dno", "NAME,SIZE,MODEL,TYPE"], 10)
     for ln in out.splitlines():
@@ -1116,6 +1120,92 @@ class _Cards:
                          "skjule menyen.", F.on("ai"), ai_toggle)
         self.box.append(c)
 
+    def _desktop_card(self):
+        """Hyprland og GNOME: hva Kontrollsenter har tilpasset (desktop.py) – og knapper for å fikse eller fjerne."""
+        import desktop
+        if desktop.kind() not in ("hyprland", "gnome"):
+            return
+        st = desktop.status()
+        if st["kind"] == "hyprland":
+            c, i = card("Skrivebord: Hyprland" + (f" {st['version']}" if st.get("version") else ""),
+                        "Egne vinduer er flytende, mini-vinduet og widgetene kan ligge øverst, hurtigtastene bindes "
+                        "direkte i Hyprland, og nattlys bruker hyprsunset.")
+        else:
+            c, i = card("Skrivebord: GNOME", "Hurtigtastene legges inn som egne tastatursnarveier i GNOME, og "
+                                             "skjermprofiler bruker GNOME sine egne skjerminnstillinger.")
+
+        def line(text, ok=None):
+            lab = Gtk.Label(label=("✓ " if ok else "• " if ok is None else "⚠ ") + text, xalign=0, wrap=True)
+            if ok is False:
+                lab.add_css_class("warning")
+            i.append(lab)
+            return lab
+
+        if st["kind"] == "hyprland":
+            mf = st["main_file"]
+            own = "kontrollsenter.lua" if st["lua"] else "kontrollsenter.conf"
+            line(("Lua-oppsett (hyprland.lua)" if st["lua"] else "Eldre oppsett (hyprland.conf)") +
+                 " – Kontrollsenter skriver i samme språk")
+            if st["sourced"]:
+                line(f"{own} leses inn av {mf} (hurtigtaster, oppstart, skjermkort)", True)
+            else:
+                line(f"{mf} leser ikke inn {own} – hurtigtastene virker til neste innlogging, og oppstart ved "
+                     "innlogging virker ikke", False)
+                if st["can_edit"]:
+                    b = Gtk.Button(label=f"Legg inn linjen i {mf}", halign=Gtk.Align.START)
+                    b.add_css_class("suggested-action")
+
+                    def add(_b):
+                        d = desktop._load()
+                        d.pop("hypr_source_removed", None)
+                        desktop._save(d)
+                        desktop.hypr_setup()
+                        _b.set_label("Lagt inn ✓")
+                        _b.set_sensitive(False)
+                    b.connect("clicked", add)
+                    i.append(b)
+                else:
+                    line(f"{mf} er en lenke (dotfiles) eller skrivebeskyttet – legg inn denne linjen selv:")
+                    src = Gtk.Label(label=re.split(r"\s+(?:#|--)\s", st["source_line"])[0], xalign=0,
+                                    selectable=True)
+                    src.add_css_class("monospace")
+                    i.append(src)
+            line("Oppstart ved innlogging: " + ("uwsm/systemd starter oppstartsfilene" if st["autostart_by_systemd"]
+                                                else "via exec-once i kontrollsenter.conf"))
+            line("Nattlys: " + ("hyprsunset er installert" if st["hyprsunset"] else
+                                "installer pakken «hyprsunset» for nattlys"), True if st["hyprsunset"] else False)
+            line("Statusfelt-ikonet vises i Waybar (modulen «tray») og andre linjer som støtter StatusNotifier")
+        else:
+            ai = st["appindicator"]
+            if ai == "on":
+                line("Statusfelt-ikonet: AppIndicator-utvidelsen er på", True)
+            elif ai == "off":
+                line("Statusfelt-ikonet: AppIndicator-utvidelsen er installert, men av", False)
+                b = Gtk.Button(label="Slå på AppIndicator", halign=Gtk.Align.START)
+                b.add_css_class("suggested-action")
+                b.connect("clicked", lambda _b: (desktop.gnome_enable_appindicator(), _b.set_label("Slått på ✓"),
+                                                 _b.set_sensitive(False)))
+                i.append(b)
+            else:
+                line("Statusfelt-ikonet krever utvidelsen «AppIndicator and KStatusNotifierItem Support» – uten den "
+                     "åpner du Kontrollsenter fra programmenyen", False)
+                b = Gtk.LinkButton(uri="https://extensions.gnome.org/extension/615/appindicator-support/",
+                                   label="Hent utvidelsen", halign=Gtk.Align.START)
+                i.append(b)
+            line("Mini-vinduet og widgetene: Alt+Mellomrom → «Alltid øverst» (GNOME lar ikke programmer gjøre det selv)")
+        if st.get("keys"):
+            line(f"{st['keys']} hurtigtast(er) er lagt inn av Kontrollsenter", True)
+        rm = Gtk.Button(label="Fjern det Kontrollsenter har lagt inn i skrivebordet", halign=Gtk.Align.START)
+        rm.add_css_class("flat")
+
+        def remove(_b):
+            desktop.remove_all()
+            _b.set_label("Fjernet ✓ – hurtigtastene legges inn igjen hvis du velger dem på nytt")
+            _b.set_sensitive(False)
+        rm.connect("clicked", remove)
+        i.append(rm)
+        self.box.append(c)
+
     def _simple_card(self):
         c, i = card("Enkel modus", "Bare det viktigste i sidemenyen – fint på barnas PC-er. Alt annet er der "
                                    "fortsatt, og søket (Ctrl+K) finner også de skjulte sidene.")
@@ -1511,7 +1601,7 @@ class _Cards:
         import theme as ks_theme
         lc = liquid.cfg()
         c, i = card("Liquid Glass og Aero", "Virker med alle temaene. Uskarpheten bak vinduet (Aero) krever "
-                                            "KDE Plasma eller Windows 11.")
+                                            "KDE Plasma, Hyprland (blur slått på) eller Windows 11.")
 
         def redraw():
             ks_theme.THEMES["liquid"] = liquid.theme_entry()
@@ -2515,6 +2605,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._disk_card)
         self._try(self._features_card)
         self._try(self._simple_card)
+        self._try(self._desktop_card)
         self._try(self._apps_card)
         self._try(self._infotiles_card)
         self.tab("varsler", "Varsler")

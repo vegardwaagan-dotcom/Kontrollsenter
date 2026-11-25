@@ -222,6 +222,12 @@ class MonitorWindow(Adw.ApplicationWindow):
             design.apply(self)
         except Exception:  # noqa: BLE001
             applog.log.exception("design")
+        if not os.environ.get("SYSTEMMONITOR_APP_ID"):   # Hyprland/GNOME: vinduer, oppstart, statusfelt (desktop.py)
+            try:
+                import desktop
+                GLib.idle_add(lambda: (desktop.setup(self), False)[1])
+            except Exception:  # noqa: BLE001
+                applog.log.exception("skrivebord")
         try:                                             # tid på døgnet, spilltema, levende bakgrunn
             import looks
             GLib.idle_add(lambda: looks.start(self) and False)
@@ -1920,6 +1926,9 @@ class MonitorApp(Adw.Application):
                 applog.log.exception("bli med i spill")
         act.connect("activate", join)
         self.add_action(act)
+        hk = Gio.SimpleAction.new("hotkey", GLib.VariantType.new("s"))       # hurtigtaster fra Hyprland/GNOME
+        hk.connect("activate", lambda _a, v: __import__("desktop").pressed(v.get_string()))
+        self.add_action(hk)
         sa = Gio.SimpleAction.new("search", None)
         sa.connect("activate", lambda *_: getattr(self, "win", None) and self.win.open_search())
         self.add_action(sa)

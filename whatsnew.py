@@ -13,6 +13,22 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("0.99.59", "Tilpasset Hyprland og GNOME", [
+            "Hyprland: mini-vinduet, widgetene, webkameraet og andre egne vinduer blir flytende i stedet for å "
+            "legges inn i rutenettet. Mini-vinduet og widgetene kan ligge øverst, og widgetene husker plasseringen",
+            "Hyprland: hurtigtastene (klipp, opptak, skjermbilde …) bindes direkte i Hyprland – nøyaktig tast, også i spill",
+            "Hyprland: oppstart ved innlogging virker (Hyprland kjører ikke ~/.config/autostart selv)",
+            "Hyprland: støtter både det nye Lua-oppsettet (hyprland.lua, Hyprland 0.55 og nyere) og hyprland.conf – "
+            "Kontrollsenter skriver i samme språk som ditt oppsett, i en egen fil",
+            "Hyprland: skjermprofiler med oppløsning, Hz, VRR og HDR, nattlys med hyprsunset, og valg av "
+            "hovedskjermkort",
+            "GNOME: hurtigtastene legges inn som egne tastatursnarveier – ingen spørsmål, nøyaktig tast",
+            "GNOME: skjermprofiler (oppløsning og Hz) via GNOME sine egne skjerminnstillinger",
+            "GNOME: statusfelt-ikonet – AppIndicator-utvidelsen slås på hvis den er installert",
+            "Lysstyrke på eksterne skjermer med ddcutil (DDC/CI) når skrivebordet ikke styrer det selv",
+            "Nytt kort under Innstillinger › Generelt › Skrivebord: hva som er tilpasset, og «Fjern det "
+            "Kontrollsenter har lagt inn»",
+        ]),
     ("0.99.58", "Nytt design – med bryter", [
             "Ny bryter under Innstillinger › Utseende › Design: velg «Klassisk» (slik som før) eller «Nytt design». "
             "Gjelder PC (Linux og Windows) og mobilappen",

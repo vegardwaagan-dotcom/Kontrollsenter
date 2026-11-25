@@ -1,6 +1,6 @@
 """Skrivebordswidgets i Kontrollsenter (Windows, og Linux uten KDE): små glassvinduer uten ramme.
 
-Dra dem dit du vil ha dem (Windows husker plasseringen), og lukk med ✕ som kommer fram når musa er over.
+Dra dem dit du vil ha dem (Windows og Hyprland husker plasseringen), og lukk med ✕ som kommer fram når musa er over.
 """
 import sys
 
@@ -66,6 +66,24 @@ class DeskWidget(Gtk.Window):
         self.connect("close-request", self._on_close)
         if IS_WIN:
             GLib.timeout_add(400, self._win_setup)
+        self._ks_hypr_own = True                      # Hyprland: flytende, husker plassering, «øverst» = festet
+        import desktop
+        if desktop.is_hypr():
+            p = W.cfg()["desk"].get(kind, {})
+            desktop.hypr_follow(self, self.get_title(), floating=True, pin=bool(p.get("top")),
+                                pos=(p["x"], p["y"]) if "x" in p and "y" in p else None)
+            GLib.timeout_add_seconds(20, lambda: (self._hypr_save(), self.get_visible())[1])
+
+    def _hypr_save(self):
+        import desktop
+        pos = desktop.hypr_pos(self.get_title())
+        if not pos:
+            return
+        c = W.cfg()
+        d = c["desk"].setdefault(self.kind, {})
+        if (d.get("x"), d.get("y")) != tuple(pos):
+            d["x"], d["y"] = int(pos[0]), int(pos[1])
+            W.save_cfg(c)
 
     # --- data ---
     def refresh(self):
@@ -271,6 +289,10 @@ def set_top(kind, on):
     w = OPEN.get(kind)
     if w and IS_WIN:
         w._win_setup()
+    if w:
+        import desktop
+        if desktop.is_hypr():
+            desktop.hypr_window(w.get_title(), pin=bool(on))
 
 
 def restore(app_win):

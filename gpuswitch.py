@@ -43,6 +43,9 @@ def _run(cmd, t=20):
 def supported():
     if IS_WIN:
         return True
+    import desktop
+    if desktop.is_hypr():                     # Hyprland: AQ_DRM_DEVICES i kontrollsenter.conf
+        return True
     return "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper() and \
         os.environ.get("XDG_SESSION_TYPE") == "wayland"
 
@@ -103,11 +106,24 @@ def _linux_gpus():
 
 
 def _linux_choice():
+    import desktop
+    if desktop.is_hypr():
+        return desktop.gpu_choice()
     m = re.search(r"by-path/pci-([0-9a-f:.]+)-card", _read(ENV_FILE))
     return m.group(1) if m else None
 
 
 def _linux_set(bus):
+    import desktop
+    if desktop.is_hypr():
+        if bus is not None and not re.fullmatch(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-7]", bus):
+            raise ValueError("ugyldig skjermkort")
+        desktop.set_gpu_choice(bus)
+        if bus and not desktop.hypr_sourced():
+            raise RuntimeError(f"lagret – men {os.path.basename(desktop._main_file())} leser ikke inn Kontrollsenter "
+                               "sin fil ennå. Legg til denne linjen: " +
+                               re.split(r"\s+(?:#|--)\s", desktop.source_line())[0])
+        return
     if bus is None:
         try:
             os.remove(ENV_FILE)
@@ -136,6 +152,11 @@ fi
 
 
 def logout_prompt():
+    import desktop
+    if desktop.is_gnome():
+        return _run(["gnome-session-quit", "--logout"], 10)[0] == 0
+    if desktop.is_hypr():                     # Hyprland har ingen spør-før-utlogging – brukeren logger ut selv
+        return False
     for cmd in (["qdbus6", "org.kde.LogoutPrompt", "/LogoutPrompt", "promptLogout"],
                 ["qdbus", "org.kde.LogoutPrompt", "/LogoutPrompt", "promptLogout"]):
         if _run(cmd, 10)[0] == 0:
@@ -243,7 +264,8 @@ def choice(all_gpus=None):
 def set_choice(gid, all_gpus=None):
     """Returnerer True hvis byttet må bekreftes (Windows) – ellers gjelder det fra neste innlogging (Linux)."""
     if not supported():
-        raise RuntimeError("bytte av skjermkort støttes bare på KDE Plasma (Wayland) og Windows")
+        raise RuntimeError("bytte av skjermkort støttes på KDE Plasma (Wayland), Hyprland og Windows – på GNOME "
+                           "velger skrivebordet selv kortet skjermen er koblet til")
     if IS_WIN:
         return _win_set(gid, all_gpus if all_gpus is not None else gpus())
     _linux_set(gid)

@@ -210,11 +210,16 @@ def apply_audio(pid):
 # SKJERM
 # ==========================================================================
 def _display_tool():
-    """Hvilket verktøy som styrer skjermene her: «kde», «wlr» (Sway, Hyprland …), «x11» eller None."""
+    """Hvilket verktøy som styrer skjermene her: «kde», «hypr», «gnome», «wlr» (Sway …), «x11» eller None."""
     import shutil
+    import desktop
     wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
+    if desktop.is_hypr():
+        return "hypr"
     if shutil.which("kscreen-doctor") and "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "KDE").upper():
         return "kde"
+    if desktop.is_gnome() and wayland:
+        return "gnome"
     if wayland and shutil.which("wlr-randr"):
         return "wlr"
     if not wayland and shutil.which("xrandr") and os.environ.get("DISPLAY"):
@@ -231,6 +236,10 @@ def displays():
         return _xrandr_displays()
     if tool == "wlr":
         return _wlr_displays()
+    if tool == "hypr":
+        return _hypr_displays()
+    if tool == "gnome":
+        return _gnome_displays()
     if tool is None:
         return []
     code, out = _run(["kscreen-doctor", "-j"], 10)
@@ -298,10 +307,105 @@ def _wlr_displays():
     return res
 
 
+# ---- Hyprland: hyprctl monitors / keyword monitor (plassering og skalering beholdes) ----
+def _hypr_displays():
+    import desktop
+    res = []
+    for m in desktop.hypr_json("monitors") or []:
+        if m.get("disabled"):
+            continue
+        modes = set()
+        for txt in m.get("availableModes", []):
+            mm = re.match(r"(\d+)x(\d+)@([\d.]+)", txt)
+            if mm:
+                modes.add((int(mm.group(1)), int(mm.group(2)), round(float(mm.group(3)))))
+        res.append({"id": m["name"], "name": m.get("description") or m["name"], "w": m.get("width"),
+                    "h": m.get("height"), "hz": round(m.get("refreshRate") or 0) or None, "hdr": None,
+                    "vrr": 1 if m.get("vrr") else 0, "modes": sorted(modes, reverse=True),
+                    "_hypr": {"x": m.get("x", 0), "y": m.get("y", 0), "scale": m.get("scale", 1),
+                              "modes": m.get("availableModes", [])}})
+    return res
+
+
+def _hypr_set_display(o):
+    import desktop
+    cur = next((d for d in _hypr_displays() if d["id"] == o["id"]), None)
+    if cur is None:
+        raise RuntimeError("fant ikke skjermen")
+    w, h, hz = o.get("w") or cur["w"], o.get("h") or cur["h"], o.get("hz") or cur["hz"]
+    # bruk den nøyaktige frekvensen Hyprland oppgir (143.91 Hz, ikke 144)
+    exact = next((t.split("@")[1].rstrip("Hz") for t in cur["_hypr"]["modes"]
+                  if re.match(rf"{w}x{h}@", t) and round(float(re.sub(r"[^\d.]", "", t.split("@")[1]))) == hz), None)
+    vrr = o.get("vrr")
+    ok, out = desktop.hypr_monitor(o["id"], f"{w}x{h}@{exact or hz}", cur["_hypr"]["x"], cur["_hypr"]["y"],
+                                   cur["_hypr"]["scale"], None if vrr is None else {0: 0, 1: 1, 2: 2}.get(int(vrr), 2),
+                                   bool(o.get("hdr")))
+    if not ok:
+        raise RuntimeError(out or "Hyprland godtok ikke skjerminnstillingen")
+
+
+# ---- GNOME: Mutter sin DisplayConfig over D-Bus (ApplyMonitorsConfig, midlertidig – angres som ellers) ----
+_MUTTER = ("org.gnome.Mutter.DisplayConfig", "/org/gnome/Mutter/DisplayConfig", "org.gnome.Mutter.DisplayConfig")
+
+
+def _gnome_state():
+    from gi.repository import Gio
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    return bus, bus.call_sync(*_MUTTER, "GetCurrentState", None, None, 0, 5000, None).unpack()
+
+
+def _gnome_displays():
+    try:
+        _bus, (_serial, monitors, logical, _props) = _gnome_state()
+    except Exception:  # noqa: BLE001
+        return []
+    active = {spec[0] for lm in logical for spec in lm[5]}
+    res = []
+    for (conn, vendor, product, _ser), modes, props in monitors:
+        if conn not in active:
+            continue
+        cur = next((m for m in modes if m[6].get("is-current")), None)
+        ms = sorted({(m[1], m[2], round(m[3])) for m in modes}, reverse=True)
+        res.append({"id": conn, "name": props.get("display-name") or f"{vendor} {product}".strip() or conn,
+                    "w": cur[1] if cur else None, "h": cur[2] if cur else None, "hz": round(cur[3]) if cur else None,
+                    "hdr": None, "vrr": None, "modes": ms})
+    return res
+
+
+def _gnome_set_display(o):
+    from gi.repository import GLib
+    bus, (serial, monitors, logical, _props) = _gnome_state()
+    modes_of = {m[0][0]: m[1] for m in monitors}
+    mode_id = None
+    if o.get("w") and o.get("hz"):
+        mode_id = next((m[0] for m in modes_of.get(o["id"], [])
+                        if m[1] == o["w"] and m[2] == o["h"] and round(m[3]) == o["hz"]), None)
+        if mode_id is None:
+            raise RuntimeError("skjermen støtter ikke den oppløsningen og frekvensen")
+    new = []
+    for x, y, scale, transform, primary, specs, _p in logical:
+        out_specs = []
+        if mode_id and any(sp[0] == o["id"] for sp in specs):     # skaleringen må passe den nye modusen
+            m = next(m for m in modes_of[o["id"]] if m[0] == mode_id)
+            if not any(abs(scale - sc) < 0.01 for sc in m[5]):
+                scale = m[4]
+        for conn, *_rest in specs:
+            mid = mode_id if conn == o["id"] and mode_id else next(
+                (m[0] for m in modes_of.get(conn, []) if m[6].get("is-current")), None)
+            out_specs.append((conn, mid, {}))
+        new.append((x, y, scale, transform, primary, out_specs))
+    bus.call_sync(*_MUTTER, "ApplyMonitorsConfig",
+                  GLib.Variant("(uua(iiduba(ssa{sv}))a{sv})", (serial, 1, new, {})), None, 0, 10000, None)
+
+
 def _set_display(o):
     if IS_WIN:
         return _win_set_display(o)
     tool = _display_tool()
+    if tool == "hypr":
+        return _hypr_set_display(o)
+    if tool == "gnome":
+        return _gnome_set_display(o)
     if tool in ("x11", "wlr"):
         if not o.get("w"):
             return
@@ -512,9 +616,30 @@ def _gnome():
 _GCOL = "org.gnome.settings-daemon.plugins.color"
 
 
+def _hyprsunset():
+    import desktop
+    import shutil
+    return desktop.is_hypr() and bool(shutil.which("hyprsunset"))
+
+
+def _hyprsunset_running():
+    return _run(["pgrep", "-x", "hyprsunset"], 5)[0] == 0
+
+
 def night_state():
     if IS_WIN:
         return None
+    if _hyprsunset():                                  # Hyprland: hyprsunset (styres med hyprctl hyprsunset)
+        if not _hyprsunset_running():
+            return {"on": False, "temp": 4000, "running": False}
+        import desktop
+        ok, out = desktop.hyprctl("hyprsunset", "temperature")
+        m = re.search(r"\b(\d{4})\b", out)
+        if ok and m:
+            t = int(m.group(1))
+            return {"on": t < 6000, "temp": t if t < 6000 else 4000, "running": t < 6000}
+        last = cfg().get("hyprsunset", {})                # eldre/nyere hyprsunset som ikke oppgir temperaturen
+        return {"on": bool(last.get("on")), "temp": int(last.get("temp", 4000)), "running": bool(last.get("on"))}
     if _gnome():
         on = _run(["gsettings", "get", _GCOL, "night-light-enabled"], 5)[1].strip() == "true"
         t = _run(["gsettings", "get", _GCOL, "night-light-temperature"], 5)[1].strip().split()[-1:]
@@ -537,6 +662,27 @@ def set_night(on, temp=None):
     if IS_WIN:
         os.startfile("ms-settings:nightlight")  # noqa: S606
         return "Nattlys-innstillingene i Windows er åpnet"
+    if _hyprsunset():
+        import desktop
+        import subprocess
+        t = max(1000, min(6500, int(temp or 4000)))
+        if not _hyprsunset_running():
+            if not on:
+                return "Nattlys av"
+            subprocess.Popen(["hyprsunset", "-t", str(t)], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            c = cfg()
+            c["hyprsunset"] = {"on": True, "temp": t}
+            save_cfg(c)
+            return "Nattlys på ✓"
+        ok, out = desktop.hyprctl("hyprsunset", "temperature", str(t)) if on else desktop.hyprctl("hyprsunset",
+                                                                                                    "identity")
+        if not ok:
+            raise RuntimeError(out or "hyprsunset svarte ikke")
+        c = cfg()
+        c["hyprsunset"] = {"on": bool(on), "temp": t}
+        save_cfg(c)
+        return "Nattlys på ✓" if on else "Nattlys av"
     if _gnome():                                       # GNOME: alltid på (fra 0 til 24) med valgt temperatur
         _run(["gsettings", "set", _GCOL, "night-light-enabled", "true" if on else "false"], 5)
         if on:
@@ -549,7 +695,11 @@ def set_night(on, temp=None):
         return "Nattlys på ✓" if on else "Nattlys av"
     import shutil
     if not shutil.which("kwriteconfig6"):
-        raise RuntimeError("nattlys styres herfra på KDE Plasma og GNOME – bruk skrivebordets egne innstillinger")
+        import desktop
+        if desktop.is_hypr():
+            raise RuntimeError("nattlys på Hyprland krever hyprsunset – installer pakken «hyprsunset»")
+        raise RuntimeError("nattlys styres herfra på KDE Plasma, GNOME og Hyprland – bruk skrivebordets egne "
+                           "innstillinger")
     args = [["kwriteconfig6", "--file", "kwinrc", "--group", "NightColor", "--key", "Active", "true" if on else "false"]]
     if on:
         args.append(["kwriteconfig6", "--file", "kwinrc", "--group", "NightColor", "--key", "Mode", "Constant"])
@@ -615,7 +765,30 @@ def brightness():
     except Exception:  # noqa: BLE001
         pass
     bl = _backlight()                                  # andre skrivebord: bærbar-skjermen
-    return round(100 * bl[1] / bl[2]) if bl else None
+    if bl:
+        return round(100 * bl[1] / bl[2])
+    return _ddc_get()                                  # eksterne skjermer (DDC/CI) med ddcutil
+
+
+def _ddc_get():
+    import shutil
+    if not shutil.which("ddcutil"):
+        return None
+    code, out = _run(["ddcutil", "--brief", "getvcp", "10"], 15)
+    m = re.search(r"VCP 10 C (\d+) (\d+)", out)
+    return round(100 * int(m.group(1)) / int(m.group(2))) if code == 0 and m and int(m.group(2)) else None
+
+
+def _ddc_set(pct):
+    import shutil
+    if not shutil.which("ddcutil"):
+        return False
+    code, out = _run(["ddcutil", "detect", "--brief"], 20)
+    nums = re.findall(r"^Display (\d+)", out, re.M) or ["1"]
+    ok = False
+    for n in nums:
+        ok = _run(["ddcutil", "--display", n, "setvcp", "10", str(pct)], 15)[0] == 0 or ok
+    return ok
 
 
 def set_brightness(pct):
@@ -640,7 +813,10 @@ def set_brightness(pct):
                              GLib.Variant("(ssu)", ("backlight", bl[0], max(1, round(bl[2] * pct / 100)))),
                              None, 0, 5000, None)
             return f"Lysstyrke {pct} %"
-        raise RuntimeError("skjermen støtter ikke lysstyrke herfra (DDC/CI av i skjermmenyen?)")
+        if _ddc_set(pct):                              # eksterne skjermer på GNOME, Hyprland m.fl.
+            return f"Lysstyrke {pct} %"
+        raise RuntimeError("skjermen støtter ikke lysstyrke herfra (DDC/CI av i skjermmenyen, eller installer "
+                           "«ddcutil»)")
     for d in ds:
         path = f"/org/kde/ScreenBrightness/{d}"
         mx = bus.call_sync("org.kde.ScreenBrightness", path, "org.freedesktop.DBus.Properties", "Get",

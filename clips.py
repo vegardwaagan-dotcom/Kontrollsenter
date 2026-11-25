@@ -541,7 +541,8 @@ def win_code(spec):
 
 class Hotkey:
     """Global hurtigtast (også mens et spill har fokus). KDE: KGlobalAccel (ingen spørsmål, nøyaktig tast).
-    Andre skrivebord: portalen for globale hurtigtaster. Windows: RegisterHotKey."""
+    Hyprland og GNOME: bundet i skrivebordet (desktop.bind). Andre: portalen for globale hurtigtaster.
+    Windows: RegisterHotKey."""
     ACTION = ["kontrollsenter", "lagre-klipp", "Kontrollsenter", "Lagre klipp"]
 
     def __init__(self, cb, spec="F8", action=None, wid=0x4B53):
@@ -558,6 +559,14 @@ class Hotkey:
         if IS_WIN:
             threading.Thread(target=self._win_loop, daemon=True).start()
             return
+        try:                                       # Hyprland og GNOME: skrivebordet binder tasten selv
+            import desktop
+            if desktop.kind() in ("hyprland", "gnome"):
+                self.how = desktop.bind(self.ACTION[1], self.spec, self.pressed, self.ACTION[3])
+                self.ok = True
+                return
+        except Exception as e:  # noqa: BLE001 – prøv KDE/portalen under
+            self.error = str(e)
         try:
             self._kde()
         except Exception as e:  # noqa: BLE001
@@ -589,6 +598,9 @@ class Hotkey:
             return
         if self.how == "kde":
             self._kde_bind()
+        elif self.how in ("hypr", "gnome"):
+            import desktop
+            desktop.bind(self.ACTION[1], spec, self.pressed, self.ACTION[3])
         else:
             self.error = "på dette skrivebordet velges tasten i skrivebordets innstillinger"
 
@@ -727,6 +739,9 @@ def enable_extra_keys():
         spec = keys.get(k) or ""
         h = r.extra.get(k)
         if not spec:
+            if h is not None and h.how in ("hypr", "gnome"):          # tasten er tatt bort: fjern bindingen
+                import desktop
+                desktop.unbind(aid)
             continue
         try:
             parse_key(spec)

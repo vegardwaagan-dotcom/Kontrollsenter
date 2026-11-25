@@ -1,7 +1,7 @@
 """Mini-vindu: lite vindu med temperaturer, last og strøm som ligger øverst over andre vinduer.
 
 Wayland lar ikke programmer legge seg øverst selv. På KDE Plasma ber vi KWin om det med et lite
-skript over D-Bus; på andre skrivebord blir det et vanlig lite vindu.
+skript over D-Bus, og på Hyprland festes det med hyprctl (pin). På GNOME: Alt+Mellomrom → «Alltid øverst».
 """
 import os
 import tempfile
@@ -84,6 +84,9 @@ class MiniWindow(Adw.Window):
         tv.set_content(grid)
         self.set_content(tv)
         self.connect("map", lambda *_: GLib.timeout_add(400, lambda: keep_above(TITLE) and False))
+        self._ks_hypr_own = True                     # Hyprland: flytende og festet øverst (desktop.py)
+        import desktop
+        desktop.hypr_follow(self, TITLE, floating=True, pin=True, size=(330, 150))
         self.refresh(main._cpu_t if hasattr(main, "_cpu_t") else None,
                      main.nvidia.data if main.nvidia.available else None, getattr(main, "_power", {}))
 
