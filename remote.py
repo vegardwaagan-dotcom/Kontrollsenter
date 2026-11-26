@@ -1437,8 +1437,10 @@ def _handler(remote):
                     q = parse_qs(u.query)
                     try:
                         if p == "/api/nas/shares":
+                            import hjemmeport
                             return self._send(200, {"shares": nasfiles.shares(), "where": nasfiles.where(),
-                                                    "default": nasfiles.default_share()})
+                                                    "default": nasfiles.default_share(),
+                                                    "gate": hjemmeport.gate_for_phone()})
                         share, path = (q.get("share") or [""])[0], (q.get("path") or [""])[0]
                         return self._send(200, {"items": nasfiles.list_dir(share, path), "share": share, "path": path})
                     except ValueError as e:

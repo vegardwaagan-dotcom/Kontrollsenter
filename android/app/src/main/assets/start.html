@@ -215,6 +215,7 @@ button:not(:disabled):active svg { stroke:#fff; }
     <div class="tools">
       <button id="scan" class="tool"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>Søk</button>
       <button id="add-open" class="tool"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Legg til</button>
+      <button id="nas-open" class="tool" hidden><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>NAS</button>
       <button id="all-games" class="tool"><svg viewBox="0 0 24 24"><path d="M6 9h12a4 4 0 0 1 4 4v1a3 3 0 0 1-5.2 2L15 14H9l-1.8 2A3 3 0 0 1 2 14v-1a4 4 0 0 1 4-4z"/></svg>Spill</button>
     </div>
     <div id="add-row" class="row add-row" hidden><input id="manual" placeholder="Adresse, f.eks. 192.168.1.20" inputmode="url"><button id="add" class="primary">Legg til</button></div>
@@ -746,6 +747,22 @@ if (KS && KS.version) $("#ver").textContent = "App-versjon " + KS.version();
 </script>
 <script>document.addEventListener("touchstart", () => {}, { passive: true });</script>
 <script src="aero.js"></script>
-<script src="tv.js"></script>
+<script src="tv.js">
+// NAS-disken via hjemmeporten (Raspberry Pi) – virker selv om alle PC-ene er av
+(function () {
+  let g = null;
+  try { g = JSON.parse((window.KS && KS.getNasGate && KS.getNasGate()) || "null"); } catch (e) {}
+  const b = document.getElementById("nas-open");
+  if (!g || !g.key || !b) return;
+  b.hidden = false;
+  const ping = (u) => new Promise((ok) => { const c = new AbortController(); const t = setTimeout(() => { c.abort(); ok(false); }, 1500);
+    fetch(u + "api/hello", { mode: "no-cors", signal: c.signal }).then(() => { clearTimeout(t); ok(true); }, () => { clearTimeout(t); ok(false); }); });
+  b.onclick = async () => {
+    b.disabled = true;
+    const url = (g.lan && await ping(g.lan)) ? g.lan : g.url;            // hjemme: direkte; borte: gjennom Tailscale
+    location.href = url + "#k=" + encodeURIComponent(g.key);
+  };
+})();
+</script>
 </body>
 </html>

@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.10", "Hjemmeport – NAS-en uten at noen PC står på", [
+            "Ny «Hjemmeport» (NAS-disken): gjør en Raspberry Pi hjemme til porten inn til NAS-en – Kontrollsenter "
+            "setter den opp over SSH (passordet én gang), installerer Tailscale, deler hjemmenettet og slår på "
+            "automatiske sikkerhetsoppdateringer",
+            "Mobilappen: knappen «NAS» på startskjermen åpner NAS-disken gjennom hjemmeporten – også når alle PC-ene er av",
+            "Hjemmeporten svarer bare dine enheter (Tailscale og hjemmenettet) og krever en egen nøkkel som bare mobiler "
+            "med full tilgang får",
+        ]),
     ("1.0.9", "NAS-disken – også utenfor hjemmet", [
             "Ny side «NAS-disken» (System): bla i NAS-en som i en filbehandler – åpne, last ned, last opp (også ved å "
             "dra filer inn), lag mapper, gi nytt navn og slett",

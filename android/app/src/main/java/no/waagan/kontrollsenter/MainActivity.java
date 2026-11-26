@@ -1124,6 +1124,25 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> MainActivity.this.setGlassWindow(on, blur));
         }
 
+        /** Hjemmeporten (Raspberry Pi): NAS-disken når ingen PC er på. JSON {url, lan, key} – fra PC-en (full tilgang). */
+        @JavascriptInterface
+        public void setNasGate(String json) {
+            if (json == null || json.length() > 2000) return;
+            try {
+                org.json.JSONObject o = new org.json.JSONObject(json);
+                for (String k : new String[]{"url", "lan"}) {
+                    Uri u = Uri.parse(o.optString(k, ""));
+                    if (!"http".equals(u.getScheme()) || !isLocal(u.getHost())) return;
+                }
+                getSharedPreferences("ks", 0).edit().putString("nasgate", o.toString()).apply();
+            } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
+        public String getNasGate() {
+            return getSharedPreferences("ks", 0).getString("nasgate", "");
+        }
+
         /** Design: «klassisk», «ny», «3d» eller «lett» – felles for startskjermen og alle PC-ene. */
         @JavascriptInterface
         public String getDesign() {

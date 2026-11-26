@@ -22,6 +22,7 @@
       ? "● NAS-en er tilkoblet gjennom Tailscale" : "○ PC-en når ikke NAS-en nå";
     const names = r.shares.map((s) => s.name).sort((a, b) => (a !== r.default) - (b !== r.default) || a.localeCompare(b));
     share = share || r.default;
+    if (r.gate && window.KS && KS.setNasGate) { try { KS.setNasGate(JSON.stringify(r.gate)); } catch (e) {} }  // husk hjemmeporten
     $n("#nas-share").innerHTML = names.map((x) => '<option' + (x === share ? " selected" : "") + ">" + esc2(x) + "</option>").join("");
     if (r.where) go("");
   }

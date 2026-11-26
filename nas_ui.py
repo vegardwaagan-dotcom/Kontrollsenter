@@ -68,6 +68,7 @@ class NasPage(Gtk.ScrolledWindow):
         self.box = outer
         self.set_child(Adw.Clamp(maximum_size=1100, child=outer))
         self._browser()
+        self._gate_card()
         self._remote_card()
         self.connect("map", lambda *_: self._first())
         self._loaded = False
@@ -396,3 +397,125 @@ class NasPage(Gtk.ScrolledWindow):
                 Gtk.UriLauncher(uri=tailnas.ADMIN_URL).launch(self.get_root(), None, None, None)
             GLib.timeout_add_seconds(2, lambda: (self._ts_refresh(), False)[1])
         _bg(fn, done)
+
+    # ---------------------------------------------------------------- hjemmeporten (Raspberry Pi)
+    def _gate_card(self):
+        import hjemmeport as HP
+        c, i = _card("Hjemmeport – uten at noen PC står på",
+                     "En Raspberry Pi hjemme som alltid står på, gjør NAS-en tilgjengelig utenfor hjemmet: laptopen og "
+                     "mobilen når den gjennom Tailscale, og mobilappen kan bla i NAS-en selv om alle PC-ene er av.")
+        self.gate_lbl = Gtk.Label(xalign=0, wrap=True, label=_t("Sjekker …"))
+        i.append(self.gate_lbl)
+        self.gate_btns = Gtk.Box(spacing=8)
+        i.append(self.gate_btns)
+        self.box.append(c)
+        if not HP.ssh_available():
+            self.gate_lbl.set_label(_t("Trenger SSH (følger med Linux og Windows 10/11)."))
+            return
+        _bg(HP.status, self._gate_show)
+
+    def _gate_show(self, st):
+        import hjemmeport as HP
+        while (b := self.gate_btns.get_first_child()) is not None:
+            self.gate_btns.remove(b)
+
+        def btn(label, fn, css=None):
+            b = Gtk.Button(label=_t(label))
+            if css:
+                b.add_css_class(css)
+            b.connect("clicked", lambda *_: fn())
+            self.gate_btns.append(b)
+        if isinstance(st, Exception) or not st.get("setup"):
+            self.gate_lbl.set_label(_t("Ikke satt opp. Gjør Pi-en klar med Raspberry Pi Imager (Raspberry Pi OS Lite, "
+                                       "vertsnavn «hjemmeport», SSH på), koble den til ruteren med kabel, og trykk "
+                                       "«Sett opp»."))
+            btn("Sett opp Raspberry Pi", self._gate_setup, "suggested-action")
+            return
+        lines = [_t("✓ Satt opp på {ip}").format(ip=st.get("ip"))]
+        lines.append(_t("✓ NAS-tjenesten svarer") if st.get("online") else _t("✗ NAS-tjenesten svarer ikke – står Pi-en på?"))
+        if st.get("ts_ip"):
+            lines.append(_t("✓ I Tailscale ({ip})").format(ip=st["ts_ip"]))
+            lines.append(_t("✓ Hjemmenettet deles – NAS-en kan nås utenfra") if st.get("route_ok") else
+                         _t("⏳ Ruten er ikke godkjent ennå: trykk «Godkjenn ruten», finn «hjemmeport» og slå på "
+                            "192.168.1.0/24 under «Edit route settings»."))
+        else:
+            lines.append(_t("⏳ Ikke logget inn i Tailscale ennå – trykk «Logg inn i Tailscale»."))
+        self.gate_lbl.set_label("\n".join(lines))
+        if not st.get("ts_ip"):
+            btn("Logg inn i Tailscale", self._gate_login, "suggested-action")
+        elif not st.get("route_ok"):
+            import tailnas
+            btn("Godkjenn ruten", lambda: Gtk.UriLauncher(uri=tailnas.ADMIN_URL).launch(self.get_root(), None, None,
+                                                                                         None), "suggested-action")
+        btn("Oppdater", lambda: _bg(HP.status, self._gate_show))
+        btn("Sett opp på nytt", self._gate_setup)
+
+    def _gate_login(self):
+        import hjemmeport as HP
+        self.gate_lbl.set_label(_t("Henter innloggingslenken fra Pi-en …"))
+
+        def done(url):
+            if isinstance(url, Exception) or not url:
+                self.gate_lbl.set_label(_t("Pi-en er allerede logget inn – eller svarer ikke. Trykk «Oppdater»."))
+                return
+            Gtk.UriLauncher(uri=url).launch(self.get_root(), None, None, None)
+            self.gate_lbl.set_label(_t("Logg inn med samme Tailscale-konto som på PC-ene i nettleseren som åpnet seg, "
+                                       "og trykk «Oppdater» etterpå."))
+        _bg(HP.auth_url, done)
+
+    def _gate_setup(self):
+        import hjemmeport as HP
+        dlg = Adw.AlertDialog(heading=_t("Sett opp hjemmeporten"),
+                              body=_t("Skriv adressen, brukernavnet og passordet du valgte i Raspberry Pi Imager. "
+                                      "Passordet brukes bare nå – etterpå logger Kontrollsenter inn med egen nøkkel."))
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        ip = Gtk.Entry(placeholder_text=_t("Adresse (f.eks. 192.168.1.50 eller hjemmeport.local)"))
+        user = Gtk.Entry(placeholder_text=_t("Brukernavn på Pi-en"))
+        pw = Gtk.PasswordEntry(placeholder_text=_t("Passord på Pi-en"), show_peek_icon=True)
+        found = Gtk.Label(xalign=0, wrap=True, label=_t("Leter etter Raspberry Pi på hjemmenettet …"))
+        found.add_css_class("caption")
+        for w in (found, ip, user, pw):
+            box.append(w)
+        dlg.set_extra_child(box)
+        dlg.add_response("cancel", _t("Avbryt"))
+        dlg.add_response("ok", _t("Sett opp"))
+        dlg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+
+        def got(r):
+            if isinstance(r, Exception) or not r:
+                found.set_label(_t("Fant ingen Raspberry Pi automatisk – skriv adressen (se ruteren), eller prøv "
+                                   "«hjemmeport.local»."))
+                return
+            found.set_label(_t("Fant: ") + ", ".join(f"{a} ({n})" for a, n in r))
+            if not ip.get_text():
+                ip.set_text(r[0][0])
+        _bg(HP.find, got)
+
+        def resp(_d, r):
+            if r != "ok":
+                return
+            a, u, p = ip.get_text().strip(), user.get_text().strip(), pw.get_text()
+            if not (a and u and p):
+                self.gate_lbl.set_label(_t("Fyll inn adresse, brukernavn og passord"))
+                return
+            while (b := self.gate_btns.get_first_child()) is not None:
+                self.gate_btns.remove(b)
+
+            def say(t):
+                GLib.idle_add(self.gate_lbl.set_label, t)
+
+            def done(res):
+                if isinstance(res, Exception):
+                    self.gate_lbl.set_label("✗ " + str(res))
+                    self._gate_show({"setup": bool(HP.cfg().get("key")), **HP.cfg()})
+                    return
+                if res.get("auth_url"):
+                    Gtk.UriLauncher(uri=res["auth_url"]).launch(self.get_root(), None, None, None)
+                self._gate_show(res)
+                if res.get("auth_url"):
+                    self.gate_lbl.set_label(self.gate_lbl.get_label() + "\n" +
+                                            _t("Logg inn i Tailscale i nettleseren som åpnet seg, og trykk «Oppdater»."))
+            _bg(lambda: HP.setup(a, u, p, say), done)
+        dlg.connect("response", resp)
+        dlg.present(self.get_root())
+
