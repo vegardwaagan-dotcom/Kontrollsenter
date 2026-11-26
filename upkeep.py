@@ -138,7 +138,7 @@ def _analyze(win=None):
     rows = []
     for p in procs:
         try:
-            rows.append((p.info["name"], p.cpu_percent(None) / ncpu, p.info["memory_info"].rss if p.info["memory_info"] else 0,
+            rows.append((p.info["name"], p.cpu_percent(None) / ncpu, p.info["memory_info"].rss if p.info.get("memory_info") else 0,
                          p.info.get("username")))
         except psutil.Error:
             continue

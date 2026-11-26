@@ -200,19 +200,22 @@ def storage_card(card):
                            "spille. Steam må være lukket når du slår det på.")))
         r.append(col)
         sw = Gtk.Switch(active=S.cfg()["night_updates"], valign=Gtk.Align.CENTER)
-        busy = {"v": False}
+
+        def revert(s, val):
+            s.handler_block(hid)                     # tilbake uten å utløse bryteren på nytt
+            s.set_active(val)
+            s.handler_unblock(hid)
+            return False
 
         def tog(s, _p):
-            if busy["v"]:
-                return
+            want = s.get_active()
             try:
-                _toast(c, _t(S.night_updates(s.get_active())))
+                _toast(c, _t(S.night_updates(want)))
             except Exception as e:  # noqa: BLE001
-                busy["v"] = True
-                s.set_active(not s.get_active())
-                busy["v"] = False
+                # (settes tilbake etterpå – å endre bryteren inne i sin egen hendelse gir en evig løkke i GTK)
+                GLib.idle_add(revert, s, not want)
                 _toast(c, f"✗ {e}")
-        sw.connect("notify::active", tog)
+        hid = sw.connect("notify::active", tog)
         r.append(sw)
         i.append(r)
     return c

@@ -491,7 +491,7 @@ def do_action(win, a):
         col = a.get("color")
         if col and not re.fullmatch(r"#?[0-9a-fA-F]{6}", str(col)):
             raise ValueError("ugyldig farge")
-        _call_main(lambda: INSTANCE.gamemode.set(bool(a.get("on")), col and __import__("automation").hex_rgb(col)))
+        _call_main(lambda: INSTANCE.gamemode.set(bool(a.get("on")), col and "#" + str(col).lstrip("#")))
         return True, "Spillmodus " + ("på" if a.get("on") else "av")
     if kind == "timer":
         mins = a.get("minutes")

@@ -116,6 +116,8 @@ def rgb_restore():
 
 
 def hex_rgb(h):
+    if isinstance(h, (tuple, list)):               # allerede (r, g, b)
+        return tuple(int(x) for x in h[:3])
     h = h.lstrip("#")
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 

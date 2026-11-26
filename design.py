@@ -137,6 +137,8 @@ def help_seen(page):
     """Har hjelpeteksten øverst på denne siden vært vist før? (Markerer den som sett.)"""
     d = _load()
     seen = d.get("help_seen", [])
+    if not isinstance(seen, list):                 # ødelagt/eldre fil: begynn på nytt
+        seen = list(seen) if isinstance(seen, (dict, tuple, set)) else []
     if page in seen:
         return True
     if os.environ.get("KS_SELFTEST"):          # selvtesten skal ikke «se» hjelpetekstene for deg

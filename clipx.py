@@ -405,6 +405,8 @@ def weekly():
     week = [x for x in files() if x["kind"] != "image" and time.time() - x["t"] < 7 * 86400
             and not x["name"].startswith(("Beste fra uka", "Montasje"))]
     best = sorted(week, key=lambda x: (not x["fav"], x["kind"] not in ("highlight", "boss"), -x["t"]))[:12]
+    if not best:
+        raise ValueError("ingen klipp fra de siste 7 dagene ennå")
     return montage([x["name"] for x in sorted(best, key=lambda x: x["t"])], title="Beste fra uka", kind="weekly")
 
 

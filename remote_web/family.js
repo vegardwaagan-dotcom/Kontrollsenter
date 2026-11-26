@@ -61,12 +61,12 @@ async function loadStream() {
   } catch (e) { $("#st-state").textContent = e.message; }
 }
 const MOON = "com.limelight", RUST = "com.carriez.flutter_hbb";
-$("#st-moon").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(MOON)) toast("Installer Moonlight fra Google Play"); } else location.href = "https://moonlight-stream.org"; };
-rustCard.querySelector("#rd-open").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(RUST)) toast("Installer RustDesk fra Google Play"); } else location.href = "https://rustdesk.com"; };
+$("#st-moon").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(MOON)) toast("Installer Moonlight fra Google Play"); } else window.open("https://moonlight-stream.org", "_blank"); };
+rustCard.querySelector("#rd-open").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(RUST)) toast("Installer RustDesk fra Google Play"); } else window.open("https://rustdesk.com", "_blank"); };
 $("#st-start").onclick = async () => { await act({ a: "stream", do: "start" }); setTimeout(loadStream, 22000); };
 $("#st-pair").onclick = async () => { const p = $("#st-pin").value.trim(); if (p.length !== 4) return toast("Koden har 4 sifre"); $("#st-pin").value = ""; await act({ a: "streampin", pin: p }); };
 rustCard.querySelector("#rd-pc").onclick = () => act({ a: "rustdesk" });
-rustCard.querySelector("#rd-copy").onclick = () => { try { navigator.clipboard.writeText($("#rd-id").textContent); toast("Kopiert"); } catch (e) {} };
+rustCard.querySelector("#rd-copy").onclick = () => { try { navigator.clipboard.writeText($("#rd-id").textContent).then(() => toast("Kopiert"), () => toast("Kunne ikke kopiere – merk og kopier selv")); } catch (e) {} };
 
 const batCard = h(`<div class="card" id="c-bat" data-k="batteries"><h2>Batterier</h2><div id="bats"></div>
   <div id="bat-hint" class="row" hidden><span class="dim small">Hodesett vises når HeadsetControl er installert på PC-en.</span><button id="bat-inst" class="soft full-only">Installer</button></div></div>`);
@@ -413,7 +413,7 @@ window.ksBack = () => {
   if (!$("#dlg").hidden) { $("#dlg").hidden = true; return true; }
   return false;
 };
-$("#watchv").ondblclick = () => { try { document.fullscreenElement ? document.exitFullscreen() : $("#watchv").requestFullscreen(); } catch (e) {} };
+$("#watchv").ondblclick = () => { try { document.fullscreenElement ? document.exitFullscreen() : $("#watchv").requestFullscreen().catch(() => {}); } catch (e) {} };
 document.addEventListener("visibilitychange", () => { if (document.hidden && !$("#watchv").hidden) closeWatch(); });
 // hurtigknapp på Hjem: velg PC å se på (velgeren fra picker.js)
 const watchSel = document.createElement("select");

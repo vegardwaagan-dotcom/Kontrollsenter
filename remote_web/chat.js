@@ -181,7 +181,7 @@ function ctSheet(title, html, after) {
 function ctMenu(m) {
   const mine = ctMine(m);
   const items = [["↪ Svar", () => { ctReply = m; $("#ct-reply").hidden = false; $("#ct-reply-t").textContent = `↪ Svarer ${m.from}: ${String(m.text || "").slice(0, 50)}`; $("#ct-text").focus(); }],
-    ["📋 Kopier", () => { navigator.clipboard && navigator.clipboard.writeText(m.text || ""); toast("Kopiert"); }],
+    ["📋 Kopier", () => { navigator.clipboard && navigator.clipboard.writeText(m.text || "").then(() => toast("Kopiert"), () => toast("Kunne ikke kopiere")); }],
     [m.pinned ? "📌 Løsne" : "📌 Fest", () => ctEv(m.id, "pin", { on: !m.pinned })],
     ["🤖 Spør AI om denne", () => { if (window.ksAiAsk) window.ksAiAsk("Forklar kort: " + (m.text || "")); }]];
   if (mine) items.push(["✏️ Rediger", async () => { const t = prompt("Rediger meldingen", m.text || ""); if (t) ctEv(m.id, "edit", { text: t }); }],

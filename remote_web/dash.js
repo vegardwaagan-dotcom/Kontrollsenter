@@ -959,7 +959,7 @@ async function loadPush() {
   $("#push-add").onclick = async () => {
     if (!$("#push-on").checked) { await act({ a: "push", on: true }); }
     const deep = "ntfy://" + host + ":" + st.port + "/" + st.topic + "?secure=false";
-    if (KS && KS.openUrl) KS.openUrl(deep); else location.href = deep;
+    if (KS && KS.openUrl) KS.openUrl(deep); else window.open(deep, "_blank");
     try { await navigator.clipboard.writeText(url); } catch (e) {}
     toast("Åpner ntfy – trykk «Abonner». Adressen er også kopiert.");
   };
@@ -1112,7 +1112,7 @@ async function ambData() {
 function openAmbient() {
   amb.hidden = false; ambTick(); ambData();
   amb._t1 = setInterval(ambTick, 1000); amb._t2 = setInterval(ambData, 20000);
-  try { amb.requestFullscreen && amb.requestFullscreen(); } catch (e) {}
+  try { amb.requestFullscreen && amb.requestFullscreen().catch(() => {}); } catch (e) {}
   try { if (window.KS && KS.keepScreenOn) KS.keepScreenOn(true); } catch (e) {}
 }
 amb.onclick = () => { amb.hidden = true; clearInterval(amb._t1); clearInterval(amb._t2); try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} };

@@ -104,13 +104,13 @@ class DiaryView(Gtk.ScrolledWindow):
 
     def _pin_entry(self, ph):
         e = Gtk.PasswordEntry(placeholder_text=ph, show_peek_icon=True)
-        e.set_input_purpose(Gtk.InputPurpose.PIN)
+        if hasattr(e, "set_input_purpose"):               # (Gtk.PasswordEntry har det ikke – bare Gtk.Entry)
+            e.set_input_purpose(Gtk.InputPurpose.PIN)
         return e
 
     def _ask_pin(self, p):
         dlg = Adw.AlertDialog(heading=f"📔 {p['name']}", body=i18n.tr("Skriv koden din"))
         e = self._pin_entry(i18n.tr("4–6 sifre"))
-        e.set_activates_default(True)
         dlg.set_extra_child(e)
         dlg.add_response("cancel", i18n.tr("Avbryt"))
         dlg.add_response("ok", i18n.tr("Lås opp"))
@@ -123,6 +123,7 @@ class DiaryView(Gtk.ScrolledWindow):
             pin = e.get_text()
             _bg(lambda: D.unlock(p["id"], pin), lambda tok: self._opened(tok, p))
         dlg.connect("response", resp)
+        e.connect("activate", lambda *_: (resp(dlg, "ok"), dlg.close()))      # Enter = lås opp
         dlg.present(self.get_root())
         wait = D.locked_for(p["id"])
         if wait:

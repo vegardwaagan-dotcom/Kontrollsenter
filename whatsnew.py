@@ -13,6 +13,19 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.0", "Kontrollsenter 1.0", [
+            "Hele programmet er gått gjennom: alle sidene, fanene, kategoriene og knappene er testet automatisk – på "
+            "PC-en i både Klassisk og Nytt design (rundt 2900 handlinger) og i mobilappen (rundt 500)",
+            "Rettet: «Spilloppdateringer om natten» mens Steam kjørte låste appen i en evig løkke som spiste opp minnet",
+            "Rettet: dagboken – «Ny dagbok», å åpne en dagbok og Enter i kodefeltet krasjet",
+            "Rettet: spillmodus med RGB-farge fra mobilen krasjet",
+            "Rettet: Systemsjekk fra ikonet i statusfeltet, Oppstartstid uten data og «Spør AI om siste krasj»",
+            "Rettet: den lokale AI-en fikk ikke PC-statusen, og Shelly-pluggen ga feil feilmelding",
+            "Klipp: «Beste fra uka», «Skjermbilde» og «Start/stopp opptak» sier nå fra hvis noe ikke går",
+            "Mobilappen: «Kopier» virker eller sier fra (RustDesk, chat og AI), lenker åpnes i ny fane i nettleseren, "
+            "og «Hvem er på nå» ligger under Familie",
+            "Nytt design tåler en ødelagt innstillingsfil for hjelpetekstene",
+        ]),
     ("0.99.60", "Nattlys virker igjen på KDE", [
             "Rettet: nattlys-glideren og -bryteren under Skjerm gjorde ingenting på KDE Plasma 6.8 – innstillingen ble "
             "lagret, men KWin tok den ikke i bruk. Gjelder også nattlys fra mobilappen og i scener",

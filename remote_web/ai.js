@@ -40,7 +40,7 @@ function aiBubble(m) {
     `<div class="ai-act"><button class="soft small" data-say="1">🔊</button><button class="soft small" data-copy="${esc(m.text || "")}">📋</button></div></div>`;
 }
 function aiWire(box) {
-  box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(b.dataset.copy); toast("Kopiert"); }));
+  box.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(b.dataset.copy).then(() => toast("Kopiert"), () => toast("Kunne ikke kopiere")); }));
   box.querySelectorAll("[data-say]").forEach((b) => (b.onclick = () => {
     const t = b.closest(".ai-row").querySelector(".ai-b").innerText;
     if (KS && KS.speak) KS.speak(t); else if (window.speechSynthesis) { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = "nb-NO"; speechSynthesis.speak(u); }

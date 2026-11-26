@@ -140,14 +140,29 @@ class ClipsCard(Gtk.Box):
             btns.append(self.inst)
         i.append(btns)
         b2 = Gtk.Box(spacing=8)
+        msg = Gtk.Label(xalign=0, wrap=True)
+        msg.add_css_class("dim-label")
+
+        def run(f, label):
+            def work():
+                try:
+                    r = f()
+                    txt = (i18n.tr("Startet: ") + i18n.tr(label) + " ✓") if r is not False else ""
+                    if isinstance(r, str) and r:
+                        txt = r
+                except Exception as e:  # noqa: BLE001
+                    txt = i18n.tr("Det gikk ikke: ") + str(e)
+                GLib.idle_add(lambda: (msg.set_label(txt), False)[1])
+            threading.Thread(target=work, daemon=True).start()
+            GLib.timeout_add_seconds(3, lambda: (self.refresh(), False)[1])
         for label, fn in (("Beste fra uka", lambda: __import__("clipx").weekly()),
                           ("Skjermbilde", lambda: __import__("clipx").screenshot(getattr(clips.INSTANCE, "game", None))),
                           ("Start/stopp opptak", lambda: clips.INSTANCE and clips.INSTANCE.toggle_record())):
             bt = Gtk.Button(label=i18n.tr(label))
-            bt.connect("clicked", lambda _b, f=fn: (threading.Thread(target=f, daemon=True).start(),
-                                                     GLib.timeout_add_seconds(3, lambda: (self.refresh(), False)[1])))
+            bt.connect("clicked", lambda _b, f=fn, lb=label: run(f, lb))
             b2.append(bt)
         i.append(b2)
+        i.append(msg)
         i.append(self._options())
         self.list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         self.list.add_css_class("boxed-list")

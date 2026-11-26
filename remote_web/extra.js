@@ -821,7 +821,7 @@ if (tab === "oversikt") loadHealth(false);
     const tip = document.createElement("div");
     tip.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:10px 14px;background:rgba(0,0,0,.6);color:#fff;font:14px sans-serif";
     ov.append(cv, tip); document.body.append(ov);
-    try { ov.requestFullscreen && ov.requestFullscreen(); } catch (e) {}
+    try { ov.requestFullscreen && ov.requestFullscreen().catch(() => {}); } catch (e) {}
     try { KS.landscape && KS.landscape(true); } catch (e) {}
     let i = 0, raf = 0, frames = [], t0 = performance.now();
     const ctx = cv.getContext("2d");
@@ -1048,7 +1048,7 @@ if (tab === "oversikt") loadHealth(false);
     o.style.cssText = "position:fixed;inset:0;z-index:9999;background:#000;display:grid;place-items:center";
     const img = document.createElement("img"); img.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;transition:opacity .6s";
     o.append(img); document.body.append(o);
-    try { o.requestFullscreen && o.requestFullscreen(); } catch (e) {}
+    try { o.requestFullscreen && o.requestFullscreen().catch(() => {}); } catch (e) {}
     const show = () => { const m = d.mem[i % d.mem.length]; img.style.opacity = 0;
       setTimeout(() => { img.src = "/api/chatfile?k=" + encodeURIComponent(token) + "&sha=" + encodeURIComponent(m.sha) + "&name=" + encodeURIComponent(m.name); img.style.opacity = 1; }, 300); };
     show(); const tm = setInterval(() => { i++; show(); }, 7000);
@@ -1132,7 +1132,7 @@ if (tab === "oversikt") loadHealth(false);
 // ---- TV-dashbord / infoskjerm, Andreskjerm, talekommandoer og testvarsel til klokka ----
 (() => {
   const isTv = () => { try { return !!(KS && KS.isTv && KS.isTv()); } catch (e) { return false; } };
-  const full = (o) => { try { o.requestFullscreen && o.requestFullscreen(); } catch (e) {} };
+  const full = (o) => { try { o.requestFullscreen && o.requestFullscreen().catch(() => {}); } catch (e) {} };
   const exitFull = () => { try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {} };
   // ---------- TV-dashbord: klokke, vær, strømpris, dagens plan og alle PC-ene ----------
   let dashEl = null, dashT = 0;
@@ -1185,7 +1185,7 @@ if (tab === "oversikt") loadHealth(false);
       <div class="as-btns"><button data-as="mute">🎙️ Mikrofon av/på</button><button data-as="deaf">🎧 Lyd av/på</button><button data-as="clip">🎬 Lagre klipp</button><button data-as="overlay">📊 Overlay</button></div>`;
     document.body.append(sEl); full(sEl);
     try { KS && KS.landscape && KS.landscape(true); } catch (e) {}
-    try { navigator.wakeLock && navigator.wakeLock.request("screen").then((l) => (sEl._lock = l)); } catch (e) {}
+    try { navigator.wakeLock && navigator.wakeLock.request("screen").then((l) => (sEl._lock = l), () => {}); } catch (e) {}
     const close = () => { clearInterval(sT); try { sEl._lock && sEl._lock.release(); } catch (e) {} sEl.remove(); sEl = null; exitFull(); try { KS && KS.landscape && KS.landscape(false); } catch (e) {} };
     sEl.querySelector(".as-x").onclick = close;
     sEl.addEventListener("click", (e) => { const b = e.target.closest("[data-as]"); if (!b) return;

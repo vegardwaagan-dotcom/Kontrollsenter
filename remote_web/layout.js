@@ -28,7 +28,7 @@
     ],
     mer: [
       ["kalender", "📅 Kalender og dagbok", ["c-cal", "c-diary"]],
-      ["familie", "👨‍👩‍👧 Familie", ["c-family", "c-goals", "c-shop", "c-plan", "c-week", "c-safe", "c-sleep"]],
+      ["familie", "👨‍👩‍👧 Familie", ["pn:family", "c-family", "c-goals", "c-shop", "c-plan", "c-week", "c-safe", "c-sleep"]],
       ["hverdag", "🍽️ Hverdagen", ["c-meals", "c-pkgs"]],
       ["beskjed", "📢 Beskjed og minnevegg", ["c-say", "c-mem"]],
       ["hjem", "🏠 Scener og smarthus", ["c-scenes", "t:Hue", "pn:radio", "pn:presence"]],
