@@ -4,6 +4,7 @@ En liten nettjeneste på port 27100 som bare svarer maskiner på hjemmenettet (p
   /app/…            selve kontrollpanelet (remote_web/) – appen viser det, og det oppdateres med Kontrollsenter
   /api/hello        navn og versjon (uten pålogging – brukes når appen leter etter PC-er)
   /api/pair         par en ny enhet med 6-sifret kode som vises på PC-en (gyldig i 5 minutter, 5 forsøk)
+  /api/pairreq      «Spør PC-en om tilgang»: PC-en viser spørsmålet, du godtar/avviser (status: /api/pairreq/status)
   /api/status …     alt annet krever nøkkelen fra paringen (Authorization: Bearer …)
 
 Tjenesten er AV til du slår den på (Hjemme-fanen). Nøklene lagres bare som SHA-256 på PC-en, og
@@ -1010,6 +1011,9 @@ class Remote:
         self.code_tries = 0
         self.lock = threading.Lock()
         self.on_paired = None          # kalles i GTK-tråden når en enhet er paret
+        self.requests = {}             # «Spør PC-en om tilgang»: id -> forespørsel som venter på svar på PC-en
+        self.blocked = {}              # ip -> tidspunkt: avviste enheter må vente før de kan spørre igjen
+        self.on_request = None         # kalles i GTK-tråden med forespørselen (viser spørsmålet på PC-en)
 
     @property
     def running(self):
@@ -1051,15 +1055,89 @@ class Remote:
             if not hmac.compare_digest(str(code).strip(), self.code):
                 return None, "Feil kode"
             self.code = None
-            token = secrets.token_urlsafe(32)
-            c = load_cfg()
-            name = re.sub(r"[^\w .,'()-]", "", str(device or "Enhet"))[:40] or "Enhet"
-            c["devices"].append({"name": name, "hash": _hash(token), "added": int(time.time()), "last": 0,
-                                 "role": self.pair_role})
-            save_cfg(c)
+            token, name = self._add_device(device, self.pair_role)
         if self.on_paired:
             GLib.idle_add(lambda: (self.on_paired(name), False)[1])
         return token, "OK"
+
+    @staticmethod
+    def _clean_name(device):
+        return re.sub(r"[^\w .,'()-]", "", str(device or "Enhet"))[:40].strip() or "Enhet"
+
+    def _add_device(self, device, role):
+        token = secrets.token_urlsafe(32)
+        c = load_cfg()
+        name = self._clean_name(device)
+        c["devices"].append({"name": name, "hash": _hash(token), "added": int(time.time()), "last": 0,
+                             "role": role if role in ("full", "begrenset") else "full"})
+        save_cfg(c)
+        return token, name
+
+    # ---- «Spør PC-en om tilgang»: telefonen ber, du godtar eller avviser på PC-en ----
+    REQ_TTL = 120
+
+    def _prune(self):
+        now = time.time()
+        for rid in [k for k, r in self.requests.items() if now - r["t"] > self.REQ_TTL + 60]:
+            del self.requests[rid]
+        for ip in [k for k, t in self.blocked.items() if now > t]:
+            del self.blocked[ip]
+
+    def request_pair(self, device, ip):
+        """Ny forespørsel fra en telefon. Returnerer (forespørsel, feilmelding)."""
+        with self.lock:
+            self._prune()
+            if ip in self.blocked:
+                return None, "PC-en avviste nettopp denne enheten – vent litt før du spør igjen"
+            for r in self.requests.values():           # samme enhet spør igjen: gjenbruk forespørselen
+                if r["ip"] == ip and r["status"] == "venter":
+                    return r, None
+            if sum(r["status"] == "venter" for r in self.requests.values()) >= 3:
+                return None, "PC-en har allerede for mange forespørsler som venter"
+            r = {"id": secrets.token_urlsafe(24), "name": self._clean_name(device), "ip": ip,
+                 "check": f"{secrets.randbelow(10000):04d}", "t": time.time(), "status": "venter",
+                 "token": None, "role": "full"}
+            self.requests[r["id"]] = r
+        if self.on_request:
+            GLib.idle_add(lambda: (self.on_request(dict(r)), False)[1])
+        return r, None
+
+    def decide(self, rid, ok, role="full"):
+        """Svar fra PC-en. Returnerer navnet på enheten, eller None hvis forespørselen er borte/utløpt."""
+        with self.lock:
+            r = self.requests.get(rid)
+            if not r or r["status"] != "venter" or time.time() - r["t"] > self.REQ_TTL:
+                return None
+            if ok:
+                r["token"], r["name"] = self._add_device(r["name"], role)
+                r["role"], r["status"] = role, "godtatt"
+            else:
+                r["status"] = "avvist"
+                self.blocked[r["ip"]] = time.time() + 60
+            name = r["name"]
+        if ok and self.on_paired:
+            GLib.idle_add(lambda: (self.on_paired(name), False)[1])
+        return name
+
+    def request_status(self, rid, ip):
+        """Telefonen spør om svaret. Nøkkelen utleveres bare én gang, og bare til samme IP."""
+        with self.lock:
+            r = self.requests.get(rid)
+            if not r or r["ip"] != ip:
+                return {"status": "borte"}
+            if r["status"] == "venter" and time.time() - r["t"] > self.REQ_TTL:
+                r["status"] = "utløpt"
+            out = {"status": r["status"]}
+            if r["status"] == "godtatt" and r["token"]:
+                out["token"], r["token"] = r["token"], None
+                self.requests.pop(rid, None)
+            return out
+
+    def pending(self):
+        with self.lock:
+            now = time.time()
+            return [dict(r) for r in self.requests.values()
+                    if r["status"] == "venter" and now - r["t"] <= self.REQ_TTL]
 
     def check(self, token):
         if not token:
@@ -1126,6 +1204,10 @@ def _handler(remote):
             ip = self.client_address[0]
             return (ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") and self.headers.get("X-KS-Local") == "1"
                     and not self.headers.get("Origin"))
+
+        def _ip(self):
+            ip = self.client_address[0]
+            return ip[7:] if ip.startswith("::ffff:") else ip
 
         def _remote_on(self):
             """Fjernstyring fra mobilen er slått av: tjenesten kjører bare for chatten (egne nøkler)."""
@@ -1398,6 +1480,24 @@ def _handler(remote):
                     import widgets
                     ok, msg = widgets.local_action(remote.win, body)
                     return self._send(200, {"ok": bool(ok), "msg": str(msg)})
+                if p == "/api/pairreq":                    # «Spør PC-en om tilgang»
+                    if not self._remote_on():
+                        return
+                    r, err = remote.request_pair(body.get("device", ""), self._ip())
+                    if not r:
+                        time.sleep(1)
+                        return self._send(429, {"error": err})
+                    import savegames
+                    return self._send(200, {"id": r["id"], "check": r["check"], "name": savegames.pc_name(),
+                                            "ttl": remote.REQ_TTL})
+                if p == "/api/pairreq/status":
+                    if not self._remote_on():
+                        return
+                    st = remote.request_status(str(body.get("id", "")), self._ip())
+                    if st.get("token"):
+                        import savegames
+                        st["name"] = savegames.pc_name()
+                    return self._send(200, st)
                 if p == "/api/pair":
                     if not self._remote_on():
                         return

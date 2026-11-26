@@ -268,6 +268,12 @@ class Background:
         try:
             import remote
             remote.INSTANCE = remote.Remote(win)
+            try:                                       # ny telefon spør om tilgang → spørsmål på PC-en
+                import pair_prompt
+                pair_prompt.install(app, self)
+            except Exception:  # noqa: BLE001
+                import applog
+                applog.log.exception("Paringsspørsmål")
             import remote_extra
             remote_extra.event("power", "Kontrollsenter startet", "", "info")
             # chatten trenger tjenesten (meldinger, servere, talekanaler) – også når fjernstyring fra mobilen er av

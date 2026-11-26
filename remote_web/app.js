@@ -107,7 +107,7 @@ function showPair() {
   saveToken(""); localStorage.removeItem("ks_token");
   $$(".page").forEach((p) => (p.hidden = true)); $("#tabs").hidden = true; $("#pair").hidden = false;
   if (!$("#pair-name").value) $("#pair-name").value = (KS && KS.model && KS.model()) || (/Android/.test(navigator.userAgent) ? "Android-enhet" : "Nettleser");
-  $("#pair-code").focus();
+  if (!pairReq) { $("#pair-ask").hidden = false; $("#pair-wait").hidden = true; }
 }
 $("#pair-go").onclick = async () => {
   const code = $("#pair-code").value.replace(/\D/g, "");
@@ -123,6 +123,46 @@ $("#pair-go").onclick = async () => {
     toast("Paret med " + j.name + " ✓");
   } catch (e) { $("#pair-msg").textContent = e.message; }
 };
+// «Spør PC-en om tilgang»: PC-en viser spørsmålet – du godtar der
+var pairReq = null;                            // var: showPair() kan kjøres før denne linjen
+function pairDone(j) {
+  pairReq = null; $("#pair-wait").hidden = true; $("#pair-ask").hidden = false;
+  pcName = j.name || pcName; saveToken(j.token);
+  $("#pair").hidden = true; $("#tabs").hidden = false; setTab("oversikt"); poll();
+  toast("Paret med " + (j.name || "PC-en") + " ✓");
+}
+function pairStop(msg) {
+  pairReq = null; $("#pair-wait").hidden = true; $("#pair-ask").hidden = false; $("#pair-msg").textContent = msg || "";
+}
+$("#pair-ask").onclick = async () => {
+  $("#pair-msg").textContent = "Spør PC-en …";
+  try {
+    const r = await fetch("/api/pairreq", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device: $("#pair-name").value }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "feilet");
+    const me = pairReq = { id: j.id, until: Date.now() + (j.ttl || 120) * 1000 };
+    $("#pair-msg").textContent = ""; $("#pair-ask").hidden = true; $("#pair-wait").hidden = false;
+    $("#pair-check").textContent = String(j.check).split("").join(" ");
+    $("#pair-wait-msg").textContent = "Venter på svar fra " + (j.name || "PC-en") + " …";
+    while (pairReq === me) {
+      await new Promise((ok) => setTimeout(ok, 1500));
+      if (pairReq !== me) return;
+      let st = {};
+      try {
+        st = await (await fetch("/api/pairreq/status", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: me.id }) })).json();
+      } catch (e) { continue; }                    // nettet hikker – prøv igjen
+      if (st.status === "godtatt" && st.token) return pairDone(st);
+      if (st.status === "avvist") return pairStop("PC-en sa nei.");
+      if (st.status === "utløpt" || st.status === "borte" || Date.now() > me.until + 5000)
+        return pairStop("Ingen svarte på PC-en – prøv igjen.");
+      const left = Math.max(0, Math.round((me.until - Date.now()) / 1000));
+      $("#pair-wait-msg").textContent = `Venter på svar … (${left} s)`;
+    }
+  } catch (e) { pairStop(e.message); }
+};
+$("#pair-cancel").onclick = () => pairStop("");
 $("#pair-code").addEventListener("keydown", (e) => e.key === "Enter" && $("#pair-go").click());
 $("#unpair").onclick = async () => { if (await confirmDlg("Glemme paringen på denne enheten?")) showPair(); };
 

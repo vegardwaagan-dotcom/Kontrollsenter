@@ -1117,3 +1117,9 @@ body.fa-open { overflow: hidden; }
 .fa-hits { display: flex; flex-direction: column; gap: 6px; }
 .fa-hit { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: var(--card); border-radius: 14px; padding: 12px 14px; }
 .card.ks-found { outline: 3px solid var(--acc); outline-offset: 2px; transition: outline-color .9s ease-out; }
+
+/* «Spør PC-en om tilgang» */
+.pair-wait { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 6px 0; }
+.pair-check { font-size: 40px; font-weight: 700; letter-spacing: 10px; }
+.pair-alt { margin-top: 10px; text-align: left; }
+.pair-alt summary { cursor: pointer; color: var(--dim, inherit); }

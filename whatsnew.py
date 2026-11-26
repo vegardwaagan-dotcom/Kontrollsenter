@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.7", "Ny telefon? PC-en spør deg", [
+            "Mobilappen: ny knapp «Spør PC-en om tilgang» når en telefon eller et nettbrett skal pares. Kontrollsenter "
+            "på PC-en viser da et spørsmål med navnet og adressen til enheten – velg Godta, Godta begrenset eller "
+            "Avvis. Telefonen og PC-en viser samme firesifrede kode, så du ser at det er din enhet",
+            "Spørsmålet kommer både som eget vindu (også når Kontrollsenter ligger i statusfeltet) og som varsel med "
+            "knapper (Linux) / varsel fra statusfeltet (Windows). Det utløper etter 2 minutter, en avvist enhet må "
+            "vente 1 minutt før den kan spørre igjen, og nøkkelen gis bare til telefonen som spurte",
+            "Den 6-sifrede koden virker fortsatt under «Har du en kode fra PC-en?»",
+            "Gjelder Linux, Windows og Android-appen (paringsskjermen kommer fra PC-en – ingen ny app trengs)",
+        ]),
     ("1.0.6", "Android-appen: ingen evig oppdatering", [
             "Mobilappen ba om oppdatering til 1.0.5 igjen og igjen: PC-en lovet app-versjonen til PC-programmet, "
             "men APK-en var fortsatt 1.0.4. Nå leser PC-en versjonen til selve APK-en, og en ny versjon blir ikke "
