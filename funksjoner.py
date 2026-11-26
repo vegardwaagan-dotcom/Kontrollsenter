@@ -204,6 +204,12 @@ def _stop_disabled(newly_off=()):
                 aitale.uninstall_stt()
         except Exception:  # noqa: BLE001
             pass
+    if "stromming" in newly_off:                            # KDE-tillatelsen Kontrollsenter ga Sunshine
+        try:
+            import streaming
+            streaming.disallow_portal()
+        except Exception:  # noqa: BLE001
+            pass
     if "lyd" in newly_off:                                  # lydfiltrene (7.1, EQ, støyfilter): stopp og fjern
         try:
             import lydfilter

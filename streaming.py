@@ -124,12 +124,61 @@ def sunshine_state():
     return st
 
 
+def allow_portal():
+    """KDE spør «Tillat fjernstyring?» på PC-skjermen hver gang Sunshine starter uten gyldig portal-token (f.eks.
+    når den startes fra telefonen etter et krasj) – og ingen sitter der for å trykke. KDE sin egen tillatelsestabell
+    «kde-authorized» lar Sunshine slippe dialogen for godt. Gjøres bare for Sunshine-flatpaken, og bare én gang."""
+    if IS_WIN or not shutil.which("flatpak") or not _flatpak_installed(SUN_FLATPAK):
+        return False
+    if "KDE" not in os.environ.get("XDG_CURRENT_DESKTOP", "").upper() and not shutil.which("plasmashell"):
+        return False
+    code, out = _run(["flatpak", "permissions", "kde-authorized", "remote-desktop"], 10)
+    if code == 0 and any(SUN_FLATPAK in ln and "yes" in ln.split() for ln in out.splitlines()):
+        return True
+    return _run(["flatpak", "permission-set", "kde-authorized", "remote-desktop", SUN_FLATPAK, "yes"], 10)[0] == 0
+
+
+def disallow_portal():
+    """Når Strømming slås av: ta tilbake tillatelsen Kontrollsenter ga."""
+    if not IS_WIN and shutil.which("flatpak"):
+        _run(["flatpak", "permission-remove", "kde-authorized", "remote-desktop", SUN_FLATPAK], 10)
+
+
 def sunshine_start():
     if IS_WIN:
         return _run(["sc", "start", "SunshineService"], 30)[0] == 0
+    try:
+        allow_portal()
+    except Exception:  # noqa: BLE001
+        pass
     # stopp en løs utgave (startet fra menyen) først – tjenesten starter den av seg selv igjen ved krasj
+    with _START_LOCK:
+        return _start_linux()
+
+
+_START_LOCK = threading.Lock()
+
+
+def _start_linux():
     _run(["systemctl", "--user", "reset-failed"], 10)
-    return _run(["systemctl", "--user", "start", SUN_UNIT], 60)[0] == 0
+    for _attempt in range(2):
+        # tjenesten kan være «aktiv» mens Sunshine henger på skjermportalen (lytter ikke) – da hjelper bare omstart
+        active = _run(["systemctl", "--user", "is-active", SUN_UNIT], 10)[1].strip() == "active"
+        verb = "restart" if active and not sunshine_running() else "start"
+        if _run(["systemctl", "--user", verb, SUN_UNIT], 60)[0] != 0:
+            return False
+        if _wait_running(40):
+            return True
+    return False
+
+
+def _wait_running(secs):
+    end = time.time() + secs
+    while time.time() < end:
+        if sunshine_running():
+            return True
+        time.sleep(2)
+    return False
 
 
 def sunshine_stop():
@@ -142,9 +191,18 @@ def sunshine_stop():
 
 
 def sunshine_restart():
-    sunshine_stop()
-    time.sleep(1.5)
-    return sunshine_start()
+    if IS_WIN:
+        sunshine_stop()
+        time.sleep(1.5)
+        return sunshine_start()
+    try:
+        allow_portal()
+    except Exception:  # noqa: BLE001
+        pass
+    with _START_LOCK:                                         # to raske trykk skal ikke slå hverandre i hjel
+        sunshine_stop()
+        time.sleep(1.5)
+        return _start_linux()
 
 
 def sunshine_autostart(on):
@@ -159,6 +217,8 @@ def watchdog():
     if not __import__("funksjoner").on("stromming"):           # Strømming er slått av under Funksjoner
         return False
     if not c["keep_running"] or not sunshine_installed() or sunshine_running():
+        return False
+    if _START_LOCK.locked():                                    # en start/omstart pågår allerede
         return False
     if time.time() - watchdog.__dict__.get("last", 0) < 120:
         return False

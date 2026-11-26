@@ -35,7 +35,7 @@ $("#spill").insertBefore(famGrid, $("#spill .grid"));
 // ---------- spill på telefonen (Sunshine + Moonlight) og RustDesk ----------
 const streamCard = h(`<div class="card accent" id="c-stream"><h2>Spill på telefonen</h2>
   <p class="dim small">Se og spill det som skjer på PC-en her på telefonen – også spillet som kjører nå. Sunshine på PC-en sender bildet, Moonlight-appen viser det.</p>
-  <div class="row between"><b id="st-state">Sjekker …</b><button id="st-start" class="soft">Start Sunshine</button></div>
+  <div class="row between"><b id="st-state">Sjekker …</b><span class="row"><button id="st-start" class="soft">Start Sunshine</button><button id="st-restart" class="soft">↻ Start på nytt</button></span></div>
   <div class="row wrap"><button id="st-moon" class="primary">▶ Åpne Moonlight</button></div>
   <details><summary>Første gang: par telefonen</summary>
     <ol class="steps"><li>Åpne Moonlight. PC-en dukker opp av seg selv hjemme – borte: legg til Tailscale-adressen under.</li>
@@ -54,6 +54,7 @@ async function loadStream() {
     $("#st-state").textContent = !s.installed ? "Sunshine er ikke installert på PC-en" : s.running ? "● Sunshine kjører – klar" : "○ Sunshine er av";
     $("#st-state").className = s.running ? "ok" : "";
     $("#st-start").hidden = !s.installed || s.running;
+    $("#st-restart").hidden = !s.installed;
     $("#st-addr").innerHTML = (s.addresses || []).map((a) => `${esc(a.kind)}: <b>${esc(a.ip)}</b>`).join("<br>");
     $("#st-login").textContent = s.has_login ? "" : "Paring herfra krever at innloggingen til Sunshine er lagt inn på PC-en (Strømming → Innlogging).";
     const rd = s.rustdesk || {};
@@ -64,6 +65,7 @@ const MOON = "com.limelight", RUST = "com.carriez.flutter_hbb";
 $("#st-moon").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(MOON)) toast("Installer Moonlight fra Google Play"); } else window.open("https://moonlight-stream.org", "_blank"); };
 rustCard.querySelector("#rd-open").onclick = () => { if (KS && KS.openApp) { if (!KS.openApp(RUST)) toast("Installer RustDesk fra Google Play"); } else window.open("https://rustdesk.com", "_blank"); };
 $("#st-start").onclick = async () => { await act({ a: "stream", do: "start" }); setTimeout(loadStream, 22000); };
+$("#st-restart").onclick = async () => { $("#st-state").textContent = "↻ Sunshine starter på nytt …"; $("#st-state").className = ""; await act({ a: "stream", do: "restart" }); setTimeout(loadStream, 22000); };
 $("#st-pair").onclick = async () => { const p = $("#st-pin").value.trim(); if (p.length !== 4) return toast("Koden har 4 sifre"); $("#st-pin").value = ""; await act({ a: "streampin", pin: p }); };
 rustCard.querySelector("#rd-pc").onclick = () => act({ a: "rustdesk" });
 rustCard.querySelector("#rd-copy").onclick = () => { ksCopy($("#rd-id").textContent).then((ok) => toast(ok ? "Kopiert" : "Kunne ikke kopiere – merk og kopier selv")); };

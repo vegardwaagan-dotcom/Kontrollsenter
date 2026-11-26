@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.5", "Sunshine: «Start på nytt» på mobilen og ingen «Tillat»-spørsmål", [
+            "Mobilappen › Spill › Spill på telefonen: ny knapp «↻ Start på nytt» for Sunshine (virker mot både "
+            "Linux- og Windows-PC-er)",
+            "Linux (KDE): Sunshine startet fra telefonen ble stående og vente på «Tillat fjernstyring?» på PC-skjermen. "
+            "Kontrollsenter gir nå Sunshine fast tillatelse, så den starter uten at noen må trykke på PC-en "
+            "(tas tilbake når Strømming slås av under Funksjoner)",
+            "Sunshine som henger under oppstart (tjenesten kjører, men svarer ikke) startes nå på nytt av "
+            "«Start», «Start på nytt» og «Hold Sunshine i gang» – før skjedde det ingenting",
+            "Windows: Sunshine er en tjeneste der og spør aldri om lov – der var bare knappen ny",
+        ]),
     ("1.0.4", "Gjennomgang: knapper som ikke virket", [
             "RGB (Linux og Windows): feilmeldingen ved hver oppstart og etter hvilemodus er borte («'RgbBackend' "
             "object has no attribute …»). OpenRGB-profilen lagres igjen, antall LED på vifteuttakene brukes, og på "
