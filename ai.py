@@ -34,9 +34,6 @@ TOOLS = {
                "win_install": "npm install -g @google/gemini-cli",
                "auth": [f"{HOME}/.gemini/oauth_creds.json", f"{HOME}/.gemini/google_accounts.json"],
                "env_auth": ["GEMINI_API_KEY", "GOOGLE_API_KEY"]},
-    "lokal": {"name": "Lokal AI (Ollama)", "by": "på din PC – uten nett", "icon": "lokal-ai.svg",
-              "script": "script:ollama", "bins": [f"{HOME}/.local/bin/ollama", "ollama"], "login_cmd": None,
-              "update_cmd": None, "win_install": "winget install -e --id Ollama.Ollama", "auth": []},
 }
 _VER = {}
 
@@ -51,6 +48,8 @@ def cfg():
     c.setdefault("recent", [])
     c.setdefault("allow_edit", False)
     c.setdefault("tool", "claude")
+    if c["tool"] not in TOOLS:                         # (f.eks. «lokal» fra før den lokale AI-en ble fjernet)
+        c["tool"] = "claude"
     c.setdefault("storage", "nas")                     # samtaler og arbeidsmappe: NAS-en som standard
     c.setdefault("control", True)                      # assistenten kan styre Kontrollsenter med «ks»
     return c
@@ -68,9 +67,6 @@ def set_(**kw):
 
 
 def binary(tool):
-    if tool == "lokal":
-        import ai_local
-        return ai_local.binary()
     for b in TOOLS[tool]["bins"]:
         p = b if os.path.isabs(b) else shutil.which(b, path=PATH)
         if p and os.path.isfile(p) and os.access(p, os.X_OK):
@@ -98,8 +94,6 @@ def version(tool, force=False):
 
 
 def logged_in(tool):
-    if tool == "lokal":                                    # ingen innlogging – alltid «klar» når den er installert
-        return True
     t = TOOLS[tool]
     return any(os.path.exists(p) for p in t["auth"]) or any(os.environ.get(k) for k in t.get("env_auth", []))
 
@@ -139,8 +133,6 @@ def open_terminal(tool, folder=None):
 
 
 def login(tool):
-    if tool == "lokal":
-        return "Lokal AI trenger ingen innlogging"
     _terminal(TOOLS[tool]["login_cmd"])
     return "Logg inn i terminalvinduet – kom tilbake hit når du er ferdig"
 
@@ -232,7 +224,7 @@ PERSONAS = {
 }
 
 # hvordan svarene ser ut: farge og ikon per assistent
-TOOL_COLOR = {"claude": "#d97757", "codex": "#10a37f", "gemini": "#4285f4", "lokal": "#a970ff"}
+TOOL_COLOR = {"claude": "#d97757", "codex": "#10a37f", "gemini": "#4285f4"}
 
 
 def describe_tool(name, inp):
@@ -325,10 +317,6 @@ def ask(tool, prompt, folder=None, allow_edit=False, on_text=None, on_done=None,
     til Kontrollsenter med «ks». images: bildefiler brukeren la ved. on_event(kind, data): «tool» (tekstlinje om hva
     assistenten gjorde) og «quota» (bruk). Svaret strømmes inn ord for ord via on_text.
     Returnerer prosessen (kan stoppes med .terminate())."""
-    if tool == "lokal":
-        import ai_local
-        return ai_local.ask(prompt, history=history, on_text=on_text, on_done=on_done, images=images,
-                            persona=persona, control=control)
     b = binary(tool)
     if not b:
         raise RuntimeError(f"{TOOLS[tool]['name']} er ikke installert")

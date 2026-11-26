@@ -42,7 +42,7 @@ FEATURES = [
     ("familie", "Familie", "Ukeplan, skjermtid og leggetid", ["familie"], False),
     ("kalender", "Kalender og dagbok", "Røde dager, hendelser for hele huset og egen dagbok med kode", ["kalender"],
      False),
-    ("ai", "AI: Claude, Codex, Gemini og lokal AI", "Spør og styr PC-en med AI – også uten nett (Ollama)", ["ai"],
+    ("ai", "AI: Claude, Codex og Gemini", "Spør og styr PC-en med AI", ["ai"],
      False),
     ("nettverk", "Nett og tilkobling", "Nettverk, Wi-Fi og Bluetooth", ["nettverk", "wifi", "bluetooth"], False),
     ("programmer", "Programmer", "Installer og oppdater programmer", ["programmer"], False),

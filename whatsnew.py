@@ -13,6 +13,10 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.3", "Lokal AI fjernet", [
+            "Den lokale AI-en (Ollama) er fjernet fra Kontrollsenter. AI-siden har Claude, Codex og Gemini – "
+            "hadde du valgt lokal AI, brukes Claude nå",
+        ]),
     ("1.0.2", "Nattlys-glideren riktig vei", [
             "Nattlys-glideren går nå riktig vei: mot høyre blir skjermen varmere og gulere, mot venstre mer nøytral",
         ]),

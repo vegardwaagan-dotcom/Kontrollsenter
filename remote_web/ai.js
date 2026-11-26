@@ -1,4 +1,4 @@
-// ---------- AI-fanen: samme AI som på PC-en (Claude, Codex, Gemini, lokal) – samtalene, svar ord for ord,
+// ---------- AI-fanen: samme AI som på PC-en (Claude, Codex og Gemini) – samtalene, svar ord for ord,
 // «hva AI-en gjorde», Godta/Avbryt, bilder, tale inn (telefonens talegjenkjenning) og opplesning ----------
 const aiSec = h(`<section id="aitab" class="page" hidden>
   <div class="card ai-card">

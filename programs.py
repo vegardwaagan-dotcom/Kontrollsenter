@@ -129,15 +129,6 @@ SCRIPTS["script:gemini"] = {
                   'npm uninstall -g @google/gemini-cli 2>/dev/null; '
                   'npm uninstall -g --prefix "$HOME/.local" @google/gemini-cli 2>/dev/null; true'),
 }
-SCRIPTS["script:ollama"] = {
-    "name": "Ollama (lokal AI)", "desc": "Kjør AI på din egen PC uten nett – gratis og privat",
-    "bins": [f"{HOME}/.local/bin/ollama", "ollama"], "run": "ollama",
-    "install": ('set -e; mkdir -p "$HOME/.local"; '
-                'curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst | zstd -dc | tar -x -C "$HOME/.local"; '
-                'test -x "$HOME/.local/bin/ollama"'),
-    "uninstall": ('pkill -u "$USER" -f "ollama serve" 2>/dev/null; rm -f "$HOME/.local/bin/ollama"; '
-                  'rm -rf "$HOME/.local/lib/ollama" "$HOME/.ollama/models"; true'),
-}
 for sid, sc in SCRIPTS.items():
     CATALOG.append((sid, sc["name"], sc["desc"], "Utvikling og KI", None))
 CAT_BY_ID = {c[0]: c for c in CATALOG}
