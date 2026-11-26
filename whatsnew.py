@@ -13,6 +13,9 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.2", "Nattlys-glideren riktig vei", [
+            "Nattlys-glideren går nå riktig vei: mot høyre blir skjermen varmere og gulere, mot venstre mer nøytral",
+        ]),
     ("1.0.1", "3D, Lett og innlogging uten passord", [
             "Nytt design «3D»: kort og knapper løfter seg ut av skjermen, knappene trykkes inn, kortene flyr inn og "
             "de viktigste knappene pulserer. I mobilappen vipper kortene etter fingeren (ekte 3D)",
