@@ -55,7 +55,7 @@ AREAS = [
     ("hjemmet", "Hjemmet", "ks-smarthome-symbolic", ["smarthjem", "scener", "familie", "kalender"]),
     ("sosialt", "Sosialt", "ks-chat-symbolic", ["chat", "discord", "hjemme", "venner", "fjernhjelp"]),
     ("ai", "AI", "ks-ai-symbolic", ["ai"]),
-    ("system", "System", "ks-settings-symbolic", ["innstillinger", "verktoy", "programmer", "nettverk", "wifi",
+    ("system", "System", "ks-settings-symbolic", ["innstillinger", "verktoy", "programmer", "nettverk", "nas", "wifi",
                                                    "bluetooth"]),
 ]
 # mobilappens faner nederst får de samme navnene og den samme rekkefølgen som de 7 områdene på PC-en

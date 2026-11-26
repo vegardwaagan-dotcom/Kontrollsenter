@@ -13,6 +13,14 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.9", "NAS-disken – også utenfor hjemmet", [
+            "Ny side «NAS-disken» (System): bla i NAS-en som i en filbehandler – åpne, last ned, last opp (også ved å "
+            "dra filer inn), lag mapper, gi nytt navn og slett",
+            "Private mapper på NAS-en: logg inn én gang – passordet huskes i nøkkelringen, aldri i klartekst",
+            "Mobilappen: kortet «NAS-disken» (PC-en › Nett og NAS) – bla, last ned til telefonen og last opp fra den",
+            "Utenfor hjemmet: «Del hjemmenettet herfra» gjør at NAS-en kan nås gjennom Tailscale (kryptert, ingen porter "
+            "åpnes). Mobilappen går via PC-en hjemme, så den virker borte så lenge den PC-en er på",
+        ]),
     ("1.0.8", "«Oppdatering klar» når du starter", [
             "Alle appene ser etter ny versjon både på hjemmenettet (NAS) og på GitHub hver gang de starter",
             "PC (Linux og Windows): har du slått av automatisk oppdatering, kommer «Oppdatering klar» øverst i "

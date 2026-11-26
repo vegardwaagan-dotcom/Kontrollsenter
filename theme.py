@@ -893,7 +893,7 @@ SECTIONS = [
     ("Sosialt", ["chat", "discord", "hjemme", "venner", "fjernhjelp"]),
     ("Hjemmet", ["scener", "smarthjem", "familie", "kalender"]),
     ("AI", ["ai"]),
-    ("System", ["nettverk", "programmer", "verktoy", "innstillinger"]),
+    ("System", ["nettverk", "nas", "programmer", "verktoy", "innstillinger"]),
 ]
 ORDER = [n for _s, names in SECTIONS for n in names]
 SECTION_OF = {n: s for s, names in SECTIONS for n in names}
@@ -930,6 +930,7 @@ PAGE_HELP = {
                 "langhelger.",
     "familie": "Familiekontroll med kode, «Se på» skjermen til de andre PC-ene, familie-chat, «Middag!», "
                "ekstra spilletid og leggetid.",
+    "nas": "Bla i NAS-en som i en filbehandler – åpne, last ned, last opp, ordne – også utenfor hjemmet (Tailscale).",
     "nettverk": "Hastighet, ping, hvilke programmer som bruker nettet, og enhetene på hjemmenettet.",
     "programmer": "Installer, oppdater og velg hvilke programmer som starter med PC-en.",
     "smarthjem": "Alle smartenhetene på hjemmenettet: styr Hue-lys, Samsung-TV og Chromecast/Nest, og se alt annet som er koblet til.",

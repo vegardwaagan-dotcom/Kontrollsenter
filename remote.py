@@ -408,6 +408,18 @@ def _system(what):
 
 def do_action(win, a):
     kind = a.get("a")
+    if kind == "nas":
+        import nasfiles as NF
+        do, share, path = a.get("do"), str(a.get("share") or ""), str(a.get("path") or "")
+        if do == "mkdir":
+            return True, NF.mkdir(share, path, str(a.get("name") or ""))
+        if do == "rename":
+            return True, NF.rename(share, path, str(a.get("name") or ""))
+        if do == "delete":
+            return True, NF.delete(share, path, bool(a.get("dir")))
+        if do == "login":
+            return True, NF.login_set(share, str(a.get("user") or ""), str(a.get("password") or ""))
+        raise ValueError("ukjent NAS-handling")
     if kind == "autologin":
         import autologin
         return True, autologin.set_enabled(bool(a.get("on")))
@@ -1364,6 +1376,21 @@ def _handler(remote):
                     import mimetypes
                     return self._send(200, open(fp, "rb").read(), mimetypes.guess_type(fp)[0] or
                                       "application/octet-stream")
+                if p == "/api/nas/file":                 # NAS-fil til mobilen (nøkkel i adressen – for nedlasting)
+                    q = parse_qs(u.query)
+                    dev = remote.check((q.get("k") or [""])[0])
+                    if not dev:
+                        return self._send(401, {"error": "ikke paret"})
+                    if dev.get("role", "full") != "full":
+                        return self._send(403, {"error": "denne enheten har begrenset tilgang"})
+                    import nasfiles
+                    try:
+                        fp = nasfiles.fetch((q.get("share") or [""])[0], (q.get("path") or [""])[0])
+                    except ValueError as e:
+                        return self._send(400, {"error": str(e)})
+                    except Exception as e:  # noqa: BLE001
+                        return self._send(502, {"error": str(e)})
+                    return self._file(fp)
                 if p in ("/api/clipfile", "/api/clipthumb"):   # nøkkel i adressen – <video>/<img> kan ikke sende den
                     q = parse_qs(u.query)
                     import clipx
@@ -1403,6 +1430,21 @@ def _handler(remote):
                     return self._send(200, _call_main(lambda: widgets.data(remote.win)))
                 if not self._auth():
                     return
+                if p in ("/api/nas/list", "/api/nas/shares"):
+                    if (getattr(self, "device", None) or {}).get("role", "full") != "full":
+                        return self._send(403, {"error": "denne enheten har begrenset tilgang"})
+                    import nasfiles
+                    q = parse_qs(u.query)
+                    try:
+                        if p == "/api/nas/shares":
+                            return self._send(200, {"shares": nasfiles.shares(), "where": nasfiles.where(),
+                                                    "default": nasfiles.default_share()})
+                        share, path = (q.get("share") or [""])[0], (q.get("path") or [""])[0]
+                        return self._send(200, {"items": nasfiles.list_dir(share, path), "share": share, "path": path})
+                    except ValueError as e:
+                        return self._send(400, {"error": str(e)})
+                    except Exception as e:  # noqa: BLE001
+                        return self._send(502, {"error": str(e)})
                 if p == "/api/status":
                     return self._send(200, _call_main(lambda: build_status(remote.win)))
                 if p == "/api/widgets":                      # widgetene i Android-appen
@@ -1444,6 +1486,41 @@ def _handler(remote):
             if not self._allowed():
                 return self._send(403, {"error": "bare hjemmenettet"})
             p = urlparse(self.path).path
+            if p == "/api/nas/upload":                     # fil fra mobilen til NAS-en (via denne PC-en)
+                if not self._auth():
+                    return
+                if (getattr(self, "device", None) or {}).get("role", "full") != "full":
+                    return self._send(403, {"error": "denne enheten har begrenset tilgang"})
+                q = parse_qs(urlparse(self.path).query)
+                n = int(self.headers.get("Content-Length") or 0)
+                if not 0 < n <= 8 * 1024 ** 3:
+                    return self._send(413, {"error": "fila er tom eller større enn 8 GB"})
+                import tempfile
+                import nasfiles
+                fd, tmp = tempfile.mkstemp(prefix="ks-nas-up-")
+                try:
+                    with os.fdopen(fd, "wb") as f:
+                        left = n
+                        while left > 0:
+                            chunk = self.rfile.read(min(1 << 20, left))
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                            left -= len(chunk)
+                    if left:
+                        return self._send(400, {"error": "opplastingen ble avbrutt"})
+                    msg = nasfiles.upload(tmp, (q.get("share") or [""])[0], (q.get("path") or [""])[0],
+                                          (q.get("name") or [""])[0])
+                    return self._send(200, {"ok": True, "msg": msg})
+                except ValueError as e:
+                    return self._send(400, {"ok": False, "error": str(e)})
+                except Exception as e:  # noqa: BLE001
+                    return self._send(502, {"ok": False, "error": str(e)})
+                finally:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
             if p == "/api/phonecam":                       # mobilen som webkamera: ett JPEG-bilde per kall
                 if not self._remote_on():
                     return
@@ -1826,6 +1903,15 @@ def _handler(remote):
             self.end_headers()
             self.close_connection = True
 
+        def _file(self, path):
+            import mimetypes
+            self._ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
+            self._dlname = os.path.basename(path)
+            try:
+                return self._video(path)
+            finally:
+                self._ctype = self._dlname = None
+
         def _video(self, path):
             size = os.path.getsize(path)
             rng = self.headers.get("Range", "")
@@ -1840,7 +1926,10 @@ def _handler(remote):
                 end = min(end, size - 1, start + 8 * 1024 * 1024 - 1)       # høyst 8 MB per bit
             length = end - start + 1
             self.send_response(206 if m else 200)
-            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Type", getattr(self, "_ctype", None) or "video/mp4")
+            if getattr(self, "_dlname", None):
+                from urllib.parse import quote
+                self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + quote(self._dlname))
             self.send_header("Accept-Ranges", "bytes")
             self.send_header("Content-Length", str(length))
             if m:

@@ -618,6 +618,7 @@ class MonitorWindow(Adw.ApplicationWindow):
                 ("gpu", "GPU-innstillinger", "ks-gpu-symbolic", "gpu_page", "GpuPage"),
                 ("bluetooth", "Bluetooth", "ks-bluetooth-symbolic", "bluetooth", "BluetoothPage"),
                 ("nettverk", "Nettverk", "ks-network-symbolic", "netpage", "NetworkPage"),
+                ("nas", "NAS-disken", "ks-disk-symbolic", "nas_ui", "NasPage"),
                 ("spill", "Spill", "ks-games-symbolic", "games", "GamesPage"),
                 ("vr", "VR", "ks-vr-symbolic", "vr_ui", "VrPage"),
                 ("stromming", "Strømming", "ks-stream-symbolic", "streaming_ui", "StreamingPage"),
