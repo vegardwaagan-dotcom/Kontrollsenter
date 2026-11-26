@@ -651,10 +651,20 @@ async function checkUpdate(force, online) {
       if (r.code && (!best || r.code > best.code)) best = Object.assign(r, { host: h });
     } catch (e) {} finally { clearTimeout(t); }
   }));
+  // GitHub også: appen sjekker der ved oppstart (KS.githubCached) – vent litt på svaret hvis det ikke er klart
+  if (KS && KS.githubCached) {
+    let gh = "";
+    for (let i = 0; i < (force ? 40 : 12) && !(gh = KS.githubCached()); i++) await new Promise((ok) => setTimeout(ok, 250));
+    try {
+      const g = gh ? JSON.parse(gh) : null;
+      if (g && g.code && g.url && (!best || g.code > best.code)) best = { version: g.version, code: g.code, url: g.url, source: "github" };
+    } catch (e) {}
+  }
   if (best && best.code > have) {
+    const from = best.source === "github" ? "GitHub" : "hjemmenettet";
     $("#upd").hidden = false;
-    $("#upd-t").textContent = `Kontrollsenter ${best.version} er klar (du har ${KS && KS.version ? KS.version() : "eldre"})`;
-    $("#upd-go").onclick = () => KS && KS.update && KS.update(`http://${best.host}:${PORT}/api/apk`);
+    $("#upd-t").textContent = `Oppdatering klar: Kontrollsenter ${best.version} fra ${from} (du har ${KS && KS.version ? KS.version() : "eldre"})`;
+    $("#upd-go").onclick = () => KS && KS.update && KS.update(best.url || `http://${best.host}:${PORT}/api/apk`);
     return best;
   }
   if (force) $("#status").textContent = best ? "Appen er oppdatert ✓" : "Fikk ikke svar fra noen PC – er Kontrollsenter i gang?";

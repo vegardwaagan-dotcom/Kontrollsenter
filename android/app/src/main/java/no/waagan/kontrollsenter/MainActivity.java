@@ -85,6 +85,8 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setSupportZoom(false);
         web.addJavascriptInterface(new Bridge(), "KS");
+        // se etter ny app på GitHub med en gang appen starter (startsiden viser «Oppdatering klar»)
+        new Thread(() -> { ghCache = new Bridge().fetchGithubLatest(); }, "github-sjekk").start();
         // bilder/filer i chatten og AI-en (<input type=file>) og mikrofonen til talemeldinger – bare egne sider
         web.setWebChromeClient(new android.webkit.WebChromeClient() {
             @Override
@@ -279,6 +281,7 @@ public class MainActivity extends Activity {
 
     /** GitHub-siden der hver versjon legges ut med appen (samme som PC-ene oppdaterer fra). */
     static final String GH_REPO = "vegardwaagan-dotcom/Kontrollsenter";
+    volatile String ghCache = null;           // svaret fra GitHub-sjekken ved oppstart
 
     static boolean isGithub(Uri u) {
         String h = u.getHost();
@@ -966,9 +969,18 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Siste GitHub-sjekk fra oppstart (bakgrunnstråd) – svarer med en gang: JSON, eller "" hvis ikke ferdig. */
+        @JavascriptInterface
+        public String githubCached() {
+            return ghCache != null ? ghCache : "";
+        }
+
         /** Nyeste app på GitHub: {"version","code","url"} eller {"error"}. Kjøres på JS-broens egen tråd. */
         @JavascriptInterface
         public String githubLatest() {
+            return fetchGithubLatest();
+        }
+        String fetchGithubLatest() {
             HttpURLConnection con = null;
             JSONObject out = new JSONObject();
             try {

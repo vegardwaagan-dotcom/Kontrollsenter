@@ -352,6 +352,10 @@ class MonitorWindow(Adw.ApplicationWindow):
         self.restart_banner = Adw.Banner(button_label=i18n.tr("Start på nytt"), revealed=False)
         self.restart_banner.connect("button-clicked", self.restart_app)
         toolbar.add_top_bar(self.restart_banner)
+        # Ny versjon funnet ved oppstart (NAS-en eller GitHub) → «Oppdatering klar» med knapp (selfupdate.py)
+        self.update_banner = Adw.Banner(button_label=i18n.tr("Oppdater nå"), revealed=False)
+        self.update_banner.connect("button-clicked", lambda *_: __import__("selfupdate").install_now(self))
+        toolbar.add_top_bar(self.update_banner)
         GLib.timeout_add_seconds(60, self.check_installed_version)
 
         if not IS_WIN and (ensure_overlay_env() or not overlay_env_active()):

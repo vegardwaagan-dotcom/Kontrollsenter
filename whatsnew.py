@@ -13,6 +13,13 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.8", "«Oppdatering klar» når du starter", [
+            "Alle appene ser etter ny versjon både på hjemmenettet (NAS) og på GitHub hver gang de starter",
+            "PC (Linux og Windows): har du slått av automatisk oppdatering, kommer «Oppdatering klar» øverst i "
+            "vinduet og som varsel – trykk «Oppdater nå». Med automatisk oppdatering på installeres den som før",
+            "Android-appen: sjekker GitHub selv med en gang den åpnes (ikke bare via PC-ene), og viser "
+            "«Oppdatering klar» med den nyeste versjonen før den kobler til PC-en (krever app 1.0.8)",
+        ]),
     ("1.0.7", "Ny telefon? PC-en spør deg", [
             "Mobilappen: ny knapp «Spør PC-en om tilgang» når en telefon eller et nettbrett skal pares. Kontrollsenter "
             "på PC-en viser da et spørsmål med navnet og adressen til enheten – velg Godta, Godta begrenset eller "

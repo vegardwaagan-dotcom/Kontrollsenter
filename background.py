@@ -30,7 +30,7 @@ KINDS = [
     ("assistant", "PC-assistent", "Spillsjekk, ukens helserapport, varmere enn vanlig (støv) og tips når vinduet hakker.",
      ["gamecheck", "weekly", "anomaly", "lowend", "crash", "house", "price"]),
     ("updates", "Oppdateringer", "Nye programoppdateringer og nye versjoner av Kontrollsenter.",
-     ["updates", "lanupdate", "lanpublish", "restart"]),
+     ["updates", "lanupdate", "lanpublish", "restart", "selfupdate*"]),
     ("chat", "Chat og anrop", "Meldinger i servere og direkte, anrop (Svar / Legg på / Demp), «Middag!» og «Spill "
      "sammen». Virker også når de andre varslene er slått av.",
      ["chat", "invite", "call"]),

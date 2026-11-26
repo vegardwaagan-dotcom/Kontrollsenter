@@ -2094,8 +2094,9 @@ class _Cards:
         ar = Gtk.Box(spacing=12)
         col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
         col.append(Gtk.Label(label="Oppdater automatisk når Kontrollsenter starter", xalign=0))
-        col.append(dim("Når PC-en har vært av, eller du har lukket programmet helt: finnes det en ny versjon, "
-                       "installeres den og Kontrollsenter starter på nytt av seg selv. Venter hvis du spiller."))
+        col.append(dim("Hver gang Kontrollsenter starter, sjekkes hjemmenettet (NAS) og GitHub. På: en ny versjon "
+                       "installeres og Kontrollsenter starter på nytt av seg selv (venter hvis du spiller). Av: du får "
+                       "«Oppdatering klar» øverst i vinduet og et varsel – trykk «Oppdater nå» når det passer."))
         ar.append(col)
         asw = Gtk.Switch(active=selfupdate.enabled(), valign=Gtk.Align.CENTER)
         asw.connect("notify::active", lambda s, _p: selfupdate.set_(on=s.get_active()))
