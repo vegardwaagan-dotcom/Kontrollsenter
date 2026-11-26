@@ -473,7 +473,6 @@ def action(win, kind, a, notify):
         if a.get("stop"):
             P.STRESS["stop"] = True
             return True, "Stopper stresstesten"
-        import threading
         threading.Thread(target=lambda: P.stress(int(a.get("minutes") or 5)), daemon=True).start()
         return True, "Stresstesten er startet på PC-en"
     if kind.startswith("spill3") or kind.startswith("turn"):   # spill runde 3 fra mobilen
@@ -535,7 +534,6 @@ def action(win, kind, a, notify):
             return True, F.headset_on(sink)
         return True, F.enable(str(a.get("kind")), bool(a.get("on")))
     if kind == "lydkal":                                 # nivåkalibrering med mikrofonen (tar ca. 20 s)
-        import threading
         import lydtest as L
         if L.CAL["running"]:
             return True, "Kalibrerer allerede"

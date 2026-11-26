@@ -181,7 +181,7 @@ function ctSheet(title, html, after) {
 function ctMenu(m) {
   const mine = ctMine(m);
   const items = [["↪ Svar", () => { ctReply = m; $("#ct-reply").hidden = false; $("#ct-reply-t").textContent = `↪ Svarer ${m.from}: ${String(m.text || "").slice(0, 50)}`; $("#ct-text").focus(); }],
-    ["📋 Kopier", () => { navigator.clipboard && navigator.clipboard.writeText(m.text || "").then(() => toast("Kopiert"), () => toast("Kunne ikke kopiere")); }],
+    ["📋 Kopier", () => { ksCopy(m.text || "").then((ok) => toast(ok ? "Kopiert" : "Kunne ikke kopiere")); }],
     [m.pinned ? "📌 Løsne" : "📌 Fest", () => ctEv(m.id, "pin", { on: !m.pinned })],
     ["🤖 Spør AI om denne", () => { if (window.ksAiAsk) window.ksAiAsk("Forklar kort: " + (m.text || "")); }]];
   if (mine) items.push(["✏️ Rediger", async () => { const t = prompt("Rediger meldingen", m.text || ""); if (t) ctEv(m.id, "edit", { text: t }); }],
@@ -235,8 +235,43 @@ $("#ct-file").onchange = async (e) => {
   ctLoad();
 };
 let ctRecS = null;
+function ctWave(levels) {                     // 40 søyler (0–9) fra lydnivåene under opptaket
+  const n = 40, step = Math.max(1, levels.length / n), wave = [];
+  for (let i = 0; i < n; i++) { const c = levels.slice(Math.floor(i * step), Math.floor((i + 1) * step)); wave.push(Math.round(Math.min(1, Math.max(0, ...c, 0) * 1.6) * 9)); }
+  return wave;
+}
+async function ctSendVoice(name, data, levels, secs) {
+  $("#ct-status").textContent = "Sender talemelding …";
+  try { await api("/api/chatup", { room: ctRoom, name: name, data: data, kind: "audio", wave: ctWave(levels), secs: secs }); $("#ct-status").textContent = "Sendt ✓"; }
+  catch (e) { $("#ct-status").textContent = "✗ " + e.message; }
+  ctLoad();
+}
+// Android-appen: sidene kommer over http fra PC-en, og der finnes ikke navigator.mediaDevices – appen tar opp selv
+window.ksRecPermission = (ok) => { if (ok) $("#ct-mic").click(); else toast("Appen fikk ikke bruke mikrofonen – gi lov under Innstillinger › Apper"); };
+function ctRecNative() {
+  const r = KS.recStart();
+  if (r === "perm") return;                   // appen spør om lov – opptaket starter når du sier ja
+  if (r !== "ok") { toast("Fikk ikke startet opptaket"); return; }
+  const levels = [], t0 = Date.now();
+  $("#ct-rec").hidden = false; $("#ct-mic").textContent = "⏹️";
+  const iv = setInterval(() => { const pk = Math.min(1, (KS.recLevel() || 0) / 32767); levels.push(pk);
+    $("#ct-rec-t").textContent = Math.round((Date.now() - t0) / 1000) + " s"; $("#ct-rec-w").style.width = Math.min(100, pk * 100) + "%"; }, 100);
+  ctRecS = { stop: (ok) => {
+    clearInterval(iv); $("#ct-rec").hidden = true; $("#ct-mic").textContent = "🎙️"; ctRecS = null;
+    const secs = (Date.now() - t0) / 1000, keep = !!ok && secs >= 0.7;
+    const data = KS.recStop(keep);
+    if (!keep) return;
+    if (!data) { toast("Opptaket ble tomt – prøv igjen"); return; }
+    ctSendVoice("tale.m4a", data, levels, secs);
+  } };
+}
 $("#ct-mic").onclick = async () => {
   if (ctRecS) { ctRecS.stop(true); return; }
+  if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+    if (KS && KS.recStart) { ctRecNative(); return; }
+    toast(KS ? "Talemeldinger krever nyeste versjon av appen – oppdater den" : "Talemeldinger virker bare i appen eller på https");
+    return;
+  }
   let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
   catch (e) { toast("Fikk ikke bruke mikrofonen – gi appen lov under Innstillinger"); return; }
   const rec = new MediaRecorder(stream), chunks = [], levels = [], t0 = Date.now();
@@ -249,14 +284,9 @@ $("#ct-mic").onclick = async () => {
   rec.onstop = async () => {
     clearInterval(iv); stream.getTracks().forEach((t) => t.stop()); ac.close(); $("#ct-rec").hidden = true; $("#ct-mic").textContent = "🎙️"; ctRecS = null;
     const secs = (Date.now() - t0) / 1000; if (!send || secs < 0.7) return;
-    const n = 40, step = Math.max(1, levels.length / n), wave = [];
-    for (let i = 0; i < n; i++) { const c = levels.slice(Math.floor(i * step), Math.floor((i + 1) * step)); wave.push(Math.round(Math.min(1, Math.max(0, ...c, 0) * 1.6) * 9)); }
     const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
     const data = await new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1]); r.readAsDataURL(blob); });
-    $("#ct-status").textContent = "Sender talemelding …";
-    try { await api("/api/chatup", { room: ctRoom, name: "tale.webm", data: data, kind: "audio", wave: wave, secs: secs }); $("#ct-status").textContent = "Sendt ✓"; }
-    catch (e) { $("#ct-status").textContent = "✗ " + e.message; }
-    ctLoad();
+    ctSendVoice("tale.webm", data, levels, secs);
   };
   rec.start(); $("#ct-rec").hidden = false; $("#ct-mic").textContent = "⏹️";
   ctRecS = { stop: (ok) => { send = ok; rec.stop(); } };

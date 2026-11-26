@@ -590,6 +590,10 @@ def make_package(dest_dir):
 # --------------------------------------------------------------------------
 # Fanen
 # --------------------------------------------------------------------------
+class BgError(str):
+    """Feilteksten fra en bakgrunnsjobb (_bg) – en vanlig tekst, så kort som viser svaret som tekst viser feilen."""
+
+
 class _Cards:
     """Alle kortene. Vedlikehold og Innstillinger bygger hver sine faner av dem."""
     def _try(self, fn, *a):
@@ -643,7 +647,28 @@ class _Cards:
         self.box.append(c)
 
     def _bg(self, fn, done):
-        threading.Thread(target=lambda: GLib.idle_add(done, fn()), daemon=True).start()
+        """Kjør fn i bakgrunnen og send svaret til done. Feiler fn, får done feilteksten (kort som viser tekst
+        viser den – og slipper å henge med «arbeider …»); tåler ikke done tekst, vises feilen som en melding."""
+        def work():
+            try:
+                res = fn()
+            except Exception as e:  # noqa: BLE001
+                import applog
+                applog.log.warning("Bakgrunnsjobb feilet: %s", e, exc_info=True)
+                res = BgError(f"Feilet: {e}")
+            GLib.idle_add(self._bg_done, done, res)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _bg_done(self, done, res):
+        try:
+            done(res)
+        except Exception:  # noqa: BLE001
+            if not isinstance(res, BgError):
+                raise
+            root = self.get_root()
+            if hasattr(root, "toast"):
+                root.toast(str(res))
+        return False
 
     # --- systeminfo -----------------------------------------------------------
     def _info_card(self):

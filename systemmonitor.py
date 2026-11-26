@@ -806,6 +806,9 @@ class MonitorWindow(Adw.ApplicationWindow):
             threading.Thread(target=lambda: __import__("autologin").disarm(), daemon=True).start()
         if not os.environ.get("SYSTEMMONITOR_APP_ID"):            # skrivebordswidgetene som var på sist
             GLib.timeout_add_seconds(4, lambda: __import__("desk_widgets").restore(self))
+            # KDE-widgetene: ny kode og nye widgets etter en oppdatering (én gang per versjon, i bakgrunnen)
+            GLib.timeout_add_seconds(30, lambda: (threading.Thread(target=__import__("widgets").refresh_plasmoids,
+                                                                   daemon=True).start(), False)[1])
         if self.hw.get("rgb") and not os.environ.get("SYSTEMMONITOR_APP_ID"):
             GLib.timeout_add_seconds(12, lambda: (GLib.timeout_add_seconds(5, self._rgb_when_ready)
                                                   if self._rgb_when_ready() else None, False)[1])

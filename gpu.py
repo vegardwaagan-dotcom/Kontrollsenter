@@ -160,6 +160,8 @@ def nvidia_state(idx):
     code, out = _run([smi, "-i", str(idx), "--query-gpu=" + ",".join(NV_FIELDS), "--format=csv,noheader,nounits"])
     if code != 0:
         raise RuntimeError(out.strip()[-200:])
+    if not out.strip():
+        raise RuntimeError("nvidia-smi svarte ikke – start PC-en på nytt hvis det varer")
     vals = [x.strip() for x in out.strip().splitlines()[0].split(",")]
     st = dict(zip(NV_FIELDS, vals))
 

@@ -13,6 +13,25 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.4", "Gjennomgang: knapper som ikke virket", [
+            "RGB (Linux og Windows): feilmeldingen ved hver oppstart og etter hvilemodus er borte («'RgbBackend' "
+            "object has no attribute …»). OpenRGB-profilen lagres igjen, antall LED på vifteuttakene brukes, og på "
+            "Linux lagres fargene på Logitech-mus og -tastatur i enheten",
+            "Familie › Nettfilter (DNS) virker når IPv6 er slått av på nettverket (før: «ipv6.dns: this property is "
+            "not allowed»)",
+            "Mobilappen: alle «Kopier»-knappene virker (chat, AI, RustDesk-ID, ntfy-adressen, utklippstavlen og "
+            "klipp-lenker) – før skjedde det ingenting",
+            "Mobilappen: talemeldinger i chatten tas opp av appen selv (krever app-versjon 1.0.4 – oppdater appen). "
+            "PC-en spiller nå av talemeldinger fra mobilen (de var stumme på Linux)",
+            "Mobilappen: «Andreskjerm» holder skjermen våken mens du spiller",
+            "Mobilappen: «Hva har jeg gått glipp av?» i chatten krasjet hver gang",
+            "Vedlikehold: kort som «PC-legen» henger ikke lenger på «arbeider …» når noe feiler – du får beskjed",
+            "Oversikt: minigrafene i flisene krasjet når en måling manglet (f.eks. ping uten svar)",
+            "Wake-on-LAN kan slås på også når PC-en bruker Wi-Fi",
+            "KDE-widgetene oppdateres automatisk etter en ny versjon – og Kalender-widgeten kommer med",
+            "Hele programmet er gått gjennom på nytt med knapperoboten i en usynlig skjerm – nå også RGB-siden, "
+            "feilmeldinger som vises på skjermen og knapper som ikke gjør noe – på PC (Klassisk og Lett) og mobil",
+        ]),
     ("1.0.3", "Lokal AI fjernet", [
             "Den lokale AI-en (Ollama) er fjernet fra Kontrollsenter. AI-siden har Claude, Codex og Gemini – "
             "hadde du valgt lokal AI, brukes Claude nå",

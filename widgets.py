@@ -421,3 +421,26 @@ def install_plasmoids():
 def installed_plasmoids():
     base = os.path.expanduser("~/.local/share/plasma/plasmoids")
     return [k for k in KINDS if os.path.isdir(os.path.join(base, plasmoid_id(k)))]
+
+
+def refresh_plasmoids():
+    """Etter en oppdatering av Kontrollsenter: har brukeren KDE-widgetene, legges de inn på nytt én gang per versjon –
+    ellers beholder de gammel kode, og nye widgets (f.eks. Kalender) dukker aldri opp i «Legg til widgets»."""
+    try:
+        import applog
+        ver = applog.RUNNING
+        if not plasma_available() or not installed_plasmoids():
+            return None
+        c = cfg()
+        if c.get("plasma_ver") == ver:
+            return None
+        msg = install_plasmoids()
+        c = cfg()
+        c["plasma_ver"] = ver
+        save_cfg(c)
+        applog.log.info("KDE-widgetene er oppdatert til %s: %s", ver, msg)
+        return msg
+    except Exception:  # noqa: BLE001
+        import applog
+        applog.log.warning("Kunne ikke oppdatere KDE-widgetene", exc_info=True)
+        return None

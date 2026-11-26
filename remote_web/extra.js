@@ -341,7 +341,7 @@ $$("[data-media]").forEach((b) => (b.onclick = async () => { await act({ a: "med
 $("#send-open").onclick = () => { const t = $("#send-text").value.trim(); if (t) act({ a: "open_url", url: /^https?:\/\//.test(t) ? t : "https://" + t }); };
 $("#send-clip").onclick = () => { const t = $("#send-text").value; if (t) act({ a: "clipboard", text: t }); };
 $("#get-clip").onclick = async () => {
-  try { const r = await X("clipboard"); $("#clip-out").textContent = r.text || "(tom)"; if (r.text && navigator.clipboard) navigator.clipboard.writeText(r.text).catch(() => {}); }
+  try { const r = await X("clipboard"); $("#clip-out").textContent = r.text || "(tom)"; if (r.text && (await ksCopy(r.text))) toast("Kopiert til telefonen"); }
   catch (e) { $("#clip-out").textContent = e.message; }
 };
 window.ksShared = (t) => { $("#send-text").value = t; setPref("cat_kontroll", "fjern"); setTab("kontroll"); toast("Trykk «Åpne lenke» eller «Kopier» for å sende til PC-en"); };
@@ -605,7 +605,7 @@ $("#clip-link").onclick = async () => {
   if (!curClip) return;
   const r = await api("/api/action", { a: "clipshare", name: curClip.name, pc: curClip.pc || "" });
   const link = location.origin + r.msg;
-  try { await navigator.clipboard.writeText(link); toast("Lenken er kopiert – virker i 24 timer på hjemmenettet/Tailscale"); } catch (e) { $("#clip-meta").textContent = link; }
+  if (await ksCopy(link)) toast("Lenken er kopiert – virker i 24 timer på hjemmenettet/Tailscale"); else $("#clip-meta").textContent = link;
 };
 $("#clip-shot").onclick = () => act({ a: "clipshot" }).then(() => setTimeout(loadClips2, 2500));
 $("#clip-rec").onclick = () => act({ a: "cliprecord" });
@@ -1185,8 +1185,9 @@ if (tab === "oversikt") loadHealth(false);
       <div class="as-btns"><button data-as="mute">🎙️ Mikrofon av/på</button><button data-as="deaf">🎧 Lyd av/på</button><button data-as="clip">🎬 Lagre klipp</button><button data-as="overlay">📊 Overlay</button></div>`;
     document.body.append(sEl); full(sEl);
     try { KS && KS.landscape && KS.landscape(true); } catch (e) {}
-    try { navigator.wakeLock && navigator.wakeLock.request("screen").then((l) => (sEl._lock = l), () => {}); } catch (e) {}
-    const close = () => { clearInterval(sT); try { sEl._lock && sEl._lock.release(); } catch (e) {} sEl.remove(); sEl = null; exitFull(); try { KS && KS.landscape && KS.landscape(false); } catch (e) {} };
+    // skjermen skal ikke slukke: appen holder den våken (navigator.wakeLock finnes bare på https-sider)
+    try { if (KS && KS.keepAwake) KS.keepAwake(true); else if (navigator.wakeLock) navigator.wakeLock.request("screen").then((l) => (sEl._lock = l), () => {}); } catch (e) {}
+    const close = () => { clearInterval(sT); try { sEl._lock && sEl._lock.release(); } catch (e) {} try { if (KS && KS.keepAwake) KS.keepAwake(false); } catch (e) {} sEl.remove(); sEl = null; exitFull(); try { KS && KS.landscape && KS.landscape(false); } catch (e) {} };
     sEl.querySelector(".as-x").onclick = close;
     sEl.addEventListener("click", (e) => { const b = e.target.closest("[data-as]"); if (!b) return;
       const k = b.dataset.as;

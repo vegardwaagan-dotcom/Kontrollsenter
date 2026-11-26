@@ -751,16 +751,20 @@ def send_wol(mac):
 def wol_status():
     """Linux: er Wake-on-LAN slått på for nettverkstilkoblingen (NetworkManager)?"""
     mac, iface = lan_mac()
-    out = {"mac": mac, "iface": iface, "enabled": None, "conn": None}
+    out = {"mac": mac, "iface": iface, "enabled": None, "conn": None, "wifi": False,
+           "prop": "802-3-ethernet.wake-on-lan"}
     if IS_WIN or not iface:
         return out
     try:
-        r = subprocess.run(["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"],
+        r = subprocess.run(["nmcli", "-t", "-f", "NAME,TYPE,DEVICE", "connection", "show", "--active"],
                            capture_output=True, text=True, timeout=10)
-        conn = next((ln.rsplit(":", 1)[0] for ln in r.stdout.splitlines() if ln.endswith(":" + iface)), None)
+        hit = next((ln.rsplit(":", 2) for ln in r.stdout.splitlines() if ln.endswith(":" + iface)), None)
+        conn = hit[0].replace("\\:", ":") if hit else None
         out["conn"] = conn
+        if hit and hit[1] == "802-11-wireless":        # Wi-Fi: egen innstilling (ethernet-feltet finnes ikke der)
+            out.update(wifi=True, prop="802-11-wireless.wake-on-wlan")
         if conn:
-            r = subprocess.run(["nmcli", "-g", "802-3-ethernet.wake-on-lan", "connection", "show", conn],
+            r = subprocess.run(["nmcli", "-g", out["prop"], "connection", "show", conn],
                                capture_output=True, text=True, timeout=10)
             out["enabled"] = "magic" in r.stdout
     except (OSError, subprocess.SubprocessError):
@@ -772,7 +776,7 @@ def enable_wol():
     st = wol_status()
     if IS_WIN or not st["conn"]:
         raise RuntimeError("slå på Wake-on-LAN i nettverkskortets innstillinger og i BIOS")
-    r = subprocess.run(["pkexec", "nmcli", "connection", "modify", st["conn"], "802-3-ethernet.wake-on-lan", "magic"],
+    r = subprocess.run(["pkexec", "nmcli", "connection", "modify", st["conn"], st["prop"], "magic"],
                        capture_output=True, text=True, timeout=120)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or "avbrutt")

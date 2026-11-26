@@ -172,9 +172,22 @@ def build_card(page, card_fn):
         btn.set_label(i18n.tr("Regn ut på nytt"))
         return False
 
+    def failed(e):
+        status.set_label(i18n.tr("Kunne ikke regne ut: ") + str(e))
+        btn.set_sensitive(True)
+        return False
+
+    def work():
+        try:
+            data = (folders(), steam_games())
+        except Exception as e:  # noqa: BLE001 – knappen skal ikke bli hengende
+            GLib.idle_add(failed, e)
+            return
+        GLib.idle_add(show, data)
+
     def run(*_):
         btn.set_sensitive(False)
         status.set_label(i18n.tr("Regner ut … (kan ta et halvt minutt første gang)"))
-        threading.Thread(target=lambda: GLib.idle_add(show, (folders(), steam_games())), daemon=True).start()
+        threading.Thread(target=work, daemon=True).start()
     btn.connect("clicked", run)
     page.box.append(c)

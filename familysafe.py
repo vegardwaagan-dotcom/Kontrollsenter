@@ -98,12 +98,18 @@ def set_dns(provider):
         if not conns:
             raise RuntimeError("fant ingen aktiv nettverkstilkobling")
         for uuid, dev in conns:
+            # IPv6 slått av på tilkoblingen: da nekter NetworkManager ipv6.dns («not allowed for method=disabled»)
+            _c, m6 = _run(["nmcli", "-g", "ipv6.method", "con", "show", uuid], 10)
+            v6_on = m6.strip() not in ("disabled", "ignore")
             if provider:
                 _n, v4, v6 = PROVIDERS[provider]
-                args = ["ipv4.dns", " ".join(v4), "ipv4.ignore-auto-dns", "yes",
-                        "ipv6.dns", " ".join(v6), "ipv6.ignore-auto-dns", "yes"]
+                args = ["ipv4.dns", " ".join(v4), "ipv4.ignore-auto-dns", "yes"]
+                if v6_on:
+                    args += ["ipv6.dns", " ".join(v6), "ipv6.ignore-auto-dns", "yes"]
             else:
-                args = ["ipv4.dns", "", "ipv4.ignore-auto-dns", "no", "ipv6.dns", "", "ipv6.ignore-auto-dns", "no"]
+                args = ["ipv4.dns", "", "ipv4.ignore-auto-dns", "no"]
+                if v6_on:
+                    args += ["ipv6.dns", "", "ipv6.ignore-auto-dns", "no"]
             code, out = _run(["nmcli", "con", "mod", uuid, *args], 20)
             if code != 0:
                 raise RuntimeError(out.strip().splitlines()[-1] if out.strip() else "kunne ikke endre DNS")

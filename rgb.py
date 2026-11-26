@@ -275,6 +275,33 @@ class RgbBackend:
         t.start()
         self._status("Sender til enheten …", True)
 
+    # NB: _logi_commit, _zone_resize og _save_profile kalles via getattr(self, "_" + jobb) i _worker – de ser
+    # ubrukte ut for verktøy som leter etter død kode, men må ikke fjernes.
+    def _logi_commit(self, key, dev_ids):
+        import logitech as L
+        from gi.repository import Gio
+
+        def commit(dev):
+            r = dev.call_sync("Commit", None, Gio.DBusCallFlags.NONE, 30000, None).unpack()[0]
+            if r != 0:
+                raise RuntimeError(f"lagring til {key} feilet (kode {r})")
+
+        for path in dev_ids:
+            dev = L.proxy(path, "Device")
+            commit(dev)
+            # Enheten leser profilens lys bare når en profil aktiveres:
+            # bytt kort til en annen profil og tilbake.
+            profs = [L.proxy(p, "Profile") for p in L.getp(dev, "Profiles")]
+            act = next((i for i, p in enumerate(profs) if L.getp(p, "IsActive")), 0)
+            other = next((i for i in range(len(profs))
+                          if i != act and not L.getp(profs[i], "Disabled")), None)
+            if other is not None:
+                L.call(profs[other], "SetActive")
+                commit(dev)
+                time.sleep(0.5)
+                L.call(profs[act], "SetActive")
+                commit(dev)
+        self._status(f"Brukt ✓ {time.strftime('%H:%M:%S')}")
 
     def _apply(self, key, dev_ids, st, zone_colors=None):
         if dev_ids and isinstance(dev_ids[0], str):          # Logitech via ratbagd
@@ -366,6 +393,18 @@ class RgbBackend:
         dev.comms.send_data(data)
         dev.active_mode = mode.id
 
+    def _zone_resize(self, did, zi, size):
+        zone = self.client.devices[did].zones[zi]
+        if len(zone.leds) == size:
+            return                                   # allerede riktig
+        import struct
+        from openrgb.utils import PacketType
+        comms = self.client.devices[did].comms
+        comms.send_header(did, PacketType.RGBCONTROLLER_RESIZEZONE, struct.calcsize("ii"))
+        comms.send_data(struct.pack("ii", zi, size))
+        time.sleep(1.0)
+        self._reconnect()                            # hent oppdatert LED-liste
+        self._status(f"Uttak {zi + 1}: {size} LED")
 
     def _schedule_profile_save(self):
         # lagre OpenRGB-profilen (brukes ved oppstart) når du har sluttet å justere
@@ -374,6 +413,10 @@ class RgbBackend:
         self._save_timer = threading.Timer(2.0, lambda: self.do("save_profile"))
         self._save_timer.daemon = True
         self._save_timer.start()
+
+    def _save_profile(self):
+        if self.client:
+            self.client.save_profile(PROFILE)
 
 
 # --------------------------------------------------------------------------

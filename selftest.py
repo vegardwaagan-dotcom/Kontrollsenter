@@ -40,11 +40,30 @@ def code_check():
         for ln in (r.stdout + r.stderr).splitlines():
             if any(b in ln.lower() for b in BAD_FLAKES) and "star imports" not in ln and "unable to detect" not in ln:
                 errs.append("kode: " + ln.replace(HERE + "/", ""))
+    errs += dispatch_check()
     if shutil.which("node"):
         for f in sorted(glob.glob(os.path.join(HERE, "remote_web", "*.js"))):
             r = subprocess.run(["node", "--check", f], capture_output=True, text=True)
             if r.returncode:
                 errs.append("js: " + os.path.basename(f) + ": " + (r.stderr.strip().splitlines() or ["?"])[-1])
+    return errs
+
+
+def dispatch_check():
+    """Jobber som kalles med navn (getattr(self, "_" + jobb)): finnes metoden fortsatt? Slike metoder ser ubrukte ut
+    for verktøy som leter etter død kode – i 0.99.45 ble tre RGB-metoder fjernet ved en feil på den måten."""
+    import re
+    errs = []
+    for fname, prefix in (("rgb.py", "_"), ("lcd.py", "_job_")):
+        try:
+            src = open(os.path.join(HERE, fname), encoding="utf-8").read()
+        except OSError:
+            continue
+        jobs = set(re.findall(r'\.do\(\s*"([a-z_]+)"', src)) | set(re.findall(r'refresh="([a-z_]+)"', src))
+        defs = set(re.findall(r"^\s+def (\w+)\(", src, re.M))
+        for job in sorted(jobs):
+            if prefix + job not in defs:
+                errs.append(f"kode: {fname}: jobben «{job}» kalles, men {prefix}{job}() finnes ikke")
     return errs
 
 
@@ -88,8 +107,8 @@ def run(ui=True):
     t = time.time()
     errs = code_check()
     seen = {}
-    if ui:                                        # begge designene: Klassisk og Nytt (design.py)
-        for design in ("klassisk", "ny"):
+    if ui:                                        # designene: Klassisk, Nytt og Lett (design.py)
+        for design in ("klassisk", "ny", "lett"):          # + «Lett» (eget utseende og sparemodus)
             e2, sn = ui_check(design=design)
             errs += [f"[{design}] {e}" for e in e2]
             for k, v in sn.items():

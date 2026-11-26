@@ -899,7 +899,7 @@ async function dcChat(g, gname, c, name) {
       const app = RAPPS[st.remote_app] || RAPPS.rustdesk;
       if (app[0] === "RustDesk") {
         const id = st.rustdesk && st.rustdesk.id;
-        if (id) { try { await navigator.clipboard.writeText(id); } catch (e) {} toast("RustDesk-ID " + id + " er kopiert"); }
+        if (id) toast((await ksCopy(id)) ? "RustDesk-ID " + id + " er kopiert" : "RustDesk-ID: " + id);
         else toast("RustDesk er ikke satt opp på PC-en (Strømming)");
       }
       if (KS && KS.openApp && !KS.openApp(app[1])) toast("Installer " + app[0] + " på telefonen først");
@@ -959,9 +959,9 @@ async function loadPush() {
   $("#push-add").onclick = async () => {
     if (!$("#push-on").checked) { await act({ a: "push", on: true }); }
     const deep = "ntfy://" + host + ":" + st.port + "/" + st.topic + "?secure=false";
+    const copied = await ksCopy(url);                  // før ntfy åpnes – etterpå er appen i bakgrunnen
     if (KS && KS.openUrl) KS.openUrl(deep); else window.open(deep, "_blank");
-    try { await navigator.clipboard.writeText(url); } catch (e) {}
-    toast("Åpner ntfy – trykk «Abonner». Adressen er også kopiert.");
+    toast(copied ? "Åpner ntfy – trykk «Abonner». Adressen er også kopiert." : "Åpner ntfy – trykk «Abonner». Adresse: " + url);
   };
   $("#push-get").onclick = () => { if (KS && KS.openApp) KS.openApp("io.heckel.ntfy"); else window.open("https://ntfy.sh/docs/subscribe/phone/"); };
 }

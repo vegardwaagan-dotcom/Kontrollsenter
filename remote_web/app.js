@@ -14,6 +14,25 @@ function toast(t) {
   const el = $("#toast"); el.textContent = t; el.hidden = false;
   clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 2600);
 }
+// Kopier tekst → Promise<true/false>. navigator.clipboard finnes bare på «sikre» sider (https/localhost), og
+// Android-appen laster sidene fra http://PC:27100 – der må den gamle måten brukes (merk teksten + «copy»).
+function ksCopy(text) {
+  text = String(text == null ? "" : text);
+  const legacy = () => {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none";
+    document.body.append(ta);
+    ta.focus(); ta.select();
+    try { ta.setSelectionRange(0, text.length); } catch (e) {}
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
+  };
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(() => true, () => legacy());
+  return Promise.resolve(legacy());
+}
 function confirmDlg(text) {
   return new Promise((res) => {
     $("#dlg-t").textContent = text; $("#dlg").hidden = false;

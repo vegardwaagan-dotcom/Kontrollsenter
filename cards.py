@@ -254,7 +254,8 @@ class Tile(Gtk.Box):
             vals = list(self._spark_src)[-60:]
             if len(vals) < 2:
                 return
-            mx = self._spark_top or max(max(vals), 1e-6) * 1.2
+            nums = [v for v in vals if v is not None]          # målinger kan mangle (f.eks. ping uten svar)
+            mx = self._spark_top or max(max(nums or [0]), 1e-6) * 1.2
             if callable(mx):
                 mx = mx(vals)
             fg = self.get_color()

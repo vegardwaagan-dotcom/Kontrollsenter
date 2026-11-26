@@ -298,11 +298,54 @@ def play(path):
         else:
             os.startfile(path)  # noqa: S606
         return True
-    for cmd in (["pw-play", path], ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path], ["paplay", path]):
+    # pw-play/paplay kan bare det libsndfile kan (ogg, wav, flac, mp3) – ikke talemeldinger fra mobilen (webm, m4a)
+    simple = path.lower().endswith((".ogg", ".oga", ".opus", ".wav", ".flac", ".mp3"))
+    cmds = [["pw-play", path], ["paplay", path]] if simple else []
+    if not simple and _gst_play(path):
+        return True
+    for cmd in cmds + [["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path]]:
         if shutil.which(cmd[0]):
             subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return True
     return False
+
+
+_PLAYERS = set()                                    # spillere som går (holdes til de er ferdige)
+
+
+def _gst_play(path):
+    """Spill av med GStreamer (playbin) – tar alle formater GStreamer kan, også webm og m4a."""
+    try:
+        import gi
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gio, Gst
+        if not Gst.is_initialized():
+            Gst.init(None)
+        p = Gst.ElementFactory.make("playbin", None)
+        if p is None:
+            return False
+        p.set_property("uri", Gio.File.new_for_path(path).get_uri())
+        fake = Gst.ElementFactory.make("fakesink", None)
+        if fake is not None:
+            p.set_property("video-sink", fake)
+        bus = p.get_bus()
+        bus.add_signal_watch()
+
+        def msg(_bus, m):
+            if m.type in (Gst.MessageType.EOS, Gst.MessageType.ERROR):
+                bus.remove_signal_watch()
+                p.set_state(Gst.State.NULL)
+                _PLAYERS.discard(p)
+        bus.connect("message", msg)
+        _PLAYERS.add(p)
+        if p.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
+            _PLAYERS.discard(p)
+            bus.remove_signal_watch()
+            p.set_state(Gst.State.NULL)
+            return False
+        return True
+    except Exception:  # noqa: BLE001
+        return False
 
 
 # --------------------------------------------------------------------------

@@ -66,7 +66,7 @@ rustCard.querySelector("#rd-open").onclick = () => { if (KS && KS.openApp) { if 
 $("#st-start").onclick = async () => { await act({ a: "stream", do: "start" }); setTimeout(loadStream, 22000); };
 $("#st-pair").onclick = async () => { const p = $("#st-pin").value.trim(); if (p.length !== 4) return toast("Koden har 4 sifre"); $("#st-pin").value = ""; await act({ a: "streampin", pin: p }); };
 rustCard.querySelector("#rd-pc").onclick = () => act({ a: "rustdesk" });
-rustCard.querySelector("#rd-copy").onclick = () => { try { navigator.clipboard.writeText($("#rd-id").textContent).then(() => toast("Kopiert"), () => toast("Kunne ikke kopiere – merk og kopier selv")); } catch (e) {} };
+rustCard.querySelector("#rd-copy").onclick = () => { ksCopy($("#rd-id").textContent).then((ok) => toast(ok ? "Kopiert" : "Kunne ikke kopiere – merk og kopier selv")); };
 
 const batCard = h(`<div class="card" id="c-bat" data-k="batteries"><h2>Batterier</h2><div id="bats"></div>
   <div id="bat-hint" class="row" hidden><span class="dim small">Hodesett vises når HeadsetControl er installert på PC-en.</span><button id="bat-inst" class="soft full-only">Installer</button></div></div>`);

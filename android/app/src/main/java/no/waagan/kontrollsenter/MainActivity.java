@@ -425,6 +425,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         web.onPause();                  // ingen henting i bakgrunnen – sparer batteri
         web.pauseTimers();
+        recRelease();                   // en talemelding som tas opp, avbrytes – mikrofonen holdes ikke i bakgrunnen
         super.onPause();
     }
 
@@ -467,7 +468,18 @@ public class MainActivity extends Activity {
     }
 
     /** Tilgjengelig for sidene som window.KS – bare ufarlige funksjoner. */
-    static final int REQ_FILE = 7, REQ_MIC = 8, REQ_LISTEN = 9;
+    static final int REQ_FILE = 7, REQ_MIC = 8, REQ_LISTEN = 9, REQ_REC = 10;
+    /** Talemelding i chatten: sidene lastes over http fra PC-en, og der finnes ikke navigator.mediaDevices –
+     *  derfor tar appen opp selv (AAC i .m4a) og gir sidene lyden som base64. */
+    android.media.MediaRecorder recorder;
+    java.io.File recFile;
+
+    synchronized void recRelease() {
+        if (recorder != null) {
+            try { recorder.release(); } catch (Exception ignored) { }
+            recorder = null;
+        }
+    }
     View fsView;
     android.webkit.WebChromeClient.CustomViewCallback fsCb;
 
@@ -514,6 +526,9 @@ public class MainActivity extends Activity {
             pendingMic = null;
         } else if (req == REQ_LISTEN) {
             if (ok) startListen(); else heard("", "Appen fikk ikke bruke mikrofonen");
+        } else if (req == REQ_REC) {
+            final String js = "window.ksRecPermission && window.ksRecPermission(" + ok + ")";
+            runOnUiThread(() -> web.evaluateJavascript(js, null));
         }
     }
 
@@ -556,6 +571,74 @@ public class MainActivity extends Activity {
     }
 
     class Bridge {
+        /** Start opptak av en talemelding. Svar: "ok", "perm" (spør om tillatelse – prøv igjen etterpå) eller "feil". */
+        @JavascriptInterface
+        public String recStart() {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_REC));
+                return "perm";
+            }
+            synchronized (MainActivity.this) {
+                recRelease();
+                try {
+                    recFile = new java.io.File(getCacheDir(), "tale.m4a");
+                    android.media.MediaRecorder r = Build.VERSION.SDK_INT >= 31
+                            ? new android.media.MediaRecorder(MainActivity.this) : new android.media.MediaRecorder();
+                    recorder = r;
+                    r.setAudioSource(android.media.MediaRecorder.AudioSource.MIC);
+                    r.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4);
+                    r.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC);
+                    r.setAudioEncodingBitRate(64000);
+                    r.setAudioSamplingRate(44100);
+                    r.setOutputFile(recFile.getAbsolutePath());
+                    r.prepare();
+                    r.start();
+                    return "ok";
+                } catch (Exception e) {
+                    recRelease();
+                    return "feil";
+                }
+            }
+        }
+
+        /** Lydnivået siden forrige kall (0–32767) – til nivåmåleren mens du snakker. */
+        @JavascriptInterface
+        public int recLevel() {
+            synchronized (MainActivity.this) {
+                try {
+                    return recorder != null ? recorder.getMaxAmplitude() : 0;
+                } catch (Exception e) {
+                    return 0;
+                }
+            }
+        }
+
+        /** Stopp opptaket. keep = true: lyden (m4a) som base64, ellers "" (avbrutt eller for kort). */
+        @JavascriptInterface
+        public String recStop(boolean keep) {
+            synchronized (MainActivity.this) {
+                if (recorder == null) return "";
+                try {
+                    recorder.stop();
+                } catch (Exception e) {
+                    keep = false;                                  // for kort opptak: stop() kaster
+                }
+                recRelease();
+                java.io.File f = recFile;
+                recFile = null;
+                if (f == null) return "";
+                try {
+                    if (!keep) return "";
+                    byte[] b = java.nio.file.Files.readAllBytes(f.toPath());
+                    return android.util.Base64.encodeToString(b, android.util.Base64.NO_WRAP);
+                } catch (Exception e) {
+                    return "";
+                } finally {
+                    f.delete();
+                }
+            }
+        }
+
         /** Snakk inn tekst (AI og chat): telefonens egen talegjenkjenning. Svaret kommer i window.ksHeard(tekst). */
         @JavascriptInterface
         public void listen(String lang) {
