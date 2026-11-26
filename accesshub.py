@@ -9,7 +9,7 @@ import sys
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 NAMES = {"gpu": "skjermkort (klokker, overklokking, vifter)", "gpupower": "strømmodus for NVIDIA",
-         "fan": "hovedkortvifter", "msi": "MSI-funksjoner"}
+         "fan": "hovedkortvifter", "msi": "MSI-funksjoner", "autologin": "innlogging uten passord etter omstart"}
 
 
 def _has_pwm():
@@ -38,6 +38,12 @@ def needed():
         vendor = ""
     if "Micro-Star" in vendor and not os.path.exists("/usr/local/bin/systemmonitor-msi"):
         out.append("msi")
+    try:
+        import autologin
+        if autologin.enabled() and not os.path.exists(autologin.HELPER):
+            out.append("autologin")
+    except Exception:  # noqa: BLE001
+        pass
     return out
 
 

@@ -1029,7 +1029,7 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> MainActivity.this.setGlassWindow(on, blur));
         }
 
-        /** Design: «klassisk» eller «ny» – felles for startskjermen og alle PC-ene. */
+        /** Design: «klassisk», «ny», «3d» eller «lett» – felles for startskjermen og alle PC-ene. */
         @JavascriptInterface
         public String getDesign() {
             return getSharedPreferences("ks", 0).getString("design", "");
@@ -1037,7 +1037,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void setDesign(String name) {
-            if (!"klassisk".equals(name) && !"ny".equals(name)) return;
+            if (!"klassisk".equals(name) && !"ny".equals(name) && !"3d".equals(name) && !"lett".equals(name)) return;
             getSharedPreferences("ks", 0).edit().putString("design", name).apply();
         }
 

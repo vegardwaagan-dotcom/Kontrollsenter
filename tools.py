@@ -410,7 +410,8 @@ def import_settings(src):
 # 6. Kontrollsenter: versjon, oppdatering, installasjonspakke
 # --------------------------------------------------------------------------
 UPDATE_CFG = CFG / "oppdatering.json"
-PACKAGE_FILES = ["*.py", "systemmonitor-fan", "systemmonitor-gpu-power", "systemmonitor-gpu", "systemmonitor-msi", "*.sh",
+PACKAGE_FILES = ["*.py", "systemmonitor-fan", "systemmonitor-gpu-power", "systemmonitor-gpu", "systemmonitor-msi",
+                 "systemmonitor-autologin", "*.sh",
                  "en.json", "VERSION", "*.ps1", "vendor", "icons", "remote_web", "wow_addon"]
 
 
@@ -1497,16 +1498,88 @@ class _Cards:
         i.append(row)
         self.box.append(c)
 
+    def _power_card(self):
+        """Start PC-en på nytt / slå av – og (Linux) innlogging uten passord etter en omstart herfra."""
+        import autologin
+        c, i = card("Start på nytt og slå av", "Starter du på nytt herfra eller fra mobilen, kan du bli logget inn "
+                                                "automatisk – bare den ene gangen. Neste vanlige oppstart spør om "
+                                                "passord som før.")
+        msg = Gtk.Label(xalign=0, wrap=True)
+        msg.add_css_class("dim-label")
+        if autologin.supported():
+            row = Gtk.Box(spacing=12)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True)
+            col.append(Gtk.Label(label="Logg inn automatisk etter omstart fra Kontrollsenter", xalign=0, wrap=True))
+            st = autologin.status()
+            d = Gtk.Label(label=f"Innloggingsskjerm: {st.get('dm') or 'ukjent'}. Første gang spør PC-en om passordet "
+                                "ditt én gang.", xalign=0, wrap=True)
+            d.add_css_class("caption")
+            d.add_css_class("dim-label")
+            col.append(d)
+            row.append(col)
+            sw = Gtk.Switch(active=st["on"], valign=Gtk.Align.CENTER)
+
+            def tog(w, _p):
+                want = w.get_active()
+
+                def work():
+                    try:
+                        txt = autologin.set_enabled(want)
+                        ok = True
+                    except Exception as e:  # noqa: BLE001
+                        txt, ok = f"Det gikk ikke: {e}", False
+
+                    def ui():
+                        msg.set_label(txt)
+                        if not ok:
+                            w.handler_block(hid)
+                            w.set_active(not want)
+                            w.handler_unblock(hid)
+                        return False
+                    GLib.idle_add(ui)
+                threading.Thread(target=work, daemon=True).start()
+            hid = sw.connect("notify::active", tog)
+            row.append(sw)
+            i.append(row)
+        btns = Gtk.Box(spacing=8)
+        for label, what, q, css in (("Start på nytt", "restart", "Starte PC-en på nytt nå?", "suggested-action"),
+                                    ("Slå av", "shutdown", "Slå av PC-en nå?", "destructive-action")):
+            b = Gtk.Button(label=label)
+            b.add_css_class(css)
+
+            def ask(_b, what=what, q=q):
+                dlg = Adw.AlertDialog(heading=q, body="Lagre det du holder på med først.")
+                dlg.add_response("no", "Avbryt")
+                dlg.add_response("yes", "Ja")
+                dlg.set_response_appearance("yes", Adw.ResponseAppearance.DESTRUCTIVE)
+
+                def resp(_d, r):
+                    if r == "yes":
+                        import remote
+                        ok, out = remote._system(what)
+                        msg.set_label("Starter på nytt …" if what == "restart" else "Slår av …")
+                dlg.connect("response", resp)
+                dlg.present(self.get_root())
+            b.connect("clicked", ask)
+            btns.append(b)
+        i.append(btns)
+        i.append(msg)
+        self.box.append(c)
+
     def _design_card(self):
         """Bryteren mellom Klassisk og det nye designet (gjelder PC-en; mobilappen har sin egen under Utseende)."""
         import design
-        c, i = card("Design", "Velg mellom slik Kontrollsenter alltid har sett ut, og det nye, ryddigere designet med "
-                              "7 områder i menyen, faner øverst og roligere utseende. Programmet starter på nytt.")
-        row = Gtk.Box(spacing=10, homogeneous=True)
+        c, i = card("Design", "Velg hvordan hele Kontrollsenter ser ut – PC-en, Windows og mobilappen. Nytt, 3D og "
+                              "Lett har 7 områder i menyen og faner øverst. Programmet starter på nytt.")
+        row = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=4, min_children_per_line=2,
+                          homogeneous=True, column_spacing=10, row_spacing=10)
         cur = design.saved_mode()
         first = None
         for key, title, desc in (("klassisk", "Klassisk", "Sidemenyen med alle sidene, slik som før"),
-                                 ("ny", "Nytt design", "7 områder, faner øverst, søk i menyen og ryddigere kort")):
+                                 ("ny", "Nytt design", "7 områder, faner øverst, søk i menyen og ryddigere kort"),
+                                 ("3d", "3D", "Dybde overalt: kort og knapper som løfter seg ut av skjermen, "
+                                              "3D-animasjoner"),
+                                 ("lett", "Lett", "Flatt og enkelt som LXQt – minst mulig minne og prosessor")):
             b = Gtk.ToggleButton(active=(key == cur))
             b.add_css_class("ks-swatch")
             col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
@@ -2601,6 +2674,7 @@ class SettingsPage(TabbedPage, _Cards):
         self._try(self._look_card)
         self.tab("generelt", "Generelt")
         self._try(self._general_card)
+        self._try(self._power_card)
         self._try(self._perf_card)
         self._try(self._disk_card)
         self._try(self._features_card)

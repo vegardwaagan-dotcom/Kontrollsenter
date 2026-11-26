@@ -1,0 +1,66 @@
+#!/bin/bash
+# systemmonitor-autologin – engangs automatisk innlogging etter en omstart fra Kontrollsenter.
+# Kjøres som root (sudo uten passord, satt opp av install-autologin.sh). Godtar KUN:
+#   once     slå på automatisk innlogging for brukeren som kaller (SUDO_USER) – bare for neste oppstart
+#   off      fjern det igjen (gjøres også av en systemtjeneste kort etter oppstart, og av Kontrollsenter)
+#   status   hvilken innloggingsskjerm som er i bruk, og om engangsinnloggingen er på
+# Støtter Plasma Login Manager, SDDM, LightDM og GDM.
+set -uo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+die() { echo "$*" >&2; exit 2; }
+NAME=zz-kontrollsenter-autologin.conf
+UNIT=/etc/systemd/system/kontrollsenter-autologin-off.service
+
+dm() {
+  local cur
+  cur=$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" .service)
+  case "$cur" in
+    plasmalogin*) echo plasmalogin ;; sddm*) echo sddm ;; lightdm*) echo lightdm ;; gdm*) echo gdm ;;
+    *) for d in plasmalogin sddm lightdm gdm gdm3; do systemctl is-active -q "$d" 2>/dev/null && { echo "${d%3}"; return; }; done
+       echo ukjent ;;
+  esac
+}
+gdm_conf() { for f in /etc/gdm/custom.conf /etc/gdm3/custom.conf /etc/gdm3/daemon.conf; do [ -f "$f" ] && { echo "$f"; return; }; done; echo /etc/gdm/custom.conf; }
+
+cmd="${1:-}"
+case "$cmd" in
+  status)
+    d=$(dm); on=no
+    for f in /etc/plasmalogin.conf.d/$NAME /etc/sddm.conf.d/$NAME /etc/lightdm/lightdm.conf.d/$NAME "$(gdm_conf).kontrollsenter-bak"; do
+      [ -e "$f" ] && on=yes; done
+    echo "$d $on" ;;
+  once)
+    U="${SUDO_USER:-}"; [ -z "$U" ] && [ -n "${PKEXEC_UID:-}" ] && U=$(id -nu "$PKEXEC_UID")
+    [[ "$U" =~ ^[a-z_][a-z0-9_.-]*$ ]] && [ "$U" != root ] || die "ugyldig bruker"
+    d=$(dm)
+    case "$d" in
+      plasmalogin|sddm)
+        dir=/etc/$d.conf.d; mkdir -p "$dir"
+        printf '# Engangs automatisk innlogging fra Kontrollsenter – fjernes av seg selv etter oppstart\n[Autologin]\nUser=%s\nRelogin=false\n' "$U" > "$dir/$NAME" ;;
+      lightdm)
+        dir=/etc/lightdm/lightdm.conf.d; mkdir -p "$dir"
+        printf '# Engangs automatisk innlogging fra Kontrollsenter\n[Seat:*]\nautologin-user=%s\nautologin-user-timeout=0\n' "$U" > "$dir/$NAME" ;;
+      gdm)
+        f=$(gdm_conf); [ -f "$f.kontrollsenter-bak" ] || cp -p "$f" "$f.kontrollsenter-bak" 2>/dev/null || : > "$f.kontrollsenter-bak"
+        grep -q '^\[daemon\]' "$f" 2>/dev/null || printf '[daemon]\n' >> "$f"
+        awk -v u="$U" '
+          /^[[:space:]]*AutomaticLogin(Enable)?[[:space:]]*=/ { next }
+          { print }
+          /^\[daemon\][[:space:]]*$/ { print "AutomaticLoginEnable=True"; print "AutomaticLogin=" u }
+        ' "$f" > "$f.ks-tmp" && cat "$f.ks-tmp" > "$f" && rm -f "$f.ks-tmp" || die "kunne ikke endre $f"
+        ;;
+      *) die "fant ikke innloggingsskjermen (støtter Plasma Login, SDDM, LightDM og GDM)" ;;
+    esac
+    # sikkerhetsnett: fjern det igjen kort etter neste oppstart, også om Kontrollsenter ikke starter
+    printf '[Unit]\nDescription=Kontrollsenter: fjern engangs automatisk innlogging\nAfter=display-manager.service\n\n[Service]\nType=oneshot\nExecStart=/bin/sh -c "sleep 45; /usr/local/bin/systemmonitor-autologin off"\n\n[Install]\nWantedBy=graphical.target\n' > "$UNIT"
+    systemctl daemon-reload; systemctl enable -q kontrollsenter-autologin-off.service
+    echo OK ;;
+  off)
+    rm -f /etc/plasmalogin.conf.d/$NAME /etc/sddm.conf.d/$NAME /etc/lightdm/lightdm.conf.d/$NAME
+    f=$(gdm_conf); if [ -f "$f.kontrollsenter-bak" ]; then
+      if [ -s "$f.kontrollsenter-bak" ]; then cp -p "$f.kontrollsenter-bak" "$f"; fi; rm -f "$f.kontrollsenter-bak"; fi
+    if [ -f "$UNIT" ]; then systemctl disable -q kontrollsenter-autologin-off.service 2>/dev/null; rm -f "$UNIT"; systemctl daemon-reload; fi
+    echo OK ;;
+  version) echo 1 ;;
+  *) die "ukjent kommando" ;;
+esac

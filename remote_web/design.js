@@ -9,7 +9,9 @@
     try { return (KSB && KSB.getDesign && KSB.getDesign()) || localStorage.getItem("ks_design") || "klassisk"; }
     catch (e) { return "klassisk"; }
   }
-  const isNew = () => cur() === "ny";
+  const NEWS = ["ny", "3d", "lett"];                       // 3D og Lett bygger på det nye designet
+  const isNew = () => NEWS.includes(cur());
+  const skin = () => (cur() === "3d" || cur() === "lett") ? cur() : "";
 
   // Første gang det nye designet velges: levende bakgrunn og Aero av (rolig utseende) – tilbake ved Klassisk.
   function calm(toNew) {
@@ -37,29 +39,48 @@
   }
 
   function set(m) {
-    if (m !== "ny" && m !== "klassisk") return;
+    if (!["klassisk", ...NEWS].includes(m)) return;
     if (m === cur()) return;
-    calm(m === "ny");
+    const wasNew = isNew();
+    if (m === "klassisk") calm(false); else if (!wasNew) calm(true);
     try { localStorage.setItem("ks_design", m); } catch (e) {}
     try { if (KSB && KSB.setDesign) KSB.setDesign(m); } catch (e) {}
     location.reload();
   }
 
-  window.ksDesign = { cur, isNew, set };
-  document.documentElement.dataset.design = cur();
+  window.ksDesign = { cur, isNew, set, skin };
+  document.documentElement.dataset.design = isNew() ? "ny" : "klassisk";
+  if (skin()) document.documentElement.dataset.skin = skin();
 
   // ---------- bryteren under Innstillinger › Utseende ----------
   function drawPicker() {
     const box = document.getElementById("ks-design");
     if (!box) return;
     const c = cur();
-    box.innerHTML = [["klassisk", "Klassisk", "Slik som før"], ["ny", "Nytt design", "Ryddigere og roligere"]]
+    box.innerHTML = [["klassisk", "Klassisk", "Slik som før"], ["ny", "Nytt design", "Ryddigere og roligere"],
+      ["3d", "3D", "Knapper og kort som popper ut"], ["lett", "Lett", "Flatt og enkelt – minst minne"]]
       .map(([k, n, d]) => `<button type="button" data-d="${k}" class="${k === c ? "on" : ""}"><b>${n}</b><small>${d}</small></button>`)
       .join("");
     box.querySelectorAll("button").forEach((b) => (b.onclick = () => set(b.dataset.d)));
   }
   drawPicker();
   if (!isNew()) return;
+
+  // ---------- 3D: kortene vipper etter fingeren/musa ----------
+  if (skin() === "3d") {
+    const tilt = (e) => {
+      const c = e.target.closest && e.target.closest(".card"); if (!c) return;
+      const p = e.touches ? e.touches[0] : e, r = c.getBoundingClientRect();
+      const x = (p.clientX - r.left) / r.width - 0.5, y = (p.clientY - r.top) / r.height - 0.5;
+      c.classList.add("ks3d-tilt");
+      c.style.transform = `perspective(900px) rotateX(${(-y * 7).toFixed(2)}deg) rotateY(${(x * 9).toFixed(2)}deg) translateZ(6px)`;
+    };
+    const untilt = (e) => { const c = e.target.closest && e.target.closest(".card"); if (c) { c.classList.remove("ks3d-tilt"); c.style.transform = ""; } };
+    document.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" || e.buttons) tilt(e); }, { passive: true });
+    document.addEventListener("pointerup", untilt, { passive: true });
+    document.addEventListener("pointercancel", untilt, { passive: true });
+    document.addEventListener("pointerout", (e) => { if (e.pointerType === "mouse") untilt(e); }, { passive: true });
+  }
 
   // ---------- fanene nederst: samme navn og rekkefølge som områdene på PC-en (Chat og AI kommer til litt senere) ----------
   const ORDER = Object.keys(D.tabs);

@@ -198,7 +198,7 @@ button:not(:disabled):active svg { stroke:#fff; }
 </style>
 <link rel="stylesheet" href="themes.css">
 <link rel="stylesheet" href="design.css">
-<script>try{document.documentElement.setAttribute("data-design",(window.KS&&KS.getDesign&&KS.getDesign())||localStorage.getItem("ks_design")||"klassisk")}catch(e){}</script>
+<script>try{var _d=(window.KS&&KS.getDesign&&KS.getDesign())||localStorage.getItem("ks_design")||"klassisk";document.documentElement.setAttribute("data-design",_d==="klassisk"?"klassisk":"ny");if(_d==="3d"||_d==="lett")document.documentElement.setAttribute("data-skin",_d)}catch(e){}</script>
 <script>try{var k=(window.KS&&KS.getLook&&KS.getLook())||localStorage.getItem("ks_look");if(k&&k!=="standard"){var r=document.documentElement;r.setAttribute("data-ks",k);r.setAttribute("data-theme",/^(sand|mint|papir|latte|sakura|arktis|krom)$/.test(k)?"light":"dark");if(k==="eget"){var c=JSON.parse(localStorage.getItem("ks_own")||(window.KS&&KS.getLookColors&&KS.getLookColors())||"{}");if(c.a&&c.b){["--ga","--acc","--c1"].forEach(function(v){r.style.setProperty(v,c.a)});["--gb","--acc2"].forEach(function(v){r.style.setProperty(v,c.b)});r.style.setProperty("--grad","linear-gradient(135deg,"+c.a+","+c.b+")");}}}}catch(e){}</script>
 </head>
 <body>

@@ -13,6 +13,16 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.1", "3D, Lett og innlogging uten passord", [
+            "Nytt design «3D»: kort og knapper løfter seg ut av skjermen, knappene trykkes inn, kortene flyr inn og "
+            "de viktigste knappene pulserer. I mobilappen vipper kortene etter fingeren (ekte 3D)",
+            "Nytt design «Lett» (som LXQt): flatt og kompakt uten animasjoner, skygger eller glass – og tegning uten "
+            "skjermkortet, så det bruker minst mulig minne",
+            "Velg under Innstillinger › Utseende › Design – på PC-en, Windows og mobilen",
+            "Logg inn uten passord etter en omstart fra Kontrollsenter (PC-en eller mobilen) – bare den ene gangen. "
+            "Virker med Plasma Login, SDDM, GDM og LightDM. Under Innstillinger › Generelt › «Start på nytt og slå av»",
+            "PC-appen har fått knappene «Start på nytt» og «Slå av»",
+        ]),
     ("1.0.0", "Kontrollsenter 1.0", [
             "Hele programmet er gått gjennom: alle sidene, fanene, kategoriene og knappene er testet automatisk – på "
             "PC-en i både Klassisk og Nytt design (rundt 2900 handlinger) og i mobilappen (rundt 500)",

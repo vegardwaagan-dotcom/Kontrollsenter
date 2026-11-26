@@ -389,6 +389,12 @@ def _system(what):
         cmds = {"lock": ["loginctl", "lock-session"], "sleep": ["systemctl", "suspend"],
                 "restart": ["systemctl", "reboot"], "shutdown": ["systemctl", "poweroff"]}
     import winsupport as WS  # run() virker på begge systemer
+    if what in ("restart",):                 # engangs automatisk innlogging etter omstarten (hvis valgt)
+        try:
+            import autologin
+            autologin.arm()
+        except Exception:  # noqa: BLE001
+            pass
     if what in ("restart", "shutdown", "sleep"):
         threading.Timer(1.5, lambda: WS.run(cmds[what], 30)).start()   # svar appen før PC-en går ned
         return True, "OK"
@@ -398,6 +404,9 @@ def _system(what):
 
 def do_action(win, a):
     kind = a.get("a")
+    if kind == "autologin":
+        import autologin
+        return True, autologin.set_enabled(bool(a.get("on")))
     if kind == "power":
         key = a.get("mode")
 
@@ -1583,6 +1592,9 @@ def _handler(remote):
                 return self._send(200, X.screenshot(), "image/jpeg")
             if what == "nas":
                 return self._send(200, X.nas_state())
+            if what == "autologin":
+                import autologin
+                return self._send(200, autologin.status())
             if what == "health":
                 return self._send(200, X.health(arg("force") == "1"))
             if what == "clips":

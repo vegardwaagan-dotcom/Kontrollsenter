@@ -802,6 +802,8 @@ class MonitorWindow(Adw.ApplicationWindow):
             import threading as _th
             GLib.timeout_add_seconds(15, lambda: (_th.Thread(target=__import__("gpu").apply_saved, daemon=True).start(),
                                                   False)[1])
+        if not os.environ.get("SYSTEMMONITOR_APP_ID"):            # engangsinnloggingen etter omstart: fjern den
+            threading.Thread(target=lambda: __import__("autologin").disarm(), daemon=True).start()
         if not os.environ.get("SYSTEMMONITOR_APP_ID"):            # skrivebordswidgetene som var på sist
             GLib.timeout_add_seconds(4, lambda: __import__("desk_widgets").restore(self))
         if self.hw.get("rgb") and not os.environ.get("SYSTEMMONITOR_APP_ID"):

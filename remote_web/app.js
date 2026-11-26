@@ -389,6 +389,22 @@ $$("[data-sys]").forEach((b) => (b.onclick = async () => {
   act(b.dataset.sys === "show" ? { a: "show" } : { a: "system", do: b.dataset.sys });
 }));
 
+// engangs automatisk innlogging etter omstart (Linux)
+async function loadAutologin() {
+  let st; try { st = await X("autologin"); } catch (e) { return; }
+  if (!st || !st.supported) return;
+  $("#al-row").hidden = false;
+  $("#al-on").checked = !!st.on;
+  $("#al-sub").textContent = "Bare den ene gangen" + (st.dm ? " · " + st.dm : "");
+}
+$("#al-on").onchange = async () => {
+  const on = $("#al-on").checked;
+  if (on) toast("Første gang: skriv passordet på PC-en");
+  const r = await act({ a: "autologin", on });
+  if (r && r.ok === false) $("#al-on").checked = !on;
+};
+setTimeout(loadAutologin, 3000);
+
 // ---------- henting ----------
 async function poll() {
   if (!token || document.hidden) return;

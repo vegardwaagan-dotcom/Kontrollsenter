@@ -21,7 +21,11 @@ import sys
 IS_WIN = sys.platform == "win32"
 CFG = os.path.expanduser("~/.config/systemmonitor/design.json")
 
-MODES = ("klassisk", "ny")
+MODES = ("klassisk", "ny", "3d", "lett")
+# «3d» og «lett» bygger på det nye designet (menyen, fanene og ryddingen) og legger sin egen stil oppå:
+#   3d   – dybde overalt: kort og knapper som løfter seg ut av skjermen, 3D-animasjoner når sider og kort kommer inn
+#   lett – flatt og enkelt som LXQt: ingen animasjoner, skygger eller glass, og tegning uten skjermkortet (minst minne)
+SKINS = ("3d", "lett")
 
 # ---------------------------------------------------------------------------------------------------------------
 # Designverdiene – den eneste kilden til hjørner, avstander, tekst og statusfarger i det nye designet
@@ -100,7 +104,13 @@ def mode():
 
 
 def is_new():
-    return mode() == "ny"
+    """Bruker menyen/fanene fra det nye designet (Nytt, 3D og Lett)."""
+    return mode() in ("ny", "3d", "lett")
+
+
+def skin():
+    """«3d», «lett» eller None."""
+    return mode() if mode() in SKINS else None
 
 
 def saved_mode():
@@ -109,21 +119,33 @@ def saved_mode():
 
 
 def set_mode(m):
-    """Lagre valget. Første gang det nye designet velges, slås glass og overganger av (rolig utseende) – og settes
-    tilbake slik de var når du går tilbake til Klassisk."""
+    """Lagre valget. Fra Klassisk til et av de nye: glass og overganger huskes og settes tilbake når du går tilbake.
+    Nytt: rolig (glass og overganger av). 3D: overganger på. Lett: alt tungt av, og «spar minne» på."""
     if m not in MODES:
         return
     d = _load()
-    if d.get("mode", "klassisk") == m:
+    old = d.get("mode", "klassisk")
+    if old == m:
         return
     d["mode"] = m
     try:
-        import theme
         import effects
-        if m == "ny":
+        import perf
+        import theme
+        if old == "klassisk" and not isinstance(d.get("prev"), dict):
             d["prev"] = {"glass": theme.glass_on(), "transition": effects.transition()}
+        if old == "lett" and m != "lett":
+            perf.set_save_all(False)
+        if m == "ny":
             theme._save_look(glass=False)
             effects.set_transition("av")
+        elif m == "3d":
+            theme._save_look(glass=False)
+            effects.set_transition("glid")
+        elif m == "lett":
+            theme._save_look(glass=False)
+            effects.set_transition("av")
+            perf.set_save_all(True)
         elif isinstance(d.get("prev"), dict):
             p = d.pop("prev")
             theme._save_look(glass=bool(p.get("glass", True)))
@@ -226,6 +248,107 @@ window.ks-ny button.ks-adv-toggle {{ padding: 2px 10px; min-height: 28px; font-s
 """
 
 
+def gtk_css_3d():
+    """3D: lys ovenfra, kanter med dybde, knapper som løfter seg ut mot deg og trykkes inn, kort som flyr inn.
+    Fargene følger temaet (libadwaita-fargene). Bare 2D-transformer: GTK tegner ikke perspective()/rotateX() (blir
+    rosa felt) – dybden lages med skygger, kanter og løft. Mobilappen har ekte 3D (CSS i nettleseren)."""
+    return """
+/* ---------- 3D ---------- */
+@keyframes ks3d-in { 0% { opacity: 0; transform: translateY(30px) scale(0.92); }
+                     70% { opacity: 1; transform: translateY(-4px) scale(1.012); }
+                     100% { opacity: 1; transform: none; } }
+@keyframes ks3d-pop { 0% { transform: scale(1); } 45% { transform: scale(1.09) translateY(-3px); }
+                      100% { transform: scale(1.04) translateY(-2px); } }
+@keyframes ks3d-glow { from { box-shadow: 0 0 0 0 alpha(@accent_bg_color, 0.55); }
+                       to { box-shadow: 0 0 0 9px alpha(@accent_bg_color, 0); } }
+window.ks-3d .card, window.ks-3d list.boxed-list, window.ks-3d .ks-tile, window.ks-3d .tile {
+  background-image: linear-gradient(180deg, alpha(white, 0.075), alpha(white, 0.0) 42%, alpha(black, 0.10));
+  border: 1px solid alpha(white, 0.10); border-bottom-color: alpha(black, 0.35);
+  box-shadow: 0 1px 0 alpha(white, 0.10) inset, 0 -2px 0 alpha(black, 0.18) inset,
+              0 2px 3px alpha(black, 0.22), 0 10px 22px alpha(black, 0.28), 0 22px 40px -12px alpha(black, 0.45);
+  animation: ks3d-in 520ms cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+  transition: transform 240ms cubic-bezier(0.2, 0.9, 0.3, 1.3), box-shadow 240ms ease; }
+window.ks-3d .card:hover, window.ks-3d .ks-tile:hover, window.ks-3d .tile:hover {
+  transform: translateY(-7px) scale(1.018);
+  box-shadow: 0 1px 0 alpha(white, 0.14) inset, 0 -2px 0 alpha(black, 0.18) inset,
+              0 4px 6px alpha(black, 0.22), 0 22px 40px alpha(black, 0.38), 0 40px 70px -14px alpha(black, 0.55),
+              0 0 0 1px alpha(@accent_bg_color, 0.35), 0 0 26px alpha(@accent_bg_color, 0.18); }
+/* knapper: tykk kant under (som en ekte knapp), løfter seg mot deg og trykkes inn */
+window.ks-3d button:not(.flat):not(.circular):not(.ks-swatch):not(.toggle),
+window.ks-3d dropdown > button, window.ks-3d menubutton > button:not(.flat), window.ks-3d togglebutton:not(.flat) {
+  background-image: linear-gradient(180deg, alpha(white, 0.16), alpha(white, 0.02) 55%, alpha(black, 0.10));
+  border: 1px solid alpha(black, 0.30); border-top-color: alpha(white, 0.22);
+  box-shadow: 0 1px 0 alpha(white, 0.32) inset, 0 -1px 0 alpha(black, 0.25) inset, 0 5px 0 alpha(black, 0.42),
+              0 8px 16px alpha(black, 0.34);
+  transition: transform 160ms cubic-bezier(0.2, 0.9, 0.3, 1.5), box-shadow 160ms ease; margin-bottom: 5px; }
+window.ks-3d button:not(.flat):not(.circular):not(.ks-swatch):not(.toggle):hover,
+window.ks-3d dropdown > button:hover, window.ks-3d togglebutton:not(.flat):hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 1px 0 alpha(white, 0.38) inset, 0 9px 0 alpha(black, 0.36), 0 18px 28px alpha(black, 0.42),
+              0 0 18px alpha(@accent_bg_color, 0.35); }
+window.ks-3d button:not(.flat):not(.circular):not(.ks-swatch):not(.toggle):active,
+window.ks-3d dropdown > button:active, window.ks-3d togglebutton:not(.flat):active, window.ks-3d togglebutton:checked {
+  transform: translateY(3px) scale(0.985);
+  box-shadow: 0 2px 4px alpha(black, 0.45) inset, 0 1px 0 alpha(black, 0.30); }
+window.ks-3d button.suggested-action:not(.flat), window.ks-3d button.destructive-action:not(.flat) {
+  animation: ks3d-glow 1.8s ease-out infinite; }
+window.ks-3d button.suggested-action:not(.flat):hover { animation: ks3d-pop 260ms ease-out both; }
+window.ks-3d button.flat:hover, window.ks-3d button.circular:hover { transform: scale(1.12); transition: transform 140ms ease; }
+/* brytere og glidere med volum */
+window.ks-3d switch { box-shadow: 0 2px 4px alpha(black, 0.5) inset; }
+window.ks-3d switch > slider { background-image: radial-gradient(circle at 35% 30%, white, alpha(white, 0.75) 55%, #c8c8d0);
+  box-shadow: 0 2px 5px alpha(black, 0.5), 0 1px 0 white inset; }
+window.ks-3d scale > trough { box-shadow: 0 2px 3px alpha(black, 0.45) inset; }
+window.ks-3d scale > trough > slider { background-image: radial-gradient(circle at 35% 30%, white, #c8c8d0);
+  box-shadow: 0 3px 6px alpha(black, 0.5); }
+window.ks-3d entry, window.ks-3d spinbutton { box-shadow: 0 2px 4px alpha(black, 0.35) inset; }
+/* sidemenyen: valgt rad løftes ut, de andre vipper litt mot deg */
+window.ks-3d .navigation-sidebar > row { transition: transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1.4), box-shadow 200ms; }
+window.ks-3d .navigation-sidebar > row:hover { transform: translateX(4px) scale(1.02); }
+window.ks-3d .navigation-sidebar > row:selected {
+  background-image: linear-gradient(180deg, alpha(@accent_bg_color, 0.55), alpha(@accent_bg_color, 0.28));
+  box-shadow: 0 1px 0 alpha(white, 0.25) inset, 0 6px 14px alpha(black, 0.4); transform: translateX(6px) scale(1.03); }
+/* fanene øverst som fysiske knapper */
+window.ks-3d .ks-ntabs > button.toggle:not(.pill):not(.circular),
+window.ks-3d stackswitcher > button.toggle {
+  box-shadow: 0 1px 0 alpha(white, 0.18) inset, 0 3px 0 alpha(black, 0.3), 0 5px 10px alpha(black, 0.25);
+  transition: transform 160ms cubic-bezier(0.2, 0.9, 0.3, 1.5); }
+window.ks-3d .ks-ntabs > button.toggle:hover, window.ks-3d stackswitcher > button.toggle:hover { transform: translateY(-2px) scale(1.04); }
+window.ks-3d .ks-ntabs > button.toggle:checked, window.ks-3d stackswitcher > button.toggle:checked {
+  transform: translateY(2px); box-shadow: 0 2px 5px alpha(black, 0.45) inset; }
+/* overskrifter og store tall med dybde */
+window.ks-3d .title-1, window.ks-3d .title-2, window.ks-3d .ks-hello, window.ks-3d .ks-tile-value, window.ks-3d .ks-big {
+  text-shadow: 0 1px 0 alpha(white, 0.18), 0 2px 0 alpha(black, 0.35), 0 4px 8px alpha(black, 0.45); }
+window.ks-3d image { -gtk-icon-shadow: 0 2px 3px alpha(black, 0.45); }
+window.ks-3d popover > contents, window.ks-3d dialog > .dialog-contents {
+  box-shadow: 0 30px 60px alpha(black, 0.55), 0 0 0 1px alpha(white, 0.08) inset;
+  animation: ks3d-in 300ms cubic-bezier(0.2, 0.9, 0.25, 1.15) both; }
+"""
+
+
+def gtk_css_lett():
+    """Lett (som LXQt): flatt, kompakt og raskt – ingen animasjoner, skygger, gradienter eller glass."""
+    return """
+/* ---------- Lett ---------- */
+window.ks-lett, window.ks-lett * { transition: none; animation: none; text-shadow: none; -gtk-icon-shadow: none; }
+window.ks-lett .card, window.ks-lett list.boxed-list, window.ks-lett .ks-tile, window.ks-lett .tile,
+window.ks-lett popover > contents, window.ks-lett dialog > .dialog-contents {
+  border-radius: 3px; box-shadow: none; background-image: none; border: 1px solid alpha(currentColor, 0.16); }
+window.ks-lett button, window.ks-lett entry, window.ks-lett spinbutton, window.ks-lett dropdown > button,
+window.ks-lett .ks-ntabs > button.toggle:not(.pill):not(.circular), window.ks-lett stackswitcher > button.toggle {
+  border-radius: 2px; box-shadow: none; background-image: none; min-height: 26px; padding-top: 2px; padding-bottom: 2px; }
+window.ks-lett button:not(.flat) { border: 1px solid alpha(currentColor, 0.22); }
+window.ks-lett .navigation-sidebar > row { border-radius: 0; min-height: 30px; margin: 0; }
+window.ks-lett .navigation-sidebar > row:selected { box-shadow: inset 3px 0 0 @accent_bg_color; }
+window.ks-lett .title-1, window.ks-lett .ks-hello { font-size: 1.3em; }
+window.ks-lett .title-2 { font-size: 1.12em; }
+window.ks-lett .card { padding: 0; }
+window.ks-lett, window.ks-lett .ks-main, window.ks-lett .navigation-sidebar { background-image: none; }
+window.ks-lett .tile-spark, window.ks-lett .ks-sparkline { opacity: 0; min-height: 0; }
+window.ks-lett switch { border-radius: 3px; } window.ks-lett switch > slider { border-radius: 2px; box-shadow: none; }
+"""
+
+
 # ---------------------------------------------------------------------------------------------------------------
 # Stilark – mobilappen (remote_web og startskjermen i APK-en)
 # ---------------------------------------------------------------------------------------------------------------
@@ -257,7 +380,63 @@ def web_css():
 :root[data-design="ny"] .ks-more-themes {{ margin-top: {s[2]}px; grid-column: 1 / -1; }}
 :root[data-design="ny"] .ks-more-themes > summary {{ cursor: pointer; font-weight: {w["strong"]}; padding: {s[1]}px 0;
   color: var(--acc, #5b8cff); }}
-.design-pick {{ display: flex; gap: 10px; margin: 6px 0 4px; }}
+/* ---------- 3D (mobil) ---------- */
+@keyframes ks3d-in {{ from {{ opacity: 0; transform: perspective(900px) translateY(28px) rotateX(-16deg) scale(.96); }}
+  to {{ opacity: 1; transform: perspective(900px) none; }} }}
+@keyframes ks3d-glow {{ from {{ box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc, #5b8cff) 55%, transparent); }}
+  to {{ box-shadow: 0 0 0 10px transparent; }} }}
+:root[data-skin="3d"] main {{ perspective: 1100px; }}
+:root[data-skin="3d"] .card {{ transform-style: preserve-3d;
+  background-image: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0) 42%, rgba(0,0,0,.10));
+  border: 1px solid rgba(255,255,255,.10); border-bottom-color: rgba(0,0,0,.35);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.18), 0 2px 3px rgba(0,0,0,.22),
+    0 12px 24px rgba(0,0,0,.30), 0 26px 44px -14px rgba(0,0,0,.5);
+  animation: ks3d-in .55s cubic-bezier(.2,.9,.25,1.15) both;
+  transition: transform .25s cubic-bezier(.2,.9,.3,1.3), box-shadow .25s; }}
+:root[data-skin="3d"] .card.ks3d-tilt {{ transition: transform .08s linear; }}
+:root[data-skin="3d"] .card h2 {{ transform: translateZ(18px); text-shadow: 0 2px 0 rgba(0,0,0,.35), 0 6px 12px rgba(0,0,0,.4); }}
+:root[data-skin="3d"] button:not(.icon):not(.link):not(.theme-sw):not(.on) {{
+  background-image: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.02) 55%, rgba(0,0,0,.12));
+  border: 1px solid rgba(0,0,0,.3); border-top-color: rgba(255,255,255,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 4px 0 rgba(0,0,0,.38), 0 7px 14px rgba(0,0,0,.32);
+  transform: translateZ(10px); transition: transform .16s cubic-bezier(.2,.9,.3,1.6), box-shadow .16s; }}
+:root[data-skin="3d"] button:not(.icon):not(.link):not(.theme-sw):hover {{ transform: translateY(-3px) translateZ(24px) scale(1.05);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 7px 0 rgba(0,0,0,.34), 0 16px 24px rgba(0,0,0,.4); }}
+:root[data-skin="3d"] button:not(.icon):not(.link):not(.theme-sw):active {{
+  transform: translateY(3px) scale(.98); box-shadow: inset 0 2px 5px rgba(0,0,0,.45), 0 1px 0 rgba(0,0,0,.3); }}
+:root[data-skin="3d"] button.on:not(.icon):not(.link) {{ transform: translateY(2px) translateZ(4px);
+  box-shadow: inset 0 3px 6px rgba(0,0,0,.4), inset 0 -1px 0 rgba(255,255,255,.2), 0 0 16px color-mix(in srgb, var(--acc, #5b8cff) 45%, transparent); }}
+:root[data-skin="3d"] button.primary {{ animation: ks3d-glow 1.8s ease-out infinite; }}
+:root[data-skin="3d"] .tabs button.on {{ transform: translateY(-4px) scale(1.08); box-shadow: 0 10px 20px rgba(0,0,0,.4); }}
+:root[data-skin="3d"] .switch i, :root[data-skin="3d"] input[type=range] {{ box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }}
+:root[data-skin="3d"] h1, :root[data-skin="3d"] .big {{ text-shadow: 0 2px 0 rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.45); }}
+/* ---------- Lett (mobil) ---------- */
+:root[data-skin="lett"] *, :root[data-skin="lett"] *::before, :root[data-skin="lett"] *::after {{
+  animation: none !important; transition: none !important; backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important; text-shadow: none !important; }}
+:root[data-skin="lett"] .card {{ border-radius: 4px; box-shadow: none; background-image: none;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent); }}
+:root[data-skin="lett"] button, :root[data-skin="lett"] input, :root[data-skin="lett"] select {{ border-radius: 3px;
+  box-shadow: none; background-image: none; }}
+:root[data-skin="lett"] .tabs button {{ border-radius: 0; }}
+:root[data-skin="lett"] body {{ background: var(--bg) !important; }}
+:root[data-skin="lett"] .card, :root[data-skin="lett"] .cat-bar, :root[data-skin="lett"] header.top {{
+  background: var(--card) !important; }}
+:root[data-skin="lett"] button:not(.on):not(.primary), :root[data-skin="lett"] .seg, :root[data-skin="lett"] select,
+:root[data-skin="lett"] input {{ background-image: none !important; }}
+:root[data-skin="lett"] button.on, :root[data-skin="lett"] button.primary {{ background: var(--acc) !important;
+  box-shadow: none !important; }}
+:root[data-skin="lett"] .seg, :root[data-skin="lett"] .seg button, :root[data-skin="lett"] .chips button {{
+  border-radius: 3px !important; }}
+:root[data-skin="lett"] .tabs button.on {{ background: color-mix(in srgb, var(--acc) 20%, transparent) !important;
+  color: var(--acc) !important; }}
+:root[data-skin="lett"] html, :root[data-skin="lett"] body::before, :root[data-skin="lett"] body::after {{
+  background-image: none !important; }}
+:root[data-skin="lett"] .tabs {{ background: var(--bg2) !important; border-radius: 0 !important; box-shadow: none !important;
+  margin: 0 !important; }}
+:root[data-skin="lett"] canvas.live-bg, :root[data-skin="lett"] .spark {{ display: none; }}
+.design-pick {{ display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 4px; }}
+.design-pick button {{ flex: 1 1 calc(50% - 10px); }}
 .design-pick button {{ flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
   padding: 12px 14px; }}
 .design-pick button.on {{ box-shadow: inset 0 0 0 2px var(--acc, #5b8cff); }}
@@ -293,11 +472,17 @@ def apply(window):
     gi.require_version("Gtk", "4.0")
     from gi.repository import Gtk
     window.add_css_class("ks-ny")
+    if skin():
+        window.add_css_class("ks-" + skin())
     if _APPLIED:
         return
     _APPLIED.append(1)
     import theme
     theme.add_css(gtk_css(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 8)
+    if skin() == "3d":
+        theme.add_css(gtk_css_3d(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 9)
+    elif skin() == "lett":
+        theme.add_css(gtk_css_lett(), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 9)
     if IS_WIN:
         try:      # vindusknappene til høyre, som i andre Windows-programmer
             Gtk.Settings.get_default().set_property("gtk-decoration-layout", "icon:minimize,maximize,close")
