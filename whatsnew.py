@@ -13,6 +13,12 @@ import i18n  # noqa: E402
 SEEN = os.path.expanduser("~/.config/systemmonitor/sett-versjon.json")
 
 NEWS = [
+    ("1.0.6", "Android-appen: ingen evig oppdatering", [
+            "Mobilappen ba om oppdatering til 1.0.5 igjen og igjen: PC-en lovet app-versjonen til PC-programmet, "
+            "men APK-en var fortsatt 1.0.4. Nå leser PC-en versjonen til selve APK-en, og en ny versjon blir ikke "
+            "lagt ut før Android-appen og Windows-installasjonen er bygget for den",
+            "Android-appen er nå 1.0.6 og har alt fra 1.0.5 (Sunshine «Start på nytt»)",
+        ]),
     ("1.0.5", "Sunshine: «Start på nytt» på mobilen og ingen «Tillat»-spørsmål", [
             "Mobilappen › Spill › Spill på telefonen: ny knapp «↻ Start på nytt» for Sunshine (virker mot både "
             "Linux- og Windows-PC-er)",

@@ -291,10 +291,13 @@ def _local_apk():
     path = os.path.join(WEB, "kontrollsenter.apk")
     if not os.path.isfile(path):
         return None
+    # versjonen til selve APK-en – ikke PC-ens VERSION (da lover vi en app-oppdatering som aldri kommer)
     try:
-        with open(os.path.join(APP_DIR, "VERSION"), encoding="utf-8") as f:
+        with open(path + ".versjon", encoding="utf-8") as f:
             ver = f.read().strip()
     except OSError:
+        return None
+    if not version_code(ver):
         return None
     return {"version": ver, "code": version_code(ver), "source": "pc", "path": path}
 

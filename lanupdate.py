@@ -469,6 +469,28 @@ def repair_missing(package_files):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _build_clients():
+    """Bygg Android-appen og Windows-installasjonen for denne versjonen hvis de mangler. Uten dette ble en
+    gammel APK lagt ut under nytt versjonsnummer, og appen ba om oppdatering i en evig løkke."""
+    import subprocess as _sp
+    ver = local_version()
+    for script, out in (("bygg-android.sh", f"Kontrollsenter-{ver}.apk"),
+                        ("bygg-windows-installer.sh", f"Kontrollsenter-Setup-{ver}.exe")):
+        if (Path(APP_DIR) / "dist" / out).exists() or not (Path(APP_DIR) / script).exists():
+            continue
+        try:
+            r = _sp.run(["bash", script], cwd=APP_DIR, capture_output=True, text=True, timeout=900)
+        except (OSError, _sp.SubprocessError) as e:
+            return f"{script} feilet – versjonen ble IKKE lagt ut: {e}"
+        if r.returncode != 0 or not (Path(APP_DIR) / "dist" / out).exists():
+            return f"{script} feilet – versjonen ble IKKE lagt ut:\n" + (r.stdout + r.stderr)[-800:]
+    apk_ver = Path(APP_DIR) / "remote_web" / "kontrollsenter.apk.versjon"
+    if (Path(APP_DIR) / "bygg-android.sh").exists() and (
+            not apk_ver.exists() or apk_ver.read_text().strip() != ver):
+        return f"Android-appen i remote_web er ikke {ver} – kjør bygg-android.sh"
+    return None
+
+
 def publish(make_package, selftest=True):
     """Legg denne versjonen på NAS-en, så andre PC-er på hjemmenettet finner den.
     På utviklings-PC-en må selvtesten (alle sider, faner og mobilappen) være bestått først."""
@@ -484,6 +506,10 @@ def publish(make_package, selftest=True):
                                    "\n  ".join(r["errors"][:12]))
         except Exception as e:  # noqa: BLE001
             return False, f"Selvtesten kunne ikke kjøres: {e}"
+    if is_source_pc():                                     # Android-app og Windows-installasjon må følge versjonen
+        err = _build_clients()
+        if err:
+            return False, err
     tmp = Path(tempfile.mkdtemp())
     try:
         _d, archive = make_package(tmp)

@@ -66,4 +66,5 @@ podman run --rm -v "$PWD/android/app/src/main:/src:ro,Z" -v "$OUT:/out:Z" -v "$K
 '
 cp "$OUT/app.apk" "dist/Kontrollsenter-$VER.apk"
 cp "$OUT/app.apk" remote_web/kontrollsenter.apk
+echo "$VER" > remote_web/kontrollsenter.apk.versjon      # appens egen versjon (ikke PC-ens)
 echo "Ferdig: dist/Kontrollsenter-$VER.apk ($(du -h "dist/Kontrollsenter-$VER.apk" | cut -f1))"
